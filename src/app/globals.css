@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Brand tokens (spec §2). RGB triplets so Tailwind's <alpha-value> works.
+ *   Light: teal #0E7C7B, bg #F7F9FA, text #1F2933
+ *   Dark:  teal #3FA8A6, bg #121417, text #E8EAED
+ *   Amber #F2994A (primary action), SOS red #E63946 (SOS only), green #27AE60
+ */
+:root {
+  --brand-teal: 14 124 123;
+  --brand-teal-fg: 255 255 255;
+  --brand-amber: 242 153 74;
+  --brand-sos: 230 57 70;
+  --brand-success: 39 174 96;
+
+  --surface: 247 249 250;
+  --surface-raised: 255 255 255;
+  --ink: 31 41 51;
+  --ink-muted: 90 102 112;
+  --line: 224 230 234;
+}
+
+.dark {
+  --brand-teal: 63 168 166;
+  --brand-teal-fg: 18 20 23;
+  --brand-amber: 242 153 74;
+  --brand-sos: 230 57 70;
+  --brand-success: 39 174 96;
+
+  --surface: 18 20 23;
+  --surface-raised: 30 34 39;
+  --ink: 232 234 237;
+  --ink-muted: 158 166 174;
+  --line: 47 53 60;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: rgb(var(--surface));
+  color: rgb(var(--ink));
+  -webkit-font-smoothing: antialiased;
+}
