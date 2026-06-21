@@ -34,6 +34,10 @@ export interface SessionClaims {
   // changing the password (or deleting the account) invalidates the session
   // immediately. Absent for doctor/admin.
   tv?: number;
+  // Session version for the doctor role — incremented on every login so that a
+  // new device login immediately invalidates all prior device sessions (§15.1).
+  // Absent for receptionist/admin and for incomplete-onboarding doctor sessions.
+  sv?: number;
 }
 
 function secretKey(): Uint8Array {
@@ -47,6 +51,7 @@ export async function createSessionToken(claims: SessionClaims): Promise<string>
     doctorId: claims.doctorId,
     name: claims.name,
     ...(typeof claims.tv === "number" ? { tv: claims.tv } : {}),
+    ...(typeof claims.sv === "number" ? { sv: claims.sv } : {}),
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
@@ -65,6 +70,7 @@ export async function verifySessionToken(token: string): Promise<SessionClaims |
       doctorId: typeof payload.doctorId === "string" ? payload.doctorId : undefined,
       name: typeof payload.name === "string" ? payload.name : "",
       tv: typeof payload.tv === "number" ? payload.tv : undefined,
+      sv: typeof payload.sv === "number" ? payload.sv : undefined,
     };
   } catch {
     return null;

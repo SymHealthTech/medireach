@@ -68,6 +68,9 @@ export interface DoctorDoc {
   // immediately (§12) — these track that pending state.
   pendingUnsubscribe: boolean;
   unsubscribeEffectiveAt?: Date;
+  // Incremented on every successful login; sessions carrying an older value are
+  // rejected, enforcing single-device access (§15.1).
+  sessionVersion: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,6 +148,7 @@ const doctorSchema = new Schema<DoctorDoc>(
     cycleStartDate: { type: Date },
     pendingUnsubscribe: { type: Boolean, default: false },
     unsubscribeEffectiveAt: { type: Date },
+    sessionVersion: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

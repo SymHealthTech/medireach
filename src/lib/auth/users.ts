@@ -24,6 +24,8 @@ export interface ResolvedClinicUser {
   onboardingComplete?: boolean;
   // receptionist-only: embedded in the session and checked per request
   tokenVersion?: number;
+  // doctor-only: used to embed sv in the session after login
+  sessionVersion?: number;
 }
 
 export async function resolveClinicUser(
@@ -48,6 +50,7 @@ export async function resolveClinicUser(
       trustedDevices: doctor.trustedDevices,
       accountStatus: doctor.accountStatus,
       onboardingComplete: doctor.onboardingStep >= 7,
+      sessionVersion: doctor.sessionVersion,
     };
   }
 
@@ -81,6 +84,34 @@ export async function isReceptionistSessionValid(
   const r = await Receptionist.findById(userId).select("active tokenVersion").lean();
   if (!r || !r.active) return false;
   return r.tokenVersion === (tokenVersion ?? 0);
+}
+
+/**
+ * Per-request liveness check for a doctor session. Returns false if the account
+ * no longer exists or if sessionVersion has been bumped (new device logged in).
+ * Sessions without sv (incomplete-onboarding) always pass.
+ */
+export async function isDoctorSessionValid(
+  userId: string,
+  sessionVersion: number | undefined,
+): Promise<boolean> {
+  if (typeof sessionVersion !== "number") return true;
+  const d = await Doctor.findById(userId).select("sessionVersion").lean();
+  if (!d) return false;
+  return d.sessionVersion === sessionVersion;
+}
+
+/**
+ * Atomically increment Doctor.sessionVersion and return the new value.
+ * Called on every successful full login so prior device sessions become invalid.
+ */
+export async function bumpDoctorSessionVersion(userId: string): Promise<number> {
+  const updated = await Doctor.findByIdAndUpdate(
+    userId,
+    { $inc: { sessionVersion: 1 } },
+    { new: true, select: "sessionVersion" },
+  ).lean();
+  return updated?.sessionVersion ?? 1;
 }
 
 /** Persist a new trusted-device entry onto the correct collection. */

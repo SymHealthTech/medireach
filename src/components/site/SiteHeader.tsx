@@ -25,6 +25,9 @@ export function SiteHeader() {
           <Link href="/login" className="text-ink-muted hover:text-ink">
             Login
           </Link>
+          <Link href="/signup" className="text-ink-muted hover:text-ink">
+            Sign up
+          </Link>
           <ThemeToggle />
           <a
             href={whatsappLink()}

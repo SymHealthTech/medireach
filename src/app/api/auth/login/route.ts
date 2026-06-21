@@ -6,7 +6,7 @@ import { parseBody } from "@/lib/api/validate";
 import { rateLimit, clientIp } from "@/lib/api/rate-limit";
 import { verifyPassword } from "@/lib/auth/password";
 import { setSessionCookie } from "@/lib/auth/session";
-import { resolveClinicUser } from "@/lib/auth/users";
+import { resolveClinicUser, bumpDoctorSessionVersion } from "@/lib/auth/users";
 
 /**
  * Doctor / Receptionist login. Validates credentials and issues a session
@@ -47,12 +47,18 @@ export async function POST(req: NextRequest) {
       return jsonOk({ ok: false, onboardingIncomplete: true });
     }
 
+    // For doctors: bump sessionVersion so any prior device session is immediately
+    // invalidated on their next API call (single-device enforcement, §15.1).
+    const sv =
+      user.role === "doctor" ? await bumpDoctorSessionVersion(user.id) : undefined;
+
     await setSessionCookie({
       sub: user.id,
       role: user.role,
       doctorId: user.doctorId,
       name: user.name,
       tv: user.tokenVersion,
+      sv,
     });
 
     return jsonOk({ ok: true, role: user.role });

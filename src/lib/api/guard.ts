@@ -3,7 +3,7 @@ import type { NextRequest, NextResponse } from "next/server";
 import type { Role } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-import { isReceptionistSessionValid } from "@/lib/auth/users";
+import { isReceptionistSessionValid, isDoctorSessionValid } from "@/lib/auth/users";
 import { Errors, errorResponse } from "@/lib/api/errors";
 import type { AuthContext } from "@/lib/api/context";
 
@@ -56,6 +56,12 @@ export function route<P = Record<string, string>>(
       // changes the password or deletes the account (Change 1).
       if (session.role === "receptionist" && !(await isReceptionistSessionValid(session.sub, session.tv))) {
         throw Errors.unauthorized("Your session is no longer valid. Please log in again.");
+      }
+
+      // Doctor sessions are invalidated when a newer device logs in (single-device
+      // enforcement). sv is absent for incomplete-onboarding sessions, which pass.
+      if (session.role === "doctor" && !(await isDoctorSessionValid(session.sub, session.sv))) {
+        throw Errors.unauthorized("You have been signed in on another device. Please log in again.");
       }
 
       const ctx: AuthContext = {
