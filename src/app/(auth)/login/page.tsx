@@ -86,7 +86,7 @@ export default function LoginPage() {
           <h1 className="text-xl font-bold text-ink">Log in</h1>
           <p className="text-sm text-ink-muted">
             {step === "credentials"
-              ? "Use your registered mobile number or email."
+              ? "Doctors: use your mobile or email. Receptionists: use your username."
               : "Enter the code we emailed you."}
           </p>
         </div>
@@ -100,7 +100,7 @@ export default function LoginPage() {
         {step === "credentials" ? (
           <form onSubmit={submitCredentials} className="space-y-4">
             <div>
-              <Label htmlFor="identifier">Mobile number or email</Label>
+              <Label htmlFor="identifier">Mobile / email / username</Label>
               <Input
                 id="identifier"
                 autoComplete="username"

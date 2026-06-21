@@ -23,6 +23,13 @@ interface FormState {
   provisionalDiagnosis: string; diagnosis: string;
   medicines: MedicineRow[]; fees: string; reportPublicIds: string[];
 }
+interface PatientInfo {
+  name: string; ageYears?: number; gender?: string;
+  mobile?: string; address?: string;
+  bp?: string; weightKg?: number; heightCm?: number;
+  allergicTo?: string; referredBy?: string; emergencyContact?: string;
+}
+
 const OE_FIELDS: { key: keyof OE; label: string }[] = [
   { key: "bp", label: "BP" }, { key: "weight", label: "Weight" }, { key: "height", label: "Height" },
   { key: "pulse", label: "Pulse" }, { key: "temp", label: "Temp" }, { key: "rr", label: "RR" },
@@ -34,18 +41,13 @@ const emptyForm: FormState = {
   medicines: [], fees: "", reportPublicIds: [],
 };
 
-/**
- * Doctor consultation screen (spec §7.3–7.5). Voice-first: dictate → Whisper →
- * Claude structures into the fields below → doctor reviews & edits → Confirm
- * (the safety gate; nothing finalizes before it) → Save / Send on WhatsApp.
- */
 export default function ConsultPage() {
   const { visitId } = useParams<{ visitId: string }>();
   const router = useRouter();
   const recorder = useRecorder();
 
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [patient, setPatient] = useState<{ name: string; ageYears?: number; gender?: string } | null>(null);
+  const [patient, setPatient] = useState<PatientInfo | null>(null);
   const [clinic, setClinic] = useState<{
     clinicName: string; clinicAddress: string; clinicTimings: string;
     doctorName: string; degree: string; registrationNumber: string;
@@ -55,18 +57,47 @@ export default function ConsultPage() {
     footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
   } | null>(null);
   const [status, setStatus] = useState<"draft" | "confirmed">("draft");
+  const [step, setStep] = useState<"form" | "review">("form");
   const [aiState, setAiState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     apiGet<{ visit: Record<string, unknown>; patient: Record<string, unknown> }>(`/api/visits/${visitId}`)
-      .then(({ visit, patient }) => {
+      .then(({ visit, patient: p }) => {
+        const visitOe = (visit.oe as OE) ?? {};
+        const patientInfo: PatientInfo = {
+          name: p.name as string,
+          ageYears: p.ageYears as number | undefined,
+          gender: p.gender as string | undefined,
+          mobile: p.mobile as string | undefined,
+          address: p.address as string | undefined,
+          bp: p.bp as string | undefined,
+          weightKg: p.weightKg as number | undefined,
+          heightCm: p.heightCm as number | undefined,
+          allergicTo: p.allergicTo as string | undefined,
+          referredBy: p.referredBy as string | undefined,
+          emergencyContact: p.emergencyContact as string | undefined,
+        };
+        setPatient(patientInfo);
+        // Carry forward receptionist vitals into OE if not already recorded on the visit
+        const carriedOe: OE = {
+          bp: visitOe.bp || (p.bp as string | undefined) || "",
+          weight: visitOe.weight || (p.weightKg != null ? String(p.weightKg) + " kg" : ""),
+          height: visitOe.height || (p.heightCm != null ? String(p.heightCm) + " cm" : ""),
+          pulse: visitOe.pulse || "",
+          temp: visitOe.temp || "",
+          rr: visitOe.rr || "",
+          pa: visitOe.pa || "",
+          cvs: visitOe.cvs || "",
+          cns: visitOe.cns || "",
+          bsl: visitOe.bsl || "",
+        };
         setForm({
           ho: (visit.ho as string) ?? "",
           fh: (visit.fh as string) ?? "",
           co: (visit.co as string) ?? "",
-          oe: (visit.oe as OE) ?? {},
+          oe: carriedOe,
           notes: (visit.notes as string) ?? "",
           provisionalDiagnosis: (visit.provisionalDiagnosis as string) ?? "",
           diagnosis: (visit.diagnosis as string) ?? "",
@@ -75,15 +106,10 @@ export default function ConsultPage() {
           reportPublicIds: (visit.reportPublicIds as string[]) ?? [],
         });
         setStatus((visit.status as "draft" | "confirmed") ?? "draft");
-        if (patient) setPatient({ name: patient.name as string, ageYears: patient.ageYears as number, gender: patient.gender as string });
       })
       .catch((e) => setError((e as Error).message));
-    // Template + clinic info for rendering the prescription on share.
     apiGet<{ template: typeof tpl; clinic: typeof clinic }>("/api/template")
-      .then((d) => {
-        setTpl(d.template);
-        setClinic(d.clinic);
-      })
+      .then((d) => { setTpl(d.template); setClinic(d.clinic); })
       .catch(() => {});
   }, [visitId]);
 
@@ -115,10 +141,7 @@ export default function ConsultPage() {
     if (recorder.recording) {
       setAiState("Transcribing…");
       const blob = await recorder.stop();
-      if (!blob) {
-        setAiState(null);
-        return;
-      }
+      if (!blob) { setAiState(null); return; }
       try {
         const fd = new FormData();
         fd.append("audio", blob, "dictation.webm");
@@ -171,7 +194,7 @@ export default function ConsultPage() {
     }
   }
 
-  async function saveDraft() {
+  async function save() {
     setBusy(true);
     setError(null);
     try {
@@ -188,12 +211,13 @@ export default function ConsultPage() {
     }
   }
 
-  async function confirm() {
+  async function sendPrescription() {
     setBusy(true);
     setError(null);
     try {
       await apiPost(`/api/visits/${visitId}/confirm`, buildPayload());
       setStatus("confirmed");
+      await shareWhatsApp();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -231,11 +255,121 @@ export default function ConsultPage() {
       });
       await sharePrescription(image, text);
     } catch {
-      // Image generation/share failed → fall back to text-only share.
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     }
   }
 
+  // ── Patient vitals strip (receptionist data) ──────────────────────────────
+  function PatientVitalsStrip() {
+    if (!patient) return null;
+    const items: { label: string; value: string }[] = [];
+    if (patient.mobile) items.push({ label: "Mobile", value: patient.mobile });
+    if (patient.bp) items.push({ label: "BP", value: patient.bp });
+    if (patient.weightKg != null) items.push({ label: "Weight", value: `${patient.weightKg} kg` });
+    if (patient.heightCm != null) items.push({ label: "Height", value: `${patient.heightCm} cm` });
+    if (patient.allergicTo) items.push({ label: "Allergic to", value: patient.allergicTo });
+    if (patient.referredBy) items.push({ label: "Referred by", value: patient.referredBy });
+    if (patient.address) items.push({ label: "Address", value: patient.address });
+    if (patient.emergencyContact) items.push({ label: "Emergency", value: patient.emergencyContact });
+    if (items.length === 0) return null;
+    return (
+      <div className="rounded-xl border border-line bg-surface-raised px-3 py-2">
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Patient info (receptionist)</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+          {items.map(({ label, value }) => (
+            <span key={label} className="text-[11px] text-ink-muted">
+              <span className="font-medium text-ink-subtle">{label}:</span> {value}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Review step ───────────────────────────────────────────────────────────
+  if (step === "review") {
+    const activeMeds = form.medicines.filter((m) => m.name.trim());
+    const oeEntries = OE_FIELDS.filter(({ key }) => form.oe[key]);
+
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
+            {patient && (
+              <p className="text-sm text-ink-muted">
+                {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
+              </p>
+            )}
+          </div>
+          <button onClick={() => setStep("form")} className="text-sm text-ink-muted hover:underline">
+            ← Edit
+          </button>
+        </div>
+
+        <PatientVitalsStrip />
+
+        {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
+
+        <Card className="space-y-4">
+          <p className="font-semibold text-ink">Review Prescription</p>
+
+          {form.co && <ReviewRow label="C/O" value={form.co} />}
+          {form.ho && <ReviewRow label="H/O" value={form.ho} />}
+          {form.fh && <ReviewRow label="F/H" value={form.fh} />}
+
+          {oeEntries.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">O/E</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                {oeEntries.map(({ key, label }) => (
+                  <span key={key} className="text-sm text-ink">
+                    <span className="font-medium">{label}:</span> {form.oe[key]}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {form.provisionalDiagnosis && <ReviewRow label="Provisional Diagnosis" value={form.provisionalDiagnosis} />}
+          {form.diagnosis && <ReviewRow label="Diagnosis" value={form.diagnosis} />}
+          {form.notes && <ReviewRow label="Notes" value={form.notes} />}
+
+          {activeMeds.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Medicines</p>
+              <ol className="list-decimal pl-4 space-y-0.5">
+                {activeMeds.map((m, i) => (
+                  <li key={i} className="text-sm text-ink">
+                    {m.clinicalText || `${m.name}${m.dosage ? ` ${m.dosage}` : ""}${m.frequency ? ` — ${m.frequency}` : ""}`}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {form.fees && (
+            <ReviewRow label="Fees" value={`₹${form.fees}`} />
+          )}
+
+          {form.reportPublicIds.length > 0 && (
+            <p className="text-sm text-ink-muted">{form.reportPublicIds.length} report(s) attached</p>
+          )}
+        </Card>
+
+        <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
+          <Button variant="outline" size="lg" onClick={save} disabled={busy}>
+            {busy ? "…" : "Save"}
+          </Button>
+          <Button variant="primary" size="lg" className="flex-1" onClick={sendPrescription} disabled={busy}>
+            {busy ? "…" : "Send Prescription"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Form step ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -243,8 +377,7 @@ export default function ConsultPage() {
           <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
           {patient && (
             <p className="text-sm text-ink-muted">
-              {patient.gender}
-              {patient.ageYears ? ` · ${patient.ageYears}y` : ""}
+              {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
             </p>
           )}
         </div>
@@ -252,6 +385,8 @@ export default function ConsultPage() {
           ← Queue
         </button>
       </div>
+
+      <PatientVitalsStrip />
 
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
@@ -332,11 +467,8 @@ export default function ConsultPage() {
 
       {status === "draft" && (
         <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
-          <Button variant="outline" size="lg" onClick={saveDraft} disabled={busy}>
-            Save draft
-          </Button>
-          <Button variant="primary" size="lg" className="flex-1" onClick={confirm} disabled={busy}>
-            {busy ? "…" : "Confirm"}
+          <Button variant="primary" size="lg" className="flex-1" onClick={() => setStep("review")} disabled={busy}>
+            Next
           </Button>
         </div>
       )}
@@ -349,6 +481,15 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
     <div>
       <Label>{label}</Label>
       <Textarea value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="text-sm text-ink whitespace-pre-wrap">{value}</p>
     </div>
   );
 }

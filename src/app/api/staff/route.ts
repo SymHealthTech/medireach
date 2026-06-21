@@ -21,7 +21,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
 const schema = z.object({
   name: z.string().trim().min(2),
   username: z.string().trim().min(3).max(40).toLowerCase(),
-  mobile: fields.mobile.optional(),
+  mobile: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), fields.mobile.optional()),
   password: fields.password,
 });
 

@@ -13,6 +13,7 @@ export interface TemplatePreset {
   accent: string; // header/accent color (hex)
   ink: string; // body text color
   headerAlign: "left" | "center";
+  headerLayout?: "three-column"; // overrides headerAlign for structured layouts
   showRule: boolean; // horizontal rule under the header
   headerBg: string | null; // filled header band, or null for plain
 }
@@ -21,10 +22,11 @@ export const TEMPLATE_PRESETS: TemplatePreset[] = [
   {
     key: "classic",
     name: "Classic",
-    description: "Teal header band, centered clinic name — clean and traditional.",
+    description: "Teal header band — clinic left, logo center, doctor details right.",
     accent: "#0E7C7B",
     ink: "#1F2933",
     headerAlign: "center",
+    headerLayout: "three-column",
     showRule: true,
     headerBg: "#0E7C7B",
   },

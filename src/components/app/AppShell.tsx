@@ -36,7 +36,9 @@ export function AppShell({ role, children }: { role: Role; children: React.React
   const nav = role === "receptionist" ? RECEPTIONIST_NAV : DOCTOR_NAV;
   // Primary nav items (Today + Records) — Menu is replaced by inline items on desktop
   const primaryNav = nav.filter((item) => item.href !== "/app/menu");
-  const menuItems = role === "receptionist" ? RECEPTIONIST_MENU_ITEMS : DOCTOR_MENU_ITEMS;
+  const allMenuItems = role === "receptionist" ? RECEPTIONIST_MENU_ITEMS : DOCTOR_MENU_ITEMS;
+  const primaryHrefs = new Set(primaryNav.map((n) => n.href));
+  const menuItems = allMenuItems.filter((item) => !primaryHrefs.has(item.href));
 
   useEffect(() => {
     registerServiceWorker();
