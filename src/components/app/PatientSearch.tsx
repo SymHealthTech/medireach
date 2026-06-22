@@ -82,7 +82,7 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Input
-            placeholder="Search returning patient by name or mobile…"
+            placeholder="Search patient by name or mobile number"
             value={q}
             onChange={(e) => { setQ(e.target.value); setError(null); }}
             className="h-9 placeholder:text-ink-muted/40"
