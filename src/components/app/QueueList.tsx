@@ -13,6 +13,8 @@ export interface QueueEntry {
   patientId: string | null;
   name: string;
   mobile: string;
+  ageYears: number | null;
+  gender: string | null;
   type: "new" | "follow-up";
   status: "draft" | "confirmed";
   createdAt: string;
@@ -302,7 +304,7 @@ export function QueueList({
       )}
 
       <ul className="space-y-2">
-        {entries.map((e) => {
+        {entries.map((e, idx) => {
           const examined = e.status === "confirmed";
           const clickable = role === "doctor" || (role === "receptionist" && !examined);
 
@@ -310,7 +312,7 @@ export function QueueList({
             <li
               key={e.visitId}
               className={cn(
-                "flex items-center justify-between rounded-2xl border border-line bg-surface-raised p-4",
+                "flex items-center justify-between rounded-2xl border border-line bg-surface-raised px-4 py-3",
                 examined && "opacity-60",
               )}
             >
@@ -322,23 +324,33 @@ export function QueueList({
                 }}
                 className={cn("min-w-0 flex-1 text-left", clickable ? "cursor-pointer" : "cursor-default")}
               >
-                <div className="flex items-center gap-2">
-                  <span className="truncate font-semibold text-ink">{e.name}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-medium",
-                      e.type === "follow-up" ? "bg-brand/10 text-brand" : "bg-action/15 text-action",
-                    )}
-                  >
-                    {e.type === "follow-up" ? "Follow-up" : "New"}
-                  </span>
-                  {examined && (
-                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-                      Seen
-                    </span>
-                  )}
+                <div className="flex items-start gap-2">
+                  <span className="shrink-0 text-sm font-semibold leading-6 text-ink-muted">{idx + 1}.</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-semibold text-ink">{e.name}</span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                          e.type === "follow-up" ? "bg-brand/10 text-brand" : "bg-action/15 text-action",
+                        )}
+                      >
+                        {e.type === "follow-up" ? "Follow-up" : "New"}
+                      </span>
+                      {examined && (
+                        <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+                          Seen
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-ink-muted">
+                      {[
+                        e.ageYears != null ? `${e.ageYears}y` : null,
+                        e.gender ? e.gender.charAt(0).toUpperCase() + e.gender.slice(1) : null,
+                      ].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-sm text-ink-muted">{e.mobile}</p>
               </button>
 
               {!examined && (

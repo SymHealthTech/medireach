@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 import { cn } from "@/lib/cn";
 
@@ -31,11 +32,14 @@ const FILTERS = [
 export default function AdminDoctorsPage() {
   const [filter, setFilter] = useState("");
   const [doctors, setDoctors] = useState<DoctorRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     const qs = filter === "documents" ? "documents=submitted" : filter ? `status=${filter}` : "";
     const data = await apiGet<{ doctors: DoctorRow[] }>(`/api/admin/doctors?${qs}`).catch(() => ({ doctors: [] }));
     setDoctors(data.doctors);
+    setLoading(false);
   }, [filter]);
 
   useEffect(() => {
@@ -62,27 +66,44 @@ export default function AdminDoctorsPage() {
       </div>
 
       <div className="space-y-2">
-        {doctors.map((d) => (
-          <Link key={d.id} href={`/console/doctors/${d.id}`}>
-            <Card className="flex items-center justify-between hover:border-brand">
-              <div>
-                <p className="font-medium text-ink">
-                  {d.name} {d.appId && <span className="text-ink-muted">· {d.appId}</span>}
-                </p>
-                <p className="text-sm text-ink-muted">{d.email} · {d.mobile}</p>
+        {loading ? (
+          [0, 1, 2, 3, 4].map((i) => (
+            <Card key={i} className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-3 w-60" />
               </div>
-              <div className="text-right text-xs">
-                <span className="block font-medium text-ink">{d.accountStatus}</span>
-                {d.documentStatus && (
-                  <span className={cn(d.documentStatus === "submitted" ? "text-action" : "text-ink-muted")}>
-                    doc: {d.documentStatus}
-                  </span>
-                )}
+              <div className="space-y-1.5 text-right">
+                <Skeleton className="h-4 w-16 ml-auto" />
+                <Skeleton className="h-3 w-12 ml-auto" />
               </div>
             </Card>
-          </Link>
-        ))}
-        {doctors.length === 0 && <p className="text-ink-muted">No doctors match this filter.</p>}
+          ))
+        ) : (
+          <>
+            {doctors.map((d) => (
+              <Link key={d.id} href={`/console/doctors/${d.id}`}>
+                <Card className="flex items-center justify-between hover:border-brand">
+                  <div>
+                    <p className="font-medium text-ink">
+                      {d.name} {d.appId && <span className="text-ink-muted">· {d.appId}</span>}
+                    </p>
+                    <p className="text-sm text-ink-muted">{d.email} · {d.mobile}</p>
+                  </div>
+                  <div className="text-right text-xs">
+                    <span className="block font-medium text-ink">{d.accountStatus}</span>
+                    {d.documentStatus && (
+                      <span className={cn(d.documentStatus === "submitted" ? "text-action" : "text-ink-muted")}>
+                        doc: {d.documentStatus}
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+            {doctors.length === 0 && <p className="text-ink-muted">No doctors match this filter.</p>}
+          </>
+        )}
       </div>
     </div>
   );

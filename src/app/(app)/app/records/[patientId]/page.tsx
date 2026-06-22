@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 
 interface Visit {
@@ -32,6 +33,7 @@ export default function RecordsPage() {
   const router = useRouter();
   const [patient, setPatient] = useState<Patient | null>(null);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,8 +42,11 @@ export default function RecordsPage() {
         setPatient(d.patient);
         setVisits(d.visits);
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
   }, [patientId]);
+
+  if (loading) return <RecordsSkeleton onBack={() => router.back()} />;
 
   return (
     <div className="space-y-5">
@@ -96,6 +101,31 @@ export default function RecordsPage() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function RecordsSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="space-y-5">
+      <button onClick={onBack} className="text-sm text-ink-muted hover:underline">← Back</button>
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-56" />
+      </div>
+      <ul className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-3 w-2/3" />
+          </Card>
+        ))}
+      </ul>
     </div>
   );
 }

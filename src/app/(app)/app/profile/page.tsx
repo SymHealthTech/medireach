@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 
 interface Profile {
@@ -56,7 +57,25 @@ export default function ProfilePage() {
     }
   }
 
-  if (!form) return <p className="text-ink-muted">Loading…</p>;
+  if (!form) return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <Card>
+        <div className="space-y-4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-11 w-full rounded-xl" />
+            </div>
+          ))}
+          <Skeleton className="h-11 w-24 rounded-xl" />
+        </div>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="space-y-5">

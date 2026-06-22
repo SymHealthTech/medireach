@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/client/api";
 
 interface Keyword {
@@ -21,15 +22,19 @@ export default function KeywordsPage() {
   const [keyword, setKeyword] = useState("");
   const [expansion, setExpansion] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const data = await apiGet<{ keywords: Keyword[] }>("/api/keywords").catch(() => ({ keywords: [] }));
     setKeywords(data.keywords);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  if (loading) return <KeywordsSkeleton />;
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -87,6 +92,38 @@ export default function KeywordsPage() {
             <button onClick={() => remove(k.id)} className="text-sm text-sos hover:underline">
               Delete
             </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function KeywordsSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-36" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <Card>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[0, 1].map((i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-9 w-28 rounded-xl" />
+        </div>
+      </Card>
+      <ul className="space-y-2">
+        {[0, 1, 2].map((i) => (
+          <li key={i} className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3">
+            <Skeleton className="h-4 w-52" />
+            <Skeleton className="h-4 w-12" />
           </li>
         ))}
       </ul>

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { jsonOk, Errors } from "@/lib/api/errors";
 import { route, Roles } from "@/lib/api/guard";
 import { parseBody, fields } from "@/lib/api/validate";
-import { scopedFind, scopedFindById } from "@/lib/api/scoped";
+import { scopedFind, scopedFindById, scopedFindOne } from "@/lib/api/scoped";
 import { requireDoctorId } from "@/lib/api/context";
 import { audit } from "@/lib/api/audit";
 import { Visit } from "@/models/Visit";
@@ -19,16 +19,18 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
   const visits = await scopedFind(Visit, ctx, { createdAt: { $gte: startOfTodayIST() } })
     .select({ patientId: 1, type: 1, status: 1, createdAt: 1 })
     .sort({ createdAt: 1 })
-    .populate({ path: "patientId", select: "name mobile" })
+    .populate({ path: "patientId", select: "name mobile ageYears gender" })
     .lean();
 
   const entries = visits.map((v) => {
-    const patient = v.patientId as unknown as { _id: unknown; name: string; mobile: string } | null;
+    const patient = v.patientId as unknown as { _id: unknown; name: string; mobile: string; ageYears?: number; gender?: string } | null;
     return {
       visitId: String(v._id),
       patientId: patient ? String(patient._id) : null,
       name: patient?.name ?? "(removed)",
       mobile: patient?.mobile ?? "",
+      ageYears: patient?.ageYears ?? null,
+      gender: patient?.gender ?? null,
       type: v.type,
       status: v.status,
       createdAt: v.createdAt,
@@ -53,6 +55,15 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
 
   const patient = await scopedFindById(Patient, ctx, patientId).select("_id").lean();
   if (!patient) throw Errors.notFound("Patient not found.");
+
+  if (type === "new") {
+    const existing = await scopedFindOne(Visit, ctx, {
+      patientId,
+      type: "new",
+      createdAt: { $gte: startOfTodayIST() },
+    }).select("_id").lean();
+    if (existing) throw Errors.conflict("This patient already has a new entry in today's queue.");
+  }
 
   const visit = await Visit.create({
     doctorId: requireDoctorId(ctx),

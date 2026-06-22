@@ -46,3 +46,19 @@ body {
   color: rgb(var(--ink));
   -webkit-font-smoothing: antialiased;
 }
+
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--line))    0%,
+    rgb(var(--surface)) 50%,
+    rgb(var(--line))    100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}

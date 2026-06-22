@@ -85,7 +85,7 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
             placeholder="Search returning patient by name or mobile…"
             value={q}
             onChange={(e) => { setQ(e.target.value); setError(null); }}
-            className="h-9"
+            className="h-9 placeholder:text-ink-muted/40"
             autoComplete="off"
           />
           {loading && (

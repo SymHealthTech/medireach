@@ -119,7 +119,7 @@ export function AppShell({ role, name, children }: { role: Role; name: string; c
 
         {/* Main content */}
         <main className="flex-1 min-w-0 pb-20 lg:pb-0 lg:pl-60">
-          <div className="mx-auto max-w-3xl px-4 py-6 lg:max-w-full lg:px-6">{children}</div>
+          <div className="mx-auto max-w-3xl px-4 py-6 lg:max-w-full lg:px-12">{children}</div>
         </main>
       </div>
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 
@@ -21,14 +22,16 @@ interface RecentPatient {
  * point into the full Patient Records history (§9.1).
  */
 export default function RecentPage() {
-  const { me } = useMe();
+  const { me, loading: meLoading } = useMe();
   const router = useRouter();
   const [patients, setPatients] = useState<RecentPatient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const data = await apiGet<{ patients: RecentPatient[] }>("/api/recent").catch(() => ({ patients: [] }));
     setPatients(data.patients);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -36,6 +39,8 @@ export default function RecentPage() {
   }, [load]);
 
   const isReceptionist = me?.role === "receptionist";
+
+  if (loading || meLoading) return <RecentSkeleton />;
 
   return (
     <div className="space-y-5">
@@ -78,6 +83,28 @@ export default function RecentPage() {
           )}
         </ul>
       )}
+    </div>
+  );
+}
+
+function RecentSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-44" />
+        <Skeleton className="h-4 w-80" />
+      </div>
+      <ul className="space-y-2">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <li key={i} className="flex items-center justify-between rounded-2xl border border-line bg-surface-raised p-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { openCheckout } from "@/lib/client/razorpay";
 
@@ -94,7 +95,7 @@ export default function BillingPage() {
     }
   }
 
-  if (!summary) return <p className="text-ink-muted">Loading…</p>;
+  if (!summary) return <BillingSkeleton />;
 
   return (
     <div className="space-y-6">
@@ -160,6 +161,43 @@ export default function BillingPage() {
         <button onClick={unsubscribe} className="text-sm text-ink-muted underline hover:text-sos">
           Cancel subscription
         </button>
+      </div>
+    </div>
+  );
+}
+
+function BillingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-8 w-24" />
+
+      <Card className="space-y-3">
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="h-10 w-32" />
+        <Skeleton className="h-4 w-64" />
+      </Card>
+
+      <Card className="grid grid-cols-2 gap-4">
+        {[0, 1].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-7 w-20" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </Card>
+
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-20" />
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-52" />
+            </div>
+            <Skeleton className="h-9 w-16 rounded-xl" />
+          </Card>
+        ))}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { QueueList, type QueueEntry } from "@/components/app/QueueList";
 import { PatientSearch } from "@/components/app/PatientSearch";
 import { apiGet } from "@/lib/client/api";
@@ -15,8 +15,9 @@ import { useMe } from "@/lib/client/useMe";
  * registered appears for the doctor without a manual refresh.
  */
 export default function QueuePage() {
-  const { me } = useMe();
+  const { me, loading: meLoading } = useMe();
   const [entries, setEntries] = useState<QueueEntry[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -25,6 +26,8 @@ export default function QueuePage() {
       setEntries(data.entries);
     } catch {
       /* keep last good state on transient errors */
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -38,27 +41,63 @@ export default function QueuePage() {
 
   const seen = entries.filter((e) => e.status === "confirmed").length;
 
+  if (!loaded || meLoading) return <QueueSkeleton />;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center gap-4">
+        <div className="w-1/2 shrink-0">
           <h1 className="text-2xl font-bold text-ink">Today&apos;s patients</h1>
           <p className="text-sm text-ink-muted">
             {entries.length} total · {seen} seen
           </p>
         </div>
-        <Link href="/app/register">
-          <Button variant="primary" size="lg">
-            + Add patient
-          </Button>
-        </Link>
+        <div className="flex w-1/2 items-center justify-end gap-2">
+          {me && (
+            <div className="flex-1">
+              <PatientSearch role={me.role} onAdded={load} />
+            </div>
+          )}
+          <Link href="/app/register" className="shrink-0">
+            <Button variant="primary" size="sm">
+              + Add patient
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      <Card>
-        {me && <PatientSearch role={me.role} onAdded={load} />}
-      </Card>
-
       {me && <QueueList entries={entries} role={me.role} onChanged={load} />}
+    </div>
+  );
+}
+
+function QueueSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="w-1/2 space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="flex w-1/2 items-center justify-end gap-2">
+          <Skeleton className="h-9 flex-1 rounded-xl" />
+          <Skeleton className="h-9 w-28 rounded-xl" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center justify-between rounded-2xl border border-line bg-surface-raised p-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-8 w-20 rounded-xl" />
+              <Skeleton className="h-8 w-20 rounded-xl" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

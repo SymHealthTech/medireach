@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/client/api";
 
 interface Contact {
@@ -29,6 +30,7 @@ export default function EmergencyContactsPage() {
   const [max, setMax] = useState(10);
   const [appId, setAppId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     const data = await apiGet<{ contacts: Contact[]; incoming: Incoming[]; max: number }>(
@@ -39,11 +41,14 @@ export default function EmergencyContactsPage() {
       setIncoming(data.incoming);
       setMax(data.max);
     }
+    setLoading(false);
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  if (loading) return <EmergencyContactsSkeleton />;
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -137,6 +142,31 @@ export default function EmergencyContactsPage() {
             No contacts yet. As more doctors join MediReach, you can add them here.
           </p>
         )}
+      </ul>
+    </div>
+  );
+}
+
+function EmergencyContactsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-52" />
+        <Skeleton className="h-4 w-80" />
+      </div>
+      <Card>
+        <div className="flex gap-2">
+          <Skeleton className="h-11 flex-1 rounded-xl" />
+          <Skeleton className="h-11 w-16 rounded-xl" />
+        </div>
+      </Card>
+      <ul className="space-y-2">
+        {[0, 1, 2].map((i) => (
+          <li key={i} className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3">
+            <Skeleton className="h-4 w-52" />
+            <Skeleton className="h-4 w-16" />
+          </li>
+        ))}
       </ul>
     </div>
   );

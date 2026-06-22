@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/client/api";
 
 /**
@@ -17,6 +18,7 @@ export default function StaffPage() {
   const [existing, setExisting] = useState<{ name: string; username: string } | null>(null);
   const [form, setForm] = useState({ name: "", username: "", mobile: "", password: "" });
   const [msg, setMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     const d = await apiGet<{ receptionist: { name: string; username: string } | null }>("/api/staff").catch(() => null);
@@ -26,12 +28,15 @@ export default function StaffPage() {
     } else {
       setExisting(null);
     }
+    setLoading(false);
   }
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (loading) return <StaffSkeleton />;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -110,6 +115,28 @@ export default function StaffPage() {
             )}
           </div>
         </form>
+      </Card>
+    </div>
+  );
+}
+
+function StaffSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-16" />
+        <Skeleton className="h-4 w-96" />
+      </div>
+      <Card>
+        <div className="space-y-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-11 w-full rounded-xl" />
+            </div>
+          ))}
+          <Skeleton className="h-11 w-40 rounded-xl" />
+        </div>
       </Card>
     </div>
   );
