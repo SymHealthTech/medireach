@@ -14,7 +14,7 @@ function configure(): boolean {
   if (configured) return true;
   const publicKey = optionalEnv("VAPID_PUBLIC_KEY");
   const privateKey = optionalEnv("VAPID_PRIVATE_KEY");
-  const subject = optionalEnv("VAPID_SUBJECT", "mailto:support@medireach.app");
+  const subject = optionalEnv("VAPID_SUBJECT", "mailto:admin.medireach@gmail.com");
   if (!publicKey || !privateKey) return false;
   webpush.setVapidDetails(subject, publicKey, privateKey);
   configured = true;

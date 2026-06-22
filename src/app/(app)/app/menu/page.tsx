@@ -12,5 +12,5 @@ import { useMe } from "@/lib/client/useMe";
 export default function MenuPage() {
   const { me, loading } = useMe();
   if (loading || !me) return <p className="text-ink-muted">Loading…</p>;
-  return me.role === "receptionist" ? <ReceptionistMenu /> : <DoctorMenu name={me.name} />;
+  return me.role === "receptionist" ? <ReceptionistMenu name={me.name} /> : <DoctorMenu name={me.name} />;
 }

@@ -21,7 +21,7 @@ export const CONTENT_DEFAULTS: Record<ContentSlug, { title: string; body: string
       "",
       "Processors: we use vetted vendors (cloud database, media storage, transcription, AI structuring, payments) under appropriate data-protection terms. We remain the responsible Data Fiduciary.",
       "",
-      "Grievances: email support@medireach.app. Complaints are tracked to resolution.",
+      "Grievances: email admin.medireach@gmail.com. Complaints are tracked to resolution.",
     ].join("\n"),
   },
   "medical-disclaimer": {

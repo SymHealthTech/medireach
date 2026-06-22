@@ -37,6 +37,7 @@ const updateSchema = z.object({
   bp: z.string().trim().max(20).optional(),
   weightKg: z.number().min(0).max(500).optional(),
   heightCm: z.number().min(0).max(300).optional(),
+  temp: z.string().trim().max(20).optional(),
   allergicTo: z.string().trim().max(300).optional(),
   referredBy: z.string().trim().max(200).optional(),
   emergencyContact: z.string().trim().max(60).optional(),
@@ -60,6 +61,7 @@ export const PATCH = route<{ id: string }>({ roles: Roles.clinic }, async (req, 
   if (data.bp !== undefined) patient.bp = data.bp;
   if (data.weightKg !== undefined) patient.weightKg = data.weightKg;
   if (data.heightCm !== undefined) patient.heightCm = data.heightCm;
+  if (data.temp !== undefined) patient.temp = data.temp;
   if (data.allergicTo !== undefined) patient.allergicTo = data.allergicTo;
   if (data.referredBy !== undefined) patient.referredBy = data.referredBy;
   if (data.emergencyContact !== undefined) patient.emergencyContact = data.emergencyContact;

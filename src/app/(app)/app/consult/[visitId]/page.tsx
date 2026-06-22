@@ -86,7 +86,7 @@ export default function ConsultPage() {
           weight: visitOe.weight || (p.weightKg != null ? String(p.weightKg) + " kg" : ""),
           height: visitOe.height || (p.heightCm != null ? String(p.heightCm) + " cm" : ""),
           pulse: visitOe.pulse || "",
-          temp: visitOe.temp || "",
+          temp: visitOe.temp || (p.temp as string | undefined) || "",
           rr: visitOe.rr || "",
           pa: visitOe.pa || "",
           cvs: visitOe.cvs || "",
@@ -262,26 +262,14 @@ export default function ConsultPage() {
   // ── Patient vitals strip (receptionist data) ──────────────────────────────
   function PatientVitalsStrip() {
     if (!patient) return null;
-    const items: { label: string; value: string }[] = [];
-    if (patient.mobile) items.push({ label: "Mobile", value: patient.mobile });
-    if (patient.bp) items.push({ label: "BP", value: patient.bp });
-    if (patient.weightKg != null) items.push({ label: "Weight", value: `${patient.weightKg} kg` });
-    if (patient.heightCm != null) items.push({ label: "Height", value: `${patient.heightCm} cm` });
-    if (patient.allergicTo) items.push({ label: "Allergic to", value: patient.allergicTo });
-    if (patient.referredBy) items.push({ label: "Referred by", value: patient.referredBy });
-    if (patient.address) items.push({ label: "Address", value: patient.address });
-    if (patient.emergencyContact) items.push({ label: "Emergency", value: patient.emergencyContact });
-    if (items.length === 0) return null;
+    if (!patient.mobile && !patient.address) return null;
     return (
-      <div className="rounded-xl border border-line bg-surface-raised px-3 py-2">
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Patient info (receptionist)</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-          {items.map(({ label, value }) => (
-            <span key={label} className="text-[11px] text-ink-muted">
-              <span className="font-medium text-ink-subtle">{label}:</span> {value}
-            </span>
-          ))}
-        </div>
+      <div className="rounded-xl border border-line bg-surface-raised px-3 py-2 text-[11px] text-ink-muted">
+        <p>
+          {patient.mobile && <span><span className="font-medium text-ink-subtle">Mobile:</span> {patient.mobile}</span>}
+          {patient.mobile && patient.address && <span className="mx-3 text-line">·</span>}
+          {patient.address && <span><span className="font-medium text-ink-subtle">Address:</span> {patient.address}</span>}
+        </p>
       </div>
     );
   }
@@ -386,50 +374,59 @@ export default function ConsultPage() {
         </button>
       </div>
 
-      <PatientVitalsStrip />
-
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
       {status === "confirmed" ? (
-        <Card className="space-y-4 border-success/40 bg-success/5">
-          <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="primary" size="lg" onClick={shareWhatsApp}>
-              Send on WhatsApp
-            </Button>
-            <Button variant="ghost" size="lg" onClick={() => router.push("/app/queue")}>
-              Done
-            </Button>
-          </div>
-        </Card>
+        <>
+          <PatientVitalsStrip />
+          <Card className="space-y-4 border-success/40 bg-success/5">
+            <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="primary" size="lg" onClick={shareWhatsApp}>
+                Send on WhatsApp
+              </Button>
+              <Button variant="ghost" size="lg" onClick={() => router.push("/app/queue")}>
+                Done
+              </Button>
+            </div>
+          </Card>
+        </>
       ) : (
-        <Card className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-semibold text-ink">Dictate the consultation</p>
-            <p className="text-sm text-ink-muted">
-              {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
-            </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex-1 min-w-0">
+            <PatientVitalsStrip />
           </div>
-          <Button
-            variant={recorder.recording ? "danger" : "brand"}
-            size="lg"
-            onClick={handleDictation}
-            disabled={!!aiState || !recorder.supported}
-          >
-            {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
-          </Button>
-        </Card>
+          <Card className="flex items-center justify-between gap-3 lg:shrink-0">
+            <div>
+              <p className="font-semibold text-ink">Dictate the consultation</p>
+              <p className="text-sm text-ink-muted">
+                {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
+              </p>
+            </div>
+            <Button
+              variant={recorder.recording ? "danger" : "brand"}
+              size="lg"
+              onClick={handleDictation}
+              disabled={!!aiState || !recorder.supported}
+            >
+              {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
+            </Button>
+          </Card>
+        </div>
       )}
       {!recorder.supported && (
         <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
       )}
 
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Field label="H/O — History of present illness" value={form.ho} onChange={(v) => setField("ho", v)} />
         <Field label="F/H — Family history" value={form.fh} onChange={(v) => setField("fh", v)} />
         <Field label="C/O — Complaints of" value={form.co} onChange={(v) => setField("co", v)} />
+        <Field label="Notes" value={form.notes} onChange={(v) => setField("notes", v)} />
+        <Field label="Provisional diagnosis" value={form.provisionalDiagnosis} onChange={(v) => setField("provisionalDiagnosis", v)} />
+        <Field label="Diagnosis" value={form.diagnosis} onChange={(v) => setField("diagnosis", v)} />
 
-        <Card className="space-y-3">
+        <Card className="space-y-3 md:col-span-2 xl:col-span-3">
           <p className="text-sm font-semibold text-ink">O/E — On examination</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {OE_FIELDS.map(({ key, label }) => (
@@ -441,16 +438,12 @@ export default function ConsultPage() {
           </div>
         </Card>
 
-        <Field label="Notes" value={form.notes} onChange={(v) => setField("notes", v)} />
-        <Field label="Provisional diagnosis" value={form.provisionalDiagnosis} onChange={(v) => setField("provisionalDiagnosis", v)} />
-        <Field label="Diagnosis" value={form.diagnosis} onChange={(v) => setField("diagnosis", v)} />
-
-        <Card className="space-y-3">
+        <Card className="space-y-3 md:col-span-2 xl:col-span-3">
           <p className="text-sm font-semibold text-ink">Medicines</p>
           <MedicineEditor medicines={form.medicines} onChange={(m) => setField("medicines", m)} />
         </Card>
 
-        <Card className="space-y-3">
+        <Card className="space-y-3 md:col-span-2 xl:col-span-2">
           <p className="text-sm font-semibold text-ink">Scan &amp; save reports</p>
           <input type="file" accept="image/*" capture="environment" onChange={uploadReport} disabled={busy}
             className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2 file:text-brand-fg" />
@@ -459,14 +452,14 @@ export default function ConsultPage() {
           )}
         </Card>
 
-        <div className="max-w-[12rem]">
+        <div>
           <Label htmlFor="fees">Fees (₹)</Label>
           <Input id="fees" inputMode="numeric" value={form.fees} onChange={(e) => setField("fees", e.target.value)} />
         </div>
       </div>
 
       {status === "draft" && (
-        <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
+        <div className="flex gap-3 pt-2">
           <Button variant="primary" size="lg" className="flex-1" onClick={() => setStep("review")} disabled={busy}>
             Next
           </Button>

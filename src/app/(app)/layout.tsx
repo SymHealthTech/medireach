@@ -28,5 +28,5 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (!(await isReceptionistSessionValid(session.sub, session.tv))) redirect("/login");
   }
 
-  return <AppShell role={session.role}>{children}</AppShell>;
+  return <AppShell role={session.role} name={session.name}>{children}</AppShell>;
 }

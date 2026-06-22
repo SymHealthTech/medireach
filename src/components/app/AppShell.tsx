@@ -9,6 +9,7 @@ import { SosButton } from "@/components/app/SosButton";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { DOCTOR_MENU_ITEMS } from "@/components/app/DoctorMenu";
 import { RECEPTIONIST_MENU_ITEMS } from "@/components/app/ReceptionistMenu";
+import { ReceptionistProfileCard } from "@/components/app/ReceptionistProfileCard";
 import { registerServiceWorker, enablePush } from "@/lib/client/push";
 import { cn } from "@/lib/cn";
 import type { Role } from "@/lib/constants";
@@ -31,7 +32,7 @@ const RECEPTIONIST_NAV: NavItem[] = [
   { href: "/app/menu", label: "Menu", icon: "☰" },
 ];
 
-export function AppShell({ role, children }: { role: Role; children: React.ReactNode }) {
+export function AppShell({ role, name, children }: { role: Role; name: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const nav = role === "receptionist" ? RECEPTIONIST_NAV : DOCTOR_NAV;
   // Primary nav items (Today + Records) — Menu is replaced by inline items on desktop
@@ -107,7 +108,10 @@ export function AppShell({ role, children }: { role: Role; children: React.React
               })}
             </div>
 
-            <div className="mt-auto p-4 border-t border-line">
+            <div className="mt-auto p-4 border-t border-line space-y-3">
+              {role === "receptionist" && (
+                <ReceptionistProfileCard name={name} compact />
+              )}
               <LogoutButton />
             </div>
           </nav>
@@ -115,7 +119,7 @@ export function AppShell({ role, children }: { role: Role; children: React.React
 
         {/* Main content */}
         <main className="flex-1 min-w-0 pb-20 lg:pb-0 lg:pl-60">
-          <div className="mx-auto max-w-3xl px-4 py-6 lg:px-6">{children}</div>
+          <div className="mx-auto max-w-3xl px-4 py-6 lg:max-w-full lg:px-6">{children}</div>
         </main>
       </div>
 

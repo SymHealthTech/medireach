@@ -9,17 +9,6 @@ import { apiPost } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 
-/**
- * New patient registration (spec §7.2). Manual entry, built keyboard-first for
- * the front desk. Saving requires the explicit consent notice (§7.2, §15.8) and
- * enqueues the patient for the doctor.
- *
- * Change 2: when the DOCTOR opens this (e.g. no receptionist available), a voice
- * mode is offered — push-to-talk → Claude structures the spoken details into
- * these fields → the doctor reviews and confirms with the same Save gate. Voice
- * is doctor-only (the receptionist never sees it, and the endpoints are
- * doctor-scoped server-side).
- */
 export default function RegisterPage() {
   const router = useRouter();
   const params = useSearchParams();
@@ -34,8 +23,8 @@ export default function RegisterPage() {
     bp: "",
     weightKg: "",
     heightCm: "",
+    temp: "",
     allergicTo: "",
-    referredBy: "",
     emergencyContact: "",
   });
   const [consent, setConsent] = useState(false);
@@ -48,18 +37,12 @@ export default function RegisterPage() {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  // Push-to-talk dictation of the patient's details (doctor only). Mirrors the
-  // consultation screen: record → transcribe → AI structures → fill the form
-  // for the doctor to review before the Save (confirm) gate.
   async function handleDictation() {
     setError(null);
     if (recorder.recording) {
       setAiState("Transcribing…");
       const blob = await recorder.stop();
-      if (!blob) {
-        setAiState(null);
-        return;
-      }
+      if (!blob) { setAiState(null); return; }
       try {
         const fd = new FormData();
         fd.append("audio", blob, "patient.webm");
@@ -108,8 +91,8 @@ export default function RegisterPage() {
         bp: form.bp || undefined,
         weightKg: form.weightKg ? Number(form.weightKg) : undefined,
         heightCm: form.heightCm ? Number(form.heightCm) : undefined,
+        temp: form.temp || undefined,
         allergicTo: form.allergicTo || undefined,
-        referredBy: form.referredBy || undefined,
         emergencyContact: form.emergencyContact || undefined,
         visitType: "new" as const,
         consent: true as const,
@@ -125,7 +108,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:mx-8">
       <h1 className="text-2xl font-bold text-ink">Register patient</h1>
 
       {error && (
@@ -156,17 +139,21 @@ export default function RegisterPage() {
         </Card>
       )}
       {me?.role === "doctor" && !recorder.supported && (
-        <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the details below.</p>
+        <p className="text-sm text-ink-muted">
+          Voice capture isn&apos;t supported on this browser — type the details below.
+        </p>
       )}
 
       <Card>
-        <form onSubmit={submit} className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+        <form onSubmit={submit} className="space-y-3">
+
+          {/* Row 1: Name · Gender · Age */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1">
               <Label htmlFor="name">Full name</Label>
               <Input id="name" value={form.name} onChange={(e) => set("name", e.target.value)} required autoFocus />
             </div>
-            <div>
+            <div className="lg:w-40">
               <Label htmlFor="gender">Gender</Label>
               <select
                 id="gender"
@@ -179,47 +166,55 @@ export default function RegisterPage() {
                 <option value="other">Other</option>
               </select>
             </div>
-            <div>
+            <div className="lg:w-28">
               <Label htmlFor="age">Age (years)</Label>
               <Input id="age" inputMode="numeric" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} />
             </div>
-            <div>
+          </div>
+
+          {/* Row 2: Mobile (1/3) · Address (2/3) */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="w-full lg:w-1/3">
               <Label htmlFor="mobile">Mobile number</Label>
               <Input id="mobile" inputMode="numeric" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} required />
             </div>
-            <div>
-              <Label htmlFor="referredBy">Referred by</Label>
-              <Input id="referredBy" value={form.referredBy} onChange={(e) => set("referredBy", e.target.value)} />
-            </div>
-            <div className="sm:col-span-2">
+            <div className="flex-1">
               <Label htmlFor="address">Address</Label>
               <Input id="address" value={form.address} onChange={(e) => set("address", e.target.value)} />
             </div>
           </div>
 
-          <fieldset className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <legend className="mb-2 text-sm font-semibold text-ink">Vitals &amp; intake</legend>
-            <div>
+          {/* Row 3: Vitals */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1">
               <Label htmlFor="bp">BP</Label>
               <Input id="bp" placeholder="120/80" value={form.bp} onChange={(e) => set("bp", e.target.value)} />
             </div>
-            <div>
+            <div className="flex-1">
               <Label htmlFor="weight">Weight (kg)</Label>
               <Input id="weight" inputMode="decimal" value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} />
             </div>
-            <div>
+            <div className="flex-1">
               <Label htmlFor="height">Height (cm)</Label>
               <Input id="height" inputMode="decimal" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
             </div>
-            <div>
-              <Label htmlFor="ec">Emergency contact</Label>
-              <Input id="ec" inputMode="numeric" value={form.emergencyContact} onChange={(e) => set("emergencyContact", e.target.value)} />
+            <div className="flex-1">
+              <Label htmlFor="temp">Temp (°F)</Label>
+              <Input id="temp" inputMode="decimal" value={form.temp} onChange={(e) => set("temp", e.target.value)} />
             </div>
-            <div className="col-span-2 sm:col-span-4">
+          </div>
+
+          {/* Row 4: Allergic to · Emergency contact */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <div className="flex-1">
               <Label htmlFor="allergic">Allergic to</Label>
               <Input id="allergic" value={form.allergicTo} onChange={(e) => set("allergicTo", e.target.value)} />
             </div>
-          </fieldset>
+            <div className="flex-1">
+              <Label htmlFor="ec">Emergency contact</Label>
+              <Input id="ec" inputMode="numeric" value={form.emergencyContact} onChange={(e) => set("emergencyContact", e.target.value)} />
+            </div>
+          </div>
 
           <label className="flex items-start gap-3 rounded-xl bg-surface p-3 text-sm text-ink">
             <input

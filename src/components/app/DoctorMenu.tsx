@@ -62,7 +62,7 @@ export function DoctorMenu({ name }: { name: string }) {
       <LogoutButton />
 
       <p className="text-center text-sm text-ink-muted">
-        Need help? <a href="mailto:support@medireach.app" className="text-brand">support@medireach.app</a>
+        Need help? <a href="mailto:admin.medireach@gmail.com" className="text-brand">admin.medireach@gmail.com</a>
       </p>
     </div>
   );

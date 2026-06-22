@@ -22,6 +22,7 @@ export interface PatientDoc {
   bp?: string;
   weightKg?: number;
   heightCm?: number;
+  temp?: string;
   allergicTo?: string;
   referredBy?: string;
   emergencyContact?: string;
@@ -45,6 +46,7 @@ const patientSchema = new Schema<PatientDoc>(
     bp: { type: String },
     weightKg: { type: Number, min: 0 },
     heightCm: { type: Number, min: 0 },
+    temp: { type: String },
     allergicTo: { type: String },
     referredBy: { type: String },
     emergencyContact: { type: String },
@@ -61,6 +63,13 @@ const patientSchema = new Schema<PatientDoc>(
 
 // Receptionist lookup by mobile within a clinic; family members share a number.
 patientSchema.index({ doctorId: 1, mobile: 1 });
+
+// In development, delete the cached model on every module evaluation so that
+// schema changes (new fields, etc.) take effect across Next.js hot-reloads
+// without needing a full dev-server restart.
+if (process.env.NODE_ENV !== "production") {
+  delete (mongoose.models as Record<string, unknown>).Patient;
+}
 
 export const Patient: Model<PatientDoc> =
   (mongoose.models.Patient as Model<PatientDoc>) ||

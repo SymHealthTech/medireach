@@ -35,6 +35,7 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
     bp: data.bp,
     weightKg: data.weightKg,
     heightCm: data.heightCm,
+    temp: data.temp,
     allergicTo: data.allergicTo,
     referredBy: data.referredBy,
     emergencyContact: data.emergencyContact,

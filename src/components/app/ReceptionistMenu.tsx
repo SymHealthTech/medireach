@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/app/LogoutButton";
+import { ReceptionistProfileCard } from "@/components/app/ReceptionistProfileCard";
 
 /**
  * Receptionist's menu (spec §5.2) — deliberately a short, separate list: Mode,
@@ -18,7 +19,7 @@ export const RECEPTIONIST_MENU_ITEMS = [
   { href: "/medical-disclaimer", label: "Medical Disclaimer" },
 ];
 
-export function ReceptionistMenu() {
+export function ReceptionistMenu({ name }: { name: string }) {
   return (
     <div className="space-y-5">
       <Card className="flex items-center justify-between">
@@ -38,6 +39,8 @@ export function ReceptionistMenu() {
           </Link>
         ))}
       </Card>
+
+      <ReceptionistProfileCard name={name} />
 
       <LogoutButton />
     </div>

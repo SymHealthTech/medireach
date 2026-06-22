@@ -8,10 +8,10 @@ import "server-only";
  */
 
 /**
- * Demographic-only patient projection for receptionist lookup (§5.2). Open
- * Decision §16.2 default: vitals (BP/weight/height/allergies) are treated as
- * quasi-clinical and HIDDEN on receptionist lookup — so they are intentionally
- * excluded here.
+ * Patient fields visible to a receptionist (§5.2). Intake vitals are included
+ * because the receptionist is the one who enters and edits them — hiding values
+ * they own would break the edit flow. Clinical history (diagnoses, medicines,
+ * notes) remains doctor-only and is never on the Patient document anyway.
  */
 export const RECEPTIONIST_PATIENT_FIELDS = {
   _id: 1,
@@ -21,6 +21,12 @@ export const RECEPTIONIST_PATIENT_FIELDS = {
   dob: 1,
   mobile: 1,
   gender: 1,
+  bp: 1,
+  weightKg: 1,
+  heightCm: 1,
+  temp: 1,
+  allergicTo: 1,
+  emergencyContact: 1,
 } as const;
 
 /**

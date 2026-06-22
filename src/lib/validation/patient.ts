@@ -17,6 +17,7 @@ export const patientRegistrationSchema = z
     bp: z.string().trim().max(20).optional(),
     weightKg: z.number().min(0).max(500).optional(),
     heightCm: z.number().min(0).max(300).optional(),
+    temp: z.string().trim().max(20).optional(),
     allergicTo: z.string().trim().max(300).optional(),
     referredBy: z.string().trim().max(200).optional(),
     emergencyContact: z.string().trim().max(60).optional(),

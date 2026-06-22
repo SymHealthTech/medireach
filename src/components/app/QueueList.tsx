@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { apiGet } from "@/lib/client/api";
 import type { Role } from "@/lib/constants";
 
 export interface QueueEntry {
@@ -23,12 +24,12 @@ interface EditForm {
   address: string;
   gender: string;
   ageYears: string;
-  referredBy: string;
   emergencyContact: string;
   allergicTo: string;
   bp: string;
   weightKg: string;
   heightCm: string;
+  temp: string;
 }
 
 function EditModal({
@@ -46,15 +47,48 @@ function EditModal({
     address: "",
     gender: "",
     ageYears: "",
-    referredBy: "",
     emergencyContact: "",
     allergicTo: "",
     bp: "",
     weightKg: "",
     heightCm: "",
+    temp: "",
   });
+  const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!entry.patientId) { setFetching(false); return; }
+
+    Promise.allSettled([
+      apiGet<{ patient: Record<string, unknown> }>(`/api/patients/${entry.patientId}`),
+      // Visit fetch is doctor-only; receptionist gets a rejected promise — handled gracefully below
+      apiGet<{ visit: { oe?: Record<string, string> } }>(`/api/visits/${entry.visitId}`),
+    ]).then(([patientRes, visitRes]) => {
+      const oe: Record<string, string> =
+        visitRes.status === "fulfilled" ? (visitRes.value.visit?.oe ?? {}) : {};
+
+      if (patientRes.status === "fulfilled") {
+        const p = patientRes.value.patient;
+        setForm({
+          name: (p.name as string) ?? entry.name,
+          mobile: (p.mobile as string) ?? entry.mobile,
+          address: (p.address as string) ?? "",
+          gender: (p.gender as string) ?? "",
+          ageYears: p.ageYears != null ? String(p.ageYears) : "",
+          emergencyContact: (p.emergencyContact as string) ?? "",
+          allergicTo: (p.allergicTo as string) ?? "",
+          bp: (p.bp as string) ?? "",
+          weightKg: p.weightKg != null ? String(p.weightKg) : "",
+          heightCm: p.heightCm != null ? String(p.heightCm) : "",
+          // patient.temp is the current store; oe.temp is the legacy fallback for
+          // patients registered before temp was moved to the patient document
+          temp: (p.temp as string) || oe.temp || "",
+        });
+      }
+    }).finally(() => setFetching(false));
+  }, [entry.patientId, entry.visitId]);
 
   function set<K extends keyof EditForm>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -66,18 +100,19 @@ function EditModal({
     setError(null);
     setLoading(true);
     try {
-      const payload: Record<string, unknown> = {};
-      if (form.name.trim()) payload.name = form.name.trim();
-      if (form.mobile.trim()) payload.mobile = form.mobile.trim();
-      if (form.address.trim()) payload.address = form.address.trim();
+      const payload: Record<string, unknown> = {
+        name: form.name.trim(),
+        mobile: form.mobile.trim(),
+        address: form.address.trim(),
+      };
       if (form.gender) payload.gender = form.gender;
       if (form.ageYears.trim()) payload.ageYears = Number(form.ageYears);
-      if (form.referredBy.trim()) payload.referredBy = form.referredBy.trim();
       if (form.emergencyContact.trim()) payload.emergencyContact = form.emergencyContact.trim();
       if (form.allergicTo.trim()) payload.allergicTo = form.allergicTo.trim();
       if (form.bp.trim()) payload.bp = form.bp.trim();
       if (form.weightKg.trim()) payload.weightKg = Number(form.weightKg);
       if (form.heightCm.trim()) payload.heightCm = Number(form.heightCm);
+      if (form.temp.trim()) payload.temp = form.temp.trim();
 
       const res = await fetch(`/api/patients/${entry.patientId}`, {
         method: "PATCH",
@@ -88,6 +123,7 @@ function EditModal({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Could not save changes.");
       }
+
       onSaved();
       onClose();
     } catch (err) {
@@ -99,143 +135,110 @@ function EditModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-8"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-surface p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-bold text-ink">Edit patient details</h2>
+      <div className="w-full max-w-2xl rounded-2xl bg-surface py-6 shadow-xl">
+        <div className="px-8">
+          <h2 className="mb-4 text-lg font-bold text-ink">Edit patient details</h2>
+          {error && (
+            <p className="mb-3 rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{error}</p>
+          )}
+        </div>
 
-        {error && (
-          <p className="mb-3 rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{error}</p>
+        {fetching ? (
+          <p className="px-8 py-8 text-center text-sm text-ink-muted">Loading…</p>
+        ) : (
+          /* px-1 on this scroll container gives focus rings room on both sides */
+          <div className="max-h-[75vh] overflow-y-auto px-8">
+            <form onSubmit={submit} className="space-y-3 pb-1">
+
+              {/* Row 1: Name · Gender · Age */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <Label htmlFor="edit-name">Full name</Label>
+                  <Input id="edit-name" value={form.name} onChange={(e) => set("name", e.target.value)} required autoFocus />
+                </div>
+                <div className="sm:w-36">
+                  <Label htmlFor="edit-gender">Gender</Label>
+                  <select
+                    id="edit-gender"
+                    value={form.gender}
+                    onChange={(e) => set("gender", e.target.value)}
+                    className="h-12 w-full rounded-xl border border-line bg-surface-raised px-3.5 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <option value="">— select —</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="sm:w-28">
+                  <Label htmlFor="edit-age">Age (years)</Label>
+                  <Input id="edit-age" inputMode="numeric" value={form.ageYears} onChange={(e) => set("ageYears", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Row 2: Mobile (1/3) · Address (2/3) */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="w-full sm:w-1/3">
+                  <Label htmlFor="edit-mobile">Mobile number</Label>
+                  <Input id="edit-mobile" inputMode="numeric" value={form.mobile} onChange={(e) => set("mobile", e.target.value)} required />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="edit-address">Address</Label>
+                  <Input id="edit-address" value={form.address} onChange={(e) => set("address", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Vitals */}
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-ink">Vitals &amp; intake</p>
+
+                {/* Vitals row 1: BP · Weight · Height · Temp */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="edit-bp">BP</Label>
+                    <Input id="edit-bp" placeholder="120/80" value={form.bp} onChange={(e) => set("bp", e.target.value)} />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="edit-weight">Weight (kg)</Label>
+                    <Input id="edit-weight" inputMode="decimal" value={form.weightKg} onChange={(e) => set("weightKg", e.target.value)} />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="edit-height">Height (cm)</Label>
+                    <Input id="edit-height" inputMode="decimal" value={form.heightCm} onChange={(e) => set("heightCm", e.target.value)} />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="edit-temp">Temp (°F)</Label>
+                    <Input id="edit-temp" inputMode="decimal" value={form.temp} onChange={(e) => set("temp", e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Vitals row 2: Allergic to · Emergency contact */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1">
+                    <Label htmlFor="edit-allergic">Allergic to</Label>
+                    <Input id="edit-allergic" value={form.allergicTo} onChange={(e) => set("allergicTo", e.target.value)} />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="edit-ec">Emergency contact</Label>
+                    <Input id="edit-ec" inputMode="numeric" value={form.emergencyContact} onChange={(e) => set("emergencyContact", e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <Button type="submit" variant="brand" size="lg" disabled={loading}>
+                  {loading ? "Saving…" : "Save changes"}
+                </Button>
+                <Button type="button" variant="ghost" size="lg" onClick={onClose}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
         )}
-
-        <form onSubmit={submit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label htmlFor="edit-name">Full name</Label>
-              <Input
-                id="edit-name"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-mobile">Mobile number</Label>
-              <Input
-                id="edit-mobile"
-                inputMode="numeric"
-                value={form.mobile}
-                onChange={(e) => set("mobile", e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-gender">Gender</Label>
-              <select
-                id="edit-gender"
-                value={form.gender}
-                onChange={(e) => set("gender", e.target.value)}
-                className="h-12 w-full rounded-xl border border-line bg-surface-raised px-3.5 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <option value="">— unchanged —</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="edit-age">Age (years)</Label>
-              <Input
-                id="edit-age"
-                inputMode="numeric"
-                placeholder="— unchanged —"
-                value={form.ageYears}
-                onChange={(e) => set("ageYears", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-referred">Referred by</Label>
-              <Input
-                id="edit-referred"
-                placeholder="— unchanged —"
-                value={form.referredBy}
-                onChange={(e) => set("referredBy", e.target.value)}
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="edit-address">Address</Label>
-              <Input
-                id="edit-address"
-                placeholder="— unchanged —"
-                value={form.address}
-                onChange={(e) => set("address", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <fieldset className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <legend className="mb-2 text-sm font-semibold text-ink">Vitals &amp; intake</legend>
-            <div>
-              <Label htmlFor="edit-bp">BP</Label>
-              <Input
-                id="edit-bp"
-                placeholder="120/80"
-                value={form.bp}
-                onChange={(e) => set("bp", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-weight">Weight (kg)</Label>
-              <Input
-                id="edit-weight"
-                inputMode="decimal"
-                placeholder="—"
-                value={form.weightKg}
-                onChange={(e) => set("weightKg", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-height">Height (cm)</Label>
-              <Input
-                id="edit-height"
-                inputMode="decimal"
-                placeholder="—"
-                value={form.heightCm}
-                onChange={(e) => set("heightCm", e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-ec">Emergency contact</Label>
-              <Input
-                id="edit-ec"
-                inputMode="numeric"
-                placeholder="—"
-                value={form.emergencyContact}
-                onChange={(e) => set("emergencyContact", e.target.value)}
-              />
-            </div>
-            <div className="col-span-2 sm:col-span-4">
-              <Label htmlFor="edit-allergic">Allergic to</Label>
-              <Input
-                id="edit-allergic"
-                placeholder="— unchanged —"
-                value={form.allergicTo}
-                onChange={(e) => set("allergicTo", e.target.value)}
-              />
-            </div>
-          </fieldset>
-
-          <div className="flex gap-3 pt-1">
-            <Button type="submit" variant="brand" size="lg" disabled={loading}>
-              {loading ? "Saving…" : "Save changes"}
-            </Button>
-            <Button type="button" variant="ghost" size="lg" onClick={onClose}>
-              Cancel
-            </Button>
-          </div>
-        </form>
       </div>
     </div>
   );
