@@ -46,11 +46,18 @@ export default function QueuePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-        <div className="lg:w-1/2 lg:shrink-0">
-          <h1 className="text-2xl font-bold text-ink">Today&apos;s patients</h1>
-          <p className="text-sm text-ink-muted">
-            {entries.length} total · {seen} seen
-          </p>
+        <div className="flex items-center justify-between lg:w-1/2 lg:shrink-0">
+          <div>
+            <h1 className="text-2xl font-bold text-ink">Today&apos;s patients</h1>
+            <p className="text-sm text-ink-muted">
+              {entries.length} total · {seen} seen
+            </p>
+          </div>
+          <Link href="/app/register" className="shrink-0 lg:hidden">
+            <Button variant="primary" size="sm">
+              + Add patient
+            </Button>
+          </Link>
         </div>
         <div className="flex items-center gap-2 lg:w-1/2 lg:justify-end">
           {me && (
@@ -58,7 +65,7 @@ export default function QueuePage() {
               <PatientSearch role={me.role} onAdded={load} />
             </div>
           )}
-          <Link href="/app/register" className="shrink-0">
+          <Link href="/app/register" className="hidden shrink-0 lg:block">
             <Button variant="primary" size="sm">
               + Add patient
             </Button>
@@ -75,13 +82,16 @@ function QueueSkeleton() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-        <div className="space-y-2 lg:w-1/2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-32" />
+        <div className="flex items-center justify-between lg:w-1/2 lg:shrink-0">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-xl lg:hidden" />
         </div>
         <div className="flex items-center gap-2 lg:w-1/2 lg:justify-end">
           <Skeleton className="h-9 flex-1 rounded-xl" />
-          <Skeleton className="h-9 w-28 rounded-xl" />
+          <Skeleton className="hidden h-9 w-28 rounded-xl lg:block" />
         </div>
       </div>
       <div className="space-y-2">

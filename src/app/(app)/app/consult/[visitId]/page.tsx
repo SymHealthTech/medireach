@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input, Label } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { MedicineEditor, type MedicineRow } from "@/components/app/MedicineEditor";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
@@ -16,7 +17,7 @@ import { sharePrescription } from "@/lib/client/share";
 
 interface OE {
   bp?: string; weight?: string; height?: string; pulse?: string; temp?: string;
-  rr?: string; pa?: string; cvs?: string; cns?: string; bsl?: string;
+  rr?: string; pa?: string; cvs?: string; cns?: string; bsl?: string; lmp?: string;
 }
 interface FormState {
   ho: string; fh: string; co: string; oe: OE; notes: string;
@@ -29,12 +30,27 @@ interface PatientInfo {
   bp?: string; weightKg?: number; heightCm?: number;
   allergicTo?: string; referredBy?: string; emergencyContact?: string;
 }
+interface PatientEdits {
+  mobile: string; address: string; allergicTo: string; emergencyContact: string;
+}
 
-const OE_FIELDS: { key: keyof OE; label: string }[] = [
-  { key: "bp", label: "BP" }, { key: "weight", label: "Weight" }, { key: "height", label: "Height" },
-  { key: "pulse", label: "Pulse" }, { key: "temp", label: "Temp" }, { key: "rr", label: "RR" },
-  { key: "pa", label: "P/A" }, { key: "cvs", label: "CVS" }, { key: "cns", label: "CNS" }, { key: "bsl", label: "BSL" },
+// Row 1: 6 fields — Row 2: 5 fields. Both groups fill full width in their own grid.
+const OE_ROW1: { key: keyof OE; label: string }[] = [
+  { key: "height", label: "Height"       },
+  { key: "weight", label: "Weight"       },
+  { key: "temp",   label: "Temp (°F)"   },
+  { key: "bp",     label: "BP (mmHg)"   },
+  { key: "pulse",  label: "Pulse (/min)" },
+  { key: "rr",     label: "RR"           },
 ];
+const OE_ROW2: { key: keyof OE; label: string }[] = [
+  { key: "cvs", label: "CVS" },
+  { key: "cns", label: "CNS" },
+  { key: "pa",  label: "P/A" },
+  { key: "bsl", label: "BSL" },
+  { key: "lmp", label: "LMP" },
+];
+const OE_FIELDS = [...OE_ROW1, ...OE_ROW2];
 
 const emptyForm: FormState = {
   ho: "", fh: "", co: "", oe: {}, notes: "", provisionalDiagnosis: "", diagnosis: "",
@@ -48,6 +64,10 @@ export default function ConsultPage() {
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [patient, setPatient] = useState<PatientInfo | null>(null);
+  const [patientId, setPatientId] = useState<string | null>(null);
+  const [patientEdits, setPatientEdits] = useState<PatientEdits>({
+    mobile: "", address: "", allergicTo: "", emergencyContact: "",
+  });
   const [clinic, setClinic] = useState<{
     clinicName: string; clinicAddress: string; clinicTimings: string;
     doctorName: string; degree: string; registrationNumber: string;
@@ -61,12 +81,13 @@ export default function ConsultPage() {
   const [aiState, setAiState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     apiGet<{ visit: Record<string, unknown>; patient: Record<string, unknown> }>(`/api/visits/${visitId}`)
       .then(({ visit, patient: p }) => {
         const visitOe = (visit.oe as OE) ?? {};
-        const patientInfo: PatientInfo = {
+        setPatient({
           name: p.name as string,
           ageYears: p.ageYears as number | undefined,
           gender: p.gender as string | undefined,
@@ -78,26 +99,31 @@ export default function ConsultPage() {
           allergicTo: p.allergicTo as string | undefined,
           referredBy: p.referredBy as string | undefined,
           emergencyContact: p.emergencyContact as string | undefined,
-        };
-        setPatient(patientInfo);
-        // Carry forward receptionist vitals into OE if not already recorded on the visit
-        const carriedOe: OE = {
-          bp: visitOe.bp || (p.bp as string | undefined) || "",
-          weight: visitOe.weight || (p.weightKg != null ? String(p.weightKg) + " kg" : ""),
-          height: visitOe.height || (p.heightCm != null ? String(p.heightCm) + " cm" : ""),
-          pulse: visitOe.pulse || "",
-          temp: visitOe.temp || (p.temp as string | undefined) || "",
-          rr: visitOe.rr || "",
-          pa: visitOe.pa || "",
-          cvs: visitOe.cvs || "",
-          cns: visitOe.cns || "",
-          bsl: visitOe.bsl || "",
-        };
+        });
+        setPatientId(String(p._id));
+        setPatientEdits({
+          mobile: (p.mobile as string) ?? "",
+          address: (p.address as string) ?? "",
+          allergicTo: (p.allergicTo as string) ?? "",
+          emergencyContact: (p.emergencyContact as string) ?? "",
+        });
         setForm({
           ho: (visit.ho as string) ?? "",
           fh: (visit.fh as string) ?? "",
           co: (visit.co as string) ?? "",
-          oe: carriedOe,
+          oe: {
+            height: visitOe.height || (p.heightCm != null ? String(p.heightCm) + " cm" : ""),
+            weight: visitOe.weight || (p.weightKg  != null ? String(p.weightKg)  + " kg" : ""),
+            temp:   visitOe.temp   || (p.temp as string | undefined) || "",
+            bp:     visitOe.bp     || (p.bp  as string | undefined) || "",
+            pulse:  visitOe.pulse  || "",
+            rr:     visitOe.rr     || "",
+            cvs:    visitOe.cvs    || "",
+            cns:    visitOe.cns    || "",
+            pa:     visitOe.pa     || "",
+            bsl:    visitOe.bsl    || "",
+            lmp:    visitOe.lmp    || "",
+          },
           notes: (visit.notes as string) ?? "",
           provisionalDiagnosis: (visit.provisionalDiagnosis as string) ?? "",
           diagnosis: (visit.diagnosis as string) ?? "",
@@ -107,7 +133,8 @@ export default function ConsultPage() {
         });
         setStatus((visit.status as "draft" | "confirmed") ?? "draft");
       })
-      .catch((e) => setError((e as Error).message));
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
     apiGet<{ template: typeof tpl; clinic: typeof clinic }>("/api/template")
       .then((d) => { setTpl(d.template); setClinic(d.clinic); })
       .catch(() => {});
@@ -135,6 +162,22 @@ export default function ConsultPage() {
     }),
     [form],
   );
+
+  if (loading) return <ConsultSkeleton />;
+
+  async function savePatient() {
+    if (!patientId) return;
+    await fetch(`/api/patients/${patientId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mobile: patientEdits.mobile || undefined,
+        address: patientEdits.address || undefined,
+        allergicTo: patientEdits.allergicTo || undefined,
+        emergencyContact: patientEdits.emergencyContact || undefined,
+      }),
+    });
+  }
 
   async function handleDictation() {
     setError(null);
@@ -204,6 +247,7 @@ export default function ConsultPage() {
         body: JSON.stringify(buildPayload()),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not save.");
+      await savePatient();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -215,7 +259,10 @@ export default function ConsultPage() {
     setBusy(true);
     setError(null);
     try {
-      await apiPost(`/api/visits/${visitId}/confirm`, buildPayload());
+      await Promise.all([
+        apiPost(`/api/visits/${visitId}/confirm`, buildPayload()),
+        savePatient(),
+      ]);
       setStatus("confirmed");
       await shareWhatsApp();
     } catch (err) {
@@ -259,17 +306,53 @@ export default function ConsultPage() {
     }
   }
 
-  // ── Patient vitals strip (receptionist data) ──────────────────────────────
-  function PatientVitalsStrip() {
+  // ── Patient info card ─────────────────────────────────────────────────────
+  function PatientInfoCard({ editable = true }: { editable?: boolean }) {
     if (!patient) return null;
-    if (!patient.mobile && !patient.address) return null;
+    if (editable) {
+      return (
+        <Card>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <FL htmlFor="pt-mobile">Mobile</FL>
+              <Input id="pt-mobile" inputMode="tel" value={patientEdits.mobile} placeholder="–"
+                onChange={(e) => setPatientEdits((prev) => ({ ...prev, mobile: e.target.value }))} />
+            </div>
+            <div>
+              <FL htmlFor="pt-address">Address</FL>
+              <Input id="pt-address" value={patientEdits.address} placeholder="–"
+                onChange={(e) => setPatientEdits((prev) => ({ ...prev, address: e.target.value }))} />
+            </div>
+            <div>
+              <FL htmlFor="pt-allergic">Allergic To</FL>
+              <Input id="pt-allergic" value={patientEdits.allergicTo} placeholder="–"
+                onChange={(e) => setPatientEdits((prev) => ({ ...prev, allergicTo: e.target.value }))} />
+            </div>
+            <div>
+              <FL htmlFor="pt-emergency">Emergency Contact</FL>
+              <Input id="pt-emergency" inputMode="tel" value={patientEdits.emergencyContact} placeholder="–"
+                onChange={(e) => setPatientEdits((prev) => ({ ...prev, emergencyContact: e.target.value }))} />
+            </div>
+          </div>
+        </Card>
+      );
+    }
+    const items = [
+      { label: "Mobile",            value: patientEdits.mobile },
+      { label: "Address",           value: patientEdits.address },
+      { label: "Allergic To",       value: patientEdits.allergicTo },
+      { label: "Emergency Contact", value: patientEdits.emergencyContact },
+    ].filter((item) => item.value);
+    if (items.length === 0) return null;
     return (
       <div className="rounded-xl border border-line bg-surface-raised px-3 py-2 text-[11px] text-ink-muted">
-        <p>
-          {patient.mobile && <span><span className="font-medium text-ink-subtle">Mobile:</span> {patient.mobile}</span>}
-          {patient.mobile && patient.address && <span className="mx-3 text-line">·</span>}
-          {patient.address && <span><span className="font-medium text-ink-subtle">Address:</span> {patient.address}</span>}
-        </p>
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+          {items.map(({ label, value }) => (
+            <span key={label}>
+              <span className="font-semibold text-ink-subtle">{label}:</span> {value}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
@@ -295,7 +378,7 @@ export default function ConsultPage() {
           </button>
         </div>
 
-        <PatientVitalsStrip />
+        <PatientInfoCard editable={false} />
 
         {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
@@ -303,7 +386,7 @@ export default function ConsultPage() {
           <p className="font-semibold text-ink">Review Prescription</p>
 
           {form.co && <ReviewRow label="C/O" value={form.co} />}
-          {form.ho && <ReviewRow label="H/O" value={form.ho} />}
+          {form.ho && <ReviewRow label="P/H/O" value={form.ho} />}
           {form.fh && <ReviewRow label="F/H" value={form.fh} />}
 
           {oeEntries.length > 0 && (
@@ -336,9 +419,7 @@ export default function ConsultPage() {
             </div>
           )}
 
-          {form.fees && (
-            <ReviewRow label="Fees" value={`₹${form.fees}`} />
-          )}
+          {form.fees && <ReviewRow label="Fees" value={`₹${form.fees}`} />}
 
           {form.reportPublicIds.length > 0 && (
             <p className="text-sm text-ink-muted">{form.reportPublicIds.length} report(s) attached</p>
@@ -359,7 +440,8 @@ export default function ConsultPage() {
 
   // ── Form step ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
@@ -376,74 +458,107 @@ export default function ConsultPage() {
 
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
-      {status === "confirmed" ? (
-        <>
-          <PatientVitalsStrip />
-          <Card className="space-y-4 border-success/40 bg-success/5">
-            <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary" size="lg" onClick={shareWhatsApp}>
-                Send on WhatsApp
-              </Button>
-              <Button variant="ghost" size="lg" onClick={() => router.push("/app/queue")}>
-                Done
-              </Button>
-            </div>
-          </Card>
-        </>
-      ) : (
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-          <div className="flex-1 min-w-0">
-            <PatientVitalsStrip />
+      {/* Dictate — above patient details */}
+      {status === "draft" && (
+        <Card className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-ink">Dictate the consultation</p>
+            <p className="text-sm text-ink-muted">
+              {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
+            </p>
           </div>
-          <Card className="flex items-center justify-between gap-3 lg:shrink-0">
-            <div>
-              <p className="font-semibold text-ink">Dictate the consultation</p>
-              <p className="text-sm text-ink-muted">
-                {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
-              </p>
-            </div>
-            <Button
-              variant={recorder.recording ? "danger" : "brand"}
-              size="lg"
-              onClick={handleDictation}
-              disabled={!!aiState || !recorder.supported}
-            >
-              {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
-            </Button>
-          </Card>
-        </div>
+          <Button
+            variant={recorder.recording ? "danger" : "brand"}
+            size="lg"
+            onClick={handleDictation}
+            disabled={!!aiState || !recorder.supported}
+          >
+            {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
+          </Button>
+        </Card>
       )}
       {!recorder.supported && (
         <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Field label="H/O — History of present illness" value={form.ho} onChange={(v) => setField("ho", v)} />
-        <Field label="F/H — Family history" value={form.fh} onChange={(v) => setField("fh", v)} />
-        <Field label="C/O — Complaints of" value={form.co} onChange={(v) => setField("co", v)} />
-        <Field label="Notes" value={form.notes} onChange={(v) => setField("notes", v)} />
-        <Field label="Provisional diagnosis" value={form.provisionalDiagnosis} onChange={(v) => setField("provisionalDiagnosis", v)} />
-        <Field label="Diagnosis" value={form.diagnosis} onChange={(v) => setField("diagnosis", v)} />
+      {/* Patient info */}
+      <PatientInfoCard />
 
-        <Card className="space-y-3 md:col-span-2 xl:col-span-3">
-          <p className="text-sm font-semibold text-ink">O/E — On examination</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            {OE_FIELDS.map(({ key, label }) => (
-              <div key={key}>
-                <Label htmlFor={`oe-${key}`}>{label}</Label>
-                <Input id={`oe-${key}`} value={form.oe[key] ?? ""} onChange={(e) => setOE(key, e.target.value)} />
-              </div>
-            ))}
+      {/* Confirmed success banner */}
+      {status === "confirmed" && (
+        <Card className="space-y-4 border-success/40 bg-success/5">
+          <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="primary" size="lg" onClick={shareWhatsApp}>Send on WhatsApp</Button>
+            <Button variant="ghost"   size="lg" onClick={() => router.push("/app/queue")}>Done</Button>
           </div>
         </Card>
+      )}
 
-        <Card className="space-y-3 md:col-span-2 xl:col-span-3">
-          <p className="text-sm font-semibold text-ink">Medicines</p>
-          <MedicineEditor medicines={form.medicines} onChange={(m) => setField("medicines", m)} />
-        </Card>
+      {/* P/H/O · F/H · C/O — one row */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <TextareaField label="P/H/O — Past history"                   value={form.ho} onChange={(v) => setField("ho", v)} />
+        <TextareaField label="F/H — Family history"                    value={form.fh} onChange={(v) => setField("fh", v)} />
+        <TextareaField label="C/O — Complaints of present illness"     value={form.co} onChange={(v) => setField("co", v)} />
+      </div>
 
-        <Card className="space-y-3 md:col-span-2 xl:col-span-2">
+      {/* O/E — On examination */}
+      <Card className="space-y-3">
+        <p className="text-sm font-semibold text-ink">O/E — On examination</p>
+        {/* Row 1: 6 fields */}
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+          {OE_ROW1.map(({ key, label }) => (
+            <div key={key}>
+              <FL htmlFor={`oe-${key}`}>{label}</FL>
+              <Input id={`oe-${key}`} value={form.oe[key] ?? ""} onChange={(e) => setOE(key, e.target.value)} />
+            </div>
+          ))}
+        </div>
+        {/* Row 2: 5 fields — own grid so they fill full width */}
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+          {OE_ROW2.map(({ key, label }) => (
+            <div key={key}>
+              <FL htmlFor={`oe-${key}`}>{label}</FL>
+              <Input id={`oe-${key}`} value={form.oe[key] ?? ""} onChange={(e) => setOE(key, e.target.value)} />
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Notes (left) · Provisional Diagnosis + Diagnosis (right) — 2-col desktop */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div>
+          <FL>Notes</FL>
+          <Textarea
+            value={form.notes}
+            onChange={(e) => setField("notes", e.target.value)}
+            className="py-2 resize-y"
+            rows={3}
+          />
+        </div>
+        <div className="space-y-3">
+          <div>
+            <FL htmlFor="prov-dx">Provisional diagnosis</FL>
+            <Input id="prov-dx" value={form.provisionalDiagnosis}
+              onChange={(e) => setField("provisionalDiagnosis", e.target.value)} />
+          </div>
+          <div>
+            <FL htmlFor="dx">Diagnosis</FL>
+            <Input id="dx" value={form.diagnosis}
+              onChange={(e) => setField("diagnosis", e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* Medicines */}
+      <Card className="space-y-3">
+        <p className="text-sm font-semibold text-ink">Medicines</p>
+        <MedicineEditor medicines={form.medicines} onChange={(m) => setField("medicines", m)} />
+      </Card>
+
+      {/* Reports + Fees */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
+        <Card className="space-y-3">
           <p className="text-sm font-semibold text-ink">Scan &amp; save reports</p>
           <input type="file" accept="image/*" capture="environment" onChange={uploadReport} disabled={busy}
             className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2 file:text-brand-fg" />
@@ -451,9 +566,8 @@ export default function ConsultPage() {
             <p className="text-sm text-success">{form.reportPublicIds.length} report(s) attached.</p>
           )}
         </Card>
-
-        <div>
-          <Label htmlFor="fees">Fees (₹)</Label>
+        <div className="min-w-[120px]">
+          <FL htmlFor="fees">Fees (₹)</FL>
           <Input id="fees" inputMode="numeric" value={form.fees} onChange={(e) => setField("fees", e.target.value)} />
         </div>
       </div>
@@ -469,11 +583,24 @@ export default function ConsultPage() {
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+/** Muted, small field label — visually distinct from input text. */
+function FL({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode }) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
+    >
+      {children}
+    </label>
+  );
+}
+
+/** Textarea field with a muted label. */
+function TextareaField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <Label>{label}</Label>
-      <Textarea value={value} onChange={(e) => onChange(e.target.value)} />
+      <FL>{label}</FL>
+      <Textarea value={value} onChange={(e) => onChange(e.target.value)} className="py-2" rows={2} />
     </div>
   );
 }
@@ -483,6 +610,39 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
       <p className="text-sm text-ink whitespace-pre-wrap">{value}</p>
+    </div>
+  );
+}
+
+function ConsultSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <Skeleton className="h-5 w-20 rounded-xl" />
+      </div>
+      <Skeleton className="h-14 w-full rounded-xl" />
+      <Skeleton className="h-20 w-full rounded-xl" />
+      <div className="grid grid-cols-3 gap-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-14 w-full rounded-xl" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-36 w-full rounded-xl" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
+      </div>
+      <Skeleton className="h-48 w-full rounded-xl" />
     </div>
   );
 }
