@@ -21,8 +21,10 @@ interface OE {
 }
 interface FormState {
   ho: string; fh: string; co: string; oe: OE; notes: string;
-  provisionalDiagnosis: string; diagnosis: string;
+  provisionalDiagnosis: string; diagnosis: string; followUp: string;
   medicines: MedicineRow[]; fees: string; reportPublicIds: string[];
+  adviceGeneral: string; adviceLabTest: string;
+  prescriptionLanguage: "english" | "hindi" | "marathi";
 }
 interface PatientInfo {
   name: string; ageYears?: number; gender?: string;
@@ -53,8 +55,9 @@ const OE_ROW2: { key: keyof OE; label: string }[] = [
 const OE_FIELDS = [...OE_ROW1, ...OE_ROW2];
 
 const emptyForm: FormState = {
-  ho: "", fh: "", co: "", oe: {}, notes: "", provisionalDiagnosis: "", diagnosis: "",
+  ho: "", fh: "", co: "", oe: {}, notes: "", provisionalDiagnosis: "", diagnosis: "", followUp: "",
   medicines: [], fees: "", reportPublicIds: [],
+  adviceGeneral: "", adviceLabTest: "", prescriptionLanguage: "english",
 };
 
 export default function ConsultPage() {
@@ -76,6 +79,7 @@ export default function ConsultPage() {
     presetKey: string; logoPlacement: "left" | "center" | "right";
     footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
   } | null>(null);
+  const [reportFiles, setReportFiles] = useState<{ name: string; publicId: string }[]>([]);
   const [status, setStatus] = useState<"draft" | "confirmed">("draft");
   const [step, setStep] = useState<"form" | "review">("form");
   const [aiState, setAiState] = useState<string | null>(null);
@@ -127,11 +131,17 @@ export default function ConsultPage() {
           notes: (visit.notes as string) ?? "",
           provisionalDiagnosis: (visit.provisionalDiagnosis as string) ?? "",
           diagnosis: (visit.diagnosis as string) ?? "",
+          followUp: (visit.followUp as string) ?? "",
           medicines: (visit.medicines as MedicineRow[]) ?? [],
           fees: visit.fees != null ? String(visit.fees) : "",
           reportPublicIds: (visit.reportPublicIds as string[]) ?? [],
+          adviceGeneral: (visit.adviceGeneral as string) ?? "",
+          adviceLabTest: (visit.adviceLabTest as string) ?? "",
+          prescriptionLanguage: (visit.prescriptionLanguage as FormState["prescriptionLanguage"]) ?? "english",
         });
         setStatus((visit.status as "draft" | "confirmed") ?? "draft");
+        const existingIds = (visit.reportPublicIds as string[]) ?? [];
+        setReportFiles(existingIds.map((id, i) => ({ name: `Report ${i + 1}`, publicId: id })));
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -156,9 +166,13 @@ export default function ConsultPage() {
       notes: form.notes || undefined,
       provisionalDiagnosis: form.provisionalDiagnosis || undefined,
       diagnosis: form.diagnosis || undefined,
+      followUp: form.followUp || undefined,
       medicines: form.medicines.filter((m) => m.name.trim()),
       fees: form.fees ? Number(form.fees) : undefined,
       reportPublicIds: form.reportPublicIds,
+      adviceGeneral: form.adviceGeneral || undefined,
+      adviceLabTest: form.adviceLabTest || undefined,
+      prescriptionLanguage: form.prescriptionLanguage,
     }),
     [form],
   );
@@ -224,17 +238,36 @@ export default function ConsultPage() {
   }
 
   async function uploadReport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+    const MAX_MB = 5;
+    const oversized = files.filter((f) => f.size > MAX_MB * 1024 * 1024);
+    if (oversized.length) {
+      setError(`${oversized.map((f) => f.name).join(", ")} exceed${oversized.length === 1 ? "s" : ""} the ${MAX_MB} MB limit. Please compress or scan at a lower resolution.`);
+      return;
+    }
     setBusy(true);
     try {
-      const { publicId } = await uploadSigned(file, "report");
-      setField("reportPublicIds", [...form.reportPublicIds, publicId]);
+      const results = await Promise.all(
+        files.map(async (file) => {
+          const { publicId } = await uploadSigned(file, "report");
+          return { name: file.name, publicId };
+        }),
+      );
+      setReportFiles((prev) => [...prev, ...results]);
+      setField("reportPublicIds", [...form.reportPublicIds, ...results.map((r) => r.publicId)]);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  function removeReport(index: number) {
+    const updated = reportFiles.filter((_, i) => i !== index);
+    setReportFiles(updated);
+    setField("reportPublicIds", updated.map((r) => r.publicId));
   }
 
   async function save() {
@@ -404,6 +437,7 @@ export default function ConsultPage() {
 
           {form.provisionalDiagnosis && <ReviewRow label="Provisional Diagnosis" value={form.provisionalDiagnosis} />}
           {form.diagnosis && <ReviewRow label="Diagnosis" value={form.diagnosis} />}
+          {form.followUp && <ReviewRow label="Follow Up" value={form.followUp} />}
           {form.notes && <ReviewRow label="Notes" value={form.notes} />}
 
           {activeMeds.length > 0 && (
@@ -424,6 +458,10 @@ export default function ConsultPage() {
           {form.reportPublicIds.length > 0 && (
             <p className="text-sm text-ink-muted">{form.reportPublicIds.length} report(s) attached</p>
           )}
+
+          {form.adviceGeneral && <ReviewRow label="General Advice" value={form.adviceGeneral} />}
+          {form.adviceLabTest && <ReviewRow label="Lab Test" value={form.adviceLabTest} />}
+          <ReviewRow label="Prescription Language" value={form.prescriptionLanguage.charAt(0).toUpperCase() + form.prescriptionLanguage.slice(1)} />
         </Card>
 
         <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
@@ -441,45 +479,47 @@ export default function ConsultPage() {
   // ── Form step ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      {/* Header + Dictate — 50/50 on desktop */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+        {/* Left: patient name + queue */}
+        <Card className="flex flex-col justify-center">
           <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
           {patient && (
             <p className="text-sm text-ink-muted">
               {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
             </p>
           )}
-        </div>
-        <button onClick={() => router.push("/app/queue")} className="text-sm text-ink-muted hover:underline">
-          ← Queue
-        </button>
+          <button onClick={() => router.push("/app/queue")} className="mt-1 w-fit text-sm text-ink-muted hover:underline">
+            ← Queue
+          </button>
+        </Card>
+
+        {/* Right: dictate card */}
+        {status === "draft" ? (
+          <Card className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-ink">Dictate the consultation</p>
+              <p className="text-sm text-ink-muted">
+                {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
+              </p>
+            </div>
+            <Button
+              variant={recorder.recording ? "danger" : "brand"}
+              size="lg"
+              onClick={handleDictation}
+              disabled={!!aiState || !recorder.supported}
+            >
+              {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
+            </Button>
+          </Card>
+        ) : <div />}
       </div>
 
-      {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
-
-      {/* Dictate — above patient details */}
-      {status === "draft" && (
-        <Card className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-semibold text-ink">Dictate the consultation</p>
-            <p className="text-sm text-ink-muted">
-              {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
-            </p>
-          </div>
-          <Button
-            variant={recorder.recording ? "danger" : "brand"}
-            size="lg"
-            onClick={handleDictation}
-            disabled={!!aiState || !recorder.supported}
-          >
-            {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
-          </Button>
-        </Card>
-      )}
       {!recorder.supported && (
         <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
       )}
+
+      {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
       {/* Patient info */}
       <PatientInfoCard />
@@ -496,10 +536,10 @@ export default function ConsultPage() {
       )}
 
       {/* P/H/O · F/H · C/O — one row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <TextareaField label="P/H/O — Past history"                   value={form.ho} onChange={(v) => setField("ho", v)} />
-        <TextareaField label="F/H — Family history"                    value={form.fh} onChange={(v) => setField("fh", v)} />
-        <TextareaField label="C/O — Complaints of present illness"     value={form.co} onChange={(v) => setField("co", v)} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[25%_25%_1fr]">
+        <TextareaField label="P/H/O — Past history"               value={form.ho} onChange={(v) => setField("ho", v)} />
+        <TextareaField label="F/H — Family history"               value={form.fh} onChange={(v) => setField("fh", v)} />
+        <TextareaField label="C/O — Complaints of present illness" value={form.co} onChange={(v) => setField("co", v)} />
       </div>
 
       {/* O/E — On examination */}
@@ -525,28 +565,81 @@ export default function ConsultPage() {
         </div>
       </Card>
 
-      {/* Notes (left) · Provisional Diagnosis + Diagnosis (right) — 2-col desktop */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div>
+      {/* Notes (left) · Scan & save reports (right) — 50/50 same height */}
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+        <div className="flex flex-col">
           <FL>Notes</FL>
           <Textarea
             value={form.notes}
             onChange={(e) => setField("notes", e.target.value)}
-            className="py-2 resize-y"
-            rows={3}
+            className="py-3 resize-none overflow-hidden"
+            rows={1}
+            onInput={(e) => {
+              const el = e.currentTarget;
+              el.style.height = "auto";
+              el.style.height = el.scrollHeight + "px";
+            }}
           />
         </div>
-        <div className="space-y-3">
-          <div>
-            <FL htmlFor="prov-dx">Provisional diagnosis</FL>
-            <Input id="prov-dx" value={form.provisionalDiagnosis}
-              onChange={(e) => setField("provisionalDiagnosis", e.target.value)} />
+        <div className="flex flex-col">
+          <FL>Scan &amp; save reports</FL>
+          <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2">
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-fg hover:opacity-90">
+                {busy ? "Uploading…" : "+ Browse files"}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf"
+                  onChange={uploadReport}
+                  disabled={busy}
+                  className="hidden"
+                />
+              </label>
+              <span className="text-[11px] text-ink-muted">JPG, PNG, PDF · max 5 MB each</span>
+            </div>
+            {reportFiles.length > 0 && (
+              <ul className="space-y-1">
+                {reportFiles.map((f, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised px-2 py-1 text-xs text-ink">
+                    <span className="truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeReport(i)}
+                      className="shrink-0 text-ink-muted hover:text-sos"
+                      aria-label="Remove"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-          <div>
-            <FL htmlFor="dx">Diagnosis</FL>
-            <Input id="dx" value={form.diagnosis}
-              onChange={(e) => setField("diagnosis", e.target.value)} />
-          </div>
+        </div>
+      </div>
+
+      {/* Provisional Diagnosis · Diagnosis · Follow Up · Fees — one row */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div>
+          <FL htmlFor="prov-dx">Provisional Diagnosis</FL>
+          <Input id="prov-dx" value={form.provisionalDiagnosis}
+            onChange={(e) => setField("provisionalDiagnosis", e.target.value)} />
+        </div>
+        <div>
+          <FL htmlFor="dx">Diagnosis</FL>
+          <Input id="dx" value={form.diagnosis}
+            onChange={(e) => setField("diagnosis", e.target.value)} />
+        </div>
+        <div>
+          <FL htmlFor="follow-up">Follow Up</FL>
+          <Input id="follow-up" value={form.followUp} placeholder="e.g. 3 days"
+            onChange={(e) => setField("followUp", e.target.value)} />
+        </div>
+        <div>
+          <FL htmlFor="fees">Fees (₹)</FL>
+          <Input id="fees" inputMode="numeric" value={form.fees}
+            onChange={(e) => setField("fees", e.target.value)} />
         </div>
       </div>
 
@@ -556,25 +649,32 @@ export default function ConsultPage() {
         <MedicineEditor medicines={form.medicines} onChange={(m) => setField("medicines", m)} />
       </Card>
 
-      {/* Reports + Fees */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto]">
-        <Card className="space-y-3">
-          <p className="text-sm font-semibold text-ink">Scan &amp; save reports</p>
-          <input type="file" accept="image/*" capture="environment" onChange={uploadReport} disabled={busy}
-            className="block w-full text-sm text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2 file:text-brand-fg" />
-          {form.reportPublicIds.length > 0 && (
-            <p className="text-sm text-success">{form.reportPublicIds.length} report(s) attached.</p>
-          )}
-        </Card>
-        <div className="min-w-[120px]">
-          <FL htmlFor="fees">Fees (₹)</FL>
-          <Input id="fees" inputMode="numeric" value={form.fees} onChange={(e) => setField("fees", e.target.value)} />
+      {/* Advice */}
+      <Card className="space-y-3">
+        <p className="text-sm font-semibold text-ink">Advice</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <TextareaField label="General Advice" value={form.adviceGeneral} onChange={(v) => setField("adviceGeneral", v)} />
+          <TextareaField label="Lab Test" value={form.adviceLabTest} onChange={(v) => setField("adviceLabTest", v)} />
         </div>
-      </div>
+      </Card>
 
+      {/* Prescription Language + Next */}
       {status === "draft" && (
-        <div className="flex gap-3 pt-2">
-          <Button variant="primary" size="lg" className="flex-1" onClick={() => setStep("review")} disabled={busy}>
+        <div className="flex items-end gap-4 pt-2">
+          <div className="lg:w-[40%]">
+            <FL htmlFor="rx-lang">Prescription Language</FL>
+            <select
+              id="rx-lang"
+              value={form.prescriptionLanguage}
+              onChange={(e) => setField("prescriptionLanguage", e.target.value as FormState["prescriptionLanguage"])}
+              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
+            >
+              <option value="english">English</option>
+              <option value="hindi">Hindi</option>
+              <option value="marathi">Marathi</option>
+            </select>
+          </div>
+          <Button variant="primary" size="lg" className="flex-1 lg:max-w-[60%]" onClick={() => setStep("review")} disabled={busy}>
             Next
           </Button>
         </div>
@@ -595,12 +695,22 @@ function FL({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode
   );
 }
 
-/** Textarea field with a muted label. */
+/** Textarea field with a muted label — starts at 1 row, auto-expands. */
 function TextareaField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
       <FL>{label}</FL>
-      <Textarea value={value} onChange={(e) => onChange(e.target.value)} className="py-2" rows={2} />
+      <Textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="py-2 resize-none overflow-hidden"
+        rows={1}
+        onInput={(e) => {
+          const el = e.currentTarget;
+          el.style.height = "auto";
+          el.style.height = el.scrollHeight + "px";
+        }}
+      />
     </div>
   );
 }
