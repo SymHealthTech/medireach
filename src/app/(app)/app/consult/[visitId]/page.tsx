@@ -33,7 +33,29 @@ interface PatientInfo {
   allergicTo?: string; referredBy?: string; emergencyContact?: string;
 }
 interface PatientEdits {
-  mobile: string; address: string; allergicTo: string; emergencyContact: string;
+  name: string; gender: string; ageYears: string;
+  mobile: string; emergencyContact: string; address: string; allergicTo: string;
+}
+interface VisitHistoryRecord {
+  _id: string;
+  type: string;
+  confirmedAt?: string;
+  createdAt: string;
+  co?: string;
+  ho?: string;
+  fh?: string;
+  oe?: OE;
+  diagnosis?: string;
+  provisionalDiagnosis?: string;
+  medicines?: Array<{ name: string; type?: string; clinicalText?: string; dosage?: string; frequency?: string }>;
+  notes?: string;
+  fees?: number;
+  reportPublicIds?: string[];
+}
+interface ReportItem {
+  publicId: string;
+  signedUrl: string;
+  date: string;
 }
 
 // Row 1: 6 fields — Row 2: 5 fields. Both groups fill full width in their own grid.
@@ -43,12 +65,12 @@ const OE_ROW1: { key: keyof OE; label: string }[] = [
   { key: "temp",   label: "Temp"   },
   { key: "bp",     label: "BP"     },
   { key: "pulse",  label: "Pulse"  },
-  { key: "rr",     label: "RR"     },
+  { key: "pa",     label: "P/A"    },
 ];
 const OE_ROW2: { key: keyof OE; label: string }[] = [
   { key: "cvs", label: "CVS" },
   { key: "cns", label: "CNS" },
-  { key: "pa",  label: "P/A" },
+  { key: "rr",  label: "RR"  },
   { key: "bsl", label: "BSL" },
   { key: "lmp", label: "LMP" },
 ];
@@ -83,7 +105,7 @@ export default function ConsultPage() {
   const [patient, setPatient] = useState<PatientInfo | null>(null);
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patientEdits, setPatientEdits] = useState<PatientEdits>({
-    mobile: "", address: "", allergicTo: "", emergencyContact: "",
+    name: "", gender: "", ageYears: "", mobile: "", emergencyContact: "", address: "", allergicTo: "",
   });
   const [clinic, setClinic] = useState<{
     clinicName: string; clinicAddress: string; clinicTimings: string;
@@ -100,6 +122,18 @@ export default function ConsultPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [oeExpanded, setOeExpanded] = useState(false);
+  const [patientInfoOpen, setPatientInfoOpen] = useState(false);
+
+  // Patient history modal
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState<VisitHistoryRecord[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Previous reports modal
+  const [reportsOpen, setReportsOpen] = useState(false);
+  const [reportsData, setReportsData] = useState<ReportItem[] | null>(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
 
   useEffect(() => {
     apiGet<{ visit: Record<string, unknown>; patient: Record<string, unknown> }>(`/api/visits/${visitId}`)
@@ -120,20 +154,23 @@ export default function ConsultPage() {
         });
         setPatientId(String(p._id));
         setPatientEdits({
+          name: (p.name as string) ?? "",
+          gender: (p.gender as string) ?? "",
+          ageYears: p.ageYears != null ? String(p.ageYears) : "",
           mobile: (p.mobile as string) ?? "",
+          emergencyContact: (p.emergencyContact as string) ?? "",
           address: (p.address as string) ?? "",
           allergicTo: (p.allergicTo as string) ?? "",
-          emergencyContact: (p.emergencyContact as string) ?? "",
         });
         setForm({
           ho: (visit.ho as string) ?? "",
           fh: (visit.fh as string) ?? "",
           co: (visit.co as string) ?? "",
           oe: {
-            height: visitOe.height || (p.heightCm != null ? String(p.heightCm) + " cm" : ""),
-            weight: visitOe.weight || (p.weightKg  != null ? String(p.weightKg)  + " kg" : ""),
-            temp:   visitOe.temp   || (p.temp as string | undefined) || "",
-            bp:     visitOe.bp     || (p.bp  as string | undefined) || "",
+            height: visitOe.height || "",
+            weight: visitOe.weight || "",
+            temp:   visitOe.temp   || "",
+            bp:     visitOe.bp     || "",
             pulse:  visitOe.pulse  || "",
             rr:     visitOe.rr     || "",
             cvs:    visitOe.cvs    || "",
@@ -193,16 +230,47 @@ export default function ConsultPage() {
 
   if (loading) return <ConsultSkeleton />;
 
+  async function openHistory() {
+    setHistoryOpen(true);
+    if (historyData !== null || !patientId) return;
+    setHistoryLoading(true);
+    try {
+      const { visits } = await apiGet<{ visits: VisitHistoryRecord[] }>(`/api/patients/${patientId}/history`);
+      setHistoryData(visits.filter((v) => v._id !== visitId));
+    } catch {
+      setHistoryData([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function openReports() {
+    setReportsOpen(true);
+    if (reportsData !== null || !patientId) return;
+    setReportsLoading(true);
+    try {
+      const { reports } = await apiGet<{ reports: ReportItem[] }>(`/api/patients/${patientId}/reports`);
+      setReportsData(reports);
+    } catch {
+      setReportsData([]);
+    } finally {
+      setReportsLoading(false);
+    }
+  }
+
   async function savePatient() {
     if (!patientId) return;
     await fetch(`/api/patients/${patientId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        name: patientEdits.name || undefined,
+        gender: (patientEdits.gender as "male" | "female" | "other") || undefined,
+        ageYears: patientEdits.ageYears ? Number(patientEdits.ageYears) : undefined,
         mobile: patientEdits.mobile || undefined,
+        emergencyContact: patientEdits.emergencyContact || undefined,
         address: patientEdits.address || undefined,
         allergicTo: patientEdits.allergicTo || undefined,
-        emergencyContact: patientEdits.emergencyContact || undefined,
       }),
     });
   }
@@ -363,403 +431,624 @@ export default function ConsultPage() {
     }
   }
 
+  const modals = (
+    <>
+      <PatientInfoModal
+        open={patientInfoOpen}
+        onClose={() => setPatientInfoOpen(false)}
+        patientEdits={patientEdits}
+        patientId={patientId ?? ""}
+        onSaved={(edits) => setPatientEdits((prev) => ({ ...prev, ...edits }))}
+      />
+      <PatientHistoryModal
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        loading={historyLoading}
+        records={historyData}
+      />
+      <PatientReportsModal
+        open={reportsOpen}
+        onClose={() => setReportsOpen(false)}
+        loading={reportsLoading}
+        reports={reportsData}
+      />
+    </>
+  );
+
   // ── Review step ───────────────────────────────────────────────────────────
   if (step === "review") {
     const activeMeds = form.medicines.filter((m) => m.name.trim());
     const oeEntries = OE_FIELDS.filter(({ key }) => form.oe[key]);
 
     return (
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
-            {patient && (
-              <p className="text-sm text-ink-muted">
-                {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
-              </p>
-            )}
+      <>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
+              {patient && (
+                <p className="text-sm text-ink-muted">
+                  {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
+                </p>
+              )}
+              {patientId && (
+                <button onClick={openHistory} className="mt-0.5 text-sm font-semibold text-brand hover:underline">
+                  Records
+                </button>
+              )}
+            </div>
+            <button onClick={() => setStep("form")} className="text-sm text-ink-muted hover:underline">
+              ← Edit
+            </button>
           </div>
-          <button onClick={() => setStep("form")} className="text-sm text-ink-muted hover:underline">
-            ← Edit
-          </button>
-        </div>
 
-        <PatientInfoCard patient={patient} patientEdits={patientEdits} setPatientEdits={setPatientEdits} editable={false} />
+          <PatientInfoCard patientEdits={patientEdits} />
 
-        {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
+          {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
-        <Card className="space-y-4">
-          <p className="font-semibold text-ink">Review Prescription</p>
+          <Card className="space-y-4">
+            <p className="font-semibold text-ink">Review Prescription</p>
 
-          {form.co && <ReviewRow label="C/O" value={form.co} />}
-          {form.ho && <ReviewRow label="P/H/O" value={form.ho} />}
-          {form.fh && <ReviewRow label="F/H" value={form.fh} />}
+            {form.co && <ReviewRow label="C/O" value={form.co} />}
+            {form.ho && <ReviewRow label="P/H/O" value={form.ho} />}
+            {form.fh && <ReviewRow label="F/H" value={form.fh} />}
 
-          {oeEntries.length > 0 && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">O/E</p>
-              <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                {oeEntries.map(({ key, label }) => (
-                  <span key={key} className="text-sm text-ink">
-                    <span className="font-medium">{label}:</span> {fmtOE(key, form.oe[key])}
-                  </span>
-                ))}
+            {oeEntries.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">O/E</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                  {oeEntries.map(({ key, label }) => (
+                    <span key={key} className="text-sm text-ink">
+                      <span className="font-medium">{label}:</span> {fmtOE(key, form.oe[key])}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {form.provisionalDiagnosis && <ReviewRow label="Provisional Diagnosis" value={form.provisionalDiagnosis} />}
-          {form.diagnosis && <ReviewRow label="Diagnosis" value={form.diagnosis} />}
-          {form.followUp && <ReviewRow label="Follow Up" value={form.followUp} />}
-          {form.notes && <ReviewRow label="Notes" value={form.notes} />}
+            {form.provisionalDiagnosis && <ReviewRow label="Provisional Diagnosis" value={form.provisionalDiagnosis} />}
+            {form.diagnosis && <ReviewRow label="Diagnosis" value={form.diagnosis} />}
+            {form.followUp && <ReviewRow label="Follow Up" value={form.followUp} />}
+            {form.notes && <ReviewRow label="Notes" value={form.notes} />}
 
-          {activeMeds.length > 0 && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Medicines</p>
-              <ol className="list-decimal pl-4 space-y-0.5">
-                {activeMeds.map((m, i) => (
-                  <li key={i} className="text-sm text-ink">
-                    {m.clinicalText || `${m.name}${m.dosage ? ` ${m.dosage}` : ""}${m.frequency ? ` — ${m.frequency}` : ""}`}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
+            {activeMeds.length > 0 && (
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Medicines</p>
+                <ol className="list-decimal pl-4 space-y-0.5">
+                  {activeMeds.map((m, i) => (
+                    <li key={i} className="text-sm text-ink">
+                      {m.clinicalText || `${m.name}${m.dosage ? ` ${m.dosage}` : ""}${m.frequency ? ` — ${m.frequency}` : ""}`}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
 
-          {form.fees && <ReviewRow label="Fees" value={`₹${form.fees}`} />}
+            {form.fees && <ReviewRow label="Fees" value={`₹${form.fees}`} />}
 
-          {form.reportPublicIds.length > 0 && (
-            <p className="text-sm text-ink-muted">{form.reportPublicIds.length} report(s) attached</p>
-          )}
+            {form.reportPublicIds.length > 0 && (
+              <p className="text-sm text-ink-muted">{form.reportPublicIds.length} report(s) attached</p>
+            )}
 
-          {form.adviceGeneral && <ReviewRow label="General Advice" value={form.adviceGeneral} />}
-          {form.adviceLabTest && <ReviewRow label="Lab Test" value={form.adviceLabTest} />}
-          <ReviewRow label="Prescription Language" value={form.prescriptionLanguage.charAt(0).toUpperCase() + form.prescriptionLanguage.slice(1)} />
-        </Card>
+            {form.adviceGeneral && <ReviewRow label="General Advice" value={form.adviceGeneral} />}
+            {form.adviceLabTest && <ReviewRow label="Lab Test" value={form.adviceLabTest} />}
+            <ReviewRow label="Prescription Language" value={form.prescriptionLanguage.charAt(0).toUpperCase() + form.prescriptionLanguage.slice(1)} />
+          </Card>
 
-        <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
-          <Button variant="outline" size="lg" onClick={save} disabled={busy}>
-            {busy ? "…" : "Save"}
-          </Button>
-          <Button variant="primary" size="lg" className="flex-1" onClick={sendPrescription} disabled={busy}>
-            {busy ? "…" : "Send Prescription"}
-          </Button>
+          <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
+            <Button variant="outline" size="lg" onClick={save} disabled={busy}>
+              {busy ? "…" : "Save"}
+            </Button>
+            <Button variant="primary" size="lg" className="flex-1" onClick={sendPrescription} disabled={busy}>
+              {busy ? "…" : "Send Prescription"}
+            </Button>
+          </div>
         </div>
-      </div>
+        {modals}
+      </>
     );
   }
 
   // ── Form step ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
-      {/* Header + Dictate — 50/50 on desktop */}
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-        {/* Left: patient name + queue */}
-        <Card className="flex flex-col justify-center">
-          <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
-          {patient && (
-            <p className="text-sm text-ink-muted">
-              {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
-            </p>
-          )}
-          <button onClick={() => router.push("/app/queue")} className="mt-1 w-fit text-sm text-ink-muted hover:underline">
-            ← Queue
-          </button>
-        </Card>
-
-        {/* Right: dictate card */}
-        {status === "draft" ? (
-          <Card className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold text-ink">Dictate the consultation</p>
+    <>
+      <div className="space-y-4">
+        {/* Header + Dictate — 50/50 on desktop */}
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          {/* Left: patient name + queue + records */}
+          <Card className="flex flex-col justify-center">
+            <h1 className="text-2xl font-bold text-ink">{patientEdits.name || patient?.name ?? "Consultation"}</h1>
+            {patient && (
               <p className="text-sm text-ink-muted">
-                {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
+                {patientEdits.gender || patient.gender}
+                {(patientEdits.ageYears || patient.ageYears) ? ` · ${patientEdits.ageYears || patient.ageYears}y` : ""}
               </p>
-            </div>
-            <Button
-              variant={recorder.recording ? "danger" : "brand"}
-              size="lg"
-              onClick={handleDictation}
-              disabled={!!aiState || !recorder.supported}
-            >
-              {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
-            </Button>
-          </Card>
-        ) : <div />}
-      </div>
-
-      {!recorder.supported && (
-        <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
-      )}
-
-      {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
-
-      {/* Patient info */}
-      <PatientInfoCard patient={patient} patientEdits={patientEdits} setPatientEdits={setPatientEdits} />
-
-      {/* Confirmed success banner */}
-      {status === "confirmed" && (
-        <Card className="space-y-4 border-success/40 bg-success/5">
-          <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="primary" size="lg" onClick={shareWhatsApp}>Send on WhatsApp</Button>
-            <Button variant="ghost"   size="lg" onClick={() => router.push("/app/queue")}>Done</Button>
-          </div>
-        </Card>
-      )}
-
-      {/* P/H/O · F/H · C/O — one row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[25%_25%_1fr]">
-        <TextareaField label="P/H/O — Past history"               value={form.ho} onChange={(v) => setField("ho", v)} />
-        <TextareaField label="F/H — Family history"               value={form.fh} onChange={(v) => setField("fh", v)} />
-        <TextareaField label="C/O — Complaints of present illness" value={form.co} onChange={(v) => setField("co", v)} />
-      </div>
-
-      {/* O/E — On examination */}
-      <Card className="space-y-3">
-        <p className="text-sm font-semibold text-ink">O/E — On examination</p>
-        {/* Row 1: 6 fields */}
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {OE_ROW1.map(({ key, label }) => (
-            <div key={key}>
-              <FL htmlFor={`oe-${key}`}>{label}</FL>
-              <div className="relative">
-                <Input
-                  id={`oe-${key}`}
-                  value={form.oe[key] ?? ""}
-                  onChange={(e) => setOE(key, e.target.value)}
-                  className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
-                />
-                {OE_UNITS[key] && form.oe[key] && (
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
-                    {OE_UNITS[key]}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* Row 2: 5 fields — own grid so they fill full width */}
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-          {OE_ROW2.map(({ key, label }) => (
-            <div key={key}>
-              <FL htmlFor={`oe-${key}`}>{label}</FL>
-              <div className="relative">
-                <Input
-                  id={`oe-${key}`}
-                  value={form.oe[key] ?? ""}
-                  onChange={(e) => setOE(key, e.target.value)}
-                  className={OE_UNITS[key] && form.oe[key] ? "pr-14" : ""}
-                />
-                {OE_UNITS[key] && form.oe[key] && (
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
-                    {OE_UNITS[key]}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Notes (left) · Scan & save reports (right) — 50/50 same height */}
-      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-        <div className="flex flex-col">
-          <FL>Notes</FL>
-          <Textarea
-            value={form.notes}
-            onChange={(e) => setField("notes", e.target.value)}
-            className="py-3 resize-none overflow-hidden"
-            rows={1}
-            onInput={(e) => {
-              const el = e.currentTarget;
-              el.style.height = "auto";
-              el.style.height = el.scrollHeight + "px";
-            }}
-          />
-        </div>
-        <div className="flex flex-col">
-          <FL>Scan &amp; save reports</FL>
-          <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2">
-            <div className="flex items-center gap-2">
-              <label className="cursor-pointer rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-fg hover:opacity-90">
-                {busy ? "Uploading…" : "+ Browse files"}
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf"
-                  onChange={uploadReport}
-                  disabled={busy}
-                  className="hidden"
-                />
-              </label>
-              <span className="text-[11px] text-ink-muted">JPG, PNG, PDF · max 5 MB each</span>
-            </div>
-            {reportFiles.length > 0 && (
-              <ul className="space-y-1">
-                {reportFiles.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised px-2 py-1 text-xs text-ink">
-                    <span className="truncate">{f.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeReport(i)}
-                      className="shrink-0 text-ink-muted hover:text-sos"
-                      aria-label="Remove"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
             )}
-          </div>
-        </div>
-      </div>
+            <div className="mt-2 flex items-center justify-between">
+              <button onClick={() => router.push("/app/queue")} className="text-sm text-ink-muted hover:underline">
+                ← Queue
+              </button>
+              {patientId && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPatientInfoOpen(true)}
+                    className="rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-line/30"
+                  >
+                    Patient Info
+                  </button>
+                  <button
+                    onClick={openHistory}
+                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-brand-fg hover:opacity-90"
+                  >
+                    Records
+                  </button>
+                </div>
+              )}
+            </div>
+          </Card>
 
-      {/* Provisional Diagnosis · Diagnosis · Follow Up · Fees — one row */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div>
-          <FL htmlFor="prov-dx">Provisional Diagnosis</FL>
-          <Input id="prov-dx" value={form.provisionalDiagnosis}
-            onChange={(e) => setField("provisionalDiagnosis", e.target.value)} />
+          {/* Right: dictate card */}
+          {status === "draft" ? (
+            <Card className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-ink">Dictate the consultation</p>
+                <p className="text-sm text-ink-muted">
+                  {recorder.recording ? "Recording… tap stop when done." : aiState ?? "Speak naturally; AI fills the fields."}
+                </p>
+              </div>
+              <Button
+                variant={recorder.recording ? "danger" : "brand"}
+                size="lg"
+                onClick={handleDictation}
+                disabled={!!aiState || !recorder.supported}
+              >
+                {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
+              </Button>
+            </Card>
+          ) : <div />}
         </div>
-        <div>
-          <FL htmlFor="dx">Diagnosis</FL>
-          <Input id="dx" value={form.diagnosis}
-            onChange={(e) => setField("diagnosis", e.target.value)} />
-        </div>
-        <div>
-          <FL htmlFor="follow-up">Follow Up</FL>
-          <Input id="follow-up" value={form.followUp} placeholder="e.g. 3 days"
-            onChange={(e) => setField("followUp", e.target.value)} />
-        </div>
-        <div>
-          <FL htmlFor="fees">Fees (₹)</FL>
-          <Input id="fees" inputMode="numeric" value={form.fees}
-            onChange={(e) => setField("fees", e.target.value)} />
-        </div>
-      </div>
 
-      {/* Medicines */}
-      <Card className="space-y-3">
-        <p className="text-sm font-semibold text-ink">Medicines</p>
-        <MedicineEditor
-          medicines={form.medicines}
-          onChange={(m) => {
-            setField("medicines", m);
-            if (m.length < form.medicines.length) saveMedicines(m);
-          }}
-        />
-      </Card>
+        {!recorder.supported && (
+          <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
+        )}
 
-      {/* Advice */}
-      <Card className="space-y-3">
-        <p className="text-sm font-semibold text-ink">Advice</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <TextareaField label="General Advice" value={form.adviceGeneral} onChange={(v) => setField("adviceGeneral", v)} />
-          <TextareaField label="Lab Test" value={form.adviceLabTest} onChange={(v) => setField("adviceLabTest", v)} />
-        </div>
-      </Card>
+        {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
-      {/* Prescription Language + Next */}
-      {status === "draft" && (
-        <div className="flex items-end gap-4 pt-2">
-          <div className="lg:w-[40%]">
-            <FL htmlFor="rx-lang">Prescription Language</FL>
-            <select
-              id="rx-lang"
-              value={form.prescriptionLanguage}
-              onChange={(e) => setField("prescriptionLanguage", e.target.value as FormState["prescriptionLanguage"])}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
-            >
-              <option value="english">English</option>
-              <option value="hindi">Hindi</option>
-              <option value="marathi">Marathi</option>
-            </select>
-          </div>
-          <Button variant="primary" size="lg" className="flex-1 lg:max-w-[60%]" onClick={() => setStep("review")} disabled={busy}>
-            Next
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
+        {/* Confirmed success banner */}
+        {status === "confirmed" && (
+          <Card className="space-y-4 border-success/40 bg-success/5">
+            <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="primary" size="lg" onClick={shareWhatsApp}>Send on WhatsApp</Button>
+              <Button variant="ghost"   size="lg" onClick={() => router.push("/app/queue")}>Done</Button>
+            </div>
+          </Card>
+        )}
 
-// ── Patient info card — defined outside ConsultPage to prevent remount on each keystroke ──
-function PatientInfoCard({
-  patient,
-  patientEdits,
-  setPatientEdits,
-  editable = true,
-}: {
-  patient: PatientInfo | null;
-  patientEdits: PatientEdits;
-  setPatientEdits: React.Dispatch<React.SetStateAction<PatientEdits>>;
-  editable?: boolean;
-}) {
-  if (!patient) return null;
-  if (editable) {
-    return (
-      <Card>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div>
-            <FL htmlFor="pt-mobile">Mobile</FL>
-            <Input
-              id="pt-mobile"
-              inputMode="numeric"
-              value={patientEdits.mobile}
-              placeholder="–"
-              onChange={(e) =>
-                setPatientEdits((prev) => ({ ...prev, mobile: e.target.value.replace(/\D/g, "") }))
-              }
-            />
-          </div>
-          <div>
-            <FL htmlFor="pt-address">Address</FL>
-            <Input
-              id="pt-address"
-              value={patientEdits.address}
-              placeholder="–"
-              onChange={(e) => setPatientEdits((prev) => ({ ...prev, address: e.target.value }))}
-            />
-          </div>
+        {/* P/H/O · F/H · Allergic To · C/O — other 3 share 50%, C/O takes 50% on desktop */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_1fr_3fr]">
+          <TextareaField label="P/H/O — Past history"               value={form.ho} onChange={(v) => setField("ho", v)} />
+          <TextareaField label="F/H — Family history"               value={form.fh} onChange={(v) => setField("fh", v)} />
           <div>
             <label
-              htmlFor="pt-allergic"
+              htmlFor="allergic-to"
               className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide ${patientEdits.allergicTo ? "text-action" : "text-ink-muted"}`}
             >
               {patientEdits.allergicTo ? "⚠ Allergic To" : "Allergic To"}
             </label>
-            <Input
-              id="pt-allergic"
+            <Textarea
+              id="allergic-to"
               value={patientEdits.allergicTo}
-              placeholder="–"
-              className={patientEdits.allergicTo ? "border-action/50 bg-action/5 focus-visible:ring-action" : ""}
+              placeholder=""
+              rows={1}
+              className={`py-2 resize-none overflow-hidden${patientEdits.allergicTo ? " border-action/50 bg-action/5 focus-visible:ring-action" : ""}`}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }}
               onChange={(e) => setPatientEdits((prev) => ({ ...prev, allergicTo: e.target.value }))}
             />
           </div>
-          <div>
-            <FL htmlFor="pt-emergency">Emergency Contact</FL>
-            <Input
-              id="pt-emergency"
-              inputMode="numeric"
-              value={patientEdits.emergencyContact}
-              placeholder="–"
-              onChange={(e) =>
-                setPatientEdits((prev) => ({ ...prev, emergencyContact: e.target.value.replace(/\D/g, "") }))
-              }
+          <TextareaField label="C/O — Complaints of present illness" value={form.co} onChange={(v) => setField("co", v)} />
+        </div>
+
+        {/* O/E — On examination */}
+        <Card className="space-y-3">
+          <p className="text-sm font-semibold text-ink">O/E — On examination</p>
+          {/* First 6 fields (full ROW1) — always visible */}
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {OE_ROW1.map(({ key, label }) => (
+              <div key={key}>
+                <FL htmlFor={`oe-${key}`}>{label}</FL>
+                <div className="relative">
+                  <Input
+                    id={`oe-${key}`}
+                    value={form.oe[key] ?? ""}
+                    onChange={(e) => setOE(key, e.target.value)}
+                    className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
+                  />
+                  {OE_UNITS[key] && form.oe[key] && (
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
+                      {OE_UNITS[key]}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Remaining fields (ROW2) — shown when expanded */}
+          {oeExpanded && (
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {OE_ROW2.map(({ key, label }) => (
+                <div key={key}>
+                  <FL htmlFor={`oe-${key}`}>{label}</FL>
+                  <div className="relative">
+                    <Input
+                      id={`oe-${key}`}
+                      value={form.oe[key] ?? ""}
+                      onChange={(e) => setOE(key, e.target.value)}
+                      className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
+                    />
+                    {OE_UNITS[key] && form.oe[key] && (
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
+                        {OE_UNITS[key]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setOeExpanded((v) => !v)}
+            className="text-xs font-semibold text-brand hover:underline"
+          >
+            {oeExpanded ? "Show less ▲" : "Show more ▼"}
+          </button>
+        </Card>
+
+        {/* Notes (left) · Scan & save reports (right) — 50/50 same height */}
+        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          <div className="flex flex-col">
+            <FL>Notes</FL>
+            <Textarea
+              value={form.notes}
+              onChange={(e) => setField("notes", e.target.value)}
+              className="py-3 resize-none overflow-hidden"
+              rows={1}
+              onInput={(e) => {
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }}
             />
           </div>
+          <div className="flex flex-col">
+            <FL>Scan &amp; save reports</FL>
+            <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-fg hover:opacity-90">
+                  {busy ? "Uploading…" : "+ Browse files"}
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf"
+                    onChange={uploadReport}
+                    disabled={busy}
+                    className="hidden"
+                  />
+                </label>
+                {patientId && (
+                  <button
+                    type="button"
+                    onClick={openReports}
+                    className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-line/30"
+                  >
+                    Show Reports
+                  </button>
+                )}
+                <span className="text-[11px] text-ink-muted">JPG, PNG, PDF · max 5 MB each</span>
+              </div>
+              {reportFiles.length > 0 && (
+                <ul className="space-y-1">
+                  {reportFiles.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised px-2 py-1 text-xs text-ink">
+                      <span className="truncate">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeReport(i)}
+                        className="shrink-0 text-ink-muted hover:text-sos"
+                        aria-label="Remove"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
-      </Card>
-    );
+
+        {/* Provisional Diagnosis · Diagnosis · Follow Up · Fees — one row */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div>
+            <FL htmlFor="prov-dx">Provisional Diagnosis</FL>
+            <Input id="prov-dx" value={form.provisionalDiagnosis}
+              onChange={(e) => setField("provisionalDiagnosis", e.target.value)} />
+          </div>
+          <div>
+            <FL htmlFor="dx">Diagnosis</FL>
+            <Input id="dx" value={form.diagnosis}
+              onChange={(e) => setField("diagnosis", e.target.value)} />
+          </div>
+          <div>
+            <FL htmlFor="follow-up">Follow Up</FL>
+            <Input id="follow-up" value={form.followUp} placeholder="e.g. 3 days"
+              onChange={(e) => setField("followUp", e.target.value)} />
+          </div>
+          <div>
+            <FL htmlFor="fees">Fees (₹)</FL>
+            <Input id="fees" inputMode="numeric" value={form.fees}
+              onChange={(e) => setField("fees", e.target.value)} />
+          </div>
+        </div>
+
+        {/* Medicines */}
+        <Card className="space-y-3">
+          <p className="text-sm font-semibold text-ink">Medicines</p>
+          <MedicineEditor
+            medicines={form.medicines}
+            onChange={(m) => {
+              setField("medicines", m);
+              if (m.length < form.medicines.length) saveMedicines(m);
+            }}
+          />
+        </Card>
+
+        {/* Advice */}
+        <Card className="space-y-3">
+          <p className="text-sm font-semibold text-ink">Advice</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextareaField label="General Advice" value={form.adviceGeneral} onChange={(v) => setField("adviceGeneral", v)} />
+            <TextareaField label="Lab Test" value={form.adviceLabTest} onChange={(v) => setField("adviceLabTest", v)} />
+          </div>
+        </Card>
+
+        {/* Prescription Language + Next */}
+        {status === "draft" && (
+          <div className="flex items-end gap-4 pt-2">
+            <div className="lg:w-[40%]">
+              <FL htmlFor="rx-lang">Prescription Language</FL>
+              <select
+                id="rx-lang"
+                value={form.prescriptionLanguage}
+                onChange={(e) => setField("prescriptionLanguage", e.target.value as FormState["prescriptionLanguage"])}
+                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
+              >
+                <option value="english">English</option>
+                <option value="hindi">Hindi</option>
+                <option value="marathi">Marathi</option>
+              </select>
+            </div>
+            <Button variant="primary" size="lg" className="flex-1 lg:max-w-[60%]" onClick={() => setStep("review")} disabled={busy}>
+              Next
+            </Button>
+          </div>
+        )}
+      </div>
+      {modals}
+    </>
+  );
+}
+
+// ── Patient history modal ─────────────────────────────────────────────────────
+function PatientHistoryModal({
+  open,
+  onClose,
+  loading,
+  records,
+}: {
+  open: boolean;
+  onClose: () => void;
+  loading: boolean;
+  records: VisitHistoryRecord[] | null;
+}) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!open) return;
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  function toggle(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative flex w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-t-2xl bg-surface p-4 shadow-xl sm:max-h-[85vh] sm:rounded-2xl">
+        <div className="flex items-center justify-between">
+          <p className="text-lg font-bold text-ink">Patient Records</p>
+          <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
+        </div>
+
+        {loading && <p className="text-sm text-ink-muted">Loading…</p>}
+        {!loading && records?.length === 0 && (
+          <p className="text-sm text-ink-muted">No previous records found.</p>
+        )}
+        {!loading && records && records.length > 0 && (
+          <div className="space-y-2">
+            {records.map((v) => {
+              const isOpen = expandedIds.has(v._id);
+              const dateStr = new Date(v.confirmedAt ?? v.createdAt).toLocaleDateString("en-IN", {
+                day: "2-digit", month: "short", year: "numeric",
+              });
+              const activeMeds = (v.medicines ?? []).filter((m) => m.name);
+              const oeKeys = v.oe ? (Object.keys(v.oe) as Array<keyof OE>).filter((k) => v.oe![k]) : [];
+
+              return (
+                <div key={v._id} className="overflow-hidden rounded-xl border border-line">
+                  <button
+                    className="flex w-full items-center justify-between bg-surface-raised px-3 py-2.5 text-left"
+                    onClick={() => toggle(v._id)}
+                  >
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="text-sm font-semibold text-ink">{dateStr}</span>
+                      <span className="rounded-md bg-line/60 px-1.5 py-0.5 text-[11px] font-medium capitalize text-ink-muted">
+                        {v.type}
+                      </span>
+                      {v.diagnosis && (
+                        <span className="text-[11px] text-ink-muted">· {v.diagnosis}</span>
+                      )}
+                    </div>
+                    <span className="ml-2 shrink-0 text-[11px] text-ink-muted">{isOpen ? "▲" : "▼"}</span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="space-y-2.5 px-3 py-3 text-sm">
+                      {v.co && <HistoryRow label="C/O" value={v.co} />}
+                      {v.ho && <HistoryRow label="P/H/O" value={v.ho} />}
+                      {v.fh && <HistoryRow label="F/H" value={v.fh} />}
+
+                      {oeKeys.length > 0 && (
+                        <div>
+                          <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">O/E</p>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                            {OE_FIELDS.filter(({ key }) => oeKeys.includes(key)).map(({ key, label }) => (
+                              <span key={key} className="text-ink">
+                                <span className="font-medium">{label}:</span> {fmtOE(key, v.oe![key])}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {v.provisionalDiagnosis && <HistoryRow label="Provisional Dx" value={v.provisionalDiagnosis} />}
+                      {v.diagnosis && <HistoryRow label="Diagnosis" value={v.diagnosis} />}
+
+                      {activeMeds.length > 0 && (
+                        <div>
+                          <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Medicines</p>
+                          <ol className="list-decimal space-y-0.5 pl-4">
+                            {activeMeds.map((m, i) => (
+                              <li key={i} className="text-ink">
+                                {m.clinicalText ||
+                                  `${m.type ? m.type + ". " : ""}${m.name}${m.dosage ? " " + m.dosage : ""}${m.frequency ? " — " + m.frequency : ""}`}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {v.notes && <HistoryRow label="Notes" value={v.notes} />}
+                      {v.fees != null && <HistoryRow label="Fees" value={`₹${v.fees}`} />}
+                      {(v.reportPublicIds?.length ?? 0) > 0 && (
+                        <p className="text-[11px] text-ink-muted">{v.reportPublicIds!.length} report(s) on file</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Patient reports modal ─────────────────────────────────────────────────────
+function PatientReportsModal({
+  open,
+  onClose,
+  loading,
+  reports,
+}: {
+  open: boolean;
+  onClose: () => void;
+  loading: boolean;
+  reports: ReportItem[] | null;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative flex w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-t-2xl bg-surface p-4 shadow-xl sm:max-h-[85vh] sm:rounded-2xl">
+        <div className="flex items-center justify-between">
+          <p className="text-lg font-bold text-ink">Previous Reports</p>
+          <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
+        </div>
+
+        {loading && <p className="text-sm text-ink-muted">Loading…</p>}
+        {!loading && (!reports || reports.length === 0) && (
+          <p className="text-sm text-ink-muted">No previous reports found.</p>
+        )}
+        {!loading && reports && reports.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {reports.map((r, i) => (
+              <a
+                key={r.publicId}
+                href={r.signedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block overflow-hidden rounded-xl border border-line bg-surface-raised transition-opacity hover:opacity-80"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={r.signedUrl}
+                  alt={`Report ${i + 1}`}
+                  className="h-28 w-full object-cover"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+                <div className="px-2 py-1.5">
+                  <p className="text-[11px] text-ink-muted">
+                    {new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </p>
+                  <p className="text-[11px] font-semibold text-brand">Open ↗</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Patient info card — review step only (read-only summary) ──────────────────
+function PatientInfoCard({ patientEdits }: { patientEdits: PatientEdits }) {
   const items = [
-    { label: "Mobile",            value: patientEdits.mobile,        warn: false },
-    { label: "Address",           value: patientEdits.address,       warn: false },
-    { label: "Allergic To",       value: patientEdits.allergicTo,    warn: true  },
-    { label: "Emergency Contact", value: patientEdits.emergencyContact, warn: false },
+    { label: "Mobile",            value: patientEdits.mobile,            warn: false },
+    { label: "Emergency Contact", value: patientEdits.emergencyContact,  warn: false },
+    { label: "Address",           value: patientEdits.address,           warn: false },
+    { label: "Allergic To",       value: patientEdits.allergicTo,        warn: true  },
   ].filter((item) => item.value);
   if (items.length === 0) return null;
   return (
@@ -776,6 +1065,148 @@ function PatientInfoCard({
             </span>
           )
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Patient info modal ────────────────────────────────────────────────────────
+function PatientInfoModal({
+  open,
+  onClose,
+  patientEdits,
+  patientId,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  patientEdits: PatientEdits;
+  patientId: string;
+  onSaved: (edits: Omit<PatientEdits, "allergicTo">) => void;
+}) {
+  const [local, setLocal] = useState<Omit<PatientEdits, "allergicTo">>({
+    name: "", gender: "", ageYears: "", mobile: "", emergencyContact: "", address: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setLocal({
+        name: patientEdits.name,
+        gender: patientEdits.gender,
+        ageYears: patientEdits.ageYears,
+        mobile: patientEdits.mobile,
+        emergencyContact: patientEdits.emergencyContact,
+        address: patientEdits.address,
+      });
+    }
+  }, [open, patientEdits]);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleEsc(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await fetch(`/api/patients/${patientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: local.name || undefined,
+          gender: (local.gender as "male" | "female" | "other") || undefined,
+          ageYears: local.ageYears ? Number(local.ageYears) : undefined,
+          mobile: local.mobile || undefined,
+          emergencyContact: local.emergencyContact || undefined,
+          address: local.address || undefined,
+        }),
+      });
+      onSaved(local);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-t-2xl bg-surface p-4 shadow-xl sm:rounded-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-lg font-bold text-ink">Patient Information</p>
+          <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <FL htmlFor="pi-name">Full Name</FL>
+              <Input
+                id="pi-name"
+                value={local.name}
+                onChange={(e) => setLocal((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+            <div>
+              <FL htmlFor="pi-gender">Gender</FL>
+              <select
+                id="pi-gender"
+                value={local.gender}
+                onChange={(e) => setLocal((p) => ({ ...p, gender: e.target.value }))}
+                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
+              >
+                <option value="">– select –</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <FL htmlFor="pi-age">Age (years)</FL>
+              <Input
+                id="pi-age"
+                inputMode="numeric"
+                value={local.ageYears}
+                onChange={(e) => setLocal((p) => ({ ...p, ageYears: e.target.value.replace(/\D/g, "") }))}
+              />
+            </div>
+            <div>
+              <FL htmlFor="pi-mobile">Mobile</FL>
+              <Input
+                id="pi-mobile"
+                inputMode="numeric"
+                value={local.mobile}
+                onChange={(e) => setLocal((p) => ({ ...p, mobile: e.target.value.replace(/\D/g, "") }))}
+              />
+            </div>
+            <div>
+              <FL htmlFor="pi-emergency">Emergency Contact</FL>
+              <Input
+                id="pi-emergency"
+                inputMode="numeric"
+                value={local.emergencyContact}
+                onChange={(e) => setLocal((p) => ({ ...p, emergencyContact: e.target.value.replace(/\D/g, "") }))}
+              />
+            </div>
+            <div>
+              <FL htmlFor="pi-address">Address</FL>
+              <Input
+                id="pi-address"
+                value={local.address}
+                onChange={(e) => setLocal((p) => ({ ...p, address: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="primary" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -817,6 +1248,15 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="text-sm text-ink whitespace-pre-wrap">{value}</p>
+    </div>
+  );
+}
+
+function HistoryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
       <p className="text-sm text-ink whitespace-pre-wrap">{value}</p>
     </div>
   );

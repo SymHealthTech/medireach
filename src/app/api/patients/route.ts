@@ -42,11 +42,18 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
     consentAt: new Date(),
   });
 
+  const oe: Record<string, string> = {};
+  if (data.bp) oe.bp = data.bp;
+  if (data.weightKg != null) oe.weight = `${data.weightKg} kg`;
+  if (data.heightCm != null) oe.height = `${data.heightCm} cm`;
+  if (data.temp) oe.temp = data.temp;
+
   const visit = await Visit.create({
     doctorId,
     patientId: patient._id,
     type: data.visitType,
     status: "draft",
+    oe,
   });
 
   await audit(ctx, "patient.register", { targetType: "Patient", targetId: patient._id });
