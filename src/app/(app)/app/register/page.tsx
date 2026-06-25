@@ -54,6 +54,7 @@ export default function RegisterPage() {
   const [existingPatientId, setExistingPatientId] = useState<string | null>(null);
   const [existingPatientName, setExistingPatientName] = useState<string | null>(null);
   const dismissedIds = useRef(new Set<string>());
+  const dismissedForName = useRef<string>("");
   const nameSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Already-in-queue conflict
@@ -70,6 +71,12 @@ export default function RegisterPage() {
         const data = await apiGet<{ patients: PatientMatch[] }>(
           `/api/patients/search?q=${encodeURIComponent(trimmed)}`,
         );
+        // Clear dismissed IDs when the new search term is unrelated to the one at dismissal time
+        const prev = dismissedForName.current;
+        if (prev && !trimmed.startsWith(prev) && !prev.startsWith(trimmed)) {
+          dismissedIds.current.clear();
+          dismissedForName.current = "";
+        }
         const fresh = data.patients.filter((p) => !dismissedIds.current.has(p._id));
         if (fresh.length > 0) {
           setDuplicateMatches(fresh);
@@ -117,6 +124,7 @@ export default function RegisterPage() {
 
   function dismissDuplicateModal() {
     duplicateMatches.forEach((p) => dismissedIds.current.add(p._id));
+    dismissedForName.current = form.name.trim();
     setShowDuplicateModal(false);
     setDuplicateMatches([]);
   }
@@ -140,6 +148,7 @@ export default function RegisterPage() {
     setConsent(false);
     setShowQueueConflictModal(false);
     dismissedIds.current.clear();
+    dismissedForName.current = "";
   }
 
   async function addAsFollowUp() {
@@ -260,7 +269,10 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-surface shadow-xl">
             <div className="border-b border-line p-5">
-              <h2 className="text-lg font-bold text-ink">Patient already on record?</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-ink">Patient already on record?</h2>
+                <button onClick={dismissDuplicateModal} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
+              </div>
               <p className="mt-1 text-sm text-ink-muted">
                 {duplicateMatches.length === 1
                   ? "A patient with this name was found in your records."
