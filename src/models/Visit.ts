@@ -23,12 +23,16 @@ import {
  */
 
 export interface Medicine {
-  name: string;
-  dosage: string;
-  frequency: string;
+  type: string;         // Tab, Cap, Syr, Inj, etc.
+  name: string;         // brand name
+  generic: string;      // generic composition / contains
+  dose: string;         // e.g. "1", "1/2", "5ml"
+  dosage: string;       // legacy — kept for backward compat
+  frequency: string;    // OD, BD, TDS, etc.
+  timing: string;       // Before food, After breakfast, etc.
   source: MedicineSource; // self (clinic stock) | pharmacy (external) — §7.3
   clinicalText: string; // doctor's shorthand, e.g. "Tab. Paracetamol 500mg — 1 TDS"
-  patientText: string; // plain language, e.g. "...Take 3 times a day after food"
+  patientText: string;  // plain language, e.g. "Take 3 times a day after food"
 }
 
 export interface OnExamination {
@@ -71,9 +75,13 @@ export interface VisitDoc {
 
 const medicineSchema = new Schema<Medicine>(
   {
+    type: { type: String, default: "Tab" },
     name: { type: String, required: true },
+    generic: { type: String, default: "" },
+    dose: { type: String, default: "" },
     dosage: { type: String, default: "" },
     frequency: { type: String, default: "" },
+    timing: { type: String, default: "" },
     source: { type: String, enum: MEDICINE_SOURCES, required: true },
     clinicalText: { type: String, default: "" },
     patientText: { type: String, default: "" },

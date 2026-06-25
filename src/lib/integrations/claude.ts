@@ -103,8 +103,8 @@ const STRUCTURE_TOOL = {
             frequency: { type: "string", description: "e.g. TDS, BD, OD" },
             source: {
               type: "string",
-              enum: ["self", "pharmacy"],
-              description: "self = dispensed from clinic stock; pharmacy = bought externally. Default pharmacy unless stated otherwise.",
+              enum: ["clinic", "pharmacy"],
+              description: "clinic = dispensed from clinic stock; pharmacy = bought externally. Default pharmacy unless stated otherwise.",
             },
             clinicalText: {
               type: "string",
@@ -329,7 +329,7 @@ function normalize(input: Partial<StructuredVisit>): StructuredVisit {
         name: String(m?.name ?? "").trim(),
         dosage: String(m?.dosage ?? "").trim(),
         frequency: String(m?.frequency ?? "").trim(),
-        source: m?.source === "self" ? "self" : "pharmacy",
+        source: m?.source === "clinic" ? "clinic" : "pharmacy",
         clinicalText: String(m?.clinicalText ?? "").trim(),
         patientText: String(m?.patientText ?? "").trim(),
       }))

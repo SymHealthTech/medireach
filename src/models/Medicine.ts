@@ -9,6 +9,7 @@ export interface MedicineDoc {
   _id: Types.ObjectId;
   doctorId: Types.ObjectId;
   name: string;
+  generic: string;
   voiceLearned: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +19,7 @@ const medicineSchema = new Schema<MedicineDoc>(
   {
     doctorId: { type: Schema.Types.ObjectId, ref: "Doctor", required: true, index: true },
     name: { type: String, required: true, trim: true },
+    generic: { type: String, default: "" },
     voiceLearned: { type: Boolean, default: false },
   },
   { timestamps: true },

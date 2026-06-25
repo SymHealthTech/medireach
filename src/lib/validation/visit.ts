@@ -7,11 +7,13 @@ import { MEDICINE_SOURCES } from "@/lib/constants";
  * (§7.4). Used for both AI-structured saves and manual edits.
  */
 export const medicineSchema = z.object({
+  type: z.string().trim().max(30).default("Tab"),
   name: z.string().trim().min(1),
-  // `.default("")` (without `.optional()`) keeps the parsed output a required
-  // string, matching the Medicine subdocument shape.
+  generic: z.string().trim().max(200).default(""),
+  dose: z.string().trim().max(30).default(""),
   dosage: z.string().trim().max(60).default(""),
   frequency: z.string().trim().max(60).default(""),
+  timing: z.string().trim().max(100).default(""),
   source: z.enum(MEDICINE_SOURCES),
   clinicalText: z.string().trim().max(500).default(""),
   patientText: z.string().trim().max(500).default(""),

@@ -22,7 +22,7 @@ export type VisitStatus = (typeof VISIT_STATUSES)[number];
 export const VISIT_TYPES = ["new", "follow-up"] as const;
 export type VisitType = (typeof VISIT_TYPES)[number];
 
-export const MEDICINE_SOURCES = ["self", "pharmacy"] as const;
+export const MEDICINE_SOURCES = ["clinic", "pharmacy"] as const;
 export type MedicineSource = (typeof MEDICINE_SOURCES)[number];
 
 export const VERIFICATION_DOC_TYPES = [
@@ -72,3 +72,27 @@ export const RECORD = {
 } as const;
 
 export const MAX_SOS_CONTACTS = 10;
+
+export const MEDICINE_TYPES = [
+  "Tab", "Cap", "Syr", "Inj", "Susp", "Drops", "Gel", "Cream", "Oint",
+  "Inhaler", "Patch", "Sachet", "Spray", "Powder", "Loz", "Supp",
+] as const;
+export type MedicineType = (typeof MEDICINE_TYPES)[number];
+
+export const MEDICINE_DOSES = [
+  "1/2", "1", "1.5", "2", "3",
+  "1tsf", "2tsf",
+  "5ml", "10ml", "15ml", "20ml", "30ml",
+] as const;
+
+export const MEDICINE_FREQUENCIES = [
+  "OD", "BD", "TDS", "QID", "HS", "SOS", "Stat", "Weekly", "Fortnightly",
+] as const;
+
+export const MEDICINE_TIMINGS = [
+  "Before food", "After food",
+  "Before breakfast", "After breakfast",
+  "Before lunch", "After lunch",
+  "Before dinner", "After dinner",
+  "Empty stomach", "At bedtime", "With water", "With milk",
+] as const;

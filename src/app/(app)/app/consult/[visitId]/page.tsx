@@ -38,12 +38,12 @@ interface PatientEdits {
 
 // Row 1: 6 fields — Row 2: 5 fields. Both groups fill full width in their own grid.
 const OE_ROW1: { key: keyof OE; label: string }[] = [
-  { key: "height", label: "Height"       },
-  { key: "weight", label: "Weight"       },
-  { key: "temp",   label: "Temp (°F)"   },
-  { key: "bp",     label: "BP (mmHg)"   },
-  { key: "pulse",  label: "Pulse (/min)" },
-  { key: "rr",     label: "RR"           },
+  { key: "height", label: "Height" },
+  { key: "weight", label: "Weight" },
+  { key: "temp",   label: "Temp"   },
+  { key: "bp",     label: "BP"     },
+  { key: "pulse",  label: "Pulse"  },
+  { key: "rr",     label: "RR"     },
 ];
 const OE_ROW2: { key: keyof OE; label: string }[] = [
   { key: "cvs", label: "CVS" },
@@ -53,6 +53,20 @@ const OE_ROW2: { key: keyof OE; label: string }[] = [
   { key: "lmp", label: "LMP" },
 ];
 const OE_FIELDS = [...OE_ROW1, ...OE_ROW2];
+
+const OE_UNITS: Partial<Record<keyof OE, string>> = {
+  temp:  "°F",
+  bp:    "mmHg",
+  pulse: "/min",
+  rr:    "/min",
+  bsl:   "mg/dL",
+};
+
+function fmtOE(key: keyof OE, value: string | undefined): string {
+  if (!value) return "";
+  const unit = OE_UNITS[key];
+  return unit ? `${value} ${unit}` : value;
+}
 
 const emptyForm: FormState = {
   ho: "", fh: "", co: "", oe: {}, notes: "", provisionalDiagnosis: "", diagnosis: "", followUp: "",
@@ -288,6 +302,16 @@ export default function ConsultPage() {
     }
   }
 
+  async function saveMedicines(medicines: MedicineRow[]) {
+    try {
+      await fetch(`/api/visits/${visitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...buildPayload(), medicines: medicines.filter((m) => m.name.trim()) }),
+      });
+    } catch { /* silent — user can still manually save */ }
+  }
+
   async function sendPrescription() {
     setBusy(true);
     setError(null);
@@ -339,57 +363,6 @@ export default function ConsultPage() {
     }
   }
 
-  // ── Patient info card ─────────────────────────────────────────────────────
-  function PatientInfoCard({ editable = true }: { editable?: boolean }) {
-    if (!patient) return null;
-    if (editable) {
-      return (
-        <Card>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div>
-              <FL htmlFor="pt-mobile">Mobile</FL>
-              <Input id="pt-mobile" inputMode="tel" value={patientEdits.mobile} placeholder="–"
-                onChange={(e) => setPatientEdits((prev) => ({ ...prev, mobile: e.target.value }))} />
-            </div>
-            <div>
-              <FL htmlFor="pt-address">Address</FL>
-              <Input id="pt-address" value={patientEdits.address} placeholder="–"
-                onChange={(e) => setPatientEdits((prev) => ({ ...prev, address: e.target.value }))} />
-            </div>
-            <div>
-              <FL htmlFor="pt-allergic">Allergic To</FL>
-              <Input id="pt-allergic" value={patientEdits.allergicTo} placeholder="–"
-                onChange={(e) => setPatientEdits((prev) => ({ ...prev, allergicTo: e.target.value }))} />
-            </div>
-            <div>
-              <FL htmlFor="pt-emergency">Emergency Contact</FL>
-              <Input id="pt-emergency" inputMode="tel" value={patientEdits.emergencyContact} placeholder="–"
-                onChange={(e) => setPatientEdits((prev) => ({ ...prev, emergencyContact: e.target.value }))} />
-            </div>
-          </div>
-        </Card>
-      );
-    }
-    const items = [
-      { label: "Mobile",            value: patientEdits.mobile },
-      { label: "Address",           value: patientEdits.address },
-      { label: "Allergic To",       value: patientEdits.allergicTo },
-      { label: "Emergency Contact", value: patientEdits.emergencyContact },
-    ].filter((item) => item.value);
-    if (items.length === 0) return null;
-    return (
-      <div className="rounded-xl border border-line bg-surface-raised px-3 py-2 text-[11px] text-ink-muted">
-        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-          {items.map(({ label, value }) => (
-            <span key={label}>
-              <span className="font-semibold text-ink-subtle">{label}:</span> {value}
-            </span>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   // ── Review step ───────────────────────────────────────────────────────────
   if (step === "review") {
     const activeMeds = form.medicines.filter((m) => m.name.trim());
@@ -411,7 +384,7 @@ export default function ConsultPage() {
           </button>
         </div>
 
-        <PatientInfoCard editable={false} />
+        <PatientInfoCard patient={patient} patientEdits={patientEdits} setPatientEdits={setPatientEdits} editable={false} />
 
         {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
@@ -428,7 +401,7 @@ export default function ConsultPage() {
               <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                 {oeEntries.map(({ key, label }) => (
                   <span key={key} className="text-sm text-ink">
-                    <span className="font-medium">{label}:</span> {form.oe[key]}
+                    <span className="font-medium">{label}:</span> {fmtOE(key, form.oe[key])}
                   </span>
                 ))}
               </div>
@@ -522,7 +495,7 @@ export default function ConsultPage() {
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
       {/* Patient info */}
-      <PatientInfoCard />
+      <PatientInfoCard patient={patient} patientEdits={patientEdits} setPatientEdits={setPatientEdits} />
 
       {/* Confirmed success banner */}
       {status === "confirmed" && (
@@ -550,7 +523,19 @@ export default function ConsultPage() {
           {OE_ROW1.map(({ key, label }) => (
             <div key={key}>
               <FL htmlFor={`oe-${key}`}>{label}</FL>
-              <Input id={`oe-${key}`} value={form.oe[key] ?? ""} onChange={(e) => setOE(key, e.target.value)} />
+              <div className="relative">
+                <Input
+                  id={`oe-${key}`}
+                  value={form.oe[key] ?? ""}
+                  onChange={(e) => setOE(key, e.target.value)}
+                  className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
+                />
+                {OE_UNITS[key] && form.oe[key] && (
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
+                    {OE_UNITS[key]}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -559,7 +544,19 @@ export default function ConsultPage() {
           {OE_ROW2.map(({ key, label }) => (
             <div key={key}>
               <FL htmlFor={`oe-${key}`}>{label}</FL>
-              <Input id={`oe-${key}`} value={form.oe[key] ?? ""} onChange={(e) => setOE(key, e.target.value)} />
+              <div className="relative">
+                <Input
+                  id={`oe-${key}`}
+                  value={form.oe[key] ?? ""}
+                  onChange={(e) => setOE(key, e.target.value)}
+                  className={OE_UNITS[key] && form.oe[key] ? "pr-14" : ""}
+                />
+                {OE_UNITS[key] && form.oe[key] && (
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
+                    {OE_UNITS[key]}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -646,7 +643,13 @@ export default function ConsultPage() {
       {/* Medicines */}
       <Card className="space-y-3">
         <p className="text-sm font-semibold text-ink">Medicines</p>
-        <MedicineEditor medicines={form.medicines} onChange={(m) => setField("medicines", m)} />
+        <MedicineEditor
+          medicines={form.medicines}
+          onChange={(m) => {
+            setField("medicines", m);
+            if (m.length < form.medicines.length) saveMedicines(m);
+          }}
+        />
       </Card>
 
       {/* Advice */}
@@ -679,6 +682,101 @@ export default function ConsultPage() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Patient info card — defined outside ConsultPage to prevent remount on each keystroke ──
+function PatientInfoCard({
+  patient,
+  patientEdits,
+  setPatientEdits,
+  editable = true,
+}: {
+  patient: PatientInfo | null;
+  patientEdits: PatientEdits;
+  setPatientEdits: React.Dispatch<React.SetStateAction<PatientEdits>>;
+  editable?: boolean;
+}) {
+  if (!patient) return null;
+  if (editable) {
+    return (
+      <Card>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <FL htmlFor="pt-mobile">Mobile</FL>
+            <Input
+              id="pt-mobile"
+              inputMode="numeric"
+              value={patientEdits.mobile}
+              placeholder="–"
+              onChange={(e) =>
+                setPatientEdits((prev) => ({ ...prev, mobile: e.target.value.replace(/\D/g, "") }))
+              }
+            />
+          </div>
+          <div>
+            <FL htmlFor="pt-address">Address</FL>
+            <Input
+              id="pt-address"
+              value={patientEdits.address}
+              placeholder="–"
+              onChange={(e) => setPatientEdits((prev) => ({ ...prev, address: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="pt-allergic"
+              className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide ${patientEdits.allergicTo ? "text-action" : "text-ink-muted"}`}
+            >
+              {patientEdits.allergicTo ? "⚠ Allergic To" : "Allergic To"}
+            </label>
+            <Input
+              id="pt-allergic"
+              value={patientEdits.allergicTo}
+              placeholder="–"
+              className={patientEdits.allergicTo ? "border-action/50 bg-action/5 focus-visible:ring-action" : ""}
+              onChange={(e) => setPatientEdits((prev) => ({ ...prev, allergicTo: e.target.value }))}
+            />
+          </div>
+          <div>
+            <FL htmlFor="pt-emergency">Emergency Contact</FL>
+            <Input
+              id="pt-emergency"
+              inputMode="numeric"
+              value={patientEdits.emergencyContact}
+              placeholder="–"
+              onChange={(e) =>
+                setPatientEdits((prev) => ({ ...prev, emergencyContact: e.target.value.replace(/\D/g, "") }))
+              }
+            />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  const items = [
+    { label: "Mobile",            value: patientEdits.mobile,        warn: false },
+    { label: "Address",           value: patientEdits.address,       warn: false },
+    { label: "Allergic To",       value: patientEdits.allergicTo,    warn: true  },
+    { label: "Emergency Contact", value: patientEdits.emergencyContact, warn: false },
+  ].filter((item) => item.value);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-line bg-surface-raised px-3 py-2 text-[11px] text-ink-muted">
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+        {items.map(({ label, value, warn }) => (
+          warn ? (
+            <span key={label} className="rounded-md bg-action/10 px-1.5 py-0.5 font-semibold text-action">
+              ⚠ {label}: {value}
+            </span>
+          ) : (
+            <span key={label}>
+              <span className="font-semibold text-ink-subtle">{label}:</span> {value}
+            </span>
+          )
+        ))}
+      </div>
     </div>
   );
 }
