@@ -16,7 +16,18 @@ export async function apiPost<T = unknown>(path: string, body?: unknown): Promis
 }
 
 export async function apiGet<T = unknown>(path: string): Promise<T> {
-  const res = await fetch(path, { method: "GET" });
+  const res = await fetch(path, { method: "GET", cache: "no-store" });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? "Something went wrong.");
+  return data as T;
+}
+
+export async function apiPatch<T = unknown>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((data as { error?: string }).error ?? "Something went wrong.");
   return data as T;

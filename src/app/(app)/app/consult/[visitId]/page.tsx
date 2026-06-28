@@ -110,6 +110,9 @@ export default function ConsultPage() {
   const [clinic, setClinic] = useState<{
     clinicName: string; clinicAddress: string; clinicTimings: string;
     doctorName: string; degree: string; registrationNumber: string;
+    defaultWhatsappTarget?: string;
+    clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
+    prescriptionSendNumber?: string;
   } | null>(null);
   const [tpl, setTpl] = useState<{
     presetKey: string; logoPlacement: "left" | "center" | "right";
@@ -120,7 +123,10 @@ export default function ConsultPage() {
   const [step, setStep] = useState<"form" | "review">("form");
   const [aiState, setAiState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [sendBusy, setSendBusy] = useState(false);
+  const [successModal, setSuccessModal] = useState<"saved" | "sent" | null>(null);
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
   const [patientInfoOpen, setPatientInfoOpen] = useState(false);
@@ -329,7 +335,7 @@ export default function ConsultPage() {
       setError(`${oversized.map((f) => f.name).join(", ")} exceed${oversized.length === 1 ? "s" : ""} the ${MAX_MB} MB limit. Please compress or scan at a lower resolution.`);
       return;
     }
-    setBusy(true);
+    setUploadBusy(true);
     try {
       const results = await Promise.all(
         files.map(async (file) => {
@@ -342,7 +348,7 @@ export default function ConsultPage() {
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setUploadBusy(false);
     }
   }
 
@@ -353,20 +359,19 @@ export default function ConsultPage() {
   }
 
   async function save() {
-    setBusy(true);
+    setSaveBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/visits/${visitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload()),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not save.");
-      await savePatient();
+      await Promise.all([
+        apiPost(`/api/visits/${visitId}/confirm`, buildPayload()),
+        savePatient(),
+      ]);
+      setStatus("confirmed");
+      setSuccessModal("saved");
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setSaveBusy(false);
     }
   }
 
@@ -381,7 +386,7 @@ export default function ConsultPage() {
   }
 
   async function sendPrescription() {
-    setBusy(true);
+    setSendBusy(true);
     setError(null);
     try {
       await Promise.all([
@@ -389,11 +394,11 @@ export default function ConsultPage() {
         savePatient(),
       ]);
       setStatus("confirmed");
-      await shareWhatsApp();
+      setSuccessModal("sent");
     } catch (err) {
       setError((err as Error).message);
     } finally {
-      setBusy(false);
+      setSendBusy(false);
     }
   }
 
@@ -408,6 +413,20 @@ export default function ConsultPage() {
       patient ?? { name: "Patient" },
       { diagnosis: form.diagnosis, medicines: meds, date: new Date() },
     );
+
+    // Resolve the recipient number for the wa.me fallback based on the stored target.
+    const waTarget = c.defaultWhatsappTarget ?? "patient";
+    const recipientRaw =
+      waTarget === "clinic"       ? c.clinicWhatsapp :
+      waTarget === "receptionist" ? c.receptionistWhatsapp :
+      waTarget === "store"        ? c.storeWhatsapp :
+      /* patient */                 patient?.mobile ?? "";
+    // Normalise: digits only (strip spaces, dashes, leading +91 country code handled by wa.me).
+    const recipientDigits = (recipientRaw ?? "").replace(/\D/g, "");
+    const waUrl = recipientDigits
+      ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+
     try {
       const image = await renderPrescriptionImage({
         presetKey: tpl?.presetKey ?? "classic",
@@ -427,7 +446,7 @@ export default function ConsultPage() {
       });
       await sharePrescription(image, text);
     } catch {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+      window.open(waUrl, "_blank");
     }
   }
 
@@ -535,16 +554,56 @@ export default function ConsultPage() {
             <ReviewRow label="Prescription Language" value={form.prescriptionLanguage.charAt(0).toUpperCase() + form.prescriptionLanguage.slice(1)} />
           </Card>
 
-          <div className="sticky bottom-20 flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
-            <Button variant="outline" size="lg" onClick={save} disabled={busy}>
-              {busy ? "…" : "Save"}
+          <div className="flex gap-3 rounded-2xl border border-line bg-surface-raised p-3 shadow-lg">
+            <Button variant="outline" size="lg" className="min-w-[30%]" onClick={save} disabled={saveBusy || sendBusy}>
+              {saveBusy ? "Saving…" : "Save"}
             </Button>
-            <Button variant="primary" size="lg" className="flex-1" onClick={sendPrescription} disabled={busy}>
-              {busy ? "…" : "Send Prescription"}
+            <Button variant="primary" size="lg" className="flex-1" onClick={sendPrescription} disabled={saveBusy || sendBusy}>
+              {sendBusy ? "Sending…" : "Send Prescription"}
             </Button>
           </div>
         </div>
         {modals}
+
+        {successModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl text-center space-y-4">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-8 w-8 text-success">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-ink">
+                  {successModal === "saved" ? "Visit Saved" : "Visit Confirmed"}
+                </p>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {successModal === "saved"
+                    ? "The consultation has been saved and confirmed."
+                    : "The prescription has been confirmed and saved."}
+                </p>
+              </div>
+              {successModal === "sent" && (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={shareWhatsApp}
+                >
+                  Send on WhatsApp
+                </Button>
+              )}
+              <Button
+                variant={successModal === "sent" ? "outline" : "brand"}
+                size="lg"
+                className="w-full"
+                onClick={() => router.push("/app/queue")}
+              >
+                Back to Queue
+              </Button>
+            </div>
+          </div>
+        )}
       </>
     );
   }
@@ -557,7 +616,7 @@ export default function ConsultPage() {
         <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           {/* Left: patient name + queue + records */}
           <Card className="flex flex-col justify-center">
-            <h1 className="text-2xl font-bold text-ink">{patientEdits.name || patient?.name ?? "Consultation"}</h1>
+            <h1 className="text-2xl font-bold text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
             {patient && (
               <p className="text-sm text-ink-muted">
                 {patientEdits.gender || patient.gender}
@@ -730,13 +789,13 @@ export default function ConsultPage() {
             <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-raised px-3 py-2">
               <div className="flex flex-wrap items-center gap-2">
                 <label className="cursor-pointer rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-fg hover:opacity-90">
-                  {busy ? "Uploading…" : "+ Browse files"}
+                  {uploadBusy ? "Uploading…" : "+ Browse files"}
                   <input
                     type="file"
                     multiple
                     accept="image/*,.pdf"
                     onChange={uploadReport}
-                    disabled={busy}
+                    disabled={uploadBusy}
                     className="hidden"
                   />
                 </label>
@@ -833,7 +892,7 @@ export default function ConsultPage() {
                 <option value="marathi">Marathi</option>
               </select>
             </div>
-            <Button variant="primary" size="lg" className="flex-1 lg:max-w-[60%]" onClick={() => setStep("review")} disabled={busy}>
+            <Button variant="primary" size="lg" className="flex-1 lg:max-w-[60%]" onClick={() => setStep("review")} disabled={uploadBusy}>
               Next
             </Button>
           </div>

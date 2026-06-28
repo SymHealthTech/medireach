@@ -130,16 +130,18 @@ async function transcribeWithGoogle(audio: Blob): Promise<TranscriptionResult> {
       body: JSON.stringify({
         audio: { content: audioBytes.toString("base64") },
         config: {
-          // WEBM_OPUS matches browser MediaRecorder output.
+          // WEBM_OPUS matches browser MediaRecorder output. Google cannot
+          // detect the sample rate from the WebM container, so it must be
+          // explicit — browsers default to 48000 Hz for Opus.
           encoding: "WEBM_OPUS",
           sampleRateHertz: 48000,
-          // en-IN primary; hi-IN / mr-IN handles Hindi/Marathi mix common in
-          // Pune clinics (spec FAQ §4). The API picks the best-matching
-          // language per utterance automatically.
+          // en-IN primary; hi-IN / mr-IN for Hindi/Marathi mix common in
+          // Pune clinics (spec FAQ §4).
           languageCode: "en-IN",
           alternativeLanguageCodes: ["hi-IN", "mr-IN"],
-          // medical_dictation improves recognition of clinical terminology.
-          model: "medical_dictation",
+          // latest_long is the best general-purpose dictation model and
+          // supports en-IN. medical_dictation only works with en-US.
+          model: "latest_long",
           enableAutomaticPunctuation: true,
         },
       }),

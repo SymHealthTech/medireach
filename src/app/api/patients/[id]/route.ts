@@ -5,8 +5,10 @@ import { parseBody, fields } from "@/lib/api/validate";
 import { scopedFindById } from "@/lib/api/scoped";
 import { audit } from "@/lib/api/audit";
 import { Patient } from "@/models/Patient";
+import { Visit } from "@/models/Visit";
 import { RECEPTIONIST_PATIENT_FIELDS } from "@/lib/api/projections";
 import { assertReceptionistMayModify } from "@/lib/services/receptionist";
+import { startOfTodayIST } from "@/lib/time";
 
 /**
  * Patient detail + edit (spec §5.2, §7.2). Role-projected: the receptionist
@@ -48,6 +50,18 @@ export const PATCH = route<{ id: string }>({ roles: Roles.clinic }, async (req, 
     await assertReceptionistMayModify(ctx, id);
   }
 
+  // Doctor edit lock: the most recent confirmed visit sets editLockAt = confirmedAt + 3 days.
+  // After that window the record is read-only from the records view (spec §9.2).
+  if (ctx.role === "doctor") {
+    const latestVisit = await Visit.findOne(
+      { patientId: id, doctorId: ctx.doctorId, status: "confirmed" },
+      { editLockAt: 1 },
+    ).sort({ confirmedAt: -1 }).lean();
+    if (latestVisit?.editLockAt && Date.now() > latestVisit.editLockAt.getTime()) {
+      throw Errors.forbidden("This record is locked. Patient records can only be edited within 3 days of the visit.");
+    }
+  }
+
   const data = await parseBody(req, updateSchema);
   const patient = await scopedFindById(Patient, ctx, id);
   if (!patient) throw Errors.notFound("Patient not found.");
@@ -66,6 +80,41 @@ export const PATCH = route<{ id: string }>({ roles: Roles.clinic }, async (req, 
   if (data.referredBy !== undefined) patient.referredBy = data.referredBy;
   if (data.emergencyContact !== undefined) patient.emergencyContact = data.emergencyContact;
   await patient.save();
+
+  // Keep today's draft visit.oe in sync so the consult page OE fields reflect
+  // any vitals the receptionist just entered or corrected in the queue edit form.
+  // Only runs when at least one vital was part of this request.
+  const vitalsInRequest =
+    data.bp !== undefined || data.weightKg !== undefined ||
+    data.heightCm !== undefined || data.temp !== undefined;
+  if (vitalsInRequest) {
+    const oeSet: Record<string, string> = {};
+    const oeUnset: Record<string, 1> = {};
+    if (data.bp !== undefined) {
+      if (data.bp) oeSet["oe.bp"] = data.bp;
+      else oeUnset["oe.bp"] = 1;
+    }
+    if (data.weightKg !== undefined) oeSet["oe.weight"] = `${data.weightKg} kg`;
+    if (data.heightCm !== undefined) oeSet["oe.height"] = `${data.heightCm} cm`;
+    if (data.temp !== undefined) {
+      if (data.temp) oeSet["oe.temp"] = data.temp;
+      else oeUnset["oe.temp"] = 1;
+    }
+    const mongoOp: Record<string, unknown> = {};
+    if (Object.keys(oeSet).length) mongoOp.$set = oeSet;
+    if (Object.keys(oeUnset).length) mongoOp.$unset = oeUnset;
+    if (Object.keys(mongoOp).length) {
+      await Visit.updateOne(
+        {
+          patientId: patient._id,
+          doctorId: patient.doctorId,
+          status: "draft",
+          createdAt: { $gte: startOfTodayIST() },
+        },
+        mongoOp,
+      );
+    }
+  }
 
   await audit(ctx, "patient.update", { targetType: "Patient", targetId: patient._id });
   return jsonOk({ ok: true });

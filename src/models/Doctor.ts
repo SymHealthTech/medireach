@@ -56,6 +56,11 @@ export interface DoctorDoc {
   themePreference: "light" | "dark";
   defaultWhatsappTarget: "patient" | "clinic" | "receptionist" | "store";
   selectedTemplateId?: Types.ObjectId;
+  // whatsapp contact numbers (used when constructing wa.me links)
+  clinicWhatsapp: string;
+  receptionistWhatsapp: string;
+  storeWhatsapp: string;
+  prescriptionSendNumber: string; // fallback number used in wa.me links when no target number is set
   // relations / verification
   emergencyContacts: EmergencyContact[];
   verificationDocument?: VerificationDocument;
@@ -127,6 +132,10 @@ const doctorSchema = new Schema<DoctorDoc>(
       default: "patient",
     },
     selectedTemplateId: { type: Schema.Types.ObjectId, ref: "PrescriptionTemplate" },
+    clinicWhatsapp: { type: String, default: "" },
+    receptionistWhatsapp: { type: String, default: "" },
+    storeWhatsapp: { type: String, default: "" },
+    prescriptionSendNumber: { type: String, default: "" },
 
     emergencyContacts: {
       type: [emergencyContactSchema],

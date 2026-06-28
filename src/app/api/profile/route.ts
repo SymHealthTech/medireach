@@ -26,6 +26,10 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
     clinicTimings: doctor.clinicTimings,
     themePreference: doctor.themePreference,
     defaultWhatsappTarget: doctor.defaultWhatsappTarget,
+    clinicWhatsapp: doctor.clinicWhatsapp ?? "",
+    receptionistWhatsapp: doctor.receptionistWhatsapp ?? "",
+    storeWhatsapp: doctor.storeWhatsapp ?? "",
+    prescriptionSendNumber: doctor.prescriptionSendNumber ?? "",
     accountStatus: doctor.accountStatus,
   });
 });
@@ -40,13 +44,18 @@ const updateSchema = z.object({
   photoPublicId: z.string().trim().optional(),
   themePreference: z.enum(["light", "dark"]).optional(),
   defaultWhatsappTarget: z.enum(["patient", "clinic", "receptionist", "store"]).optional(),
+  clinicWhatsapp: z.string().trim().max(20).optional(),
+  receptionistWhatsapp: z.string().trim().max(20).optional(),
+  storeWhatsapp: z.string().trim().max(20).optional(),
+  prescriptionSendNumber: z.string().trim().max(20).optional(),
 });
 
 export const PATCH = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   const data = await parseBody(req, updateSchema);
   const doctor = await loadDoctor(ctx);
-  Object.assign(doctor, data);
-  await doctor.save();
+  // Use $set directly so new schema fields are always persisted regardless of
+  // Mongoose's compiled-model cache state in the dev hot-reload environment.
+  await doctor.updateOne({ $set: data });
   await audit(ctx, "profile.update", { targetType: "Doctor", targetId: doctor._id });
   return jsonOk({ ok: true });
 });

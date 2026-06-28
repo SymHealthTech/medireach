@@ -112,10 +112,11 @@ export default function RegisterPage() {
       address: patient.address ?? f.address,
       allergicTo: patient.allergicTo ?? f.allergicTo,
       emergencyContact: patient.emergencyContact ?? f.emergencyContact,
-      bp: patient.bp ?? f.bp,
-      weightKg: patient.weightKg != null ? String(patient.weightKg) : f.weightKg,
-      heightCm: patient.heightCm != null ? String(patient.heightCm) : f.heightCm,
-      temp: patient.temp ?? f.temp,
+      // Vitals are always entered fresh — do not carry over from prior visit
+      bp: "",
+      weightKg: "",
+      heightCm: "",
+      temp: "",
     }));
     setConsent(true);
     setShowDuplicateModal(false);
@@ -219,6 +220,10 @@ export default function RegisterPage() {
         const result = await apiPost<{ visitId: string }>("/api/queue", {
           patientId: existingPatientId,
           type: "new",
+          bp: form.bp || undefined,
+          weightKg: form.weightKg ? Number(form.weightKg) : undefined,
+          heightCm: form.heightCm ? Number(form.heightCm) : undefined,
+          temp: form.temp || undefined,
         });
         visitId = result.visitId;
       } else {
@@ -377,7 +382,7 @@ export default function RegisterPage() {
                 Existing patient: {existingPatientName}
               </p>
               <p className="text-xs text-ink-muted">
-                Details auto-filled from records — will be added to today&apos;s queue.
+                Details locked — enter today&apos;s vitals (BP, weight, height, temp) and add to queue.
               </p>
             </div>
           </div>
@@ -443,6 +448,7 @@ export default function RegisterPage() {
                 required
                 autoFocus
                 autoComplete="off"
+                disabled={!!existingPatientId}
               />
             </div>
             <div className="lg:w-40">
@@ -451,7 +457,8 @@ export default function RegisterPage() {
                 id="gender"
                 value={form.gender}
                 onChange={(e) => set("gender", e.target.value)}
-                className="h-12 w-full rounded-xl border border-line bg-surface-raised px-3.5 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                disabled={!!existingPatientId}
+                className="h-12 w-full rounded-xl border border-line bg-surface-raised px-3.5 text-base text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60"
               >
                 <option value="male">Male</option>
                 <option value="female">Female</option>
@@ -465,6 +472,7 @@ export default function RegisterPage() {
                 inputMode="numeric"
                 value={form.ageYears}
                 onChange={(e) => set("ageYears", e.target.value)}
+                disabled={!!existingPatientId}
               />
             </div>
           </div>
@@ -478,7 +486,7 @@ export default function RegisterPage() {
                 inputMode="numeric"
                 value={form.mobile}
                 onChange={(e) => set("mobile", e.target.value)}
-                required
+                disabled={!!existingPatientId}
               />
             </div>
             <div className="flex-1">
@@ -487,6 +495,7 @@ export default function RegisterPage() {
                 id="address"
                 value={form.address}
                 onChange={(e) => set("address", e.target.value)}
+                disabled={!!existingPatientId}
               />
             </div>
           </div>
@@ -539,6 +548,7 @@ export default function RegisterPage() {
                 id="allergic"
                 value={form.allergicTo}
                 onChange={(e) => set("allergicTo", e.target.value)}
+                disabled={!!existingPatientId}
               />
             </div>
             <div className="flex-1">
@@ -548,6 +558,7 @@ export default function RegisterPage() {
                 inputMode="numeric"
                 value={form.emergencyContact}
                 onChange={(e) => set("emergencyContact", e.target.value)}
+                disabled={!!existingPatientId}
               />
             </div>
           </div>

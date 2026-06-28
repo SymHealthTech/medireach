@@ -10,6 +10,7 @@ import { apiGet } from "@/lib/client/api";
 interface Profile {
   appId: string | null;
   name: string;
+  mobile: string;
   registrationNumber: string;
   degree: string;
   clinicName: string;
@@ -65,7 +66,7 @@ export default function ProfilePage() {
       </div>
       <Card>
         <div className="space-y-4">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="space-y-1.5">
               <Skeleton className="h-4 w-36" />
               <Skeleton className="h-11 w-full rounded-xl" />
@@ -86,6 +87,10 @@ export default function ProfilePage() {
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
       <Card>
         <form onSubmit={save} className="space-y-4">
+          <div>
+            <Label htmlFor="mobile">Mobile number</Label>
+            <Input id="mobile" value={form.mobile ?? ""} readOnly className="opacity-60 cursor-not-allowed" />
+          </div>
           {([
             ["name", "Doctor name"],
             ["registrationNumber", "Registration number"],
