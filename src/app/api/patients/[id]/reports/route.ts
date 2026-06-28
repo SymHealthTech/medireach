@@ -34,6 +34,7 @@ export const GET = route<{ id: string }>({ roles: Roles.doctorOnly }, async (_re
       publicId,
       signedUrl: signedAssetUrl(publicId),
       date: (v.confirmedAt ?? v.createdAt).toISOString(),
+      visitId: String(v._id),
     })),
   );
 

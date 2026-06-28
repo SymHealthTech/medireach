@@ -62,6 +62,10 @@ export interface VisitDoc {
   notes?: string;
   provisionalDiagnosis?: string;
   diagnosis?: string;
+  followUp?: string;
+  adviceGeneral?: string;
+  adviceLabTest?: string;
+  prescriptionLanguage?: "english" | "hindi" | "marathi";
   reportPublicIds: string[]; // Cloudinary public_id refs only (§15.3)
   medicines: Medicine[];
   fees?: number; // entered manually by doctor (§7.3)
@@ -119,6 +123,10 @@ const visitSchema = new Schema<VisitDoc>(
     notes: String,
     provisionalDiagnosis: String,
     diagnosis: String,
+    followUp: String,
+    adviceGeneral: String,
+    adviceLabTest: String,
+    prescriptionLanguage: { type: String, enum: ["english", "hindi", "marathi"] },
     reportPublicIds: { type: [String], default: [] },
     medicines: { type: [medicineSchema], default: [] },
     fees: { type: Number, min: 0 },

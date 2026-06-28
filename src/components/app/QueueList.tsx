@@ -325,16 +325,15 @@ export function QueueList({
                 className={cn("min-w-0 flex-1 text-left", clickable ? "cursor-pointer" : "cursor-default")}
               >
                 <div className="flex items-start gap-2">
-                  {examined ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-5 w-5 shrink-0 text-success">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <span className="shrink-0 text-sm font-semibold leading-6 text-ink-muted">{idx + 1}.</span>
-                  )}
+                  <span className="shrink-0 text-sm font-semibold leading-6 text-ink-muted">{idx + 1}.</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-semibold text-ink">{e.name}</span>
+                      {examined && (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-success">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                        </svg>
+                      )}
                       <span
                         className={cn(
                           "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
@@ -343,11 +342,6 @@ export function QueueList({
                       >
                         {e.type === "follow-up" ? "Follow-up" : "New"}
                       </span>
-                      {examined && (
-                        <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-                          Seen
-                        </span>
-                      )}
                     </div>
                     <p className="text-xs text-ink-muted">
                       {[

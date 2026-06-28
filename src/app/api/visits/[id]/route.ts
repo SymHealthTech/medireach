@@ -43,6 +43,10 @@ export const PATCH = route<{ id: string }>({ roles: Roles.doctorOnly }, async (r
   if (data.notes !== undefined) visit.notes = data.notes;
   if (data.provisionalDiagnosis !== undefined) visit.provisionalDiagnosis = data.provisionalDiagnosis;
   if (data.diagnosis !== undefined) visit.diagnosis = data.diagnosis;
+  if (data.followUp !== undefined) visit.followUp = data.followUp;
+  if (data.adviceGeneral !== undefined) visit.adviceGeneral = data.adviceGeneral;
+  if (data.adviceLabTest !== undefined) visit.adviceLabTest = data.adviceLabTest;
+  if (data.prescriptionLanguage !== undefined) visit.prescriptionLanguage = data.prescriptionLanguage;
   if (data.medicines !== undefined) visit.medicines = data.medicines;
   if (data.fees !== undefined) visit.fees = data.fees;
   if (data.reportPublicIds !== undefined) visit.reportPublicIds = data.reportPublicIds;
