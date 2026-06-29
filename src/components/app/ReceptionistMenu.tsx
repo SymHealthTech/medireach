@@ -15,8 +15,8 @@ import { ReceptionistProfileCard } from "@/components/app/ReceptionistProfileCar
  */
 export const RECEPTIONIST_MENU_ITEMS = [
   { href: "/app/guide", label: "User Guide" },
-  { href: "/privacy-policy", label: "Privacy Policy" },
-  { href: "/medical-disclaimer", label: "Medical Disclaimer" },
+  { href: "/app/privacy-policy", label: "Privacy Policy" },
+  { href: "/app/medical-disclaimer", label: "Medical Disclaimer" },
 ];
 
 export function ReceptionistMenu({ name }: { name: string }) {

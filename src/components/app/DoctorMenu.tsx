@@ -16,6 +16,7 @@ import { apiGet } from "@/lib/client/api";
 export const DOCTOR_MENU_ITEMS: { href: string; label: string }[] = [
   { href: "/app/profile", label: "Profile" },
   { href: "/app/recent", label: "Records" },
+  { href: "/app/revenue", label: "Revenue" },
   { href: "/app/billing", label: "Billing" },
   { href: "/app/design-prescription", label: "Design Prescription" },
   { href: "/app/emergency-contacts", label: "Emergency Contacts" },
@@ -23,8 +24,8 @@ export const DOCTOR_MENU_ITEMS: { href: string; label: string }[] = [
   { href: "/app/keywords", label: "Edit Keyword" },
   { href: "/app/whatsapp-default", label: "WhatsApp delivery default" },
   { href: "/app/guide", label: "User Guide" },
-  { href: "/medical-disclaimer", label: "Medical Disclaimer" },
-  { href: "/privacy-policy", label: "Privacy Policy" },
+  { href: "/app/medical-disclaimer", label: "Medical Disclaimer" },
+  { href: "/app/privacy-policy", label: "Privacy Policy" },
 ];
 
 export function DoctorMenu({ name }: { name: string }) {

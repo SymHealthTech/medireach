@@ -103,6 +103,88 @@ async function saveCustomOption(category: keyof CustomOptions, value: string) {
   }).catch(() => {});
 }
 
+// ── Keyword shortcut types ──────────────────────────────────────────────────
+
+interface Keyword {
+  keyword: string;
+  expansion: string;
+}
+
+type Suggestion =
+  | { kind: "keyword"; keyword: string; expansion: string }
+  | { kind: "brand"; name: string; generic: string };
+
+// Parses a free-text expansion like "Tab. Paracetamol 500mg BD after food"
+// into structured draft fields. Extracts what it can, skips what it can't.
+function parseExpansion(expansion: string): Partial<Draft> {
+  let text = expansion.trim();
+  const result: Partial<Draft> = {};
+
+  // 1. Type at start: "Tab.", "Cap.", etc.
+  for (const t of MEDICINE_TYPES) {
+    const re = new RegExp(`^${t}\\.?\\s+`, "i");
+    if (re.test(text)) {
+      result.type = t;
+      text = text.replace(re, "").trim();
+      break;
+    }
+  }
+
+  // 2. Generic from parentheses: "(Paracetamol 500mg)"
+  const parenMatch = text.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    result.generic = parenMatch[1].trim();
+    text = text.replace(parenMatch[0], "").trim();
+  }
+
+  // 3. Timing — sort longer phrases first to avoid partial matches
+  const sortedTimings = [...MEDICINE_TIMINGS].sort((a, b) => b.length - a.length);
+  for (const timing of sortedTimings) {
+    const re = new RegExp(timing.replace(/\s+/g, "\\s+"), "i");
+    if (re.test(text)) {
+      result.timing = timing;
+      text = text.replace(re, "").trim();
+      break;
+    }
+  }
+
+  // 4. Frequency: OD, BD, TDS, etc.
+  for (const freq of MEDICINE_FREQUENCIES) {
+    const re = new RegExp(`\\b${freq}\\b`, "i");
+    if (re.test(text)) {
+      result.frequency = freq;
+      text = text.replace(re, "").trim();
+      break;
+    }
+  }
+
+  // 5. Known dose values: "1", "1/2", "5ml", etc.
+  for (const dose of MEDICINE_DOSES) {
+    const escaped = dose.replace("/", "\\/").replace(".", "\\.");
+    const re = new RegExp(`\\b${escaped}(?=\\s|$)`, "i");
+    if (re.test(text)) {
+      result.dose = dose;
+      text = text.replace(re, "").trim();
+      break;
+    }
+  }
+
+  // 6. Strength like "500mg", "250mcg" → generic (if none from parens)
+  if (!result.generic) {
+    const strengthMatch = text.match(/\b(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|iu|units?))\b/i);
+    if (strengthMatch) {
+      result.generic = strengthMatch[1].trim();
+      text = text.replace(strengthMatch[0], "").trim();
+    }
+  }
+
+  // 7. Remainder → name (strip stray dashes/spaces)
+  const name = text.replace(/\s+/g, " ").replace(/^[-–—\s]+|[-–—\s]+$/g, "").trim();
+  if (name) result.name = name;
+
+  return result;
+}
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function MedicineEditor({
@@ -113,15 +195,20 @@ export function MedicineEditor({
   onChange: (next: MedicineRow[]) => void;
 }) {
   const [draft, setDraft] = useState<Draft>(emptyDraft());
-  const [suggestions, setSuggestions] = useState<BrandEntry[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSug, setShowSug] = useState(false);
   const [custom, setCustom] = useState<CustomOptions>({ types: [], doses: [], frequencies: [], timings: [] });
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
   const brandRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/medicine-options")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d) setCustom(d as CustomOptions); })
+      .catch(() => {});
+    fetch("/api/keywords")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.keywords) setKeywords(d.keywords as Keyword[]); })
       .catch(() => {});
 
     function close(e: MouseEvent) {
@@ -145,6 +232,11 @@ export function MedicineEditor({
     if (!q.trim()) { setSuggestions([]); setShowSug(false); return; }
     const lower = q.toLowerCase();
 
+    // Keywords matched by shortcut text (e.g. "p5")
+    const kwMatches: Suggestion[] = keywords
+      .filter((k) => k.keyword.toLowerCase().startsWith(lower))
+      .map((k) => ({ kind: "keyword" as const, keyword: k.keyword, expansion: k.expansion }));
+
     let personal: BrandEntry[] = [];
     try {
       const res = await fetch(`/api/medicines?q=${encodeURIComponent(q)}`);
@@ -159,13 +251,31 @@ export function MedicineEditor({
       (b) => b.name.toLowerCase().startsWith(lower) && !personalNames.has(b.name.toLowerCase())
     );
 
-    const combined = [...personal, ...staticMatches].slice(0, 12);
+    const brandSuggestions: Suggestion[] = [
+      ...personal.map((m) => ({ kind: "brand" as const, name: m.name, generic: m.generic })),
+      ...staticMatches.map((b) => ({ kind: "brand" as const, name: b.name, generic: b.generic })),
+    ];
+
+    const combined = [...kwMatches, ...brandSuggestions].slice(0, 14);
     setSuggestions(combined);
     setShowSug(combined.length > 0);
   }
 
-  function selectBrand(brand: BrandEntry) {
-    setDraft((d) => ({ ...d, name: brand.name, generic: brand.generic }));
+  function selectSuggestion(s: Suggestion) {
+    if (s.kind === "keyword") {
+      const parsed = parseExpansion(s.expansion);
+      setDraft((d) => ({
+        ...d,
+        type:      parsed.type      ?? d.type,
+        name:      parsed.name      ?? "",
+        generic:   parsed.generic   ?? "",
+        dose:      parsed.dose      ?? "",
+        frequency: parsed.frequency ?? "",
+        timing:    parsed.timing    ?? "",
+      }));
+    } else {
+      setDraft((d) => ({ ...d, name: s.name, generic: s.generic }));
+    }
     setSuggestions([]);
     setShowSug(false);
   }
@@ -251,7 +361,7 @@ export function MedicineEditor({
           {/* Brand name with autocomplete */}
           <div ref={brandRef} className="relative min-w-[160px] flex-1">
             <Input
-              placeholder="Brand name"
+              placeholder="Brand name or shortcut (e.g. p5)"
               value={draft.name}
               autoComplete="off"
               onChange={(e) => {
@@ -274,18 +384,34 @@ export function MedicineEditor({
             )}
             {showSug && suggestions.length > 0 && (
               <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-xl border border-line bg-surface shadow-lg">
-                {suggestions.map((s) => (
-                  <li
-                    key={s.name}
-                    onMouseDown={(e) => { e.preventDefault(); selectBrand(s); }}
-                    className="cursor-pointer px-3 py-2 hover:bg-surface-raised"
-                  >
-                    <p className="text-sm font-medium text-ink">{s.name}</p>
-                    {s.generic && (
-                      <p className="text-[11px] text-ink-muted">{s.generic}</p>
-                    )}
-                  </li>
-                ))}
+                {suggestions.map((s, i) =>
+                  s.kind === "keyword" ? (
+                    <li
+                      key={`kw-${s.keyword}`}
+                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                      className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 hover:bg-surface-raised"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink">{s.keyword}</p>
+                        <p className="truncate text-[11px] text-ink-muted">{s.expansion}</p>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-brand/10 px-1.5 py-0.5 text-[10px] font-semibold text-brand">
+                        Shortcut
+                      </span>
+                    </li>
+                  ) : (
+                    <li
+                      key={`brand-${s.name}-${i}`}
+                      onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
+                      className="cursor-pointer px-3 py-2 hover:bg-surface-raised"
+                    >
+                      <p className="text-sm font-medium text-ink">{s.name}</p>
+                      {s.generic && (
+                        <p className="text-[11px] text-ink-muted">{s.generic}</p>
+                      )}
+                    </li>
+                  )
+                )}
               </ul>
             )}
           </div>
