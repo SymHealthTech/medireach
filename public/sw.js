@@ -21,6 +21,7 @@ self.addEventListener("push", (event) => {
         clients.forEach((c) =>
           c.postMessage({
             type: "SOS_ALERT",
+            id: (data.data && data.data.eventId) || null,
             title: data.title,
             body: data.body,
             gps: (data.data && data.data.gps) || null,
@@ -65,6 +66,7 @@ self.addEventListener("notificationclick", (event) => {
         if (isSos) {
           existing.postMessage({
             type: "SOS_ALERT",
+            id: notifData.eventId || null,
             title: event.notification.title,
             body: event.notification.body,
             gps: notifData.gps || null,

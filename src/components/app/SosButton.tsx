@@ -4,16 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { apiPost } from "@/lib/client/api";
 
-/**
- * Discreet SOS trigger (spec §10). Deliberately small (not a big "HELP" button)
- * so activating it doesn't escalate the situation. Tapping opens a short
- * countdown with a clear Cancel, preventing accidental sends — a few false
- * alarms would make colleagues ignore the alert. After the window it captures a
- * one-time GPS fix (clinic address fallback server-side) and sends. A one-tap
- * Call 112 is provided alongside; messaging makes clear it supplements, not
- * replaces, emergency services.
- */
 const COUNTDOWN_SECONDS = 5;
+
+type Phase = "idle" | "confirm" | "counting" | "done";
 
 function getPosition(): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
@@ -27,14 +20,15 @@ function getPosition(): Promise<{ lat: number; lng: number } | null> {
 }
 
 export function SosButton() {
-  const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [count, setCount] = useState(COUNTDOWN_SECONDS);
   const [result, setResult] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelled = useRef(false);
 
+  // Countdown only runs in the "counting" phase.
   useEffect(() => {
-    if (!open) return;
+    if (phase !== "counting") return;
     cancelled.current = false;
     setResult(null);
     setCount(COUNTDOWN_SECONDS);
@@ -52,7 +46,7 @@ export function SosButton() {
       if (timer.current) clearInterval(timer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [phase]);
 
   async function fire() {
     if (cancelled.current) return;
@@ -64,42 +58,70 @@ export function SosButton() {
     } catch (e) {
       setResult((e as Error).message);
     }
+    setPhase("done");
   }
 
   function cancel() {
     cancelled.current = true;
     if (timer.current) clearInterval(timer.current);
-    setOpen(false);
+    setPhase("idle");
   }
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => setPhase("confirm")}
         aria-label="Emergency SOS"
         title="Emergency SOS"
         className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line text-ink-muted hover:border-sos hover:text-sos"
       >
-        {/* small shield glyph — discreet */}
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9-4-0.7-7-4.6-7-9V6l7-3z" strokeLinejoin="round" />
         </svg>
       </button>
 
-      {open &&
+      {phase !== "idle" &&
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-sm space-y-4 rounded-2xl bg-surface-raised p-6 text-center shadow-xl">
-              {result === null ? (
+
+              {/* Step 1 — confirmation */}
+              {phase === "confirm" && (
+                <>
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sos/15 text-sos">
+                    <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9-4-0.7-7-4.6-7-9V6l7-3z" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <h2 className="text-lg font-bold text-ink">Send SOS Alert?</h2>
+                  <p className="text-sm text-ink-muted">
+                    This will alert your emergency contacts with your current location. Only proceed if you genuinely need help.
+                  </p>
+                  <button
+                    onClick={() => setPhase("counting")}
+                    className="w-full rounded-xl bg-sos py-3 font-bold text-white hover:opacity-90"
+                  >
+                    Yes, send alert
+                  </button>
+                  <button
+                    onClick={() => setPhase("idle")}
+                    className="w-full rounded-xl border border-line py-3 font-semibold text-ink hover:bg-line/40"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+
+              {/* Step 2 — countdown */}
+              {phase === "counting" && (
                 <>
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sos/15 text-sos">
                     <span className="text-2xl font-bold">{count}</span>
                   </div>
                   <h2 className="text-lg font-bold text-ink">Sending SOS alert…</h2>
                   <p className="text-sm text-ink-muted">
-                    Your accepted emergency contacts will be alerted with your location. Tap cancel if
-                    this was accidental.
+                    Your emergency contacts will be alerted with your location.
                   </p>
                   <button
                     onClick={cancel}
@@ -108,17 +130,21 @@ export function SosButton() {
                     Cancel
                   </button>
                 </>
-              ) : (
+              )}
+
+              {/* Step 3 — result */}
+              {phase === "done" && (
                 <>
                   <p className="font-semibold text-ink">{result}</p>
                   <button
-                    onClick={() => setOpen(false)}
+                    onClick={() => setPhase("idle")}
                     className="w-full rounded-xl border border-line py-3 font-medium text-ink"
                   >
                     Close
                   </button>
                 </>
               )}
+
             </div>
           </div>,
           document.body,

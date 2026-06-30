@@ -2,14 +2,51 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { apiGet } from "@/lib/client/api";
 
 interface SosAlert {
+  id: string | null;
   title: string;
   body: string;
   gps: { lat: number; lng: number } | null;
   clinicAddress: string;
 }
 
+// ---------------------------------------------------------------------------
+// Dismissed-ID tracking (localStorage) — prevents re-showing after dismiss.
+// IDs older than 10 minutes are pruned automatically.
+// ---------------------------------------------------------------------------
+const STORAGE_KEY = "sos-dismissed";
+const DISMISSED_TTL = 10 * 60 * 1000;
+
+function getDismissed(): Map<string, number> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return new Map();
+    const entries: [string, number][] = JSON.parse(raw);
+    const now = Date.now();
+    return new Map(entries.filter(([, t]) => now - t < DISMISSED_TTL));
+  } catch {
+    return new Map();
+  }
+}
+
+function markDismissed(id: string) {
+  const map = getDismissed();
+  map.set(id, Date.now());
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...map.entries()]));
+  } catch {}
+}
+
+function isDismissed(id: string | null): boolean {
+  if (!id) return false;
+  return getDismissed().has(id);
+}
+
+// ---------------------------------------------------------------------------
+// Web Audio alarm — alternating tones, stops when the returned fn is called.
+// ---------------------------------------------------------------------------
 function startAlarm(): () => void {
   const Ctx =
     window.AudioContext ||
@@ -34,7 +71,7 @@ function startAlarm(): () => void {
 
   ctx.resume().then(() => {
     let hi = true;
-    beep(hi ? 1000 : 700);
+    beep(1000);
     timerId = setInterval(() => {
       hi = !hi;
       beep(hi ? 1000 : 700);
@@ -48,30 +85,74 @@ function startAlarm(): () => void {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 export function SosAlertModal() {
   const [alert, setAlert] = useState<SosAlert | null>(null);
   const [flash, setFlash] = useState(false);
   const stopAlarm = useRef<(() => void) | null>(null);
+  // Track the ID of the currently shown alert to avoid re-triggering.
+  const shownId = useRef<string | null>(null);
 
-  // Listen for SOS messages from the service worker.
+  function showAlert(next: SosAlert) {
+    const key = next.id ?? `nokey-${next.title}`;
+    if (isDismissed(next.id)) return;
+    if (shownId.current === key) return; // already showing this one
+    shownId.current = key;
+    setAlert(next);
+  }
+
+  // -- API poll: check for pending SOS events (covers app-closed → opened case)
+  async function checkPending() {
+    try {
+      const data = await apiGet<{ alerts: (SosAlert & { id: string })[] }>("/api/sos/pending");
+      for (const a of data.alerts) {
+        if (!isDismissed(a.id)) {
+          showAlert(a);
+          break; // show one at a time; others will surface after dismiss
+        }
+      }
+    } catch {
+      // non-critical; ignore network errors
+    }
+  }
+
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
+    // 1. Check immediately on mount (handles: app opened from notification tap).
+    checkPending();
 
-    function handleMessage(event: MessageEvent) {
+    // 2. Check again whenever the tab becomes visible (handles: tab was backgrounded).
+    function onVisibility() {
+      if (document.visibilityState === "visible") checkPending();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // 3. Listen for SW postMessage (handles: app already open when SOS fires).
+    function onSwMessage(event: MessageEvent) {
       if (event.data?.type !== "SOS_ALERT") return;
-      setAlert({
+      showAlert({
+        id: event.data.id ?? null,
         title: event.data.title ?? "🚨 SOS Alert",
         body: event.data.body ?? "",
         gps: event.data.gps ?? null,
         clinicAddress: event.data.clinicAddress ?? "",
       });
     }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", onSwMessage);
+    }
 
-    navigator.serviceWorker.addEventListener("message", handleMessage);
-    return () => navigator.serviceWorker.removeEventListener("message", handleMessage);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.removeEventListener("message", onSwMessage);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Start / stop alarm and flash when alert changes.
+  // Start / stop alarm and flash whenever the active alert changes.
   useEffect(() => {
     if (!alert) {
       stopAlarm.current?.();
@@ -88,8 +169,10 @@ export function SosAlertModal() {
   }, [alert]);
 
   function dismiss() {
+    if (alert?.id) markDismissed(alert.id);
     stopAlarm.current?.();
     stopAlarm.current = null;
+    shownId.current = null;
     setAlert(null);
   }
 
@@ -108,7 +191,6 @@ export function SosAlertModal() {
         className="w-full max-w-sm rounded-2xl p-6 text-center shadow-2xl transition-colors duration-300"
         style={{ backgroundColor: flash ? "#7f1d1d" : "#991b1b" }}
       >
-        {/* Flashing icon */}
         <div
           className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full text-4xl transition-colors duration-300"
           style={{ backgroundColor: flash ? "#dc2626" : "#b91c1c" }}
@@ -118,9 +200,7 @@ export function SosAlertModal() {
 
         <h2 className="text-xl font-bold text-white">{alert.title}</h2>
 
-        {alert.body ? (
-          <p className="mt-2 text-sm text-red-100">{alert.body}</p>
-        ) : null}
+        {alert.body && <p className="mt-2 text-sm text-red-100">{alert.body}</p>}
 
         {mapsUrl && (
           <a
