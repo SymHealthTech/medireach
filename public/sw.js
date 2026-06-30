@@ -44,6 +44,7 @@ self.addEventListener("push", (event) => {
       url: (data.data && data.data.url) || data.url || "/app",
       gps: data.data ? data.data.gps : null,
       clinicAddress: data.data ? data.data.clinicAddress : "",
+      eventId: data.data ? data.data.eventId : null,
       isSos,
     },
   };
