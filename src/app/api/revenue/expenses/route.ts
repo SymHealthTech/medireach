@@ -17,7 +17,9 @@ function dateToISTMonth(date: Date): string {
 }
 
 function monthLabel(ym: string): string {
-  const [year, month] = ym.split("-").map(Number);
+  const parts = ym.split("-");
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
   return `${MONTH_NAMES[month - 1]} ${year}`;
 }
 
