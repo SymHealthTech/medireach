@@ -35,11 +35,8 @@ export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
     ? `Location: https://maps.google.com/?q=${lat},${lng}`
     : me.clinicAddress || "Location unavailable";
 
-  // Accepted contacts only (consent, §10) — all are existing app users.
-  const acceptedIds = me.emergencyContacts
-    .filter((c) => c.status === "accepted")
-    .map((c) => c.contactDoctorId);
-  const contacts = await Doctor.find({ _id: { $in: acceptedIds } }).select("_id").lean();
+  const allContactIds = me.emergencyContacts.map((c) => c.contactDoctorId);
+  const contacts = await Doctor.find({ _id: { $in: allContactIds } }).select("_id").lean();
 
   const title = `🚨 SOS — Dr. ${me.name} needs help`;
   const body = `${me.clinicName || "Clinic"}${me.clinicAddress ? ` — ${me.clinicAddress}` : ""}. ${locationLine}`;
@@ -65,7 +62,7 @@ export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
     cancelledAt: null,
     gpsCoordinate: gps,
     clinicAddress: me.clinicAddress ?? "",
-    contactsNotified: acceptedIds,
+    contactsNotified: allContactIds,
     pushDeliveryStatus,
     resolved: false,
   });

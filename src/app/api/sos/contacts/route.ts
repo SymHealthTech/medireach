@@ -7,12 +7,8 @@ import { audit } from "@/lib/api/audit";
 import { Doctor } from "@/models/Doctor";
 import { MAX_SOS_CONTACTS } from "@/lib/constants";
 
-/**
- * Emergency-contact management (spec §10). Contacts are other doctors on the
- * app, and each must ACCEPT being added before alerts will reach them (consent).
- * A doctor may have at most 10. GET returns both the doctor's own contact list
- * and any incoming requests awaiting their consent.
- */
+const MOBILE_RE = /^\+?\d{7,15}$/;
+
 export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   const myId = requireDoctorId(ctx);
   const me = await Doctor.findById(myId).select("emergencyContacts").lean();
@@ -29,31 +25,30 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       doctorId: String(c.contactDoctorId),
       name: d?.name ?? "(unknown)",
       appId: d?.appId ?? "",
-      status: c.status,
     };
   });
 
-  // Incoming: doctors who added ME and are awaiting my consent.
-  const requesters = await Doctor.find({
-    emergencyContacts: { $elemMatch: { contactDoctorId: myId, status: "pending" } },
-  })
-    .select("name appId")
-    .lean();
-  const incoming = requesters.map((r) => ({ fromDoctorId: String(r._id), name: r.name, appId: r.appId }));
-
-  return jsonOk({ contacts, incoming, max: MAX_SOS_CONTACTS });
+  return jsonOk({ contacts, max: MAX_SOS_CONTACTS });
 });
 
-/** Add an emergency contact by their MediReach app ID (§10). Creates a pending
- * request the other doctor must accept. */
-const addSchema = z.object({ appId: z.string().trim().min(3).max(20) });
+const addSchema = z.object({ query: z.string().trim().min(3).max(20) });
 
 export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   const myId = requireDoctorId(ctx);
-  const { appId } = await parseBody(req, addSchema);
+  const { query } = await parseBody(req, addSchema);
 
-  const target = await Doctor.findOne({ appId: appId.toUpperCase() }).select("_id accountStatus");
-  if (!target) throw Errors.notFound("No doctor found with that MediReach ID.");
+  const isMobile = MOBILE_RE.test(query);
+  const target = isMobile
+    ? await Doctor.findOne({ mobile: query }).select("_id name")
+    : await Doctor.findOne({ appId: query.toUpperCase() }).select("_id name");
+
+  if (!target) {
+    throw Errors.notFound(
+      isMobile
+        ? "No MediReach user found with that mobile number."
+        : "No doctor found with that MediReach ID.",
+    );
+  }
   if (String(target._id) === myId) throw Errors.badRequest("You can't add yourself.");
 
   const me = await Doctor.findById(myId).select("emergencyContacts");
@@ -66,9 +61,9 @@ export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
     throw Errors.conflict("That doctor is already in your contacts.");
   }
 
-  me.emergencyContacts.push({ contactDoctorId: target._id, status: "pending", addedAt: new Date() });
+  me.emergencyContacts.push({ contactDoctorId: target._id, status: "accepted", addedAt: new Date() });
   await me.save();
 
   await audit(ctx, "sos.contact.add", { targetType: "Doctor", targetId: target._id });
-  return jsonOk({ ok: true }, 201);
+  return jsonOk({ ok: true, name: target.name }, 201);
 });

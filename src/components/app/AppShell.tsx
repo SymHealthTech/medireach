@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SosButton } from "@/components/app/SosButton";
+import { SosAlertModal } from "@/components/app/SosAlertModal";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { DOCTOR_MENU_ITEMS } from "@/components/app/DoctorMenu";
 import { RECEPTIONIST_MENU_ITEMS } from "@/components/app/ReceptionistMenu";
@@ -48,6 +49,7 @@ export function AppShell({ role, name, children }: { role: Role; name: string; c
 
   return (
     <div className="min-h-screen">
+      {role === "doctor" && <SosAlertModal />}
       {/* Top bar */}
       <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3 lg:px-6">

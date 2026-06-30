@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { apiPost } from "@/lib/client/api";
 
 /**
@@ -86,52 +87,42 @@ export function SosButton() {
         </svg>
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-surface-raised p-6 text-center">
-            {result === null ? (
-              <>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sos/15 text-sos">
-                  <span className="text-2xl font-bold">{count}</span>
-                </div>
-                <h2 className="text-lg font-bold text-ink">Sending SOS alert…</h2>
-                <p className="text-sm text-ink-muted">
-                  Your accepted emergency contacts will be alerted with your location. Tap cancel if
-                  this was accidental.
-                </p>
-                <button
-                  onClick={cancel}
-                  className="w-full rounded-xl border border-line py-3 font-semibold text-ink hover:bg-line/40"
-                >
-                  Cancel
-                </button>
-                <a
-                  href="tel:112"
-                  className="block w-full rounded-xl bg-sos py-3 font-semibold text-white"
-                >
-                  Call 112 now
-                </a>
-                <p className="text-xs text-ink-muted">
-                  This supplements — it does not replace — emergency services.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="font-semibold text-ink">{result}</p>
-                <a href="tel:112" className="block w-full rounded-xl bg-sos py-3 font-semibold text-white">
-                  Call 112
-                </a>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="w-full rounded-xl border border-line py-3 font-medium text-ink"
-                >
-                  Close
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-sm space-y-4 rounded-2xl bg-surface-raised p-6 text-center shadow-xl">
+              {result === null ? (
+                <>
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sos/15 text-sos">
+                    <span className="text-2xl font-bold">{count}</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-ink">Sending SOS alert…</h2>
+                  <p className="text-sm text-ink-muted">
+                    Your accepted emergency contacts will be alerted with your location. Tap cancel if
+                    this was accidental.
+                  </p>
+                  <button
+                    onClick={cancel}
+                    className="w-full rounded-xl border border-line py-3 font-semibold text-ink hover:bg-line/40"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-ink">{result}</p>
+                  <button
+                    onClick={() => setOpen(false)}
+                    className="w-full rounded-xl border border-line py-3 font-medium text-ink"
+                  >
+                    Close
+                  </button>
+                </>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

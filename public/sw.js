@@ -1,7 +1,8 @@
 /*
  * MediReach service worker (spec §3.2 PWA, §10 SOS push).
- * Handles incoming push messages — rendering the SOS alert with sound/vibration
- * where the platform allows — and focuses the app on notification click.
+ * Handles incoming push messages and forwards SOS alerts to open app clients
+ * so they can show an in-app modal alarm. Falls back to a system notification
+ * when the app is in the background.
  */
 self.addEventListener("push", (event) => {
   let data = { title: "MediReach", body: "", url: "/app" };
@@ -9,6 +10,25 @@ self.addEventListener("push", (event) => {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch (e) {
     /* keep defaults */
+  }
+
+  const isSos = data.topic === "medireach-sos";
+
+  // Forward to every open app window so the in-app alarm modal can trigger.
+  if (isSos) {
+    event.waitUntil(
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+        clients.forEach((c) =>
+          c.postMessage({
+            type: "SOS_ALERT",
+            title: data.title,
+            body: data.body,
+            gps: (data.data && data.data.gps) || null,
+            clinicAddress: (data.data && data.data.clinicAddress) || "",
+          }),
+        );
+      }),
+    );
   }
 
   const options = {
@@ -19,11 +39,11 @@ self.addEventListener("push", (event) => {
     renotify: true,
     requireInteraction: true,
     vibrate: [300, 100, 300, 100, 300],
-    // Carry GPS + clinic address through so a future update can deep-link to a map.
     data: {
       url: (data.data && data.data.url) || data.url || "/app",
       gps: data.data ? data.data.gps : null,
       clinicAddress: data.data ? data.data.clinicAddress : "",
+      isSos,
     },
   };
 
@@ -32,16 +52,28 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/app";
+  const notifData = event.notification.data || {};
+  const url = notifData.url || "/app";
+  const isSos = notifData.isSos;
+
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ("focus" in client) {
-          client.navigate(url);
-          return client.focus();
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      const existing = clients.find((c) => c.url.includes("/app")) || clients[0];
+      if (existing) {
+        await existing.navigate(url);
+        await existing.focus();
+        if (isSos) {
+          existing.postMessage({
+            type: "SOS_ALERT",
+            title: event.notification.title,
+            body: event.notification.body,
+            gps: notifData.gps || null,
+            clinicAddress: notifData.clinicAddress || "",
+          });
         }
+        return;
       }
-      return self.clients.openWindow(url);
+      await self.clients.openWindow(url);
     }),
   );
 });
