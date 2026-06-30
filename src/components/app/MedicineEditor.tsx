@@ -132,7 +132,7 @@ function parseExpansion(expansion: string): Partial<Draft> {
 
   // 2. Generic from parentheses: "(Paracetamol 500mg)"
   const parenMatch = text.match(/\(([^)]+)\)/);
-  if (parenMatch) {
+  if (parenMatch?.[1]) {
     result.generic = parenMatch[1].trim();
     text = text.replace(parenMatch[0], "").trim();
   }
