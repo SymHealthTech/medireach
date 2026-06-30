@@ -58,13 +58,18 @@ self.addEventListener("notificationclick", (event) => {
   const isSos = notifData.isSos;
 
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
-      const existing = clients.find((c) => c.url.includes("/app")) || clients[0];
+    (async () => {
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
+      // Find any open window on this origin (avoids the unreliable client.navigate()).
+      const origin = new URL(self.location.href).origin;
+      const existing = clients.find((c) => new URL(c.url).origin === origin);
+
       if (existing) {
-        await existing.navigate(url);
-        await existing.focus();
-        if (isSos) {
-          existing.postMessage({
+        // Bring the window to the foreground; SosAlertModal will poll /api/sos/pending on focus.
+        const focused = await existing.focus();
+        if (isSos && focused) {
+          focused.postMessage({
             type: "SOS_ALERT",
             id: notifData.eventId || null,
             title: event.notification.title,
@@ -75,8 +80,10 @@ self.addEventListener("notificationclick", (event) => {
         }
         return;
       }
+
+      // No window open — open one. SosAlertModal mounts and polls /api/sos/pending.
       await self.clients.openWindow(url);
-    }),
+    })(),
   );
 });
 
