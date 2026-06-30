@@ -172,7 +172,7 @@ function parseExpansion(expansion: string): Partial<Draft> {
   // 6. Strength like "500mg", "250mcg" → generic (if none from parens)
   if (!result.generic) {
     const strengthMatch = text.match(/\b(\d+(?:\.\d+)?\s*(?:mg|mcg|ml|gm|iu|units?))\b/i);
-    if (strengthMatch) {
+    if (strengthMatch?.[1]) {
       result.generic = strengthMatch[1].trim();
       text = text.replace(strengthMatch[0], "").trim();
     }
