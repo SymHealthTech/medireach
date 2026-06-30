@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { apiGet } from "@/lib/client/api";
+import { apiGet, apiPost } from "@/lib/client/api";
 
 interface SosAlert {
   id: string | null;
@@ -169,7 +169,11 @@ export function SosAlertModal() {
   }, [alert]);
 
   function dismiss() {
-    if (alert?.id) markDismissed(alert.id);
+    if (alert?.id) {
+      markDismissed(alert.id);
+      // Persist dismissal server-side so re-opening the app doesn't re-trigger.
+      apiPost("/api/sos/dismiss", { eventId: alert.id }).catch(() => {});
+    }
     stopAlarm.current?.();
     stopAlarm.current = null;
     shownId.current = null;

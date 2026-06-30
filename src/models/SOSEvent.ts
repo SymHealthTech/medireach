@@ -20,6 +20,7 @@ export interface SOSEventDoc {
   clinicAddress: string; // fallback location text
   contactsNotified: Types.ObjectId[]; // Doctor refs
   pushDeliveryStatus: PushDeliveryStatus[];
+  dismissedBy: Types.ObjectId[]; // contacts who dismissed this alert
   resolved: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +46,7 @@ const sosEventSchema = new Schema<SOSEventDoc>(
     clinicAddress: { type: String, default: "" },
     contactsNotified: [{ type: Schema.Types.ObjectId, ref: "Doctor" }],
     pushDeliveryStatus: { type: [pushDeliveryStatusSchema], default: [] },
+    dismissedBy: [{ type: Schema.Types.ObjectId, ref: "Doctor", default: [] }],
     resolved: { type: Boolean, default: false },
   },
   { timestamps: true },

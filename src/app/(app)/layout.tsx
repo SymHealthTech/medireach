@@ -15,10 +15,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSession();
   if (!session) redirect("/login");
 
+  let doctorAppId = "";
+  let doctorClinicName = "";
+
   if (session.role === "doctor") {
     await connectToDatabase();
-    const doctor = await Doctor.findById(session.sub).select("onboardingStep").lean();
+    const doctor = await Doctor.findById(session.sub).select("onboardingStep appId clinicName").lean();
     if (!doctor || doctor.onboardingStep < 7) redirect("/signup");
+    doctorAppId = doctor.appId ?? "";
+    doctorClinicName = doctor.clinicName ?? "";
   }
 
   // A receptionist whose account was deleted / password-changed by the doctor is
@@ -28,5 +33,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     if (!(await isReceptionistSessionValid(session.sub, session.tv))) redirect("/login");
   }
 
-  return <AppShell role={session.role} name={session.name}>{children}</AppShell>;
+  return (
+    <AppShell
+      role={session.role}
+      name={session.name}
+      doctorAppId={doctorAppId}
+      doctorClinicName={doctorClinicName}
+    >
+      {children}
+    </AppShell>
+  );
 }

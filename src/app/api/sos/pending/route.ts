@@ -15,6 +15,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
     contactsNotified: myId,
     triggeredAt: { $gte: since },
     resolved: false,
+    dismissedBy: { $ne: myId },
   })
     .select("_id doctorId triggeredAt gpsCoordinate clinicAddress")
     .lean();
