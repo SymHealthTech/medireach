@@ -20,7 +20,9 @@ export const GET = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   const monthParam = searchParams.get("month"); // "YYYY-MM"
 
   if (monthParam) {
-    const [year, month] = monthParam.split("-").map(Number);
+    const parts = monthParam.split("-");
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
     // IST midnight on 1st of month expressed as UTC
     const monthStartIST = new Date(Date.UTC(year, month - 1, 1) - IST_MS);
     const monthEndIST = new Date(Date.UTC(year, month, 1) - IST_MS);
