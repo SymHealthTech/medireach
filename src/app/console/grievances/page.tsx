@@ -34,7 +34,7 @@ export default function AdminGrievancesPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Grievances</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Grievances</h1>
       {items.map((g) => (
         <Card key={g.id} className="space-y-2">
           <div className="flex items-center justify-between">

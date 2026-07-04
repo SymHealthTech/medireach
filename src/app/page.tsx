@@ -46,7 +46,7 @@ export default function HomePage() {
       {/* How it works */}
       <section className="border-y border-line bg-surface-raised">
         <div className="mx-auto max-w-6xl px-5 py-16">
-          <h2 className="text-center text-2xl font-bold text-ink">From spoken words to a sent prescription</h2>
+          <h2 className="text-center text-xl font-semibold tracking-tight text-ink">From spoken words to a sent prescription</h2>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { n: "1", t: "Receptionist registers", d: "Front desk adds the patient and their details to today's queue." },
@@ -68,7 +68,7 @@ export default function HomePage() {
 
       {/* Features */}
       <section className="mx-auto max-w-6xl px-5 py-16">
-        <h2 className="text-center text-2xl font-bold text-ink">Everything a small clinic needs</h2>
+        <h2 className="text-center text-xl font-semibold tracking-tight text-ink">Everything a small clinic needs</h2>
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {[
             { t: "Voice prescriptions", d: "Speak in your own clinical shorthand; patients get plain-language instructions." },
@@ -89,7 +89,7 @@ export default function HomePage() {
       {/* Pricing */}
       <section className="border-y border-line bg-surface-raised">
         <div className="mx-auto max-w-3xl px-5 py-16 text-center">
-          <h2 className="text-2xl font-bold text-ink">Simple, usage-based pricing</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-ink">Simple, usage-based pricing</h2>
           <p className="mt-3 text-ink-muted">
             ₹{BILLING.JOINING_FEE_INR} one-time joining fee, then ₹{BILLING.MONTHLY_MINIMUM_INR}/month
             minimum + ₹{BILLING.PER_PATIENT_INR} per patient.
@@ -109,7 +109,7 @@ export default function HomePage() {
 
       {/* Trust & safety */}
       <section className="mx-auto max-w-6xl px-5 py-16">
-        <h2 className="text-center text-2xl font-bold text-ink">Built around doctors&apos; real concerns</h2>
+        <h2 className="text-center text-xl font-semibold tracking-tight text-ink">Built around doctors&apos; real concerns</h2>
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
           {[
             { t: "Your data is protected", d: "DPDP-aligned security. Patient data is encrypted and access-controlled." },
@@ -127,7 +127,7 @@ export default function HomePage() {
       {/* FAQ */}
       <section className="border-t border-line bg-surface-raised">
         <div className="mx-auto max-w-3xl px-5 py-16">
-          <h2 className="text-center text-2xl font-bold text-ink">Questions doctors ask</h2>
+          <h2 className="text-center text-xl font-semibold tracking-tight text-ink">Questions doctors ask</h2>
           <div className="mt-8 space-y-3">
             {[
               { q: "What if I don't have a printer?", a: "You don't need one — prescriptions go to the patient on WhatsApp as an image." },

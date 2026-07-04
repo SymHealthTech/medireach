@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
+import { cn } from "@/lib/cn";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -97,19 +98,53 @@ function IconChevronDown() {
     </svg>
   );
 }
-function IconChevronRight() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
-      <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 function IconLock() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
       <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
       <path d="M4 5V4a2 2 0 1 1 4 0v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
+  );
+}
+function IconCalendar() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0">
+      <rect x="2.5" y="3.5" width="13" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M2.5 7h13M6 2.5v2M12 2.5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Small calendar tile: weekday label over the day-of-month number. */
+function DateTile({ dateStr }: { dateStr: string }) {
+  const dt = new Date(dateStr + "T00:00:00");
+  const wd = dt.toLocaleDateString("en-IN", { weekday: "short" });
+  return (
+    <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-brand/10 leading-none">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-brand/80">{wd}</span>
+      <span className="text-lg font-bold text-brand">{dt.getDate()}</span>
+    </span>
+  );
+}
+
+/**
+ * Day heading text next to the DateTile. The tile already carries the weekday +
+ * day number, so this shows a single, non-redundant label: "Today"/"Yesterday"
+ * (with the full date underneath) or just the full date for older days.
+ */
+function DayHeading({ dateStr }: { dateStr: string }) {
+  const rel = dayLabel(dateStr);
+  const isRelative = rel === "Today" || rel === "Yesterday";
+  const full = new Date(dateStr + "T00:00:00").toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block font-medium text-ink">{isRelative ? rel : full}</span>
+      {isRelative && <span className="block text-xs text-ink-muted">{full}</span>}
+    </span>
   );
 }
 
@@ -206,8 +241,8 @@ function DoctorView({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Patient records</h1>
+      <div className="border-l-4 border-brand pl-3">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Patient records</h1>
         <p className="text-sm text-ink-muted">Tap a date to view patients. Records lock 3 days after visit.</p>
       </div>
 
@@ -219,22 +254,31 @@ function DoctorView({
         <div className="space-y-3">
           {months.map((month) => {
             const isMonthOpen = openMonths.has(month.key);
+            const monthTotal = month.days.reduce((s, d) => s + d.patientCount, 0);
             return (
-              <div key={month.key} className="overflow-hidden rounded-2xl border border-line">
+              <div className="overflow-hidden rounded-2xl bg-surface-raised shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70" key={month.key}>
                 {/* Month header */}
                 <button
                   type="button"
                   onClick={() => toggleMonth(month.key)}
-                  className="flex w-full items-center justify-between bg-surface-raised px-4 py-3"
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
                 >
-                  <span className="font-semibold text-ink">{month.label}</span>
-                  <span className="text-ink-muted">
-                    {isMonthOpen ? <IconChevronDown /> : <IconChevronRight />}
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                    <IconCalendar />
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-semibold text-ink">{month.label}</span>
+                    <span className="block text-xs text-ink-muted">
+                      {monthTotal} {monthTotal === 1 ? "patient" : "patients"}
+                    </span>
+                  </span>
+                  <span className={cn("text-ink-muted transition-transform duration-200", isMonthOpen && "rotate-180")}>
+                    <IconChevronDown />
                   </span>
                 </button>
 
                 {isMonthOpen && (
-                  <div className="divide-y divide-line">
+                  <div className="divide-y divide-line border-t border-line">
                     {month.days.map((day) => {
                       const isDayOpen = openDay === day.date;
                       return (
@@ -243,60 +287,54 @@ function DoctorView({
                           <button
                             type="button"
                             onClick={() => toggleDay(day.date)}
-                            className="flex w-full items-center justify-between px-4 py-3 hover:bg-surface-raised/60 transition-colors"
+                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5"
                           >
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-medium text-ink">{dayLabel(day.date)}</span>
-                              <span className="text-xs text-ink-muted">
-                                {new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
-                                {day.patientCount} {day.patientCount === 1 ? "patient" : "patients"}
-                              </span>
-                              <span className="text-ink-muted">
-                                {isDayOpen ? <IconChevronDown /> : <IconChevronRight />}
-                              </span>
-                            </div>
+                            <DateTile dateStr={day.date} />
+                            <DayHeading dateStr={day.date} />
+                            <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
+                              {day.patientCount}
+                            </span>
+                            <span className={cn("text-ink-muted transition-transform duration-200", isDayOpen && "rotate-180")}>
+                              <IconChevronDown />
+                            </span>
                           </button>
 
                           {/* Patient list */}
                           {isDayOpen && (
-                            <div className="bg-surface px-4 pb-3 pt-1">
+                            <div className="bg-surface px-3 pb-3 pt-1">
                               {day.patientCount === 0 ? (
                                 <p className="py-4 text-center text-sm text-ink-muted">
-                                  0 patients today
+                                  0 patients this day
                                 </p>
                               ) : (
                                 <ul className="space-y-2">
                                   {day.patients.map((p, idx) => (
                                     <li
                                       key={p.id}
-                                      className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3"
+                                      className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70"
                                     >
-                                      <div className="flex items-center gap-3">
-                                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">
+                                      <button
+                                        type="button"
+                                        onClick={() => onNavigate(p.id)}
+                                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                                      >
+                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
                                           {idx + 1}
                                         </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => onNavigate(p.id)}
-                                          className="text-left"
-                                        >
-                                          <p className="font-medium text-ink hover:underline">{p.name}</p>
-                                          <p className="text-xs text-ink-muted">{p.mobile}</p>
-                                        </button>
-                                      </div>
+                                        <span className="min-w-0">
+                                          <span className="block truncate font-medium text-ink">{p.name}</span>
+                                          <span className="block text-xs text-ink-muted">{p.mobile}</span>
+                                        </span>
+                                      </button>
                                       {p.isEditLocked ? (
-                                        <span className="flex items-center gap-1 text-xs text-ink-muted">
+                                        <span className="flex shrink-0 items-center gap-1 text-xs text-ink-muted">
                                           <IconLock /> Locked
                                         </span>
                                       ) : (
                                         <button
                                           type="button"
                                           onClick={() => onNavigate(p.id)}
-                                          className="text-xs text-brand hover:underline"
+                                          className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand hover:bg-brand/10"
                                         >
                                           Edit
                                         </button>
@@ -344,8 +382,8 @@ function ReceptionistView({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-ink">Recent patients</h1>
+      <div className="border-l-4 border-brand pl-3">
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Recent patients</h1>
         <p className="text-sm text-ink-muted">Last 7 days. Contact corrections only.</p>
       </div>
 
@@ -354,7 +392,7 @@ function ReceptionistView({
           No recent patients.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line divide-y divide-line">
+        <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface-raised shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70">
           {days.map((day) => {
             const isDayOpen = openDay === day.date;
             return (
@@ -362,26 +400,20 @@ function ReceptionistView({
                 <button
                   type="button"
                   onClick={() => toggleDay(day.date)}
-                  className="flex w-full items-center justify-between px-4 py-3 hover:bg-surface-raised/60 transition-colors"
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5"
                 >
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-medium text-ink">{dayLabel(day.date)}</span>
-                    <span className="text-xs text-ink-muted">
-                      {new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
-                      {day.patientCount} {day.patientCount === 1 ? "patient" : "patients"}
-                    </span>
-                    <span className="text-ink-muted">
-                      {isDayOpen ? <IconChevronDown /> : <IconChevronRight />}
-                    </span>
-                  </div>
+                  <DateTile dateStr={day.date} />
+                  <DayHeading dateStr={day.date} />
+                  <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
+                    {day.patientCount}
+                  </span>
+                  <span className={cn("text-ink-muted transition-transform duration-200", isDayOpen && "rotate-180")}>
+                    <IconChevronDown />
+                  </span>
                 </button>
 
                 {isDayOpen && (
-                  <div className="bg-surface px-4 pb-3 pt-1">
+                  <div className="bg-surface px-3 pb-3 pt-1">
                     {day.patientCount === 0 ? (
                       <p className="py-4 text-center text-sm text-ink-muted">0 patients today</p>
                     ) : (
@@ -397,20 +429,20 @@ function ReceptionistView({
                           ) : (
                             <li
                               key={p.id}
-                              className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3"
+                              className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70"
                             >
-                              <div className="flex items-center gap-3">
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
                                   {idx + 1}
                                 </span>
-                                <div>
-                                  <p className="font-medium text-ink">{p.name}</p>
+                                <div className="min-w-0">
+                                  <p className="truncate font-medium text-ink">{p.name}</p>
                                   <p className="text-xs text-ink-muted">{p.mobile}</p>
                                 </div>
                               </div>
                               <button
                                 type="button"
-                                className="text-xs text-brand hover:underline"
+                                className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand hover:bg-brand/10"
                                 onClick={() => setEditing(p.id)}
                               >
                                 Edit contact

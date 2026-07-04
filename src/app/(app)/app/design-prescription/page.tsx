@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { TEMPLATE_PRESETS } from "@/lib/prescription/presets";
 import { renderPrescriptionImage } from "@/lib/client/prescriptionImage";
@@ -141,11 +142,11 @@ export default function DesignPrescriptionPage() {
     }
   }
 
-  if (!tpl || !clinic) return <p className="text-ink-muted">Loading…</p>;
+  if (!tpl || !clinic) return <SpinnerBlock />;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ink">Design Prescription</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Design Prescription</h1>
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_3fr]">

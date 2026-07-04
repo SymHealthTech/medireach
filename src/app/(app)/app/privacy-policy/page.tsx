@@ -17,7 +17,7 @@ export default async function AppPrivacyPolicyPage() {
       >
         ‹ Menu
       </Link>
-      <h1 className="text-2xl font-bold text-ink">{title}</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
       <div className="space-y-4">
         {body.split("\n").map((line, i) =>
           line.trim() ? (
@@ -28,7 +28,7 @@ export default async function AppPrivacyPolicyPage() {
         )}
       </div>
       <section className="mt-4">
-        <h2 className="mb-4 text-lg font-bold text-ink">Your data rights</h2>
+        <h2 className="mb-4 text-lg font-semibold text-ink">Your data rights</h2>
         <GrievanceForm />
       </section>
     </div>

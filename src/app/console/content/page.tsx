@@ -41,7 +41,7 @@ export default function AdminContentPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Content</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Content</h1>
       <div className="flex gap-2">
         {SLUGS.map((s) => (
           <button

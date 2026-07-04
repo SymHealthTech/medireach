@@ -22,14 +22,14 @@ export default function AdminDashboard() {
   const stat = (label: string, value: string | number, sub?: string) => (
     <Card>
       <p className="text-sm text-ink-muted">{label}</p>
-      <p className="text-2xl font-bold text-ink">{value}</p>
+      <p className="text-xl font-semibold tracking-tight text-ink">{value}</p>
       {sub && <p className="text-xs text-ink-muted">{sub}</p>}
     </Card>
   );
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ink">Dashboard</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Dashboard</h1>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stat("Active subscriptions", data.subscriptions.active)}

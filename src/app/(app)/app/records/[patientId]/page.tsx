@@ -130,7 +130,7 @@ export default function RecordsPage() {
 
       {patient && (
         <div>
-          <h1 className="text-2xl font-bold text-ink">{patient.name}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">{patient.name}</h1>
           <p className="text-sm text-ink-muted">
             {patient.gender}
             {patient.ageYears ? ` · ${patient.ageYears}y` : ""} · {patient.mobile}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { SpinnerBlock } from "@/components/ui/Spinner";
 import { apiGet } from "@/lib/client/api";
 import type { Role } from "@/lib/constants";
 
@@ -142,14 +143,14 @@ function EditModal({
     >
       <div className="w-full max-w-2xl rounded-2xl bg-surface py-6 shadow-xl">
         <div className="px-8">
-          <h2 className="mb-4 text-lg font-bold text-ink">Edit patient details</h2>
+          <h2 className="mb-4 text-lg font-semibold text-ink">Edit patient details</h2>
           {error && (
             <p className="mb-3 rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{error}</p>
           )}
         </div>
 
         {fetching ? (
-          <p className="px-8 py-8 text-center text-sm text-ink-muted">Loading…</p>
+          <SpinnerBlock label="Loading patient details…" />
         ) : (
           /* px-1 on this scroll container gives focus rings room on both sides */
           <div className="max-h-[75vh] overflow-y-auto px-8">
@@ -312,7 +313,8 @@ export function QueueList({
             <li
               key={e.visitId}
               className={cn(
-                "flex items-center justify-between rounded-2xl border border-line bg-surface-raised px-4 py-3",
+                "flex items-center justify-between rounded-xl bg-surface-raised px-4 py-3.5 shadow-card transition-shadow dark:shadow-card-dark dark:ring-1 dark:ring-line/70",
+                clickable && "hover:shadow-md",
                 examined && "opacity-60",
               )}
             >
@@ -324,8 +326,17 @@ export function QueueList({
                 }}
                 className={cn("min-w-0 flex-1 text-left", clickable ? "cursor-pointer" : "cursor-default")}
               >
-                <div className="flex items-start gap-2">
-                  <span className="shrink-0 text-sm font-semibold leading-6 text-ink-muted">{idx + 1}.</span>
+                <div className="flex items-start gap-3">
+                  {/* Queue position in a type-coloured circle — teal for
+                      follow-ups, amber for new patients. */}
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold",
+                      e.type === "follow-up" ? "bg-brand/12 text-brand" : "bg-action/15 text-action",
+                    )}
+                  >
+                    {idx + 1}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="truncate font-semibold text-ink">{e.name}</span>

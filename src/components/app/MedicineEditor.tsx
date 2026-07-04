@@ -12,6 +12,7 @@ import {
   MEDICINE_TIMINGS,
 } from "@/lib/constants";
 import { INDIA_BRANDS, type BrandEntry } from "@/lib/medicines-data";
+import { SelectOrAdd, saveCustomOption, type CustomOptions } from "@/components/app/SelectOrAdd";
 
 export interface MedicineRow {
   type: string;
@@ -86,32 +87,27 @@ function emptyDraft(): Draft {
   return { type: "Tab", name: "", generic: "", dose: "", frequency: "", timing: "", source: "pharmacy" };
 }
 
-// ── Custom options state ────────────────────────────────────────────────────
-
-interface CustomOptions {
-  types: string[];
-  doses: string[];
-  frequencies: string[];
-  timings: string[];
-}
-
-async function saveCustomOption(category: keyof CustomOptions, value: string) {
-  fetch("/api/medicine-options", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category, value }),
-  }).catch(() => {});
-}
-
 // ── Keyword shortcut types ──────────────────────────────────────────────────
 
+interface KeywordMedicine {
+  type?: string;
+  name?: string;
+  generic?: string;
+  dose?: string;
+  frequency?: string;
+  timing?: string;
+  source?: MedicineSource;
+}
+
 interface Keyword {
+  field?: string;
   keyword: string;
   expansion: string;
+  medicine?: KeywordMedicine;
 }
 
 type Suggestion =
-  | { kind: "keyword"; keyword: string; expansion: string }
+  | { kind: "keyword"; keyword: string; expansion: string; medicine?: KeywordMedicine }
   | { kind: "brand"; name: string; generic: string };
 
 // Parses a free-text expansion like "Tab. Paracetamol 500mg BD after food"
@@ -232,10 +228,10 @@ export function MedicineEditor({
     if (!q.trim()) { setSuggestions([]); setShowSug(false); return; }
     const lower = q.toLowerCase();
 
-    // Keywords matched by shortcut text (e.g. "p5")
+    // Keywords matched by shortcut text (e.g. "p5") — medicine field only
     const kwMatches: Suggestion[] = keywords
-      .filter((k) => k.keyword.toLowerCase().startsWith(lower))
-      .map((k) => ({ kind: "keyword" as const, keyword: k.keyword, expansion: k.expansion }));
+      .filter((k) => (k.field ?? "medicine") === "medicine" && k.keyword.toLowerCase().startsWith(lower))
+      .map((k) => ({ kind: "keyword" as const, keyword: k.keyword, expansion: k.expansion, medicine: k.medicine }));
 
     let personal: BrandEntry[] = [];
     try {
@@ -263,16 +259,33 @@ export function MedicineEditor({
 
   function selectSuggestion(s: Suggestion) {
     if (s.kind === "keyword") {
-      const parsed = parseExpansion(s.expansion);
-      setDraft((d) => ({
-        ...d,
-        type:      parsed.type      ?? d.type,
-        name:      parsed.name      ?? "",
-        generic:   parsed.generic   ?? "",
-        dose:      parsed.dose      ?? "",
-        frequency: parsed.frequency ?? "",
-        timing:    parsed.timing    ?? "",
-      }));
+      // Prefer the structured payload saved on the Keywords page; fall back to
+      // parsing the free-text expansion for older keywords with no structure.
+      const m = s.medicine;
+      const hasStructured = m && (m.name || m.type || m.dose || m.frequency || m.timing || m.generic);
+      if (hasStructured) {
+        setDraft((d) => ({
+          ...d,
+          type:      m!.type      ?? d.type,
+          name:      m!.name      ?? "",
+          generic:   m!.generic   ?? "",
+          dose:      m!.dose      ?? "",
+          frequency: m!.frequency ?? "",
+          timing:    m!.timing    ?? "",
+          source:    m!.source    ?? d.source,
+        }));
+      } else {
+        const parsed = parseExpansion(s.expansion);
+        setDraft((d) => ({
+          ...d,
+          type:      parsed.type      ?? d.type,
+          name:      parsed.name      ?? "",
+          generic:   parsed.generic   ?? "",
+          dose:      parsed.dose      ?? "",
+          frequency: parsed.frequency ?? "",
+          timing:    parsed.timing    ?? "",
+        }));
+      }
     } else {
       setDraft((d) => ({ ...d, name: s.name, generic: s.generic }));
     }
@@ -484,141 +497,5 @@ export function MedicineEditor({
         </Button>
       </div>
     </div>
-  );
-}
-
-// ── AddCustomModal ──────────────────────────────────────────────────────────
-
-function AddCustomModal({
-  label,
-  onConfirm,
-  onClose,
-}: {
-  label: string;
-  onConfirm: (v: string) => void;
-  onClose: () => void;
-}) {
-  const [val, setVal] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  function commit() {
-    const v = val.trim();
-    if (v) onConfirm(v);
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onMouseDown={onClose}
-    >
-      <div
-        className="w-72 rounded-2xl border border-line bg-surface p-5 shadow-xl"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <p className="mb-3 text-sm font-semibold text-ink">
-          Add custom {label.toLowerCase()}
-        </p>
-        <Input
-          ref={inputRef}
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") { e.preventDefault(); commit(); }
-            if (e.key === "Escape") onClose();
-          }}
-          placeholder={`Enter ${label.toLowerCase()}…`}
-        />
-        <div className="mt-3 flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={commit}
-            disabled={!val.trim()}
-          >
-            Add
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── SelectOrAdd ─────────────────────────────────────────────────────────────
-
-const SELECT_CLS =
-  "h-12 w-full rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink " +
-  "focus:outline-none focus:ring-2 focus:ring-brand";
-
-function SelectOrAdd({
-  value,
-  options,
-  onChange,
-  onCustomAdded,
-  placeholder,
-  className,
-}: {
-  value: string;
-  options: string[];
-  onChange: (v: string) => void;
-  onCustomAdded?: (v: string) => void;
-  placeholder?: string;
-  className?: string;
-}) {
-  const [showModal, setShowModal] = useState(false);
-
-  // A value is "custom-removable" only if it's not in the built-in presets
-  // (it may already be in the merged `options` list if loaded from DB).
-  const isCustom = !!value && !options.includes(value);
-
-  return (
-    <>
-      <div className={cn("flex items-center gap-1", className)}>
-        <select
-          value={value || ""}
-          onChange={(e) => {
-            if (e.target.value === "__add__") { setShowModal(true); }
-            else onChange(e.target.value);
-          }}
-          className={cn(SELECT_CLS, !value && "text-ink-muted", "flex-1 min-w-0")}
-        >
-          <option value="" disabled>
-            {placeholder ?? "Select…"}
-          </option>
-          {options.map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-          <option value="__add__">＋ Add new…</option>
-        </select>
-        {isCustom && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="shrink-0 text-lg leading-none text-ink-muted hover:text-sos"
-            aria-label={`Remove custom ${placeholder?.toLowerCase() ?? "value"}`}
-          >
-            ×
-          </button>
-        )}
-      </div>
-      {showModal && (
-        <AddCustomModal
-          label={placeholder ?? "value"}
-          onConfirm={(v) => {
-            onChange(v);
-            onCustomAdded?.(v);
-            setShowModal(false);
-          }}
-          onClose={() => setShowModal(false)}
-        />
-      )}
-    </>
   );
 }

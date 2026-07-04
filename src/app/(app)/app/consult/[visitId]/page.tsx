@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import { Textarea } from "@/components/ui/Textarea";
 import { MedicineEditor, type MedicineRow } from "@/components/app/MedicineEditor";
+import { KeywordText, type FieldKeyword } from "@/components/app/KeywordText";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Spinner } from "@/components/ui/Spinner";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
@@ -84,6 +85,13 @@ const OE_UNITS: Partial<Record<keyof OE, string>> = {
   bsl:   "mg/dL",
 };
 
+// O/E sub-fields that own their own keyword dictionary (spec §9.5).
+const OE_KW_FIELD: Partial<Record<keyof OE, string>> = {
+  pa:  "oe_pa",
+  cvs: "oe_cvs",
+  cns: "oe_cns",
+};
+
 function fmtOE(key: keyof OE, value: string | undefined): string {
   if (!value) return "";
   const unit = OE_UNITS[key];
@@ -130,6 +138,7 @@ export default function ConsultPage() {
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
   const [patientInfoOpen, setPatientInfoOpen] = useState(false);
+  const [kwByField, setKwByField] = useState<Record<string, FieldKeyword[]>>({});
 
   // Patient history modal
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -205,13 +214,57 @@ export default function ConsultPage() {
     apiGet<{ template: typeof tpl; clinic: typeof clinic }>("/api/template")
       .then((d) => { setTpl(d.template); setClinic(d.clinic); })
       .catch(() => {});
+    apiGet<{ keywords: Array<{ field?: string; keyword: string; expansion: string }> }>("/api/keywords")
+      .then((d) => {
+        const grouped: Record<string, FieldKeyword[]> = {};
+        for (const k of d.keywords) {
+          const field = k.field ?? "medicine";
+          if (field === "medicine") continue; // medicine shortcuts are handled by MedicineEditor
+          (grouped[field] ??= []).push({ keyword: k.keyword, expansion: k.expansion });
+        }
+        setKwByField(grouped);
+      })
+      .catch(() => {});
   }, [visitId]);
+
+  const kw = useCallback((field: string): FieldKeyword[] => kwByField[field] ?? [], [kwByField]);
 
   function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((f) => ({ ...f, [k]: v }));
   }
   function setOE(key: keyof OE, v: string) {
     setForm((f) => ({ ...f, oe: { ...f.oe, [key]: v } }));
+  }
+
+  function renderOeField({ key, label }: { key: keyof OE; label: string }) {
+    const kwField = OE_KW_FIELD[key];
+    return (
+      <div key={key}>
+        <FL htmlFor={`oe-${key}`}>{label}</FL>
+        {kwField ? (
+          <KeywordText
+            id={`oe-${key}`}
+            value={form.oe[key] ?? ""}
+            onChange={(v) => setOE(key, v)}
+            keywords={kw(kwField)}
+          />
+        ) : (
+          <div className="relative">
+            <Input
+              id={`oe-${key}`}
+              value={form.oe[key] ?? ""}
+              onChange={(e) => setOE(key, e.target.value)}
+              className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
+            />
+            {OE_UNITS[key] && form.oe[key] && (
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
+                {OE_UNITS[key]}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    );
   }
 
   const buildPayload = useCallback(
@@ -484,7 +537,7 @@ export default function ConsultPage() {
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-ink">{patient?.name ?? "Consultation"}</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-ink">{patient?.name ?? "Consultation"}</h1>
               {patient && (
                 <p className="text-sm text-ink-muted">
                   {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
@@ -514,7 +567,7 @@ export default function ConsultPage() {
 
             {oeEntries.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">O/E</p>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-ink-muted">O/E</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-0.5">
                   {oeEntries.map(({ key, label }) => (
                     <span key={key} className="text-sm text-ink">
@@ -532,7 +585,7 @@ export default function ConsultPage() {
 
             {activeMeds.length > 0 && (
               <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">Medicines</p>
+                <p className="mb-1 text-xs font-medium uppercase tracking-wider text-ink-muted">Medicines</p>
                 <ol className="list-decimal pl-4 space-y-0.5">
                   {activeMeds.map((m, i) => (
                     <li key={i} className="text-sm text-ink">
@@ -574,7 +627,7 @@ export default function ConsultPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-lg font-bold text-ink">
+                <p className="text-lg font-semibold text-ink">
                   {successModal === "saved" ? "Visit Saved" : "Visit Confirmed"}
                 </p>
                 <p className="mt-1 text-sm text-ink-muted">
@@ -616,7 +669,7 @@ export default function ConsultPage() {
         <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           {/* Left: patient name + queue + records */}
           <Card className="flex flex-col justify-center">
-            <h1 className="text-2xl font-bold text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
             {patient && (
               <p className="text-sm text-ink-muted">
                 {patientEdits.gender || patient.gender}
@@ -656,12 +709,21 @@ export default function ConsultPage() {
                 </p>
               </div>
               <Button
-                variant={recorder.recording ? "danger" : "brand"}
+                variant="brand"
                 size="lg"
                 onClick={handleDictation}
                 disabled={!!aiState || !recorder.supported}
+                className={recorder.recording ? "animate-pulse ring-2 ring-brand/40" : ""}
               >
-                {recorder.recording ? "■ Stop" : aiState ? "…" : "🎤 Dictate"}
+                {recorder.recording ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block h-2.5 w-2.5 rounded-full bg-white" /> Stop
+                  </span>
+                ) : aiState ? (
+                  <span className="flex items-center gap-2"><Spinner size="sm" className="border-white/40 border-t-white" /> Working…</span>
+                ) : (
+                  "🎤 Dictate"
+                )}
               </Button>
             </Card>
           ) : <div />}
@@ -686,30 +748,27 @@ export default function ConsultPage() {
 
         {/* P/H/O · F/H · Allergic To · C/O — other 3 share 50%, C/O takes 50% on desktop */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_1fr_3fr]">
-          <TextareaField label="P/H/O — Past history"               value={form.ho} onChange={(v) => setField("ho", v)} />
-          <TextareaField label="F/H — Family history"               value={form.fh} onChange={(v) => setField("fh", v)} />
+          <TextareaField label="P/H/O — Past history"               value={form.ho} onChange={(v) => setField("ho", v)} keywords={kw("ho")} />
+          <TextareaField label="F/H — Family history"               value={form.fh} onChange={(v) => setField("fh", v)} keywords={kw("fh")} />
           <div>
             <label
               htmlFor="allergic-to"
-              className={`mb-1 block text-[11px] font-semibold uppercase tracking-wide ${patientEdits.allergicTo ? "text-action" : "text-ink-muted"}`}
+              className={`mb-1 block text-xs font-medium uppercase tracking-wider ${patientEdits.allergicTo ? "text-action" : "text-ink-muted"}`}
             >
               {patientEdits.allergicTo ? "⚠ Allergic To" : "Allergic To"}
             </label>
-            <Textarea
+            <KeywordText
+              multiline
+              autoGrow
+              rows={1}
               id="allergic-to"
               value={patientEdits.allergicTo}
-              placeholder=""
-              rows={1}
+              onChange={(v) => setPatientEdits((prev) => ({ ...prev, allergicTo: v }))}
+              keywords={kw("allergic")}
               className={`py-2 resize-none overflow-hidden${patientEdits.allergicTo ? " border-action/50 bg-action/5 focus-visible:ring-action" : ""}`}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = el.scrollHeight + "px";
-              }}
-              onChange={(e) => setPatientEdits((prev) => ({ ...prev, allergicTo: e.target.value }))}
             />
           </div>
-          <TextareaField label="C/O — Complaints of present illness" value={form.co} onChange={(v) => setField("co", v)} />
+          <TextareaField label="C/O — Complaints of present illness" value={form.co} onChange={(v) => setField("co", v)} keywords={kw("co")} />
         </div>
 
         {/* O/E — On examination */}
@@ -717,46 +776,12 @@ export default function ConsultPage() {
           <p className="text-sm font-semibold text-ink">O/E — On examination</p>
           {/* First 6 fields (full ROW1) — always visible */}
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-            {OE_ROW1.map(({ key, label }) => (
-              <div key={key}>
-                <FL htmlFor={`oe-${key}`}>{label}</FL>
-                <div className="relative">
-                  <Input
-                    id={`oe-${key}`}
-                    value={form.oe[key] ?? ""}
-                    onChange={(e) => setOE(key, e.target.value)}
-                    className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
-                  />
-                  {OE_UNITS[key] && form.oe[key] && (
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
-                      {OE_UNITS[key]}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+            {OE_ROW1.map((f) => renderOeField(f))}
           </div>
           {/* Remaining fields (ROW2) — shown when expanded */}
           {oeExpanded && (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-              {OE_ROW2.map(({ key, label }) => (
-                <div key={key}>
-                  <FL htmlFor={`oe-${key}`}>{label}</FL>
-                  <div className="relative">
-                    <Input
-                      id={`oe-${key}`}
-                      value={form.oe[key] ?? ""}
-                      onChange={(e) => setOE(key, e.target.value)}
-                      className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
-                    />
-                    {OE_UNITS[key] && form.oe[key] && (
-                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
-                        {OE_UNITS[key]}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {OE_ROW2.map((f) => renderOeField(f))}
             </div>
           )}
           <button
@@ -772,16 +797,14 @@ export default function ConsultPage() {
         <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <div className="flex flex-col">
             <FL>Notes</FL>
-            <Textarea
-              value={form.notes}
-              onChange={(e) => setField("notes", e.target.value)}
-              className="py-3 resize-none overflow-hidden"
+            <KeywordText
+              multiline
+              autoGrow
               rows={1}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = el.scrollHeight + "px";
-              }}
+              value={form.notes}
+              onChange={(v) => setField("notes", v)}
+              keywords={kw("co")}
+              className="py-3 resize-none overflow-hidden"
             />
           </div>
           <div className="flex flex-col">
@@ -835,13 +858,13 @@ export default function ConsultPage() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div>
             <FL htmlFor="prov-dx">Provisional Diagnosis</FL>
-            <Input id="prov-dx" value={form.provisionalDiagnosis}
-              onChange={(e) => setField("provisionalDiagnosis", e.target.value)} />
+            <KeywordText id="prov-dx" value={form.provisionalDiagnosis}
+              onChange={(v) => setField("provisionalDiagnosis", v)} keywords={kw("diagnosis")} />
           </div>
           <div>
             <FL htmlFor="dx">Diagnosis</FL>
-            <Input id="dx" value={form.diagnosis}
-              onChange={(e) => setField("diagnosis", e.target.value)} />
+            <KeywordText id="dx" value={form.diagnosis}
+              onChange={(v) => setField("diagnosis", v)} keywords={kw("diagnosis")} />
           </div>
           <div>
             <FL htmlFor="follow-up">Follow Up</FL>
@@ -850,8 +873,8 @@ export default function ConsultPage() {
           </div>
           <div>
             <FL htmlFor="fees">Fees (₹)</FL>
-            <Input id="fees" inputMode="numeric" value={form.fees}
-              onChange={(e) => setField("fees", e.target.value)} />
+            <KeywordText id="fees" inputMode="numeric" value={form.fees}
+              onChange={(v) => setField("fees", v)} keywords={kw("fees")} />
           </div>
         </div>
 
@@ -871,8 +894,8 @@ export default function ConsultPage() {
         <Card className="space-y-3">
           <p className="text-sm font-semibold text-ink">Advice</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <TextareaField label="General Advice" value={form.adviceGeneral} onChange={(v) => setField("adviceGeneral", v)} />
-            <TextareaField label="Lab Test" value={form.adviceLabTest} onChange={(v) => setField("adviceLabTest", v)} />
+            <TextareaField label="General Advice" value={form.adviceGeneral} onChange={(v) => setField("adviceGeneral", v)} keywords={kw("advice")} />
+            <TextareaField label="Lab Test" value={form.adviceLabTest} onChange={(v) => setField("adviceLabTest", v)} keywords={kw("labTest")} />
           </div>
         </Card>
 
@@ -942,11 +965,15 @@ function PatientHistoryModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative flex w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-t-2xl bg-surface p-4 shadow-xl sm:max-h-[85vh] sm:rounded-2xl">
         <div className="flex items-center justify-between">
-          <p className="text-lg font-bold text-ink">Patient Records</p>
+          <p className="text-lg font-semibold text-ink">Patient Records</p>
           <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
         </div>
 
-        {loading && <p className="text-sm text-ink-muted">Loading…</p>}
+        {loading && (
+          <div className="flex items-center gap-2 text-sm text-ink-muted">
+            <Spinner size="sm" /> Loading…
+          </div>
+        )}
         {!loading && records?.length === 0 && (
           <p className="text-sm text-ink-muted">No previous records found.</p>
         )}
@@ -986,7 +1013,7 @@ function PatientHistoryModal({
 
                       {oeKeys.length > 0 && (
                         <div>
-                          <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">O/E</p>
+                          <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-ink-muted">O/E</p>
                           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                             {OE_FIELDS.filter(({ key }) => oeKeys.includes(key)).map(({ key, label }) => (
                               <span key={key} className="text-ink">
@@ -1002,7 +1029,7 @@ function PatientHistoryModal({
 
                       {activeMeds.length > 0 && (
                         <div>
-                          <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Medicines</p>
+                          <p className="mb-0.5 text-xs font-medium uppercase tracking-wider text-ink-muted">Medicines</p>
                           <ol className="list-decimal space-y-0.5 pl-4">
                             {activeMeds.map((m, i) => (
                               <li key={i} className="text-ink">
@@ -1059,11 +1086,15 @@ function PatientReportsModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative flex w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-t-2xl bg-surface p-4 shadow-xl sm:max-h-[85vh] sm:rounded-2xl">
         <div className="flex items-center justify-between">
-          <p className="text-lg font-bold text-ink">Previous Reports</p>
+          <p className="text-lg font-semibold text-ink">Previous Reports</p>
           <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
         </div>
 
-        {loading && <p className="text-sm text-ink-muted">Loading…</p>}
+        {loading && (
+          <div className="flex items-center gap-2 text-sm text-ink-muted">
+            <Spinner size="sm" /> Loading…
+          </div>
+        )}
         {!loading && (!reports || reports.length === 0) && (
           <p className="text-sm text-ink-muted">No previous reports found.</p>
         )}
@@ -1197,7 +1228,7 @@ function PatientInfoModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-t-2xl bg-surface p-4 shadow-xl sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-lg font-bold text-ink">Patient Information</p>
+          <p className="text-lg font-semibold text-ink">Patient Information</p>
           <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
         </div>
         <div className="space-y-3">
@@ -1276,28 +1307,37 @@ function FL({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
+      className="mb-1 block text-xs font-medium uppercase tracking-wider text-ink-muted"
     >
       {children}
     </label>
   );
 }
 
-/** Textarea field with a muted label — starts at 1 row, auto-expands. */
-function TextareaField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+/** Textarea field with a muted label — starts at 1 row, auto-expands. When
+ *  `keywords` are supplied the field also expands the doctor's shortcuts. */
+function TextareaField({
+  label,
+  value,
+  onChange,
+  keywords = [],
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  keywords?: FieldKeyword[];
+}) {
   return (
     <div>
       <FL>{label}</FL>
-      <Textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="py-2 resize-none overflow-hidden"
+      <KeywordText
+        multiline
+        autoGrow
         rows={1}
-        onInput={(e) => {
-          const el = e.currentTarget;
-          el.style.height = "auto";
-          el.style.height = el.scrollHeight + "px";
-        }}
+        value={value}
+        onChange={onChange}
+        keywords={keywords}
+        className="py-2 resize-none overflow-hidden"
       />
     </div>
   );
@@ -1306,7 +1346,7 @@ function TextareaField({ label, value, onChange }: { label: string; value: strin
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">{label}</p>
       <p className="text-sm text-ink whitespace-pre-wrap">{value}</p>
     </div>
   );
@@ -1315,7 +1355,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 function HistoryRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">{label}</p>
       <p className="text-sm text-ink whitespace-pre-wrap">{value}</p>
     </div>
   );

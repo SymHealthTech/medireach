@@ -281,7 +281,7 @@ export default function RevenuePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ink">Revenue</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Revenue</h1>
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl bg-line/30 p-1">
@@ -318,13 +318,13 @@ export default function RevenuePage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <Card className="space-y-0.5 bg-brand/5 border-brand/20">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand/70">Today</p>
-                <p className="text-2xl font-bold text-brand">{fmt(todayTotal)}</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-brand/70">Today</p>
+                <p className="text-xl font-semibold tracking-tight text-brand">{fmt(todayTotal)}</p>
                 <p className="text-xs text-ink-muted">{todayCount} patient{todayCount !== 1 ? "s" : ""}</p>
               </Card>
               <Card className="space-y-0.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">This Month</p>
-                <p className="text-2xl font-bold text-ink">{fmt(thisMonthTotal)}</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">This Month</p>
+                <p className="text-xl font-semibold tracking-tight text-ink">{fmt(thisMonthTotal)}</p>
                 <p className="text-xs text-ink-muted">{thisMonthCount} patient{thisMonthCount !== 1 ? "s" : ""}</p>
               </Card>
             </div>
@@ -361,7 +361,7 @@ export default function RevenuePage() {
                         <p className="text-xs text-ink-muted">{m.count} patient{m.count !== 1 ? "s" : ""}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <p className="text-lg font-bold text-brand">{fmt(m.total)}</p>
+                        <p className="text-lg font-semibold text-brand">{fmt(m.total)}</p>
                         <span
                           className={`text-lg text-ink-muted transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
                         >
@@ -652,7 +652,7 @@ export default function RevenuePage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <p className="text-lg font-bold text-action">{fmt(em.total)}</p>
+                        <p className="text-lg font-semibold text-action">{fmt(em.total)}</p>
                         <span
                           className={`text-lg text-ink-muted transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
                         >
@@ -764,7 +764,7 @@ export default function RevenuePage() {
           ) : (
             <>
               {/* Column headers */}
-              <div className="grid grid-cols-4 gap-1 px-4 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+              <div className="grid grid-cols-4 gap-1 px-4 text-xs font-medium uppercase tracking-wider text-ink-muted">
                 <div>Month</div>
                 <div className="text-right text-brand">Income</div>
                 <div className="text-right text-action">Expenses</div>
@@ -825,17 +825,17 @@ export default function RevenuePage() {
 
               {/* Summary card */}
               <Card className="space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                <p className="text-xs font-medium uppercase tracking-wider text-ink-muted">
                   Overall Summary
                 </p>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="rounded-xl bg-brand/10 px-3 py-3 text-center">
                     <p className="text-xs font-medium text-brand mb-1">Total Income</p>
-                    <p className="text-lg font-bold text-brand">{fmt(grandInc)}</p>
+                    <p className="text-lg font-semibold text-brand">{fmt(grandInc)}</p>
                   </div>
                   <div className="rounded-xl bg-action/10 px-3 py-3 text-center">
                     <p className="text-xs font-medium text-action mb-1">Total Expenses</p>
-                    <p className="text-lg font-bold text-action">{fmt(grandExp)}</p>
+                    <p className="text-lg font-semibold text-action">{fmt(grandExp)}</p>
                   </div>
                   <div
                     className={`rounded-xl px-3 py-3 text-center ${grandNet >= 0 ? "bg-success/10" : "bg-sos/10"}`}
@@ -843,7 +843,7 @@ export default function RevenuePage() {
                     <p className={`text-xs font-medium mb-1 ${grandNet >= 0 ? "text-success" : "text-sos"}`}>
                       Net Income
                     </p>
-                    <p className={`text-lg font-bold ${grandNet >= 0 ? "text-success" : "text-sos"}`}>
+                    <p className={`text-lg font-semibold ${grandNet >= 0 ? "text-success" : "text-sos"}`}>
                       {grandNet >= 0 ? fmt(grandNet) : `−${fmt(Math.abs(grandNet))}`}
                     </p>
                   </div>

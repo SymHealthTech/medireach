@@ -48,7 +48,7 @@ export default function AdminDoctorsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Doctors</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Doctors</h1>
 
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (

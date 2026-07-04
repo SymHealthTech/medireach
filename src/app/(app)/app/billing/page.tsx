@@ -99,7 +99,7 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-ink">Billing</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Billing</h1>
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
 
       {summary.accountStatus === "paused" && (

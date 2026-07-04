@@ -506,7 +506,7 @@ export default function RecordEditPage() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setReportsOpen(false)} />
           <div className="relative flex w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-t-2xl bg-surface p-4 shadow-xl sm:max-h-[85vh] sm:rounded-2xl">
             <div className="flex items-center justify-between">
-              <p className="text-lg font-bold text-ink">Previous Reports</p>
+              <p className="text-lg font-semibold text-ink">Previous Reports</p>
               <button onClick={() => setReportsOpen(false)} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
             </div>
             {reportsLoading && <p className="text-sm text-ink-muted">Loading…</p>}
@@ -565,7 +565,7 @@ function FL({ htmlFor, children }: { htmlFor?: string; children: React.ReactNode
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-ink-muted"
+      className="mb-1 block text-xs font-medium uppercase tracking-wider text-ink-muted"
     >
       {children}
     </label>

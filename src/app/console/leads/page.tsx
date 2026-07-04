@@ -35,7 +35,7 @@ export default function AdminLeadsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Leads</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Leads</h1>
       {leads.map((l) => (
         <Card key={l.id} className="flex flex-wrap items-center justify-between gap-3">
           <div>

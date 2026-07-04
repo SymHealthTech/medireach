@@ -108,7 +108,7 @@ export default function WhatsappDefaultPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">WhatsApp delivery default</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">WhatsApp delivery default</h1>
 
       {/* ── Delivery target ─────────────────────────────────── */}
       <Card className="space-y-4">

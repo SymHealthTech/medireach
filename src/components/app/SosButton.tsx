@@ -69,12 +69,17 @@ export function SosButton() {
 
   return (
     <>
+      {/*
+       * SOS is the only solid-red control in the app (build-prompt): a compact,
+       * circular red icon button that lives in the header next to the theme
+       * toggle. Distinct (red + circular) without floating over other controls.
+       */}
       <button
         type="button"
         onClick={() => setPhase("confirm")}
         aria-label="Emergency SOS"
         title="Emergency SOS"
-        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-line text-ink-muted hover:border-sos hover:text-sos"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-sos text-white shadow-[0_2px_6px_rgba(230,57,70,0.35)] transition-transform duration-150 ease-out hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sos focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9-4-0.7-7-4.6-7-9V6l7-3z" strokeLinejoin="round" />
@@ -94,7 +99,7 @@ export function SosButton() {
                       <path d="M12 3l7 3v5c0 4.4-3 8.3-7 9-4-0.7-7-4.6-7-9V6l7-3z" strokeLinejoin="round" />
                     </svg>
                   </div>
-                  <h2 className="text-lg font-bold text-ink">Send SOS Alert?</h2>
+                  <h2 className="text-lg font-semibold text-ink">Send SOS Alert?</h2>
                   <p className="text-sm text-ink-muted">
                     This will alert your emergency contacts with your current location. Only proceed if you genuinely need help.
                   </p>
@@ -117,9 +122,9 @@ export function SosButton() {
               {phase === "counting" && (
                 <>
                   <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sos/15 text-sos">
-                    <span className="text-2xl font-bold">{count}</span>
+                    <span className="text-xl font-semibold tracking-tight">{count}</span>
                   </div>
-                  <h2 className="text-lg font-bold text-ink">Sending SOS alert…</h2>
+                  <h2 className="text-lg font-semibold text-ink">Sending SOS alert…</h2>
                   <p className="text-sm text-ink-muted">
                     Your emergency contacts will be alerted with your location.
                   </p>

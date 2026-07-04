@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoWordmark } from "@/components/brand/Logo";
@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SosButton } from "@/components/app/SosButton";
 import { SosAlertModal } from "@/components/app/SosAlertModal";
 import { LogoutButton } from "@/components/app/LogoutButton";
-import { DOCTOR_MENU_ITEMS } from "@/components/app/DoctorMenu";
+import { DOCTOR_MENU_ITEMS, DOCTOR_MENU_MORE_ITEMS } from "@/components/app/DoctorMenu";
 import { RECEPTIONIST_MENU_ITEMS } from "@/components/app/ReceptionistMenu";
 import { ReceptionistProfileCard } from "@/components/app/ReceptionistProfileCard";
 import { DoctorProfileCard } from "@/components/app/DoctorProfileCard";
@@ -36,12 +36,15 @@ const RECEPTIONIST_NAV: NavItem[] = [
 
 export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", children }: { role: Role; name: string; doctorAppId?: string; doctorClinicName?: string; children: React.ReactNode }) {
   const pathname = usePathname();
+  const [showMore, setShowMore] = useState(false);
   const nav = role === "receptionist" ? RECEPTIONIST_NAV : DOCTOR_NAV;
   // Primary nav items (Today + Records) — Menu is replaced by inline items on desktop
   const primaryNav = nav.filter((item) => item.href !== "/app/menu");
   const allMenuItems = role === "receptionist" ? RECEPTIONIST_MENU_ITEMS : DOCTOR_MENU_ITEMS;
   const primaryHrefs = new Set(primaryNav.map((n) => n.href));
   const menuItems = allMenuItems.filter((item) => !primaryHrefs.has(item.href));
+  // Secondary items collapsed behind "More" (doctor only)
+  const moreItems = role === "doctor" ? DOCTOR_MENU_MORE_ITEMS : [];
 
   useEffect(() => {
     registerServiceWorker();
@@ -109,6 +112,40 @@ export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", 
                   </Link>
                 );
               })}
+
+              {/* Secondary items behind "More" */}
+              {moreItems.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowMore((v) => !v)}
+                    aria-expanded={showMore}
+                    className="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+                  >
+                    {showMore ? "Show less" : "More"}
+                    <span aria-hidden>{showMore ? "⌃" : "⌄"}</span>
+                  </button>
+
+                  {showMore &&
+                    moreItems.map((item) => {
+                      const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                            active
+                              ? "bg-brand/10 text-brand"
+                              : "text-ink-muted hover:bg-surface hover:text-ink",
+                          )}
+                        >
+                          {item.label}
+                        </Link>
+                      );
+                    })}
+                </>
+              )}
             </div>
 
             <div className="mt-auto p-4 border-t border-line space-y-3">

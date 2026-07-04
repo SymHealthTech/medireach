@@ -22,7 +22,7 @@ export default function AdminSponsorsPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Sponsors</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Sponsors</h1>
       {sponsors.map((s) => (
         <Card key={s.id} className="flex items-center justify-between">
           <div>

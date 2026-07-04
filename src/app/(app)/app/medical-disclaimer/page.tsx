@@ -16,7 +16,7 @@ export default async function AppMedicalDisclaimerPage() {
       >
         ‹ Menu
       </Link>
-      <h1 className="text-2xl font-bold text-ink">{title}</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
       <div className="space-y-4">
         {body.split("\n").map((line, i) =>
           line.trim() ? (

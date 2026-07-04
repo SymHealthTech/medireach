@@ -96,3 +96,29 @@ export const MEDICINE_TIMINGS = [
   "Before dinner", "After dinner",
   "Empty stomach", "At bedtime", "With water", "With milk",
 ] as const;
+
+/**
+ * Keyword categories (Edit Keyword — spec §9.5). Each consultation field owns
+ * its own shorthand dictionary so a shortcut expands into the right field.
+ * `medicine` shortcuts expand into every medicine sub-field; the rest expand
+ * into free text. The order here drives the display order on the Keywords page.
+ * `targets` lists the consult-page field(s) that consume this category so a
+ * single dictionary can back combined fields (e.g. C/O + Notes).
+ */
+export const KEYWORD_FIELDS = [
+  { key: "medicine",  label: "Medicines",           short: "Rx",    hint: "Expands into every medicine field — type, contains, dose, frequency, timing, source." },
+  { key: "ho",        label: "Past History",        short: "P/H/O", hint: "Personal / past medical history." },
+  { key: "fh",        label: "Family History",      short: "F/H",   hint: "Relevant family history." },
+  { key: "allergic",  label: "Allergic To",         short: "⚠",     hint: "Known drug or other allergies." },
+  { key: "co",        label: "Complaints & Notes",  short: "C/O",   hint: "Presenting complaints and free notes." },
+  { key: "oe_pa",     label: "O/E — P/A",           short: "P/A",   hint: "On examination · per abdomen." },
+  { key: "oe_cvs",    label: "O/E — CVS",           short: "CVS",   hint: "On examination · cardiovascular system." },
+  { key: "oe_cns",    label: "O/E — CNS",           short: "CNS",   hint: "On examination · central nervous system." },
+  { key: "diagnosis", label: "Diagnosis",           short: "Dx",    hint: "Provisional and final diagnosis." },
+  { key: "fees",      label: "Fees",                short: "₹",     hint: "Consultation fee shortcuts." },
+  { key: "advice",    label: "Advice",              short: "Adv",   hint: "General advice given to the patient." },
+  { key: "labTest",   label: "Lab Test",            short: "Lab",   hint: "Investigations / lab tests." },
+] as const;
+
+export type KeywordField = (typeof KEYWORD_FIELDS)[number]["key"];
+export const KEYWORD_FIELD_KEYS = KEYWORD_FIELDS.map((f) => f.key) as [KeywordField, ...KeywordField[]];

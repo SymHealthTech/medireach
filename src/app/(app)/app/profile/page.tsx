@@ -81,7 +81,7 @@ export default function ProfilePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-ink">Profile</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Profile</h1>
         <p className="text-sm text-ink-muted">ID: {form.appId ?? "—"}</p>
       </div>
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}

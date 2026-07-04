@@ -21,7 +21,7 @@ export default function AdminAuditPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold text-ink">Audit log</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Audit log</h1>
       <Card className="divide-y divide-line p-0">
         {entries.map((e) => (
           <div key={e.id} className="flex items-center justify-between px-4 py-2.5 text-sm">

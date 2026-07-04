@@ -1,5 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+/**
+ * Inter is the app's typeface (build-prompt typography spec). Loaded via
+ * next/font so it self-hosts (no external request at runtime) and exposes a
+ * `--font-sans` CSS variable that Tailwind's `font-sans` family resolves to.
+ */
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 /**
  * Root layout. The inline theme script applies the persisted dark/light choice
@@ -39,7 +51,7 @@ const themeScript = `
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

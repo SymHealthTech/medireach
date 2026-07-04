@@ -261,7 +261,7 @@ export default function RegisterPage() {
 
   return (
     <div className="space-y-4 lg:mx-8">
-      <h1 className="text-2xl font-bold text-ink">Register patient</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Register patient</h1>
 
       {error && (
         <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">
@@ -275,7 +275,7 @@ export default function RegisterPage() {
           <div className="w-full max-w-md rounded-2xl bg-surface shadow-xl">
             <div className="border-b border-line p-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-ink">Patient already on record?</h2>
+                <h2 className="text-lg font-semibold text-ink">Patient already on record?</h2>
                 <button onClick={dismissDuplicateModal} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
               </div>
               <p className="mt-1 text-sm text-ink-muted">
@@ -331,7 +331,7 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-surface shadow-xl">
             <div className="border-b border-line p-5">
-              <h2 className="text-lg font-bold text-ink">Already in today&apos;s queue</h2>
+              <h2 className="text-lg font-semibold text-ink">Already in today&apos;s queue</h2>
               <p className="mt-1 text-sm text-ink-muted">
                 <span className="font-semibold text-ink">{existingPatientName}</span> already has a
                 new entry in today&apos;s queue. Would you like to add them as a follow-up instead?

@@ -63,7 +63,7 @@ export default function EmergencyContactsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-ink">Emergency Contacts</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Emergency Contacts</h1>
         <p className="text-sm text-ink-muted">Add up to {max} fellow doctors.</p>
       </div>
 

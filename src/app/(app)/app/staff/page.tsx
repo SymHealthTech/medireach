@@ -70,7 +70,7 @@ export default function StaffPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-ink">Staff</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Staff</h1>
         <p className="text-sm text-ink-muted">
           {existing
             ? `Receptionist login: ${existing.username}. Type a new password below to reset her access.`

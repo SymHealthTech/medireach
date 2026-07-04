@@ -21,7 +21,7 @@ export function DoneStep({ appId, onContinue }: { appId: string | null; onContin
       {appId && (
         <div className="rounded-xl bg-surface p-4">
           <p className="text-xs uppercase tracking-wide text-ink-muted">Your MediReach ID</p>
-          <p className="text-2xl font-bold text-brand">{appId}</p>
+          <p className="text-xl font-semibold tracking-tight text-brand">{appId}</p>
           <p className="mt-1 text-xs text-ink-muted">Keep this handy for any support queries.</p>
         </div>
       )}

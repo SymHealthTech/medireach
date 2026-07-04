@@ -45,7 +45,7 @@ export function LeadForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-line bg-surface-raised p-6">
-      <h3 className="text-lg font-bold text-ink">Get a free demo</h3>
+      <h3 className="text-lg font-semibold text-ink">Get a free demo</h3>
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{error}</p>}
       <div>
         <Label htmlFor="ln">Your name</Label>
