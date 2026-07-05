@@ -13,7 +13,7 @@ import { createSignedUpload } from "@/lib/integrations/cloudinary";
  * Doctor-only: receptionists never upload (clinical, §5.2).
  */
 const schema = z.object({
-  purpose: z.enum(["verification", "profile-photo", "report"]),
+  purpose: z.enum(["verification", "profile-photo", "report", "card-cover"]),
 });
 
 export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {

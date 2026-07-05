@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input, Label } from "@/components/ui/Input";
+import { Input, Label, Select } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
+import { GST_STATE_CODES } from "@/lib/constants";
 
 interface Profile {
   appId: string | null;
@@ -15,6 +16,7 @@ interface Profile {
   degree: string;
   clinicName: string;
   clinicAddress: string;
+  clinicStateCode: string;
   clinicTimings: string;
 }
 
@@ -47,6 +49,7 @@ export default function ProfilePage() {
           degree: form.degree,
           clinicName: form.clinicName,
           clinicAddress: form.clinicAddress,
+          clinicStateCode: form.clinicStateCode,
           clinicTimings: form.clinicTimings,
         }),
       });
@@ -97,13 +100,37 @@ export default function ProfilePage() {
             ["degree", "Degree / qualification"],
             ["clinicName", "Clinic name"],
             ["clinicAddress", "Clinic address"],
-            ["clinicTimings", "Clinic timings"],
           ] as const).map(([key, label]) => (
             <div key={key}>
               <Label htmlFor={key}>{label}</Label>
               <Input id={key} value={form[key] as string} onChange={(e) => set(key, e.target.value)} />
             </div>
           ))}
+          <div>
+            <Label htmlFor="clinicStateCode">
+              State <span className="font-normal text-ink-muted">(for GST / invoicing)</span>
+            </Label>
+            <Select
+              id="clinicStateCode"
+              value={form.clinicStateCode ?? ""}
+              onChange={(e) => set("clinicStateCode", e.target.value)}
+            >
+              <option value="">Select state…</option>
+              {GST_STATE_CODES.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="clinicTimings">Clinic timings</Label>
+            <Input
+              id="clinicTimings"
+              value={form.clinicTimings}
+              onChange={(e) => set("clinicTimings", e.target.value)}
+            />
+          </div>
           <Button type="submit" variant="brand" size="lg" disabled={saving}>
             {saving ? "Saving…" : "Save"}
           </Button>

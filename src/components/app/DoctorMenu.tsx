@@ -22,6 +22,7 @@ export const DOCTOR_MENU_ITEMS: { href: string; label: string }[] = [
   { href: "/app/staff", label: "Staff" },
   { href: "/app/emergency-contacts", label: "Emergency Contacts" },
   { href: "/app/design-prescription", label: "Design Prescription" },
+  { href: "/app/visiting-card", label: "Digital Visiting Card" },
   { href: "/app/profile", label: "Profile" },
 ];
 

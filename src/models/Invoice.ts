@@ -20,7 +20,16 @@ export interface InvoiceDoc {
   periodStart: Date;
   periodEnd: Date;
   patientCount: number;
-  amount: number; // INR
+  amount: number; // INR — gross total (GST-inclusive when tax is enabled)
+  // GST breakup captured at generation (spec §11, India). With inclusive pricing
+  // `amount` is unchanged; these record the split for the tax invoice. All 0 when
+  // tax is disabled (taxableValue then equals amount).
+  taxRate: number; // %
+  taxableValue: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  taxInterState: boolean;
   status: InvoiceStatus;
   dueDate: Date; // = periodEnd (day 30)
   graceEndDate: Date; // day 40
@@ -42,6 +51,12 @@ const invoiceSchema = new Schema<InvoiceDoc>(
     periodEnd: { type: Date, required: true },
     patientCount: { type: Number, required: true, default: 0, min: 0 },
     amount: { type: Number, required: true, min: 0 },
+    taxRate: { type: Number, default: 0, min: 0 },
+    taxableValue: { type: Number, default: 0, min: 0 },
+    cgst: { type: Number, default: 0, min: 0 },
+    sgst: { type: Number, default: 0, min: 0 },
+    igst: { type: Number, default: 0, min: 0 },
+    taxInterState: { type: Boolean, default: true },
     status: { type: String, enum: INVOICE_STATUSES, default: "pending", index: true },
     dueDate: { type: Date, required: true },
     graceEndDate: { type: Date, required: true },

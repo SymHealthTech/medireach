@@ -93,7 +93,7 @@ function AddCustomModal({
 // ── SelectOrAdd ─────────────────────────────────────────────────────────────
 
 const SELECT_CLS =
-  "h-12 w-full rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink " +
+  "h-10 w-full rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink " +
   "focus:outline-none focus:ring-2 focus:ring-brand";
 
 export function SelectOrAdd({

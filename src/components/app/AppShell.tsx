@@ -37,6 +37,7 @@ const RECEPTIONIST_NAV: NavItem[] = [
 export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", children }: { role: Role; name: string; doctorAppId?: string; doctorClinicName?: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const [showMore, setShowMore] = useState(false);
+  const onConsult = pathname.startsWith("/app/consult/");
   const nav = role === "receptionist" ? RECEPTIONIST_NAV : DOCTOR_NAV;
   // Primary nav items (Today + Records) — Menu is replaced by inline items on desktop
   const primaryNav = nav.filter((item) => item.href !== "/app/menu");
@@ -60,7 +61,15 @@ export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", 
           <Link href="/app/queue">
             <LogoWordmark className="text-lg" />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {onConsult && (
+              <Link
+                href="/app/queue"
+                className="hidden items-center gap-1 text-sm font-medium text-ink-muted transition-colors hover:text-ink lg:flex"
+              >
+                ← Queue
+              </Link>
+            )}
             {role === "doctor" && <SosButton />}
             <ThemeToggle />
           </div>
@@ -126,24 +135,28 @@ export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", 
                     <span aria-hidden>{showMore ? "⌃" : "⌄"}</span>
                   </button>
 
-                  {showMore &&
-                    moreItems.map((item) => {
-                      const active = pathname === item.href || pathname.startsWith(item.href + "/");
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                            active
-                              ? "bg-brand/10 text-brand"
-                              : "text-ink-muted hover:bg-surface hover:text-ink",
-                          )}
-                        >
-                          {item.label}
-                        </Link>
-                      );
-                    })}
+                  {showMore && (
+                    <>
+                      {moreItems.map((item) => {
+                        const active = pathname === item.href || pathname.startsWith(item.href + "/");
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                              active
+                                ? "bg-brand/10 text-brand"
+                                : "text-ink-muted hover:bg-surface hover:text-ink",
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        );
+                      })}
+                      <LogoutButton />
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -153,9 +166,11 @@ export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", 
                 <DoctorProfileCard name={name} appId={doctorAppId} clinicName={doctorClinicName} />
               )}
               {role === "receptionist" && (
-                <ReceptionistProfileCard name={name} compact />
+                <>
+                  <ReceptionistProfileCard name={name} compact />
+                  <LogoutButton />
+                </>
               )}
-              <LogoutButton />
             </div>
           </nav>
         </aside>

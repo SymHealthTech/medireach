@@ -247,6 +247,7 @@ export default function ConsultPage() {
             value={form.oe[key] ?? ""}
             onChange={(v) => setOE(key, v)}
             keywords={kw(kwField)}
+            className="h-10"
           />
         ) : (
           <div className="relative">
@@ -254,7 +255,7 @@ export default function ConsultPage() {
               id={`oe-${key}`}
               value={form.oe[key] ?? ""}
               onChange={(e) => setOE(key, e.target.value)}
-              className={OE_UNITS[key] && form.oe[key] ? "pr-12" : ""}
+              className={`h-10${OE_UNITS[key] && form.oe[key] ? " pr-12" : ""}`}
             />
             {OE_UNITS[key] && form.oe[key] && (
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-muted">
@@ -668,20 +669,19 @@ export default function ConsultPage() {
         {/* Header + Dictate — 50/50 on desktop */}
         <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           {/* Left: patient name + queue + records */}
-          <Card className="flex flex-col justify-center">
-            <h1 className="text-xl font-semibold tracking-tight text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
-            {patient && (
-              <p className="text-sm text-ink-muted">
-                {patientEdits.gender || patient.gender}
-                {(patientEdits.ageYears || patient.ageYears) ? ` · ${patientEdits.ageYears || patient.ageYears}y` : ""}
-              </p>
-            )}
-            <div className="mt-2 flex items-center justify-between">
-              <button onClick={() => router.push("/app/queue")} className="text-sm text-ink-muted hover:underline">
-                ← Queue
-              </button>
+          <Card className="flex flex-col justify-center gap-2 p-4 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
+              {patient && (
+                <p className="text-sm text-ink-muted">
+                  {patientEdits.gender || patient.gender}
+                  {(patientEdits.ageYears || patient.ageYears) ? ` · ${patientEdits.ageYears || patient.ageYears}y` : ""}
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
               {patientId && (
-                <div className="flex items-center gap-2">
+                <>
                   <button
                     onClick={() => setPatientInfoOpen(true)}
                     className="rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-line/30"
@@ -694,14 +694,17 @@ export default function ConsultPage() {
                   >
                     Records
                   </button>
-                </div>
+                </>
               )}
+              <button onClick={() => router.push("/app/queue")} className="ml-auto text-sm text-ink-muted hover:underline lg:hidden">
+                ← Queue
+              </button>
             </div>
           </Card>
 
           {/* Right: dictate card */}
           {status === "draft" ? (
-            <Card className="flex items-center justify-between gap-3">
+            <Card className="flex items-center justify-between gap-3 p-4">
               <div>
                 <p className="font-semibold text-ink">Dictate the consultation</p>
                 <p className="text-sm text-ink-muted">
@@ -713,7 +716,7 @@ export default function ConsultPage() {
                 size="lg"
                 onClick={handleDictation}
                 disabled={!!aiState || !recorder.supported}
-                className={recorder.recording ? "animate-pulse ring-2 ring-brand/40" : ""}
+                className={`lg:h-full ${recorder.recording ? "animate-pulse ring-2 ring-brand/40" : ""}`}
               >
                 {recorder.recording ? (
                   <span className="flex items-center gap-2">
@@ -804,7 +807,7 @@ export default function ConsultPage() {
               value={form.notes}
               onChange={(v) => setField("notes", v)}
               keywords={kw("co")}
-              className="py-3 resize-none overflow-hidden"
+              className="py-2 resize-none overflow-hidden"
             />
           </div>
           <div className="flex flex-col">
@@ -908,7 +911,7 @@ export default function ConsultPage() {
                 id="rx-lang"
                 value={form.prescriptionLanguage}
                 onChange={(e) => setField("prescriptionLanguage", e.target.value as FormState["prescriptionLanguage"])}
-                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
+                className="h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
               >
                 <option value="english">English</option>
                 <option value="hindi">Hindi</option>

@@ -65,6 +65,70 @@ export const BILLING = {
   GRACE_END_DAY: 40,
 } as const;
 
+/**
+ * GST / tax configuration (India). Pricing is INCLUSIVE — the listed prices
+ * (₹299 minimum, ₹1.5/patient) already include GST, so enabling tax does NOT
+ * change what a doctor pays; the invoice simply back-computes and shows the tax
+ * component. Keep ENABLED=false until the company is GST-registered — collecting
+ * GST without a GSTIN is non-compliant. MediReach sells a SaaS subscription to
+ * doctors (SAC 9983, 18%); the healthcare exemption does NOT apply to it.
+ */
+export const TAX = {
+  ENABLED: false, // flip on only after GST registration
+  PRICING: "inclusive" as const,
+  RATE: 18, // % — software/SaaS service
+  SAC: "9983", // Services Accounting Code
+  SELLER_LEGAL_NAME: "MediReach",
+  SELLER_GSTIN: "", // fill in on registration, e.g. "27ABCDE1234F1Z5"
+  SELLER_STATE_CODE: "", // 2-digit GST state code, for intra/inter-state split
+} as const;
+
+/**
+ * GST state/UT codes (India) — the 2-digit code prefixing every GSTIN. Used to
+ * determine intra-state (CGST+SGST) vs inter-state (IGST) supply by comparing
+ * the clinic's state against TAX.SELLER_STATE_CODE. Order is by code.
+ */
+export const GST_STATE_CODES = [
+  { code: "01", name: "Jammu & Kashmir" },
+  { code: "02", name: "Himachal Pradesh" },
+  { code: "03", name: "Punjab" },
+  { code: "04", name: "Chandigarh" },
+  { code: "05", name: "Uttarakhand" },
+  { code: "06", name: "Haryana" },
+  { code: "07", name: "Delhi" },
+  { code: "08", name: "Rajasthan" },
+  { code: "09", name: "Uttar Pradesh" },
+  { code: "10", name: "Bihar" },
+  { code: "11", name: "Sikkim" },
+  { code: "12", name: "Arunachal Pradesh" },
+  { code: "13", name: "Nagaland" },
+  { code: "14", name: "Manipur" },
+  { code: "15", name: "Mizoram" },
+  { code: "16", name: "Tripura" },
+  { code: "17", name: "Meghalaya" },
+  { code: "18", name: "Assam" },
+  { code: "19", name: "West Bengal" },
+  { code: "20", name: "Jharkhand" },
+  { code: "21", name: "Odisha" },
+  { code: "22", name: "Chhattisgarh" },
+  { code: "23", name: "Madhya Pradesh" },
+  { code: "24", name: "Gujarat" },
+  { code: "26", name: "Dadra & Nagar Haveli and Daman & Diu" },
+  { code: "27", name: "Maharashtra" },
+  { code: "29", name: "Karnataka" },
+  { code: "30", name: "Goa" },
+  { code: "31", name: "Lakshadweep" },
+  { code: "32", name: "Kerala" },
+  { code: "33", name: "Tamil Nadu" },
+  { code: "34", name: "Puducherry" },
+  { code: "35", name: "Andaman & Nicobar Islands" },
+  { code: "36", name: "Telangana" },
+  { code: "37", name: "Andhra Pradesh" },
+  { code: "38", name: "Ladakh" },
+] as const;
+
+export const GST_STATE_CODE_SET: ReadonlySet<string> = new Set(GST_STATE_CODES.map((s) => s.code));
+
 /** Record lifecycle — spec §9.2, §9.3. */
 export const RECORD = {
   EDIT_LOCK_DAYS: 3,

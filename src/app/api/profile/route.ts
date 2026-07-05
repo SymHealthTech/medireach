@@ -4,6 +4,7 @@ import { route, Roles } from "@/lib/api/guard";
 import { parseBody } from "@/lib/api/validate";
 import { loadDoctor } from "@/lib/api/account";
 import { audit } from "@/lib/api/audit";
+import { GST_STATE_CODE_SET } from "@/lib/constants";
 
 /**
  * Doctor profile (spec §12). GET returns the editable profile + the in-app ID
@@ -23,6 +24,7 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
     degree: doctor.degree,
     clinicName: doctor.clinicName,
     clinicAddress: doctor.clinicAddress,
+    clinicStateCode: doctor.clinicStateCode ?? "",
     clinicTimings: doctor.clinicTimings,
     themePreference: doctor.themePreference,
     defaultWhatsappTarget: doctor.defaultWhatsappTarget,
@@ -40,6 +42,11 @@ const updateSchema = z.object({
   degree: z.string().trim().max(120).optional(),
   clinicName: z.string().trim().max(160).optional(),
   clinicAddress: z.string().trim().max(400).optional(),
+  clinicStateCode: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || GST_STATE_CODE_SET.has(v), "Invalid state.")
+    .optional(),
   clinicTimings: z.string().trim().max(160).optional(),
   photoPublicId: z.string().trim().optional(),
   themePreference: z.enum(["light", "dark"]).optional(),

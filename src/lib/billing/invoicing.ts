@@ -5,6 +5,7 @@ import { Visit } from "@/models/Visit";
 import { Sponsor } from "@/models/Sponsor";
 import { Doctor } from "@/models/Doctor";
 import { computeCycleCharge } from "@/lib/billing/charge";
+import { computeInclusiveTax, isInterStateSupply } from "@/lib/billing/tax";
 import type { CycleInfo } from "@/lib/billing/cycle";
 
 /**
@@ -27,6 +28,12 @@ export async function generateInvoiceForCycle(
     confirmedAt: { $gte: cycle.periodStart, $lt: cycle.periodEnd },
   });
   const amount = computeCycleCharge(patientCount);
+  // Inclusive pricing: `amount` is the gross total; record the GST split (all
+  // zero while tax is disabled). IGST vs CGST/SGST from the clinic's state.
+  const doctorState = await Doctor.findById(doctorId).select("clinicStateCode").lean();
+  const tax = computeInclusiveTax(amount, {
+    interState: isInterStateSupply(doctorState?.clinicStateCode),
+  });
 
   const sponsor = await Sponsor.findOne({ doctorId, paymentResponsibility: "active" }).lean();
 
@@ -38,6 +45,12 @@ export async function generateInvoiceForCycle(
       periodEnd: cycle.periodEnd,
       patientCount,
       amount,
+      taxRate: tax.rate,
+      taxableValue: tax.taxableValue,
+      cgst: tax.cgst,
+      sgst: tax.sgst,
+      igst: tax.igst,
+      taxInterState: tax.interState,
       status: "pending",
       dueDate: cycle.dueDate,
       graceEndDate: cycle.graceEndDate,

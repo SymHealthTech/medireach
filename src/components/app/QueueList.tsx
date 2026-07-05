@@ -327,14 +327,10 @@ export function QueueList({
                 className={cn("min-w-0 flex-1 text-left", clickable ? "cursor-pointer" : "cursor-default")}
               >
                 <div className="flex items-start gap-3">
-                  {/* Queue position in a type-coloured circle — teal for
-                      follow-ups, amber for new patients. */}
-                  <span
-                    className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold",
-                      e.type === "follow-up" ? "bg-brand/12 text-brand" : "bg-action/15 text-action",
-                    )}
-                  >
+                  {/* Queue position — same circle and number colour for new
+                      and follow-up patients; the pill badge below marks the
+                      type. */}
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/15 text-base font-bold text-brand">
                     {idx + 1}
                   </span>
                   <div className="min-w-0 flex-1">

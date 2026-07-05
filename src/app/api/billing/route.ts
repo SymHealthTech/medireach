@@ -4,8 +4,10 @@ import { requireDoctorId } from "@/lib/api/context";
 import { loadDoctor } from "@/lib/api/account";
 import { Invoice } from "@/models/Invoice";
 import { Visit } from "@/models/Visit";
+import { Sponsor } from "@/models/Sponsor";
 import { currentCycle } from "@/lib/billing/cycle";
 import { computeCycleCharge } from "@/lib/billing/charge";
+import { computeInclusiveTax, isInterStateSupply } from "@/lib/billing/tax";
 import { BILLING } from "@/lib/constants";
 
 /**
@@ -27,8 +29,19 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
 
   const invoices = await Invoice.find({ doctorId }).sort({ cycleNumber: -1 }).limit(24).lean();
 
+  const sponsor = await Sponsor.findOne({ doctorId, paymentResponsibility: "active" }).lean();
+  const interState = isInterStateSupply(doctor.clinicStateCode);
+
   return jsonOk({
     accountStatus: doctor.accountStatus,
+    clinic: {
+      doctorName: doctor.name,
+      clinicName: doctor.clinicName,
+      clinicAddress: doctor.clinicAddress,
+      appId: doctor.appId,
+      mobile: doctor.mobile,
+      email: doctor.email,
+    },
     plan: {
       monthlyMinimum: BILLING.MONTHLY_MINIMUM_INR,
       perPatient: BILLING.PER_PATIENT_INR,
@@ -41,6 +54,8 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       periodEnd: cycle.periodEnd,
       patientCountSoFar,
       projectedCharge: computeCycleCharge(patientCountSoFar),
+      payer: sponsor ? "sponsor" : "doctor",
+      tax: computeInclusiveTax(computeCycleCharge(patientCountSoFar), { interState }),
     },
     invoices: invoices.map((i) => ({
       id: String(i._id),
@@ -53,6 +68,9 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       dueDate: i.dueDate,
       graceEndDate: i.graceEndDate,
       payer: i.payer,
+      // Computed from the (inclusive) amount so the split reflects current config;
+      // matches the stored breakup while the rate is unchanged.
+      tax: computeInclusiveTax(i.amount, { interState: i.taxInterState ?? true }),
     })),
   });
 });

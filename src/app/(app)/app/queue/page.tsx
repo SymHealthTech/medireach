@@ -19,6 +19,11 @@ export default function QueuePage() {
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Preserve the list's scroll position across navigation (e.g. opening a
+  // consult and coming back) — client navigation remounts this page, so the
+  // internal scroll container would otherwise reset to the top.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRestored = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -39,13 +44,26 @@ export default function QueuePage() {
     };
   }, [load]);
 
+  // Restore the saved scroll position once, after the list first renders.
+  useEffect(() => {
+    if (!loaded || meLoading || scrollRestored.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const saved = sessionStorage.getItem("queue-scroll");
+    if (saved) el.scrollTop = Number(saved);
+    scrollRestored.current = true;
+  }, [loaded, meLoading]);
+
   const seen = entries.filter((e) => e.status === "confirmed").length;
 
   if (!loaded || meLoading) return <QueueSkeleton />;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+    // Fill the viewport below the sticky top bar so only the list scrolls.
+    // 185px = header (57) + wrapper py-6 (48) + mobile bottom nav (80);
+    // desktop drops the bottom nav → 105px.
+    <div className="flex h-[calc(100vh-185px)] flex-col gap-6 lg:h-[calc(100vh-105px)]">
+      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
         <div className="flex items-center justify-between lg:w-1/2 lg:shrink-0">
           <div className="border-l-4 border-brand pl-3">
             <h1 className="text-xl font-semibold tracking-tight text-ink">Today&apos;s patients</h1>
@@ -80,7 +98,14 @@ export default function QueuePage() {
         </div>
       </div>
 
-      {me && <QueueList entries={entries} role={me.role} onChanged={load} />}
+      {/* Only the list scrolls; -mx-1/px-1 gives shadows & focus rings room. */}
+      <div
+        ref={scrollRef}
+        onScroll={(e) => sessionStorage.setItem("queue-scroll", String(e.currentTarget.scrollTop))}
+        className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-1"
+      >
+        {me && <QueueList entries={entries} role={me.role} onChanged={load} />}
+      </div>
     </div>
   );
 }

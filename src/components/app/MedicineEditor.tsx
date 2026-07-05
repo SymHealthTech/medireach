@@ -473,7 +473,7 @@ export function MedicineEditor({
                 type="button"
                 onClick={() => setDraft((d) => ({ ...d, source: src }))}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium",
+                  "h-10 px-3 text-sm font-medium",
                   draft.source === src
                     ? "bg-brand text-brand-fg"
                     : "bg-surface-raised text-ink-muted",

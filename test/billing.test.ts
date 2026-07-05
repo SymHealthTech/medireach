@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeCycleCharge, computePerPatientTotal } from "@/lib/billing/charge";
+import { computeInclusiveTax, isInterStateSupply } from "@/lib/billing/tax";
+import { TAX } from "@/lib/constants";
 import {
   cycleByNumber,
   currentCycleNumber,
@@ -40,6 +42,45 @@ describe("computeCycleCharge (spec §11)", () => {
 
   it("never returns less than the floor and ignores negatives", () => {
     expect(computeCycleCharge(-5)).toBe(299);
+  });
+});
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+describe("computeInclusiveTax (GST, inclusive pricing)", () => {
+  it("defaults to disabled — whole amount is taxable value, no tax", () => {
+    expect(TAX.ENABLED).toBe(false); // guard: don't collect GST before registration
+    const t = computeInclusiveTax(299);
+    expect(t.enabled).toBe(false);
+    expect(t.taxableValue).toBe(299);
+    expect(t.taxAmount).toBe(0);
+    expect(t.total).toBe(299);
+  });
+
+  it("back-computes 18% IGST from an inclusive total (inter-state)", () => {
+    const t = computeInclusiveTax(299, { enabled: true, rate: 18, interState: true });
+    expect(t.total).toBe(299); // inclusive: payable is unchanged
+    expect(t.taxableValue).toBe(253.39); // 299 / 1.18
+    expect(t.taxAmount).toBe(45.61);
+    expect(t.igst).toBe(45.61);
+    expect(t.cgst).toBe(0);
+    expect(t.sgst).toBe(0);
+    expect(round2(t.taxableValue + t.taxAmount)).toBe(299);
+  });
+
+  it("splits into equal CGST + SGST intra-state", () => {
+    const t = computeInclusiveTax(354, { enabled: true, rate: 18, interState: false });
+    expect(t.igst).toBe(0);
+    expect(t.cgst).toBe(t.sgst);
+    expect(round2(t.cgst + t.sgst)).toBe(t.taxAmount);
+  });
+
+  it("determines inter- vs intra-state supply from the clinic state code", () => {
+    expect(TAX.SELLER_STATE_CODE).toBe(""); // unset until registration
+    // With no seller state configured, everything defaults to inter-state (IGST).
+    expect(isInterStateSupply("27")).toBe(true);
+    expect(isInterStateSupply("")).toBe(true);
+    expect(isInterStateSupply(undefined)).toBe(true);
   });
 });
 

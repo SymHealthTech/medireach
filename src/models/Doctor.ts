@@ -51,6 +51,7 @@ export interface DoctorDoc {
   degree: string;
   clinicName: string;
   clinicAddress: string;
+  clinicStateCode: string; // 2-digit GST state code (India) — intra/inter-state tax split
   clinicTimings: string;
   // preferences
   themePreference: "light" | "dark";
@@ -123,6 +124,7 @@ const doctorSchema = new Schema<DoctorDoc>(
     degree: { type: String, default: "" },
     clinicName: { type: String, default: "" },
     clinicAddress: { type: String, default: "" },
+    clinicStateCode: { type: String, default: "" },
     clinicTimings: { type: String, default: "" },
 
     themePreference: { type: String, enum: ["light", "dark"], default: "light" },

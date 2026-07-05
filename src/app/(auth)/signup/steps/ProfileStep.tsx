@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Input, Label } from "@/components/ui/Input";
+import { Input, Label, Select } from "@/components/ui/Input";
 import { apiGet, apiPost } from "@/lib/client/api";
+import { GST_STATE_CODES } from "@/lib/constants";
 
 export function ProfileStep({ onDone }: { onDone: () => void }) {
   const [form, setForm] = useState({
@@ -12,6 +13,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
     degree: "",
     clinicName: "",
     clinicAddress: "",
+    clinicStateCode: "",
     clinicTimings: "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,17 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
           onChange={(e) => set("clinicAddress", e.target.value)}
           required
         />
+      </div>
+      <div>
+        <Label htmlFor="cstate">State <span className="text-ink-muted font-normal">(for GST / invoicing)</span></Label>
+        <Select id="cstate" value={form.clinicStateCode} onChange={(e) => set("clinicStateCode", e.target.value)}>
+          <option value="">Select state…</option>
+          {GST_STATE_CODES.map((s) => (
+            <option key={s.code} value={s.code}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
       </div>
       <div>
         <Label htmlFor="ctime">Clinic timings <span className="text-ink-muted font-normal">(optional)</span></Label>
