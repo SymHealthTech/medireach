@@ -27,10 +27,17 @@ export async function generateInvoiceForCycle(
     status: "confirmed",
     confirmedAt: { $gte: cycle.periodStart, $lt: cycle.periodEnd },
   });
-  const amount = computeCycleCharge(patientCount);
+  // Bill this cycle at the tier that applied DURING it (currentCycleTier — the
+  // snapshot the billing cron maintains), not the doctor's live tier: an
+  // immediate upgrade unlocks voice now but must not retro-bill this cycle as
+  // Pro. Falls back to the live tier for any account created before this field.
+  const doctorState = await Doctor.findById(doctorId)
+    .select("clinicStateCode currentCycleTier tier")
+    .lean();
+  const tier = doctorState?.currentCycleTier ?? doctorState?.tier ?? "starter";
+  const amount = computeCycleCharge(patientCount, tier);
   // Inclusive pricing: `amount` is the gross total; record the GST split (all
   // zero while tax is disabled). IGST vs CGST/SGST from the clinic's state.
-  const doctorState = await Doctor.findById(doctorId).select("clinicStateCode").lean();
   const tax = computeInclusiveTax(amount, {
     interState: isInterStateSupply(doctorState?.clinicStateCode),
   });
@@ -41,6 +48,7 @@ export async function generateInvoiceForCycle(
     const invoice = await Invoice.create({
       doctorId,
       cycleNumber: cycle.cycleNumber,
+      tier,
       periodStart: cycle.periodStart,
       periodEnd: cycle.periodEnd,
       patientCount,

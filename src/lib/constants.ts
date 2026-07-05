@@ -52,10 +52,23 @@ export type LeadStatus = (typeof LEAD_STATUSES)[number];
 export const SOS_CONTACT_STATUSES = ["pending", "accepted", "declined"] as const;
 export type SosContactStatus = (typeof SOS_CONTACT_STATUSES)[number];
 
-/** Billing model — spec §11. */
+/**
+ * Subscription tiers (two-tier system):
+ *  - starter: typing only, flat ₹499/cycle. NEVER triggers a paid API call
+ *             (no speech-to-text, no Claude) — enforced server-side.
+ *  - pro:     voice + AI, ₹299 base or per-patient (whichever is greater).
+ * New and existing accounts default to `starter`; upgrading to `pro` unlocks
+ * voice/AI immediately (see requireProTier + the billing tier-switch route).
+ */
+export const TIERS = ["starter", "pro"] as const;
+export type Tier = (typeof TIERS)[number];
+export const DEFAULT_TIER: Tier = "starter";
+
+/** Billing model — spec §11 + two-tier pricing. */
 export const BILLING = {
   JOINING_FEE_INR: 99,
-  MONTHLY_MINIMUM_INR: 299,
+  STARTER_FLAT_INR: 499, // Starter: flat per 30-day cycle, any patient count
+  MONTHLY_MINIMUM_INR: 299, // Pro: monthly minimum floor
   PER_PATIENT_INR: 1.5,
   PER_PATIENT_DISCOUNTED_INR: 1,
   DISCOUNT_THRESHOLD: 1000,

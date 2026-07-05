@@ -26,6 +26,9 @@ interface Invoice {
 }
 interface Summary {
   accountStatus: string;
+  tier: "starter" | "pro";
+  currentCycleTier: "starter" | "pro";
+  tierChangePending: { toTier: "starter" | "pro"; effectiveAtCycleStart: string } | null;
   clinic: InvoiceClinic;
   currentCycle: {
     cycleNumber: number;
@@ -54,6 +57,7 @@ export default function BillingPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
   const [preview, setPreview] = useState<InvoiceDocumentProps | null>(null);
+  const [tierBusy, setTierBusy] = useState(false);
 
   const load = useCallback(async () => {
     const [s, c] = await Promise.all([
@@ -96,6 +100,40 @@ export default function BillingPage() {
       setMsg((e as Error).message);
     } finally {
       setPayingId(null);
+    }
+  }
+
+  async function upgrade() {
+    if (!confirm("Upgrade to Pro? Voice dictation and AI structuring unlock immediately. This cycle keeps its ₹499 Starter charge; Pro per-patient billing begins next cycle.")) return;
+    setTierBusy(true);
+    setMsg(null);
+    try {
+      await apiPost("/api/billing/tier", { action: "upgrade" });
+      setMsg("Upgraded to Pro — voice and AI are now available.");
+      load();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setTierBusy(false);
+    }
+  }
+
+  async function downgrade() {
+    if (!confirm("Downgrade to Starter? You'll lose voice dictation and AI features. You keep them until the end of the current cycle, then move to the flat ₹499 Starter plan.")) return;
+    setTierBusy(true);
+    setMsg(null);
+    try {
+      const { tierChangePending } = await apiPost<{ tierChangePending: { effectiveAtCycleStart: string } | null }>(
+        "/api/billing/tier",
+        { action: "downgrade" },
+      );
+      const when = tierChangePending ? new Date(tierChangePending.effectiveAtCycleStart).toLocaleDateString("en-IN") : "the next cycle";
+      setMsg(`Downgrade scheduled for ${when}. Voice and AI stay active until then.`);
+      load();
+    } catch (e) {
+      setMsg((e as Error).message);
+    } finally {
+      setTierBusy(false);
     }
   }
 
@@ -197,6 +235,46 @@ export default function BillingPage() {
           Due {new Date(summary.currentCycle.periodEnd).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
         </div>
       </div>
+
+      {/* Plan / tier — current plan, what it includes, and the switch control. */}
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-ink">
+                {summary.tier === "pro" ? "Pro plan" : "Starter plan"}
+              </p>
+              <span className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-semibold",
+                summary.tier === "pro" ? "bg-brand/10 text-brand" : "bg-line/60 text-ink-muted",
+              )}>
+                {summary.tier === "pro" ? "Voice + AI" : "Typing only"}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-ink-muted">
+              {summary.tier === "pro"
+                ? "Voice dictation and AI structuring, billed per patient (₹299 minimum)."
+                : "Type consultations with keyword shortcuts. Flat ₹499 per cycle."}
+            </p>
+          </div>
+          {summary.tier === "starter" || summary.tierChangePending?.toTier === "starter" ? (
+            <Button variant="primary" size="md" onClick={upgrade} disabled={tierBusy}>
+              {tierBusy ? "…" : summary.tierChangePending?.toTier === "starter" ? "Keep Pro" : "Upgrade to Pro"}
+            </Button>
+          ) : (
+            <Button variant="outline" size="md" onClick={downgrade} disabled={tierBusy}>
+              {tierBusy ? "…" : "Downgrade"}
+            </Button>
+          )}
+        </div>
+        {summary.tierChangePending?.toTier === "starter" && (
+          <p className="rounded-xl bg-action/10 px-3 py-2 text-sm text-action">
+            ⏳ Scheduled to switch to Starter on{" "}
+            {new Date(summary.tierChangePending.effectiveAtCycleStart).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}.
+            You keep voice and AI until then.
+          </p>
+        )}
+      </Card>
 
       {collection && (
         <div className="grid grid-cols-2 gap-4">

@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Role } from "@/lib/constants";
+import type { Role, Tier } from "@/lib/constants";
 
 export interface Me {
   userId: string;
   role: Role;
   doctorId: string | null;
   name: string;
+  // Subscription tier for clinic roles (null for admin). `pro` unlocks voice/AI.
+  tier: Tier | null;
 }
 
 /** Fetch the current signed-in identity for role-aware client rendering. */

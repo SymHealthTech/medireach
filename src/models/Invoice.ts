@@ -2,8 +2,11 @@ import mongoose, { Schema, type Model, type Types } from "mongoose";
 import {
   INVOICE_STATUSES,
   PAYER_TYPES,
+  TIERS,
+  DEFAULT_TIER,
   type InvoiceStatus,
   type PayerType,
+  type Tier,
 } from "@/lib/constants";
 
 /**
@@ -17,6 +20,7 @@ export interface InvoiceDoc {
   _id: Types.ObjectId;
   doctorId: Types.ObjectId;
   cycleNumber: number; // 1-based cycle index since signup
+  tier: Tier; // tier this cycle was billed at (Starter flat vs Pro per-patient)
   periodStart: Date;
   periodEnd: Date;
   patientCount: number;
@@ -47,6 +51,7 @@ const invoiceSchema = new Schema<InvoiceDoc>(
   {
     doctorId: { type: Schema.Types.ObjectId, ref: "Doctor", required: true, index: true },
     cycleNumber: { type: Number, required: true },
+    tier: { type: String, enum: TIERS, default: DEFAULT_TIER, index: true },
     periodStart: { type: Date, required: true },
     periodEnd: { type: Date, required: true },
     patientCount: { type: Number, required: true, default: 0, min: 0 },

@@ -6,7 +6,13 @@ import { apiGet } from "@/lib/client/api";
 
 interface Revenue {
   subscriptions: { active: number; paused: number; unsubscribed: number; suspended: number; incompleteOnboarding: number; total: number };
-  revenue: { paidLast30dInr: number; paidInvoicesLast30d: number; outstandingInr: number; outstandingInvoices: number };
+  tiers: { starter: number; pro: number };
+  revenue: {
+    paidLast30dInr: number; paidInvoicesLast30d: number;
+    starterPaidLast30dInr: number; starterInvoicesLast30d: number;
+    proPaidLast30dInr: number; proInvoicesLast30d: number;
+    outstandingInr: number; outstandingInvoices: number;
+  };
 }
 
 /** Admin dashboard — business-level billing & revenue overview (spec §6.2). */
@@ -38,8 +44,20 @@ export default function AdminDashboard() {
         {stat("Suspended", data.subscriptions.suspended)}
       </div>
 
+      {/* Doctors per tier (live subscriptions) — Change 7. */}
+      <div className="grid grid-cols-2 gap-4">
+        {stat("Starter doctors", data.tiers.starter, "typing only · flat ₹499")}
+        {stat("Pro doctors", data.tiers.pro, "voice + AI · per-patient")}
+      </div>
+
+      {/* Revenue split by tier — Starter is fixed ₹499×count; Pro varies with usage. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stat("Revenue (last 30 days)", `₹${data.revenue.paidLast30dInr}`, `${data.revenue.paidInvoicesLast30d} invoices paid`)}
+        {stat("Starter revenue (30d)", `₹${data.revenue.starterPaidLast30dInr}`, `${data.revenue.starterInvoicesLast30d} invoices · fixed ₹499`)}
+        {stat("Pro revenue (30d)", `₹${data.revenue.proPaidLast30dInr}`, `${data.revenue.proInvoicesLast30d} invoices · usage-based`)}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {stat("Outstanding", `₹${data.revenue.outstandingInr}`, `${data.revenue.outstandingInvoices} unpaid`)}
         {stat("Incomplete onboarding", data.subscriptions.incompleteOnboarding, `${data.subscriptions.total} total accounts`)}
       </div>

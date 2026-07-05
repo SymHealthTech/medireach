@@ -14,6 +14,8 @@ interface DoctorRow {
   email: string;
   mobile: string;
   accountStatus: string;
+  tier: "starter" | "pro";
+  pendingTier: "starter" | "pro" | null;
   onboardingComplete: boolean;
   documentStatus: string | null;
   documentType: string | null;
@@ -25,8 +27,26 @@ const FILTERS = [
   { key: "paused", label: "Paused" },
   { key: "suspended", label: "Suspended" },
   { key: "incomplete-onboarding", label: "Incomplete" },
+  { key: "tier:starter", label: "Starter" },
+  { key: "tier:pro", label: "Pro" },
   { key: "documents", label: "Doc review" },
 ];
+
+function TierBadge({ tier, pending }: { tier: "starter" | "pro"; pending: "starter" | "pro" | null }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className={cn(
+        "rounded-full px-2 py-0.5 text-[11px] font-semibold",
+        tier === "pro" ? "bg-brand/10 text-brand" : "bg-line/60 text-ink-muted",
+      )}>
+        {tier === "pro" ? "Pro" : "Starter"}
+      </span>
+      {pending && pending !== tier && (
+        <span className="text-[10px] text-action" title={`Scheduled to switch to ${pending}`}>→ {pending}</span>
+      )}
+    </span>
+  );
+}
 
 /** Doctor/clinic management + document review queue (spec §6.1). */
 export default function AdminDoctorsPage() {
@@ -36,7 +56,11 @@ export default function AdminDoctorsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const qs = filter === "documents" ? "documents=submitted" : filter ? `status=${filter}` : "";
+    const qs =
+      filter === "documents" ? "documents=submitted"
+      : filter.startsWith("tier:") ? `tier=${filter.slice(5)}`
+      : filter ? `status=${filter}`
+      : "";
     const data = await apiGet<{ doctors: DoctorRow[] }>(`/api/admin/doctors?${qs}`).catch(() => ({ doctors: [] }));
     setDoctors(data.doctors);
     setLoading(false);
@@ -85,8 +109,9 @@ export default function AdminDoctorsPage() {
               <Link key={d.id} href={`/console/doctors/${d.id}`}>
                 <Card className="flex items-center justify-between hover:border-brand">
                   <div>
-                    <p className="font-medium text-ink">
+                    <p className="flex items-center gap-2 font-medium text-ink">
                       {d.name} {d.appId && <span className="text-ink-muted">· {d.appId}</span>}
+                      <TierBadge tier={d.tier} pending={d.pendingTier} />
                     </p>
                     <p className="text-sm text-ink-muted">{d.email} · {d.mobile}</p>
                   </div>

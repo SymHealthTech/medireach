@@ -6,19 +6,26 @@ import { audit } from "@/lib/api/audit";
 import { Doctor } from "@/models/Doctor";
 import { issueOtp } from "@/lib/auth/otp";
 import { sendOtpEmail } from "@/lib/integrations/email";
-import { DOC_REVIEW_STATUSES } from "@/lib/constants";
+import { applyUpgrade, scheduleDowngrade, forceTier } from "@/lib/billing/tier-change";
+import { DOC_REVIEW_STATUSES, TIERS } from "@/lib/constants";
 
 /**
  * Admin actions on a doctor account (spec §6.1): suspend/reactivate, review the
  * verification document (mark reviewed/flagged — after-the-fact oversight, not a
- * pre-activation gate, §5.3), and trigger a password reset on their behalf.
- * Every action is audited (§6.7).
+ * pre-activation gate, §5.3), trigger a password reset, and change the account's
+ * subscription tier (Change 7). Every action is audited (§6.7).
+ *
+ * `set-tier` follows the same timing rules as the doctor-facing switch by
+ * default — upgrade is immediate, downgrade applies at the next cycle boundary —
+ * unless `force: true`, which applies the change immediately in either direction
+ * (an override, explicitly flagged in the audit log).
  */
 const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("suspend") }),
   z.object({ action: z.literal("reactivate") }),
   z.object({ action: z.literal("review-document"), status: z.enum(DOC_REVIEW_STATUSES) }),
   z.object({ action: z.literal("reset-password") }),
+  z.object({ action: z.literal("set-tier"), tier: z.enum(TIERS), force: z.boolean().default(false) }),
 ]);
 
 export const POST = route<{ id: string }>({ roles: Roles.adminOnly }, async (req, ctx, { id }) => {
@@ -56,8 +63,26 @@ export const POST = route<{ id: string }>({ roles: Roles.adminOnly }, async (req
         throw Errors.badRequest("Doctor has no email on file for reset.");
       }
       break;
+
+    case "set-tier":
+      if (body.force) {
+        // Override: apply immediately in either direction.
+        forceTier(doctor, body.tier);
+      } else if (body.tier === "pro") {
+        applyUpgrade(doctor); // immediate
+      } else {
+        scheduleDowngrade(doctor); // at next cycle boundary
+      }
+      await doctor.save();
+      break;
   }
 
-  await audit(ctx, `admin.doctor.${body.action}`, { targetType: "Doctor", targetId: id });
+  // For a tier change, record the resulting state (and whether it was forced) so
+  // the audit trail shows exactly what support did.
+  const meta =
+    body.action === "set-tier"
+      ? { requestedTier: body.tier, force: body.force, resultingTier: doctor.tier, pending: doctor.tierChangePending ?? null }
+      : undefined;
+  await audit(ctx, `admin.doctor.${body.action}`, { targetType: "Doctor", targetId: id, meta });
   return jsonOk({ ok: true });
 });

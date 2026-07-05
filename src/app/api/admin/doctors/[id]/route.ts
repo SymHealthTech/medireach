@@ -45,6 +45,14 @@ export const GET = route<{ id: string }>({ roles: Roles.adminOnly }, async (_req
       clinicName: doctor.clinicName,
       clinicAddress: doctor.clinicAddress,
       accountStatus: doctor.accountStatus,
+      tier: doctor.tier ?? "starter",
+      currentCycleTier: doctor.currentCycleTier ?? doctor.tier ?? "starter",
+      tierChangePending: doctor.tierChangePending
+        ? {
+            toTier: doctor.tierChangePending.toTier,
+            effectiveAtCycleStart: doctor.tierChangePending.effectiveAtCycleStart,
+          }
+        : null,
       cycleStartDate: doctor.cycleStartDate ?? null,
       verificationDocument: doctor.verificationDocument
         ? { type: doctor.verificationDocument.type, reviewStatus: doctor.verificationDocument.reviewStatus, url: documentUrl }

@@ -3,6 +3,7 @@ import { jsonOk, Errors } from "@/lib/api/errors";
 import { route, Roles } from "@/lib/api/guard";
 import { parseBody } from "@/lib/api/validate";
 import { requireActiveDoctor } from "@/lib/api/account";
+import { requireProTier } from "@/lib/api/tier";
 import { structurePatient } from "@/lib/integrations/claude";
 
 /**
@@ -14,7 +15,10 @@ import { structurePatient } from "@/lib/integrations/claude";
 const schema = z.object({ transcript: z.string().max(5000) });
 
 export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
-  await requireActiveDoctor(ctx);
+  // PRO ONLY (Change 2): voice patient-intake structuring is a paid Claude call
+  // — reject Starter with 403 before anything is sent to Anthropic.
+  const doctor = await requireActiveDoctor(ctx);
+  requireProTier(doctor);
   const { transcript } = await parseBody(req, schema);
 
   const result = await structurePatient(transcript);

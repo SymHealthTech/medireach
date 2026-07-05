@@ -12,6 +12,7 @@ import {
   MEDICINE_TIMINGS,
 } from "@/lib/constants";
 import { INDIA_BRANDS, type BrandEntry } from "@/lib/medicines-data";
+import { FORM_EXPANSIONS, expandFrequency } from "@/lib/abbreviations";
 import { SelectOrAdd, saveCustomOption, type CustomOptions } from "@/components/app/SelectOrAdd";
 
 export interface MedicineRow {
@@ -35,20 +36,12 @@ export function emptyMedicine(): MedicineRow {
 }
 
 // ── Text builders ──────────────────────────────────────────────────────────
-
-const FREQ_LABEL: Record<string, string> = {
-  OD: "once a day", BD: "twice a day", TDS: "3 times a day", QID: "4 times a day",
-  HS: "at bedtime", SOS: "when required", Stat: "immediately",
-  Weekly: "once a week", Fortnightly: "once in 2 weeks",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  Tab: "tablet", Cap: "capsule", Syr: "syrup", Susp: "suspension",
-  Inj: "injection", Drops: "drop", Gel: "application of gel",
-  Cream: "application of cream", Oint: "application of ointment",
-  Inhaler: "puff", Patch: "patch", Sachet: "sachet",
-  Spray: "spray", Powder: "sachet of powder", Loz: "lozenge", Supp: "suppository",
-};
+//
+// The clinical shorthand → plain-language expansion below is a PURE local
+// transform driven by the shared abbreviation dictionary (src/lib/abbreviations)
+// — no API call. This is what produces a prescription's patient-facing text on
+// BOTH tiers, and it is the sole producer of that text on Starter (where paid
+// APIs are blocked). Editing the dictionary changes the expansion everywhere.
 
 function buildTexts(
   m: Pick<MedicineRow, "type" | "name" | "generic" | "dose" | "frequency" | "timing">
@@ -58,11 +51,11 @@ function buildTexts(
   const clinicalText = `${medLabel}${instrParts ? ` — ${instrParts}` : ""}`;
 
   const isVol = /ml|tsf/i.test(m.dose);
-  const typeStr = TYPE_LABEL[m.type] ?? m.type.toLowerCase();
+  const typeStr = FORM_EXPANSIONS[m.type.toLowerCase()] ?? m.type.toLowerCase();
   const doseStr = m.dose
     ? isVol ? m.dose : `${m.dose} ${typeStr}`
     : typeStr;
-  const freqStr = FREQ_LABEL[m.frequency] ?? m.frequency.toLowerCase();
+  const freqStr = expandFrequency(m.frequency) ?? m.frequency.toLowerCase();
   const timingStr = m.timing ? `, ${m.timing.toLowerCase()}` : "";
   const patientText = m.name
     ? `${m.name}: Take ${doseStr}${freqStr ? `, ${freqStr}` : ""}${timingStr}.`

@@ -45,6 +45,9 @@ export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   doctor.accountStatus = "active";
   doctor.onboardingStep = 7;
   doctor.cycleStartDate = new Date(); // fixed Day 1, never recalculated (§11)
+  // Snapshot the tier the first cycle bills at (two-tier system). Defaults to
+  // Starter; the cron re-snapshots this at every cycle rollover.
+  doctor.currentCycleTier = doctor.tier;
 
   // Default prescription template (preset-plus-light-customization, §16.3).
   if (!doctor.selectedTemplateId) {

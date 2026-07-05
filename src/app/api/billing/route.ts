@@ -32,8 +32,22 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   const sponsor = await Sponsor.findOne({ doctorId, paymentResponsibility: "active" }).lean();
   const interState = isInterStateSupply(doctor.clinicStateCode);
 
+  // The in-progress cycle is billed at currentCycleTier (the snapshot), so an
+  // immediate upgrade still shows this cycle as Starter (₹499) while voice is
+  // already unlocked — Pro per-patient billing shows from the next cycle.
+  const cycleTier = doctor.currentCycleTier ?? doctor.tier;
+  const projectedCharge = computeCycleCharge(patientCountSoFar, cycleTier);
+
   return jsonOk({
     accountStatus: doctor.accountStatus,
+    tier: doctor.tier, // live access tier (drives voice/AI availability)
+    currentCycleTier: cycleTier, // tier the in-progress cycle bills at
+    tierChangePending: doctor.tierChangePending
+      ? {
+          toTier: doctor.tierChangePending.toTier,
+          effectiveAtCycleStart: doctor.tierChangePending.effectiveAtCycleStart,
+        }
+      : null,
     clinic: {
       doctorName: doctor.name,
       clinicName: doctor.clinicName,
@@ -43,6 +57,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       email: doctor.email,
     },
     plan: {
+      starterFlat: BILLING.STARTER_FLAT_INR,
       monthlyMinimum: BILLING.MONTHLY_MINIMUM_INR,
       perPatient: BILLING.PER_PATIENT_INR,
       perPatientDiscounted: BILLING.PER_PATIENT_DISCOUNTED_INR,
@@ -53,9 +68,9 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       periodStart: cycle.periodStart,
       periodEnd: cycle.periodEnd,
       patientCountSoFar,
-      projectedCharge: computeCycleCharge(patientCountSoFar),
+      projectedCharge,
       payer: sponsor ? "sponsor" : "doctor",
-      tax: computeInclusiveTax(computeCycleCharge(patientCountSoFar), { interState }),
+      tax: computeInclusiveTax(projectedCharge, { interState }),
     },
     invoices: invoices.map((i) => ({
       id: String(i._id),

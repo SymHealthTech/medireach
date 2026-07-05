@@ -8,6 +8,7 @@ import { Sponsor } from "@/models/Sponsor";
 import { PrescriptionTemplate } from "@/models/PrescriptionTemplate";
 import { lastCompletedCycle, dayInCurrentCycle } from "@/lib/billing/cycle";
 import { generateInvoiceForCycle } from "@/lib/billing/invoicing";
+import { applyPendingTierChange } from "@/lib/billing/tier-change";
 import { pushToDoctor } from "@/lib/integrations/push";
 import { BILLING } from "@/lib/constants";
 
@@ -33,12 +34,15 @@ export async function GET(req: NextRequest) {
     const doctors = await Doctor.find({
       accountStatus: { $in: ["active", "paused"] },
       cycleStartDate: { $ne: null },
-    }).select("_id cycleStartDate accountStatus pendingUnsubscribe unsubscribeEffectiveAt");
+    }).select(
+      "_id cycleStartDate accountStatus pendingUnsubscribe unsubscribeEffectiveAt tier tierChangePending currentCycleTier",
+    );
 
     let invoicesCreated = 0;
     let remindersSent = 0;
     let paused = 0;
     let unsubscribed = 0;
+    let tierChangesApplied = 0;
 
     for (const doctor of doctors) {
       if (!doctor.cycleStartDate) continue;
@@ -56,11 +60,35 @@ export async function GET(req: NextRequest) {
         continue; // no further billing for an unsubscribed account
       }
 
-      // 1) Close the previous cycle → invoice.
+      // 1) Close the previous cycle → invoice. The invoice bills at the tier
+      // that applied DURING the closed cycle (doctor.currentCycleTier, read
+      // inside generateInvoiceForCycle) — this must happen BEFORE we apply any
+      // pending tier change or re-snapshot below.
       const closed = lastCompletedCycle(doctor.cycleStartDate, now);
+      let rolledOver = false;
       if (closed) {
         const res = await generateInvoiceForCycle(doctor._id, closed);
-        if (res.created) invoicesCreated++;
+        if (res.created) {
+          invoicesCreated++;
+          rolledOver = true; // a fresh invoice means we just crossed a boundary
+        }
+      }
+
+      // 1b) At a cycle rollover: apply any scheduled downgrade (Pro→Starter) and
+      // snapshot the new cycle's billing tier (Change 6). applyPendingTierChange
+      // is idempotent (clears the pending field once applied).
+      const pendingApplied = applyPendingTierChange(doctor, now);
+      if (rolledOver || pendingApplied) {
+        doctor.currentCycleTier = doctor.tier;
+        await doctor.save();
+        if (pendingApplied) {
+          tierChangesApplied++;
+          await pushToDoctor(String(doctor._id), {
+            title: "MediReach plan changed",
+            body: "Your plan is now Starter. Voice and AI features are no longer active.",
+            url: "/app/billing",
+          });
+        }
       }
 
       // 2) Day-25 reminder (web push to the doctor's devices).
@@ -105,7 +133,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return jsonOk({ ok: true, doctors: doctors.length, invoicesCreated, remindersSent, paused, unsubscribed });
+    return jsonOk({ ok: true, doctors: doctors.length, invoicesCreated, remindersSent, paused, unsubscribed, tierChangesApplied });
   } catch (err) {
     return errorResponse(err);
   }

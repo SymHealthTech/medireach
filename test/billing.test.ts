@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeCycleCharge, computePerPatientTotal } from "@/lib/billing/charge";
 import { computeInclusiveTax, isInterStateSupply } from "@/lib/billing/tax";
-import { TAX } from "@/lib/constants";
+import { BILLING, TAX } from "@/lib/constants";
 import {
   cycleByNumber,
   currentCycleNumber,
@@ -14,34 +14,58 @@ import {
  * against 0, exactly 1,000, and 1,001 before wiring it into the cron). Charge =
  * greater of ₹299 or per-patient total; ₹1.5/patient ≤1000, ₹1/patient beyond.
  */
-describe("computeCycleCharge (spec §11)", () => {
+describe("computeCycleCharge — Pro tier (spec §11)", () => {
+  // Default tier is Pro so the legacy call signature is preserved; being
+  // explicit here documents intent alongside the new Starter cases.
   it("charges the ₹299 floor for 0 patients", () => {
-    expect(computeCycleCharge(0)).toBe(299);
+    expect(computeCycleCharge(0, "pro")).toBe(299);
   });
 
   it("keeps the floor below the ~200-patient crossover", () => {
-    expect(computeCycleCharge(100)).toBe(299); // 100*1.5 = 150 < 299
-    expect(computeCycleCharge(199)).toBe(299); // 298.5 < 299
+    expect(computeCycleCharge(100, "pro")).toBe(299); // 100*1.5 = 150 < 299
+    expect(computeCycleCharge(199, "pro")).toBe(299); // 298.5 < 299
   });
 
   it("per-patient overtakes the floor around 200 patients", () => {
-    expect(computeCycleCharge(200)).toBe(300); // 200*1.5 = 300 > 299
-    expect(computeCycleCharge(201)).toBe(301.5);
+    expect(computeCycleCharge(200, "pro")).toBe(300); // 200*1.5 = 300 > 299
+    expect(computeCycleCharge(201, "pro")).toBe(301.5);
   });
 
   it("charges ₹1.5 each up to exactly 1,000", () => {
     expect(computePerPatientTotal(1000)).toBe(1500);
-    expect(computeCycleCharge(1000)).toBe(1500);
+    expect(computeCycleCharge(1000, "pro")).toBe(1500);
   });
 
   it("charges ₹1 for each patient beyond 1,000", () => {
     expect(computePerPatientTotal(1001)).toBe(1501); // 1500 + 1
     expect(computePerPatientTotal(1500)).toBe(2000); // 1500 + 500
-    expect(computeCycleCharge(1001)).toBe(1501);
+    expect(computeCycleCharge(1001, "pro")).toBe(1501);
   });
 
   it("never returns less than the floor and ignores negatives", () => {
-    expect(computeCycleCharge(-5)).toBe(299);
+    expect(computeCycleCharge(-5, "pro")).toBe(299);
+  });
+
+  it("defaults to Pro pricing when no tier is passed (legacy callers)", () => {
+    expect(computeCycleCharge(0)).toBe(299);
+    expect(computeCycleCharge(1000)).toBe(1500);
+  });
+});
+
+describe("computeCycleCharge — Starter tier (flat ₹499)", () => {
+  it("is always ₹499 regardless of patient count", () => {
+    expect(computeCycleCharge(0, "starter")).toBe(499);
+    expect(computeCycleCharge(500, "starter")).toBe(499);
+    expect(computeCycleCharge(1000, "starter")).toBe(499);
+    expect(computeCycleCharge(5000, "starter")).toBe(499);
+  });
+
+  it("matches the configured flat rate", () => {
+    expect(computeCycleCharge(0, "starter")).toBe(BILLING.STARTER_FLAT_INR);
+  });
+
+  it("ignores negative counts", () => {
+    expect(computeCycleCharge(-100, "starter")).toBe(499);
   });
 });
 

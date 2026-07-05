@@ -407,7 +407,10 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {me?.role === "doctor" && (
+      {/* Voice add-patient is Pro-only (Change 3): on Starter the mic is genuinely
+          absent, not disabled. The backend also rejects the paid route for
+          Starter, so this is purely to avoid showing a control that can't work. */}
+      {me?.role === "doctor" && me?.tier === "pro" && (
         <Card className="flex items-center justify-between gap-3">
           <div>
             <p className="font-semibold text-ink">Add by voice</p>
@@ -428,7 +431,7 @@ export default function RegisterPage() {
           </Button>
         </Card>
       )}
-      {me?.role === "doctor" && !recorder.supported && (
+      {me?.role === "doctor" && me?.tier === "pro" && !recorder.supported && (
         <p className="text-sm text-ink-muted">
           Voice capture isn&apos;t supported on this browser — type the details below.
         </p>

@@ -1,6 +1,7 @@
 import { jsonOk, Errors } from "@/lib/api/errors";
 import { route, Roles } from "@/lib/api/guard";
 import { requireActiveDoctor } from "@/lib/api/account";
+import { requireProTier } from "@/lib/api/tier";
 import { transcribeAudio } from "@/lib/integrations/whisper";
 
 /**
@@ -8,9 +9,13 @@ import { transcribeAudio } from "@/lib/integrations/whisper";
  * to the doctor role (§5.2). The audio is processed in-memory and NOT stored —
  * raw dictation is discarded after transcription (§15.10). A transcription
  * failure returns a clear message so the UI can fall back to manual typing.
+ *
+ * PRO ONLY (Change 2): speech-to-text is a paid API. requireProTier rejects a
+ * Starter account with 403 BEFORE any audio is read or sent to the provider.
  */
 export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
-  await requireActiveDoctor(ctx);
+  const doctor = await requireActiveDoctor(ctx);
+  requireProTier(doctor);
 
   const form = await req.formData().catch(() => null);
   const file = form?.get("audio");

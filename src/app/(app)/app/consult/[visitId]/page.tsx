@@ -10,6 +10,7 @@ import { KeywordText, type FieldKeyword } from "@/components/app/KeywordText";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { apiGet, apiPost } from "@/lib/client/api";
+import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
 import { buildPrescriptionText } from "@/lib/prescription";
@@ -107,7 +108,12 @@ const emptyForm: FormState = {
 export default function ConsultPage() {
   const { visitId } = useParams<{ visitId: string }>();
   const router = useRouter();
+  const { me } = useMe();
   const recorder = useRecorder();
+  // Voice + AI dictation is Pro-only (Change 3). On Starter the whole dictate
+  // affordance is absent — the doctor types every field (with keyword shortcuts
+  // and local abbreviation expansion). The backend also blocks the paid routes.
+  const isPro = me?.tier === "pro";
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [patient, setPatient] = useState<PatientInfo | null>(null);
@@ -702,8 +708,8 @@ export default function ConsultPage() {
             </div>
           </Card>
 
-          {/* Right: dictate card */}
-          {status === "draft" ? (
+          {/* Right: dictate card — Pro only. Absent (not disabled) on Starter. */}
+          {status === "draft" && isPro ? (
             <Card className="flex items-center justify-between gap-3 p-4">
               <div>
                 <p className="font-semibold text-ink">Dictate the consultation</p>
@@ -732,7 +738,7 @@ export default function ConsultPage() {
           ) : <div />}
         </div>
 
-        {!recorder.supported && (
+        {isPro && !recorder.supported && (
           <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
         )}
 
