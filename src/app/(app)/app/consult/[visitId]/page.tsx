@@ -14,9 +14,9 @@ import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
 import { buildPrescriptionText } from "@/lib/prescription";
-import { sharePrescription } from "@/lib/client/share";
+import { deliverPrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
-import { sheetToPng, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
+import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 
 interface OE {
   bp?: string; weight?: string; height?: string; pulse?: string; temp?: string;
@@ -127,7 +127,6 @@ export default function ConsultPage() {
     doctorName: string; degree: string; registrationNumber: string;
     defaultWhatsappTarget?: string;
     clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
-    prescriptionSendNumber?: string;
   } | null>(null);
   const [tpl, setTpl] = useState<{
     presetKey: string;
@@ -145,6 +144,8 @@ export default function ConsultPage() {
   const [saveBusy, setSaveBusy] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
   const [successModal, setSuccessModal] = useState<"saved" | "sent" | null>(null);
+  // Shown after a Send opens WhatsApp: reminds the doctor to attach the saved PDF.
+  const [shareHint, setShareHint] = useState(false);
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
   const [patientInfoOpen, setPatientInfoOpen] = useState(false);
@@ -505,31 +506,28 @@ export default function ConsultPage() {
       clinicName: "", clinicAddress: "", clinicTimings: "",
       doctorName: "", degree: "", registrationNumber: "",
     };
-    const meds = form.medicines.filter((m) => m.patientText);
-    const text = buildPrescriptionText(
-      { name: c.doctorName, registrationNumber: c.registrationNumber, clinicName: c.clinicName, clinicAddress: c.clinicAddress },
-      patient ?? { name: "Patient" },
-      { diagnosis: form.diagnosis, medicines: meds, date: new Date() },
-    );
+    const text = buildPrescriptionText({ name: c.doctorName, clinicName: c.clinicName });
 
-    // Resolve the recipient number for the wa.me fallback based on the stored target.
+    // Resolve the recipient number from the stored delivery-default target, so
+    // the chat opens directly on the patient (or clinic/receptionist/store) number.
     const waTarget = c.defaultWhatsappTarget ?? "patient";
     const recipientRaw =
       waTarget === "clinic"       ? c.clinicWhatsapp :
       waTarget === "receptionist" ? c.receptionistWhatsapp :
       waTarget === "store"        ? c.storeWhatsapp :
       /* patient */                 patient?.mobile ?? "";
-    // Normalise: digits only (strip spaces, dashes, leading +91 country code handled by wa.me).
-    const recipientDigits = (recipientRaw ?? "").replace(/\D/g, "");
-    const waUrl = recipientDigits
-      ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const recipientDigits = normalizeWhatsappNumber(recipientRaw);
 
+    const safeName = (patient?.name ?? "patient").trim().replace(/[^\w]+/g, "-").toLowerCase() || "patient";
     try {
       if (!sheetRef.current) throw new Error("Sheet not ready.");
-      const image = await sheetToPng(sheetRef.current);
-      await sharePrescription(image, text);
+      const pdf = await sheetToPdf(sheetRef.current);
+      deliverPrescriptionPdf(pdf, text, recipientDigits, `prescription-${safeName}.pdf`);
+      setShareHint(true);
     } catch {
+      const waUrl = recipientDigits
+        ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
+        : `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(waUrl, "_blank");
     }
   }
@@ -672,14 +670,21 @@ export default function ConsultPage() {
                 </p>
               </div>
               {successModal === "sent" && (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                  onClick={shareWhatsApp}
-                >
-                  Send on WhatsApp
-                </Button>
+                <>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                    onClick={shareWhatsApp}
+                  >
+                    Send on WhatsApp
+                  </Button>
+                  {shareHint && (
+                    <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+                      📄 Prescription PDF saved to your device. In the WhatsApp chat, tap 📎 → Document to attach it.
+                    </p>
+                  )}
+                </>
               )}
               <Button
                 variant={successModal === "sent" ? "outline" : "brand"}
@@ -780,6 +785,11 @@ export default function ConsultPage() {
               <Button variant="primary" size="lg" onClick={shareWhatsApp}>Send on WhatsApp</Button>
               <Button variant="ghost"   size="lg" onClick={() => router.push("/app/queue")}>Done</Button>
             </div>
+            {shareHint && (
+              <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+                📄 Prescription PDF saved to your device. In the WhatsApp chat, tap 📎 → Document to attach it.
+              </p>
+            )}
           </Card>
         )}
 

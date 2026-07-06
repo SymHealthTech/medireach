@@ -75,7 +75,6 @@ export interface DoctorDoc {
   clinicWhatsapp: string;
   receptionistWhatsapp: string;
   storeWhatsapp: string;
-  prescriptionSendNumber: string; // fallback number used in wa.me links when no target number is set
   // relations / verification
   emergencyContacts: EmergencyContact[];
   verificationDocument?: VerificationDocument;
@@ -163,7 +162,6 @@ const doctorSchema = new Schema<DoctorDoc>(
     clinicWhatsapp: { type: String, default: "" },
     receptionistWhatsapp: { type: String, default: "" },
     storeWhatsapp: { type: String, default: "" },
-    prescriptionSendNumber: { type: String, default: "" },
 
     emergencyContacts: {
       type: [emergencyContactSchema],

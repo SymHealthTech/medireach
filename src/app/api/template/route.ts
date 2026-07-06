@@ -46,7 +46,6 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       clinicWhatsapp: doctor.clinicWhatsapp ?? "",
       receptionistWhatsapp: doctor.receptionistWhatsapp ?? "",
       storeWhatsapp: doctor.storeWhatsapp ?? "",
-      prescriptionSendNumber: doctor.prescriptionSendNumber ?? "",
     },
   });
 });

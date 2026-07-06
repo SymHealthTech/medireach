@@ -31,7 +31,6 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
     clinicWhatsapp: doctor.clinicWhatsapp ?? "",
     receptionistWhatsapp: doctor.receptionistWhatsapp ?? "",
     storeWhatsapp: doctor.storeWhatsapp ?? "",
-    prescriptionSendNumber: doctor.prescriptionSendNumber ?? "",
     accountStatus: doctor.accountStatus,
   });
 });
@@ -54,7 +53,6 @@ const updateSchema = z.object({
   clinicWhatsapp: z.string().trim().max(20).optional(),
   receptionistWhatsapp: z.string().trim().max(20).optional(),
   storeWhatsapp: z.string().trim().max(20).optional(),
-  prescriptionSendNumber: z.string().trim().max(20).optional(),
 });
 
 export const PATCH = route({ roles: Roles.doctorOnly }, async (req, ctx) => {

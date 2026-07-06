@@ -40,12 +40,10 @@ const TARGETS = [
 type NumberField = "clinicWhatsapp" | "receptionistWhatsapp" | "storeWhatsapp";
 
 type ProfileData = {
-  mobile: string;
   defaultWhatsappTarget: string;
   clinicWhatsapp: string;
   receptionistWhatsapp: string;
   storeWhatsapp: string;
-  prescriptionSendNumber: string;
 };
 
 /** WhatsApp delivery defaults (spec §7.5, §12). */
@@ -56,12 +54,8 @@ export default function WhatsappDefaultPage() {
     receptionistWhatsapp: "",
     storeWhatsapp: "",
   });
-  const [sendNumber, setSendNumber] = useState("");
-  const [doctorMobile, setDoctorMobile] = useState("");
   const [targetMsg, setTargetMsg] = useState<string | null>(null);
-  const [sendMsg, setSendMsg] = useState<string | null>(null);
   const [targetBusy, setTargetBusy] = useState(false);
-  const [sendBusy, setSendBusy] = useState(false);
 
   useEffect(() => {
     apiGet<ProfileData>("/api/profile")
@@ -72,8 +66,6 @@ export default function WhatsappDefaultPage() {
           receptionistWhatsapp: d.receptionistWhatsapp,
           storeWhatsapp: d.storeWhatsapp,
         });
-        setSendNumber(d.prescriptionSendNumber);
-        setDoctorMobile(d.mobile);
       })
       .catch(() => {});
   }, []);
@@ -92,18 +84,6 @@ export default function WhatsappDefaultPage() {
     });
     setTargetMsg(res.ok ? "Saved." : "Save failed.");
     setTargetBusy(false);
-  }
-
-  async function saveSendNumber() {
-    setSendBusy(true);
-    setSendMsg(null);
-    const res = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prescriptionSendNumber: sendNumber }),
-    });
-    setSendMsg(res.ok ? "Saved." : "Save failed.");
-    setSendBusy(false);
   }
 
   return (
@@ -155,35 +135,6 @@ export default function WhatsappDefaultPage() {
         </div>
         <Button variant="brand" onClick={saveTarget} disabled={targetBusy}>
           Save
-        </Button>
-      </Card>
-
-      {/* ── Sending number ───────────────────────────────────── */}
-      <Card className="space-y-3">
-        {sendMsg && (
-          <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{sendMsg}</p>
-        )}
-        <div>
-          <p className="font-medium text-ink">Send prescription from this number</p>
-          <p className="mt-0.5 text-sm text-ink-muted">
-            The WhatsApp number used to send prescriptions. Defaults to your registered number.
-            Change this if you send from a different WhatsApp (e.g. a clinic shared number).
-          </p>
-        </div>
-        <div className="space-y-1.5">
-          <Input
-            type="tel"
-            placeholder={doctorMobile || "e.g. 9876543210"}
-            value={sendNumber}
-            onChange={(e) => setSendNumber(e.target.value)}
-            maxLength={20}
-          />
-          {doctorMobile && (
-            <p className="text-xs text-ink-muted">Registered: {doctorMobile}</p>
-          )}
-        </div>
-        <Button variant="brand" onClick={saveSendNumber} disabled={sendBusy}>
-          Save number
         </Button>
       </Card>
     </div>

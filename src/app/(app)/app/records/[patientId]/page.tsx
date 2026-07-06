@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 import { buildPrescriptionText } from "@/lib/prescription";
-import { sharePrescription } from "@/lib/client/share";
+import { deliverPrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
-import { sheetToPng, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
+import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 
 interface VisitMedicine {
   type?: string; name?: string; generic?: string; dose?: string; frequency?: string; timing?: string;
@@ -69,7 +69,9 @@ export default function RecordsPage() {
   const [sendBusyId, setSendBusyId] = useState<string | null>(null);
   // Set to the sheet + share payload of the visit being sent; the effect below
   // rasterises the hidden sheet once React has rendered it.
-  const [pendingShare, setPendingShare] = useState<{ data: PrescriptionSheetData; text: string; waUrl: string } | null>(null);
+  const [pendingShare, setPendingShare] = useState<{ visitId: string; data: PrescriptionSheetData; text: string; recipientDigits: string; filename: string } | null>(null);
+  // Id of the visit whose PDF was just saved — shows the "attach the PDF" hint under it.
+  const [hintVisitId, setHintVisitId] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -98,10 +100,14 @@ export default function RecordsPage() {
         try {
           if (cancelled) return;
           if (!sheetRef.current) throw new Error("Sheet not ready.");
-          const image = await sheetToPng(sheetRef.current);
-          await sharePrescription(image, pendingShare.text);
+          const pdf = await sheetToPdf(sheetRef.current);
+          deliverPrescriptionPdf(pdf, pendingShare.text, pendingShare.recipientDigits, pendingShare.filename);
+          if (!cancelled) setHintVisitId(pendingShare.visitId);
         } catch {
-          window.open(pendingShare.waUrl, "_blank");
+          const waUrl = pendingShare.recipientDigits
+            ? `https://wa.me/${pendingShare.recipientDigits}?text=${encodeURIComponent(pendingShare.text)}`
+            : `https://wa.me/?text=${encodeURIComponent(pendingShare.text)}`;
+          window.open(waUrl, "_blank");
         } finally {
           if (!cancelled) {
             setSendBusyId(null);
@@ -118,12 +124,7 @@ export default function RecordsPage() {
 
   async function handleSendPrescription(v: Visit) {
     const c = clinic ?? { clinicName: "", clinicAddress: "", clinicTimings: "", doctorName: "", degree: "", registrationNumber: "" };
-    const meds = v.medicines.filter((m) => m.patientText);
-    const text = buildPrescriptionText(
-      { name: c.doctorName, registrationNumber: c.registrationNumber, clinicName: c.clinicName, clinicAddress: c.clinicAddress },
-      patient ?? { name: "Patient" },
-      { diagnosis: v.diagnosis, medicines: meds as { patientText: string }[], date: v.confirmedAt ? new Date(v.confirmedAt) : new Date() },
-    );
+    const text = buildPrescriptionText({ name: c.doctorName, clinicName: c.clinicName });
 
     const waTarget = c.defaultWhatsappTarget ?? "patient";
     const recipientRaw =
@@ -131,10 +132,8 @@ export default function RecordsPage() {
       waTarget === "receptionist" ? c.receptionistWhatsapp :
       waTarget === "store"        ? c.storeWhatsapp :
       /* patient */                 patient?.mobile ?? "";
-    const recipientDigits = (recipientRaw ?? "").replace(/\D/g, "");
-    const waUrl = recipientDigits
-      ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    const recipientDigits = normalizeWhatsappNumber(recipientRaw);
+    const safeName = (patient?.name ?? "patient").trim().replace(/[^\w]+/g, "-").toLowerCase() || "patient";
 
     const data: PrescriptionSheetData = {
       templateId: tpl?.presetKey ?? "teal-classic",
@@ -159,7 +158,8 @@ export default function RecordsPage() {
     };
 
     setSendBusyId(v._id);
-    setPendingShare({ data, text, waUrl });
+    setHintVisitId(null);
+    setPendingShare({ visitId: v._id, data, text, recipientDigits, filename: `prescription-${safeName}.pdf` });
   }
 
   if (loading) return <RecordsSkeleton onBack={() => router.back()} />;
@@ -233,13 +233,18 @@ export default function RecordsPage() {
                   </ul>
                 )}
                 {v.fees != null && <p className="text-sm text-ink-muted">Fees: ₹{v.fees}</p>}
+                {hintVisitId === v._id && (
+                  <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+                    📄 Prescription PDF saved to your device. In the WhatsApp chat, tap 📎 → Document to attach it.
+                  </p>
+                )}
               </Card>
             );
           })}
         </ul>
       )}
 
-      {/* Off-screen A4 sheet — rasterised to a PNG for the WhatsApp share. */}
+      {/* Off-screen A4 sheet — rasterised to the prescription PDF for the WhatsApp share. */}
       {pendingShare && (
         <div aria-hidden style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }}>
           <PrescriptionSheet ref={sheetRef} data={pendingShare.data} />

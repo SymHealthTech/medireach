@@ -39,6 +39,39 @@ export async function sharePrescription(
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
 }
 
+/**
+ * Normalise a raw phone number into the digits-only, country-coded form wa.me
+ * expects (no "+"). Bare 10-digit Indian numbers get a 91 prefix so the chat
+ * actually resolves to that contact; anything already carrying a country code is
+ * left as-is. Returns "" when there is nothing usable.
+ */
+export function normalizeWhatsappNumber(raw: string | undefined | null): string {
+  let digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10) digits = `91${digits}`; // India default
+  return digits;
+}
+
+/**
+ * Deliver the prescription PDF via WhatsApp, opening the chat DIRECTLY on the
+ * recipient's number (no "send to" contact picker). WhatsApp links can't attach
+ * a file, so we download the PDF first — the doctor taps 📎 once to attach it,
+ * and the patient can then view/download it from the chat. When no recipient
+ * number is known we fall back to a generic WhatsApp compose window.
+ */
+export function deliverPrescriptionPdf(
+  pdf: Blob,
+  text: string,
+  recipientDigits: string,
+  filename = "prescription.pdf",
+): void {
+  downloadBlob(pdf, filename);
+  const url = recipientDigits
+    ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
+    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+}
+
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

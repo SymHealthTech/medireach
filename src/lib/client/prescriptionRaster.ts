@@ -66,12 +66,12 @@ function mountUnscaled(el: HTMLElement): { node: HTMLElement; cleanup: () => voi
 }
 
 /**
- * Rasterise a sheet element to a PNG blob at `scale`× A4. The node is cloned to
- * its natural size, serialised into an SVG <foreignObject>, and drawn onto a
- * canvas. Fixed A4 dimensions (not getBoundingClientRect) keep the output exact
- * even when the source is a scaled preview.
+ * Rasterise a sheet element onto a fixed A4 canvas at `scale`× resolution. The
+ * node is cloned to its natural size, serialised into an SVG <foreignObject>,
+ * and drawn onto a white canvas. Fixed A4 dimensions (not getBoundingClientRect)
+ * keep the output exact even when the source is a scaled preview.
  */
-export async function sheetToPng(el: HTMLElement, scale = 2): Promise<Blob> {
+async function sheetToCanvas(el: HTMLElement, scale: number): Promise<HTMLCanvasElement> {
   const { node, cleanup } = mountUnscaled(el);
   try {
     const serialized = new XMLSerializer().serializeToString(node);
@@ -100,13 +100,99 @@ export async function sheetToPng(el: HTMLElement, scale = 2): Promise<Blob> {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.scale(scale, scale);
     ctx.drawImage(img, 0, 0, A4_W, A4_H);
-
-    return await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not generate image."))), "image/png"),
-    );
+    return canvas;
   } finally {
     cleanup();
   }
+}
+
+/** Rasterise a sheet element to a PNG blob at `scale`× A4. */
+export async function sheetToPng(el: HTMLElement, scale = 2): Promise<Blob> {
+  const canvas = await sheetToCanvas(el, scale);
+  return await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not generate image."))), "image/png"),
+  );
+}
+
+/**
+ * Rasterise a sheet element to a single-page, true-A4 PDF the patient can open
+ * and download from WhatsApp. We render the sheet to a JPEG bitmap and embed it
+ * in a hand-built PDF via the /DCTDecode filter — no external library needed,
+ * which keeps the bundle lean and sidesteps the flaky-install problem. `scale`
+ * 3 ≈ 288dpi keeps the text crisp.
+ */
+export async function sheetToPdf(el: HTMLElement, scale = 3): Promise<Blob> {
+  const canvas = await sheetToCanvas(el, scale);
+  const jpegBlob = await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not generate PDF image."))), "image/jpeg", 0.92),
+  );
+  const jpeg = new Uint8Array(await jpegBlob.arrayBuffer());
+  return buildImagePdf(jpeg, canvas.width, canvas.height);
+}
+
+/**
+ * Assemble a minimal single-page PDF (A4, 595.28×841.89 pt) that fills the page
+ * with one JPEG image embedded as a /DCTDecode XObject. Kept intentionally tiny:
+ * catalog → pages → page → content stream → image, plus a byte-accurate xref.
+ */
+function buildImagePdf(jpeg: Uint8Array, imgW: number, imgH: number): Blob {
+  const PW = 595.28;
+  const PH = 841.89;
+  const enc = new TextEncoder();
+  const chunks: Uint8Array[] = [];
+  const offsets: number[] = [];
+  let length = 0;
+
+  const push = (data: Uint8Array | string) => {
+    const bytes = typeof data === "string" ? enc.encode(data) : data;
+    chunks.push(bytes);
+    length += bytes.length;
+  };
+  const startObj = () => offsets.push(length);
+
+  push("%PDF-1.4\n");
+
+  startObj();
+  push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+
+  startObj();
+  push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+
+  startObj();
+  push(
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] ` +
+      `/Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>\nendobj\n`,
+  );
+
+  // Draw the unit image scaled to fill the whole page (cm matrix = page size).
+  const content = `q\n${PW} 0 0 ${PH} 0 0 cm\n/Im0 Do\nQ\n`;
+  startObj();
+  push(`4 0 obj\n<< /Length ${enc.encode(content).length} >>\nstream\n`);
+  push(content);
+  push("endstream\nendobj\n");
+
+  startObj();
+  push(
+    `5 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} ` +
+      `/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`,
+  );
+  push(jpeg);
+  push("\nendstream\nendobj\n");
+
+  const xrefStart = length;
+  const count = offsets.length + 1; // +1 for the free object 0
+  let xref = `xref\n0 ${count}\n0000000000 65535 f \n`;
+  for (const off of offsets) xref += `${String(off).padStart(10, "0")} 00000 n \n`;
+  push(xref);
+  push(`trailer\n<< /Size ${count} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+  const out = new Uint8Array(length);
+  let pos = 0;
+  for (const c of chunks) {
+    out.set(c, pos);
+    pos += c.length;
+  }
+  return new Blob([out], { type: "application/pdf" });
 }
 
 /**
