@@ -26,4 +26,11 @@ describe("buildPrescriptionText", () => {
     expect(text).toContain("*Clinic*");
     expect(text).not.toContain("Dr. ");
   });
+
+  it("embeds the PDF link when one is provided", () => {
+    const url = "https://res.cloudinary.com/demo/image/authenticated/s--sig--/rx.pdf";
+    const text = buildPrescriptionText({ name: "Asha Rao", clinicName: "Sunrise Clinic" }, url);
+    expect(text).toContain(url);
+    expect(text).toMatch(/view or download/i);
+  });
 });

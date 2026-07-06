@@ -5,8 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
-import { buildPrescriptionText } from "@/lib/prescription";
-import { deliverPrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
+import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 
@@ -69,10 +68,15 @@ export default function RecordsPage() {
   const [sendBusyId, setSendBusyId] = useState<string | null>(null);
   // Set to the sheet + share payload of the visit being sent; the effect below
   // rasterises the hidden sheet once React has rendered it.
-  const [pendingShare, setPendingShare] = useState<{ visitId: string; data: PrescriptionSheetData; text: string; recipientDigits: string; filename: string } | null>(null);
-  // Id of the visit whose PDF was just saved — shows the "attach the PDF" hint under it.
-  const [hintVisitId, setHintVisitId] = useState<string | null>(null);
+  const [pendingShare, setPendingShare] = useState<{
+    visitId: string; data: PrescriptionSheetData; sender: { name: string; clinicName: string };
+    recipientDigits: string; filename: string;
+  } | null>(null);
+  // Outcome of the last share, keyed to the visit — drives the hint under its card.
+  const [shareResult, setShareResult] = useState<{ id: string; kind: "link" | "nolink" } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // WhatsApp popup opened synchronously on the Send click (survives the async upload).
+  const shareWinRef = useRef<Window | null>(null);
 
   useEffect(() => {
     apiGet<{ patient: Patient; visits: Visit[] }>(`/api/patients/${patientId}/history`)
@@ -101,14 +105,20 @@ export default function RecordsPage() {
           if (cancelled) return;
           if (!sheetRef.current) throw new Error("Sheet not ready.");
           const pdf = await sheetToPdf(sheetRef.current);
-          deliverPrescriptionPdf(pdf, pendingShare.text, pendingShare.recipientDigits, pendingShare.filename);
-          if (!cancelled) setHintVisitId(pendingShare.visitId);
+          const { linkIncluded } = await sharePrescriptionPdf({
+            pdf,
+            visitId: pendingShare.visitId,
+            sender: pendingShare.sender,
+            recipientDigits: pendingShare.recipientDigits,
+            filename: pendingShare.filename,
+            win: shareWinRef.current,
+          });
+          if (!cancelled) setShareResult({ id: pendingShare.visitId, kind: linkIncluded ? "link" : "nolink" });
         } catch {
-          const waUrl = pendingShare.recipientDigits
-            ? `https://wa.me/${pendingShare.recipientDigits}?text=${encodeURIComponent(pendingShare.text)}`
-            : `https://wa.me/?text=${encodeURIComponent(pendingShare.text)}`;
-          window.open(waUrl, "_blank");
+          if (shareWinRef.current && !shareWinRef.current.closed) shareWinRef.current.close();
+          if (!cancelled) setShareResult({ id: pendingShare.visitId, kind: "nolink" });
         } finally {
+          shareWinRef.current = null;
           if (!cancelled) {
             setSendBusyId(null);
             setPendingShare(null);
@@ -123,8 +133,11 @@ export default function RecordsPage() {
   }, [pendingShare]);
 
   async function handleSendPrescription(v: Visit) {
+    // Reserve the WhatsApp popup now, inside the click gesture, so it survives
+    // the async raster + upload that happens in the effect below.
+    shareWinRef.current = window.open("", "_blank");
     const c = clinic ?? { clinicName: "", clinicAddress: "", clinicTimings: "", doctorName: "", degree: "", registrationNumber: "" };
-    const text = buildPrescriptionText({ name: c.doctorName, clinicName: c.clinicName });
+    const sender = { name: c.doctorName, clinicName: c.clinicName };
 
     const waTarget = c.defaultWhatsappTarget ?? "patient";
     const recipientRaw =
@@ -158,8 +171,8 @@ export default function RecordsPage() {
     };
 
     setSendBusyId(v._id);
-    setHintVisitId(null);
-    setPendingShare({ visitId: v._id, data, text, recipientDigits, filename: `prescription-${safeName}.pdf` });
+    setShareResult(null);
+    setPendingShare({ visitId: v._id, data, sender, recipientDigits, filename: `prescription-${safeName}.pdf` });
   }
 
   if (loading) return <RecordsSkeleton onBack={() => router.back()} />;
@@ -233,10 +246,16 @@ export default function RecordsPage() {
                   </ul>
                 )}
                 {v.fees != null && <p className="text-sm text-ink-muted">Fees: ₹{v.fees}</p>}
-                {hintVisitId === v._id && (
-                  <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
-                    📄 Prescription PDF saved to your device. In the WhatsApp chat, tap 📎 → Document to attach it.
-                  </p>
+                {shareResult?.id === v._id && (
+                  shareResult.kind === "link" ? (
+                    <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+                      📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
+                    </p>
+                  ) : (
+                    <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="status">
+                      ⚠️ Couldn&apos;t prepare the prescription link. Please tap Send Rx again.
+                    </p>
+                  )
                 )}
               </Card>
             );

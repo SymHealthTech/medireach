@@ -67,6 +67,7 @@ export interface VisitDoc {
   adviceLabTest?: string;
   prescriptionLanguage?: "english" | "hindi" | "marathi";
   reportPublicIds: string[]; // Cloudinary public_id refs only (§15.3)
+  prescriptionPdfPublicId?: string; // Cloudinary public_id of the shared prescription PDF (§15.3)
   medicines: Medicine[];
   fees?: number; // entered manually by doctor (§7.3)
   // lifecycle
@@ -128,6 +129,7 @@ const visitSchema = new Schema<VisitDoc>(
     adviceLabTest: String,
     prescriptionLanguage: { type: String, enum: ["english", "hindi", "marathi"] },
     reportPublicIds: { type: [String], default: [] },
+    prescriptionPdfPublicId: { type: String },
     medicines: { type: [medicineSchema], default: [] },
     fees: { type: Number, min: 0 },
 

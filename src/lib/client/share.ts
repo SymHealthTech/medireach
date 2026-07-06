@@ -1,43 +1,16 @@
 "use client";
 
+import { apiPost } from "@/lib/client/api";
+import { uploadSigned } from "@/lib/client/upload";
+import { buildPrescriptionText, type PrescriptionSender } from "@/lib/prescription";
+
 /**
- * WhatsApp delivery via the device's native share sheet (spec §7.5) — no
- * WhatsApp Business API needed for v1. Prefers sharing the prescription image
- * as a file; falls back to text-only share, and finally to a wa.me link +
- * image download so the doctor can still attach it manually.
+ * WhatsApp prescription delivery (spec §7.5). WhatsApp `wa.me` links can carry
+ * only text, never a file — so instead of attaching the PDF we upload it to
+ * Cloudinary (signed, authenticated) and drop a short-lived signed link into the
+ * message. The chat opens DIRECTLY on the recipient's number (no contact
+ * picker); the patient taps the link to view/download the PDF.
  */
-export async function sharePrescription(
-  image: Blob,
-  text: string,
-  filename = "prescription.png",
-): Promise<void> {
-  const file = new File([image], filename, { type: "image/png" });
-
-  // Best path: share the image file directly to WhatsApp / any target.
-  if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], text, title: "Prescription" });
-      return;
-    } catch (err) {
-      if ((err as Error).name === "AbortError") return; // user dismissed
-      // otherwise fall through to fallbacks
-    }
-  }
-
-  // Text-only share if file share is unavailable.
-  if (typeof navigator !== "undefined" && navigator.share) {
-    try {
-      await navigator.share({ text, title: "Prescription" });
-      return;
-    } catch (err) {
-      if ((err as Error).name === "AbortError") return;
-    }
-  }
-
-  // Last resort: download the image and open WhatsApp with the text.
-  downloadBlob(image, filename);
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-}
 
 /**
  * Normalise a raw phone number into the digits-only, country-coded form wa.me
@@ -52,33 +25,47 @@ export function normalizeWhatsappNumber(raw: string | undefined | null): string 
   return digits;
 }
 
-/**
- * Deliver the prescription PDF via WhatsApp, opening the chat DIRECTLY on the
- * recipient's number (no "send to" contact picker). WhatsApp links can't attach
- * a file, so we download the PDF first — the doctor taps 📎 once to attach it,
- * and the patient can then view/download it from the chat. When no recipient
- * number is known we fall back to a generic WhatsApp compose window.
- */
-export function deliverPrescriptionPdf(
-  pdf: Blob,
-  text: string,
-  recipientDigits: string,
-  filename = "prescription.pdf",
-): void {
-  downloadBlob(pdf, filename);
-  const url = recipientDigits
+function whatsappUrl(recipientDigits: string, text: string): string {
+  return recipientDigits
     ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
     : `https://wa.me/?text=${encodeURIComponent(text)}`;
-  window.open(url, "_blank");
 }
 
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+/**
+ * Upload the prescription PDF for a visit, build the message with the resulting
+ * signed link, and open the WhatsApp chat straight on the recipient's number.
+ *
+ * `win` is an about:blank window the caller opened synchronously inside the
+ * click handler; we navigate it once the (async) upload finishes, which keeps
+ * the popup from being blocked. If the upload fails we still send the message,
+ * just without the link. Returns whether the PDF link made it into the message.
+ */
+export async function sharePrescriptionPdf(opts: {
+  pdf: Blob;
+  visitId: string;
+  sender: PrescriptionSender;
+  recipientDigits: string;
+  filename?: string;
+  win?: Window | null;
+}): Promise<{ linkIncluded: boolean }> {
+  const { pdf, visitId, sender, recipientDigits, filename = "prescription.pdf", win } = opts;
+
+  let pdfUrl: string | undefined;
+  try {
+    const file = new File([pdf], filename, { type: "application/pdf" });
+    const { publicId } = await uploadSigned(file, "prescription");
+    const res = await apiPost<{ url: string }>(`/api/visits/${visitId}/prescription-pdf`, { publicId });
+    pdfUrl = res.url;
+  } catch {
+    // Best-effort: fall back to a message without the link.
+  }
+
+  const text = buildPrescriptionText(sender, pdfUrl);
+  const url = whatsappUrl(recipientDigits, text);
+  if (win && !win.closed) {
+    win.location.href = url;
+  } else {
+    window.open(url, "_blank");
+  }
+  return { linkIncluded: !!pdfUrl };
 }

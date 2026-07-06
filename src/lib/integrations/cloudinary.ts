@@ -66,6 +66,31 @@ export function signedAssetUrl(publicId: string, expiresInSeconds = 300): string
   });
 }
 
+/** Default lifetime of a prescription PDF link shared with a patient (90 days). */
+export const PRESCRIPTION_PDF_TTL_SECONDS = 90 * 24 * 60 * 60;
+
+/**
+ * Signed, expiring delivery URL for a prescription PDF. Unlike scanned reports
+ * this is opened by the patient (not a logged-in doctor), so it lives long
+ * enough — 90 days by default — for them to view/save it from WhatsApp. The
+ * asset is authenticated, so the URL is an unguessable, time-limited capability.
+ * `format: "pdf"` forces the original document (not a rasterised page image).
+ */
+export function signedPrescriptionPdfUrl(
+  publicId: string,
+  expiresInSeconds = PRESCRIPTION_PDF_TTL_SECONDS,
+): string {
+  configure();
+  return cloudinary.url(publicId, {
+    type: "authenticated",
+    resource_type: "image",
+    format: "pdf",
+    sign_url: true,
+    secure: true,
+    expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds,
+  });
+}
+
 /** Permanently delete an asset (used by the 1-year retention purge, §9.3/§15.6). */
 export async function deleteAsset(publicId: string): Promise<void> {
   configure();

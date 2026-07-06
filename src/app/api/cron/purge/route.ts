@@ -18,13 +18,15 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
     const now = new Date();
 
-    // Remove report assets first (best-effort), then the visit rows.
+    // Remove report + prescription assets first (best-effort), then the visit rows.
     const expiredVisits = await Visit.find({ purgeAfter: { $lte: now } })
-      .select("reportPublicIds")
+      .select("reportPublicIds prescriptionPdfPublicId")
       .lean();
     let assetsDeleted = 0;
     for (const v of expiredVisits) {
-      for (const publicId of v.reportPublicIds ?? []) {
+      const publicIds = [...(v.reportPublicIds ?? [])];
+      if (v.prescriptionPdfPublicId) publicIds.push(v.prescriptionPdfPublicId);
+      for (const publicId of publicIds) {
         try {
           await deleteAsset(publicId);
           assetsDeleted++;

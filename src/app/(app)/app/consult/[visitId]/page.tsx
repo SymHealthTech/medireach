@@ -14,7 +14,7 @@ import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
 import { buildPrescriptionText } from "@/lib/prescription";
-import { deliverPrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
+import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 
@@ -106,6 +106,20 @@ const emptyForm: FormState = {
   adviceGeneral: "", adviceLabTest: "", prescriptionLanguage: "english",
 };
 
+/** Feedback shown under the "Send on WhatsApp" button after a share attempt. */
+function ShareHint({ hint }: { hint: "link" | "nolink" | null }) {
+  if (!hint) return null;
+  return hint === "link" ? (
+    <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+      📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
+    </p>
+  ) : (
+    <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="status">
+      ⚠️ Couldn&apos;t add the prescription link — the message opened without it. Please tap Send again.
+    </p>
+  );
+}
+
 export default function ConsultPage() {
   const { visitId } = useParams<{ visitId: string }>();
   const router = useRouter();
@@ -144,8 +158,9 @@ export default function ConsultPage() {
   const [saveBusy, setSaveBusy] = useState(false);
   const [sendBusy, setSendBusy] = useState(false);
   const [successModal, setSuccessModal] = useState<"saved" | "sent" | null>(null);
-  // Shown after a Send opens WhatsApp: reminds the doctor to attach the saved PDF.
-  const [shareHint, setShareHint] = useState(false);
+  // Result of the last WhatsApp share — drives the on-screen hint under the button.
+  const [shareHint, setShareHint] = useState<"link" | "nolink" | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
   const [patientInfoOpen, setPatientInfoOpen] = useState(false);
@@ -502,11 +517,14 @@ export default function ConsultPage() {
   }
 
   async function shareWhatsApp() {
+    // Reserve the WhatsApp popup synchronously inside the click gesture so the
+    // browser doesn't block it after the (async) PDF upload.
+    const win = window.open("", "_blank");
     const c = clinic ?? {
       clinicName: "", clinicAddress: "", clinicTimings: "",
       doctorName: "", degree: "", registrationNumber: "",
     };
-    const text = buildPrescriptionText({ name: c.doctorName, clinicName: c.clinicName });
+    const sender = { name: c.doctorName, clinicName: c.clinicName };
 
     // Resolve the recipient number from the stored delivery-default target, so
     // the chat opens directly on the patient (or clinic/receptionist/store) number.
@@ -517,18 +535,23 @@ export default function ConsultPage() {
       waTarget === "store"        ? c.storeWhatsapp :
       /* patient */                 patient?.mobile ?? "";
     const recipientDigits = normalizeWhatsappNumber(recipientRaw);
-
     const safeName = (patient?.name ?? "patient").trim().replace(/[^\w]+/g, "-").toLowerCase() || "patient";
+
+    setShareBusy(true);
+    setShareHint(null);
     try {
       if (!sheetRef.current) throw new Error("Sheet not ready.");
       const pdf = await sheetToPdf(sheetRef.current);
-      deliverPrescriptionPdf(pdf, text, recipientDigits, `prescription-${safeName}.pdf`);
-      setShareHint(true);
+      const { linkIncluded } = await sharePrescriptionPdf({
+        pdf, visitId, sender, recipientDigits, filename: `prescription-${safeName}.pdf`, win,
+      });
+      setShareHint(linkIncluded ? "link" : "nolink");
     } catch {
-      const waUrl = recipientDigits
-        ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
-        : `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(waUrl, "_blank");
+      const url = `https://wa.me/${recipientDigits}?text=${encodeURIComponent(buildPrescriptionText(sender))}`;
+      if (win && !win.closed) win.location.href = url; else window.open(url, "_blank");
+      setShareHint("nolink");
+    } finally {
+      setShareBusy(false);
     }
   }
 
@@ -676,14 +699,11 @@ export default function ConsultPage() {
                     size="lg"
                     className="w-full"
                     onClick={shareWhatsApp}
+                    disabled={shareBusy}
                   >
-                    Send on WhatsApp
+                    {shareBusy ? "Preparing…" : "Send on WhatsApp"}
                   </Button>
-                  {shareHint && (
-                    <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
-                      📄 Prescription PDF saved to your device. In the WhatsApp chat, tap 📎 → Document to attach it.
-                    </p>
-                  )}
+                  <ShareHint hint={shareHint} />
                 </>
               )}
               <Button
@@ -782,14 +802,12 @@ export default function ConsultPage() {
           <Card className="space-y-4 border-success/40 bg-success/5">
             <p className="font-semibold text-success">✓ Visit confirmed and saved.</p>
             <div className="flex flex-wrap gap-3">
-              <Button variant="primary" size="lg" onClick={shareWhatsApp}>Send on WhatsApp</Button>
+              <Button variant="primary" size="lg" onClick={shareWhatsApp} disabled={shareBusy}>
+                {shareBusy ? "Preparing…" : "Send on WhatsApp"}
+              </Button>
               <Button variant="ghost"   size="lg" onClick={() => router.push("/app/queue")}>Done</Button>
             </div>
-            {shareHint && (
-              <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
-                📄 Prescription PDF saved to your device. In the WhatsApp chat, tap 📎 → Document to attach it.
-              </p>
-            )}
+            <ShareHint hint={shareHint} />
           </Card>
         )}
 
