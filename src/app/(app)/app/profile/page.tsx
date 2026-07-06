@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ChangeMobileModal } from "@/components/app/ChangeMobileModal";
 import { apiGet } from "@/lib/client/api";
 import { GST_STATE_CODES } from "@/lib/constants";
 
@@ -25,9 +26,13 @@ export default function ProfilePage() {
   const [form, setForm] = useState<Profile | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [mobileModal, setMobileModal] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiGet<Profile>("/api/profile").then(setForm).catch(() => {});
+    apiGet<Profile>("/api/profile")
+      .then(setForm)
+      .catch((err) => setLoadError(err instanceof Error ? err.message : "Couldn't load your profile."));
   }, []);
 
   function set<K extends keyof Profile>(k: K, v: string) {
@@ -61,6 +66,23 @@ export default function ProfilePage() {
     }
   }
 
+  if (loadError) return (
+    <div className="space-y-5">
+      <h1 className="text-xl font-semibold tracking-tight text-ink">Profile</h1>
+      <Card>
+        <div className="space-y-3 py-2 text-center">
+          <p className="text-sm text-sos">{loadError}</p>
+          <p className="text-sm text-ink-muted">
+            Your session may have expired. Please sign in again.
+          </p>
+          <a href="/login?next=/app/profile" className="inline-block">
+            <Button variant="brand">Log in again</Button>
+          </a>
+        </div>
+      </Card>
+    </div>
+  );
+
   if (!form) return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -92,7 +114,17 @@ export default function ProfilePage() {
         <form onSubmit={save} className="space-y-4">
           <div>
             <Label htmlFor="mobile">Mobile number</Label>
-            <Input id="mobile" value={form.mobile ?? ""} readOnly className="opacity-60 cursor-not-allowed" />
+            <div className="flex items-center gap-2">
+              <Input
+                id="mobile"
+                value={form.mobile ?? ""}
+                readOnly
+                className="flex-1 opacity-60 cursor-not-allowed"
+              />
+              <Button type="button" variant="secondary" onClick={() => setMobileModal(true)}>
+                Change
+              </Button>
+            </div>
           </div>
           {([
             ["name", "Doctor name"],
@@ -136,6 +168,15 @@ export default function ProfilePage() {
           </Button>
         </form>
       </Card>
+      <ChangeMobileModal
+        open={mobileModal}
+        currentMobile={form.mobile ?? ""}
+        onClose={() => setMobileModal(false)}
+        onUpdated={(mobile) => {
+          set("mobile", mobile);
+          setMsg("Mobile number updated.");
+        }}
+      />
     </div>
   );
 }

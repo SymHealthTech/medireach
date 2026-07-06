@@ -1,15 +1,17 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
 
 /**
- * OtpChallenge — short-lived one-time-passcode store backing three flows
+ * OtpChallenge — short-lived one-time-passcode store backing four flows
  * (spec §5.3, §15.1): signup EMAIL verification, login from a new/unrecognized
- * device, and forgot-password recovery. Codes are delivered by email only
+ * device, forgot-password recovery, and confirming a mobile-number change from
+ * the profile page (the code goes to the immutable, verified email). Codes are
+ * delivered by email only
  * (Change 3 — no SMS/WhatsApp). Only a hash of the code is stored, and a TTL
  * index auto-expires rows so codes can't be replayed indefinitely.
  */
 export interface OtpChallengeDoc {
   _id: Types.ObjectId;
-  purpose: "signup-verify" | "new-device" | "password-reset";
+  purpose: "signup-verify" | "new-device" | "password-reset" | "mobile-change";
   // Whom the OTP is for — the destination email. For signup the account may not
   // exist yet, so we key on the email rather than a user id.
   email: string;
@@ -24,7 +26,7 @@ const otpChallengeSchema = new Schema<OtpChallengeDoc>(
   {
     purpose: {
       type: String,
-      enum: ["signup-verify", "new-device", "password-reset"],
+      enum: ["signup-verify", "new-device", "password-reset", "mobile-change"],
       required: true,
     },
     email: { type: String, required: true, index: true, lowercase: true },
