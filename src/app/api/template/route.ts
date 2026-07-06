@@ -6,19 +6,19 @@ import { requireDoctorId } from "@/lib/api/context";
 import { loadDoctor } from "@/lib/api/account";
 import { audit } from "@/lib/api/audit";
 import { PrescriptionTemplate } from "@/models/PrescriptionTemplate";
-import { TEMPLATE_PRESETS, DEFAULT_PRESET_KEY } from "@/lib/prescription/presets";
+import { TEMPLATE_IDS, DEFAULT_TEMPLATE_ID } from "@/lib/prescription/templates";
+import { signedAssetUrl } from "@/lib/integrations/cloudinary";
 
 /**
- * Prescription template — Design Prescription (spec §8, §12). The doctor picks
- * one of the presets and lightly customizes clinic-name override, logo
- * placement, and the sponsor footer (Open Decision §16.3 default). Returns the
- * current template plus the doctor's clinic info used to render previews.
+ * Prescription template — Design Prescription (spec §8 redesign). The doctor
+ * picks one of the 5 A4 templates and manages two customisations: an optional
+ * signature image and the sponsor pharmacy footer. Returns the current template
+ * (with a freshly signed signature URL) plus the doctor's clinic info used to
+ * render the live preview / printed sheet / WhatsApp raster.
  */
-const presetKeys = TEMPLATE_PRESETS.map((p) => p.key) as [string, ...string[]];
-
 async function getOrCreate(doctorId: string) {
   let tpl = await PrescriptionTemplate.findOne({ doctorId });
-  if (!tpl) tpl = await PrescriptionTemplate.create({ doctorId, presetKey: DEFAULT_PRESET_KEY });
+  if (!tpl) tpl = await PrescriptionTemplate.create({ doctorId, presetKey: DEFAULT_TEMPLATE_ID });
   return tpl;
 }
 
@@ -28,14 +28,16 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   return jsonOk({
     template: {
       presetKey: tpl.presetKey,
-      clinicNameOverride: tpl.clinicNameOverride ?? "",
-      logoPlacement: tpl.logoPlacement,
       footer: tpl.footer ?? {},
+      signaturePublicId: tpl.signaturePublicId ?? "",
+      // Short-lived signed URL for the authenticated signature asset (§15.3).
+      signatureUrl: tpl.signaturePublicId ? signedAssetUrl(tpl.signaturePublicId) : "",
     },
     clinic: {
       clinicName: doctor.clinicName,
       clinicAddress: doctor.clinicAddress,
       clinicTimings: doctor.clinicTimings,
+      clinicMobile: doctor.mobile,
       doctorName: doctor.name,
       degree: doctor.degree,
       registrationNumber: doctor.registrationNumber,
@@ -49,9 +51,9 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
 });
 
 const updateSchema = z.object({
-  presetKey: z.enum(presetKeys).optional(),
-  clinicNameOverride: z.string().trim().max(160).optional(),
-  logoPlacement: z.enum(["left", "center", "right"]).optional(),
+  presetKey: z.enum(TEMPLATE_IDS).optional(),
+  // Empty string clears the signature (remove); a public_id sets/replaces it.
+  signaturePublicId: z.string().trim().max(300).optional(),
   footer: z
     .object({
       storeName: z.string().trim().max(160).optional(),
@@ -67,8 +69,7 @@ export const PATCH = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   const tpl = await getOrCreate(doctorId);
 
   if (data.presetKey !== undefined) tpl.presetKey = data.presetKey;
-  if (data.clinicNameOverride !== undefined) tpl.clinicNameOverride = data.clinicNameOverride;
-  if (data.logoPlacement !== undefined) tpl.logoPlacement = data.logoPlacement;
+  if (data.signaturePublicId !== undefined) tpl.signaturePublicId = data.signaturePublicId || undefined;
   if (data.footer !== undefined) tpl.footer = data.footer;
   await tpl.save();
 

@@ -10,9 +10,10 @@ import mongoose, { Schema, type Model, type Types } from "mongoose";
 export interface PrescriptionTemplateDoc {
   _id: Types.ObjectId;
   doctorId: Types.ObjectId;
-  presetKey: string; // e.g. "classic" | "compact" | "bilingual" | ...
+  presetKey: string; // TemplateId of the chosen A4 template (spec §8 redesign)
   clinicNameOverride?: string;
   logoPlacement: "left" | "center" | "right";
+  signaturePublicId?: string; // Cloudinary public_id of the doctor's signature (§15.3)
   footer?: {
     storeName?: string;
     storeAddress?: string;
@@ -25,9 +26,10 @@ export interface PrescriptionTemplateDoc {
 const prescriptionTemplateSchema = new Schema<PrescriptionTemplateDoc>(
   {
     doctorId: { type: Schema.Types.ObjectId, ref: "Doctor", required: true, index: true },
-    presetKey: { type: String, required: true, default: "classic" },
+    presetKey: { type: String, required: true, default: "teal-classic" },
     clinicNameOverride: { type: String },
     logoPlacement: { type: String, enum: ["left", "center", "right"], default: "left" },
+    signaturePublicId: { type: String },
     footer: {
       storeName: String,
       storeAddress: String,

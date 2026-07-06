@@ -26,8 +26,7 @@ export const POST = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   if (!doctor.selectedTemplateId) {
     const template = await PrescriptionTemplate.create({
       doctorId: doctor._id,
-      presetKey: "classic",
-      logoPlacement: "left",
+      presetKey: "teal-classic",
     });
     doctor.selectedTemplateId = template._id;
   }

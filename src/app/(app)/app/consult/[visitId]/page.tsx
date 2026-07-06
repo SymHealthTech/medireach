@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -14,8 +14,9 @@ import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
 import { buildPrescriptionText } from "@/lib/prescription";
-import { renderPrescriptionImage } from "@/lib/client/prescriptionImage";
 import { sharePrescription } from "@/lib/client/share";
+import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
+import { sheetToPng, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 
 interface OE {
   bp?: string; weight?: string; height?: string; pulse?: string; temp?: string;
@@ -122,16 +123,18 @@ export default function ConsultPage() {
     name: "", gender: "", ageYears: "", mobile: "", emergencyContact: "", address: "", allergicTo: "",
   });
   const [clinic, setClinic] = useState<{
-    clinicName: string; clinicAddress: string; clinicTimings: string;
+    clinicName: string; clinicAddress: string; clinicTimings: string; clinicMobile?: string;
     doctorName: string; degree: string; registrationNumber: string;
     defaultWhatsappTarget?: string;
     clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
     prescriptionSendNumber?: string;
   } | null>(null);
   const [tpl, setTpl] = useState<{
-    presetKey: string; logoPlacement: "left" | "center" | "right";
+    presetKey: string;
     footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
   } | null>(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const [reportFiles, setReportFiles] = useState<{ name: string; publicId: string }[]>([]);
   const [status, setStatus] = useState<"draft" | "confirmed">("draft");
   const [step, setStep] = useState<"form" | "review">("form");
@@ -217,8 +220,15 @@ export default function ConsultPage() {
       })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-    apiGet<{ template: typeof tpl; clinic: typeof clinic }>("/api/template")
-      .then((d) => { setTpl(d.template); setClinic(d.clinic); })
+    apiGet<{
+      template: { presetKey: string; footer?: { storeName?: string; storeAddress?: string; storeContact?: string }; signatureUrl?: string };
+      clinic: NonNullable<typeof clinic>;
+    }>("/api/template")
+      .then(async (d) => {
+        setTpl({ presetKey: d.template.presetKey, footer: d.template.footer });
+        setClinic(d.clinic);
+        if (d.template.signatureUrl) setSignatureDataUrl(await imageUrlToDataUrl(d.template.signatureUrl));
+      })
       .catch(() => {});
     apiGet<{ keywords: Array<{ field?: string; keyword: string; expansion: string }> }>("/api/keywords")
       .then((d) => {
@@ -292,6 +302,32 @@ export default function ConsultPage() {
       prescriptionLanguage: form.prescriptionLanguage,
     }),
     [form],
+  );
+
+  // The exact A4 sheet that prints / ships — rendered hidden and rasterised on
+  // share. Uses the structured medicine + vitals fields (no AI, both tiers).
+  const sheetData: PrescriptionSheetData = useMemo(
+    () => ({
+      templateId: tpl?.presetKey ?? "teal-classic",
+      doctor: {
+        name: clinic?.doctorName ?? "",
+        degree: clinic?.degree,
+        registrationNumber: clinic?.registrationNumber,
+        clinicName: clinic?.clinicName ?? "",
+        clinicAddress: clinic?.clinicAddress,
+        clinicMobile: clinic?.clinicMobile,
+        clinicTimings: clinic?.clinicTimings,
+      },
+      patient: { name: patient?.name ?? "Patient", ageYears: patient?.ageYears, gender: patient?.gender },
+      date: new Date().toLocaleDateString("en-IN"),
+      oe: { bp: form.oe.bp, temp: form.oe.temp, weight: form.oe.weight, bsl: form.oe.bsl },
+      medicines: form.medicines
+        .filter((m) => m.name.trim())
+        .map((m) => ({ type: m.type, name: m.name, generic: m.generic, dose: m.dose, frequency: m.frequency, timing: m.timing })),
+      signatureDataUrl,
+      sponsor: tpl?.footer ?? null,
+    }),
+    [tpl, clinic, patient, form, signatureDataUrl],
   );
 
   if (loading) return <ConsultSkeleton />;
@@ -488,22 +524,8 @@ export default function ConsultPage() {
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
 
     try {
-      const image = await renderPrescriptionImage({
-        presetKey: tpl?.presetKey ?? "classic",
-        logoPlacement: tpl?.logoPlacement ?? "left",
-        clinicName: c.clinicName || "Clinic",
-        clinicAddress: c.clinicAddress,
-        doctorName: c.doctorName,
-        registrationNumber: c.registrationNumber,
-        degree: c.degree,
-        clinicTimings: c.clinicTimings,
-        patientName: patient?.name ?? "Patient",
-        patientMeta: `${patient?.gender ?? ""}${patient?.ageYears ? ` · ${patient.ageYears}y` : ""}`,
-        date: new Date().toLocaleDateString("en-IN"),
-        diagnosis: form.diagnosis || undefined,
-        medicines: meds.map((m) => m.patientText),
-        footer: tpl?.footer,
-      });
+      if (!sheetRef.current) throw new Error("Sheet not ready.");
+      const image = await sheetToPng(sheetRef.current);
       await sharePrescription(image, text);
     } catch {
       window.open(waUrl, "_blank");
@@ -531,6 +553,10 @@ export default function ConsultPage() {
         loading={reportsLoading}
         reports={reportsData}
       />
+      {/* Off-screen A4 sheet — rasterised to a PNG for the WhatsApp share. */}
+      <div aria-hidden style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }}>
+        <PrescriptionSheet ref={sheetRef} data={sheetData} />
+      </div>
     </>
   );
 

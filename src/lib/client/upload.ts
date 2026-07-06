@@ -20,7 +20,7 @@ interface SignedUploadParams {
  */
 export async function uploadSigned(
   file: File,
-  purpose: "verification" | "profile-photo" | "report" | "card-cover",
+  purpose: "verification" | "profile-photo" | "report" | "card-cover" | "signature",
 ): Promise<{ publicId: string }> {
   const params = await apiPost<SignedUploadParams>("/api/uploads/sign", { purpose });
 

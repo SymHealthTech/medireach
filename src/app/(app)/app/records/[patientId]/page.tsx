@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet } from "@/lib/client/api";
 import { buildPrescriptionText } from "@/lib/prescription";
-import { renderPrescriptionImage } from "@/lib/client/prescriptionImage";
 import { sharePrescription } from "@/lib/client/share";
+import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
+import { sheetToPng, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 
+interface VisitMedicine {
+  type?: string; name?: string; generic?: string; dose?: string; frequency?: string; timing?: string;
+  clinicalText?: string; patientText?: string; dosage?: string;
+}
 interface Visit {
   _id: string;
   confirmedAt?: string;
@@ -16,7 +21,8 @@ interface Visit {
   co?: string;
   diagnosis?: string;
   provisionalDiagnosis?: string;
-  medicines: { clinicalText?: string; patientText?: string; name?: string; dosage?: string; frequency?: string }[];
+  oe?: { bp?: string; temp?: string; weight?: string; bsl?: string };
+  medicines: VisitMedicine[];
   fees?: number;
 }
 interface Patient {
@@ -27,14 +33,15 @@ interface Patient {
   allergicTo?: string;
 }
 type ClinicInfo = {
-  clinicName: string; clinicAddress: string; clinicTimings: string;
+  clinicName: string; clinicAddress: string; clinicTimings: string; clinicMobile?: string;
   doctorName: string; degree: string; registrationNumber: string;
   defaultWhatsappTarget?: string;
   clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
 };
 type TplInfo = {
-  presetKey: string; logoPlacement: "left" | "center" | "right";
+  presetKey: string;
   footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
+  signatureUrl?: string;
 };
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
@@ -57,7 +64,12 @@ export default function RecordsPage() {
   const [error, setError] = useState<string | null>(null);
   const [clinic, setClinic] = useState<ClinicInfo | null>(null);
   const [tpl, setTpl] = useState<TplInfo | null>(null);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [sendBusyId, setSendBusyId] = useState<string | null>(null);
+  // Set to the sheet + share payload of the visit being sent; the effect below
+  // rasterises the hidden sheet once React has rendered it.
+  const [pendingShare, setPendingShare] = useState<{ data: PrescriptionSheetData; text: string; waUrl: string } | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     apiGet<{ patient: Patient; visits: Visit[] }>(`/api/patients/${patientId}/history`)
@@ -68,9 +80,40 @@ export default function RecordsPage() {
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
     apiGet<{ template: TplInfo; clinic: ClinicInfo }>("/api/template")
-      .then((d) => { setTpl(d.template); setClinic(d.clinic); })
+      .then(async (d) => {
+        setTpl(d.template);
+        setClinic(d.clinic);
+        if (d.template.signatureUrl) setSignatureDataUrl(await imageUrlToDataUrl(d.template.signatureUrl));
+      })
       .catch(() => {});
   }, [patientId]);
+
+  useEffect(() => {
+    if (!pendingShare) return;
+    let cancelled = false;
+    // Two frames: let the hidden sheet mount + decode the signature before raster.
+    const id = requestAnimationFrame(() =>
+      requestAnimationFrame(async () => {
+        try {
+          if (cancelled) return;
+          if (!sheetRef.current) throw new Error("Sheet not ready.");
+          const image = await sheetToPng(sheetRef.current);
+          await sharePrescription(image, pendingShare.text);
+        } catch {
+          window.open(pendingShare.waUrl, "_blank");
+        } finally {
+          if (!cancelled) {
+            setSendBusyId(null);
+            setPendingShare(null);
+          }
+        }
+      }),
+    );
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
+  }, [pendingShare]);
 
   async function handleSendPrescription(v: Visit) {
     const c = clinic ?? { clinicName: "", clinicAddress: "", clinicTimings: "", doctorName: "", degree: "", registrationNumber: "" };
@@ -92,30 +135,29 @@ export default function RecordsPage() {
       ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
 
-    setSendBusyId(v._id);
-    try {
-      const image = await renderPrescriptionImage({
-        presetKey: tpl?.presetKey ?? "classic",
-        logoPlacement: tpl?.logoPlacement ?? "left",
-        clinicName: c.clinicName || "Clinic",
-        clinicAddress: c.clinicAddress,
-        doctorName: c.doctorName,
-        registrationNumber: c.registrationNumber,
+    const data: PrescriptionSheetData = {
+      templateId: tpl?.presetKey ?? "teal-classic",
+      doctor: {
+        name: c.doctorName,
         degree: c.degree,
+        registrationNumber: c.registrationNumber,
+        clinicName: c.clinicName,
+        clinicAddress: c.clinicAddress,
+        clinicMobile: c.clinicMobile,
         clinicTimings: c.clinicTimings,
-        patientName: patient?.name ?? "Patient",
-        patientMeta: `${patient?.gender ?? ""}${patient?.ageYears ? ` · ${patient.ageYears}y` : ""}`,
-        date: v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN"),
-        diagnosis: v.diagnosis || undefined,
-        medicines: meds.map((m) => m.patientText!),
-        footer: tpl?.footer,
-      });
-      await sharePrescription(image, text);
-    } catch {
-      window.open(waUrl, "_blank");
-    } finally {
-      setSendBusyId(null);
-    }
+      },
+      patient: { name: patient?.name ?? "Patient", ageYears: patient?.ageYears, gender: patient?.gender },
+      date: v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN"),
+      oe: v.oe,
+      medicines: v.medicines
+        .filter((m) => (m.name ?? "").trim())
+        .map((m) => ({ type: m.type, name: m.name!, generic: m.generic, dose: m.dose, frequency: m.frequency, timing: m.timing })),
+      signatureDataUrl,
+      sponsor: tpl?.footer ?? null,
+    };
+
+    setSendBusyId(v._id);
+    setPendingShare({ data, text, waUrl });
   }
 
   if (loading) return <RecordsSkeleton onBack={() => router.back()} />;
@@ -193,6 +235,13 @@ export default function RecordsPage() {
             );
           })}
         </ul>
+      )}
+
+      {/* Off-screen A4 sheet — rasterised to a PNG for the WhatsApp share. */}
+      {pendingShare && (
+        <div aria-hidden style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }}>
+          <PrescriptionSheet ref={sheetRef} data={pendingShare.data} />
+        </div>
       )}
     </div>
   );
