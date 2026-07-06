@@ -40,6 +40,7 @@ type ClinicInfo = {
 };
 type TplInfo = {
   presetKey: string;
+  designation?: string;
   footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
   signatureUrl?: string;
 };
@@ -145,6 +146,7 @@ export default function RecordsPage() {
         clinicAddress: c.clinicAddress,
         clinicMobile: c.clinicMobile,
         clinicTimings: c.clinicTimings,
+        designation: tpl?.designation,
       },
       patient: { name: patient?.name ?? "Patient", ageYears: patient?.ageYears, gender: patient?.gender },
       date: v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN"),

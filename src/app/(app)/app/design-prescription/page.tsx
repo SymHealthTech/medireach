@@ -20,6 +20,7 @@ interface Footer {
 }
 interface TemplateState {
   presetKey: string;
+  designation: string;
   footer: Footer;
   signaturePublicId: string;
   signatureUrl: string;
@@ -82,6 +83,7 @@ export default function DesignPrescriptionPage() {
         clinicAddress: clinic.clinicAddress,
         clinicMobile: clinic.clinicMobile,
         clinicTimings: clinic.clinicTimings,
+        designation: tpl.designation,
       },
       patient: { name: "Sample Patient", ageYears: 34, gender: "male" },
       date: new Date().toLocaleDateString("en-IN"),
@@ -134,6 +136,7 @@ export default function DesignPrescriptionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           presetKey: tpl.presetKey,
+          designation: tpl.designation,
           signaturePublicId: tpl.signaturePublicId,
           footer: tpl.footer,
         }),
@@ -177,7 +180,7 @@ export default function DesignPrescriptionPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold tracking-tight text-ink">Design Prescription</h1>
-        <Button variant="outline" onClick={() => sheetRef.current && printSheet(sheetRef.current)}>
+        <Button variant="outline" onClick={() => { if (sheetRef.current) void printSheet(sheetRef.current); }}>
           Print / Save PDF
         </Button>
       </div>
@@ -204,6 +207,18 @@ export default function DesignPrescriptionPage() {
                   <span className="block text-xs text-ink-muted">{p.description}</span>
                 </button>
               ))}
+            </div>
+            <div>
+              <label htmlFor="designation" className="mb-1 block text-xs font-medium uppercase tracking-wider text-ink-muted">
+                Designation
+              </label>
+              <Input
+                id="designation"
+                placeholder="e.g. General Physician"
+                value={tpl.designation}
+                onChange={(e) => setTpl((t) => (t ? { ...t, designation: e.target.value } : t))}
+              />
+              <p className="mt-1 text-xs text-ink-muted">Shown under your name in the prescription header.</p>
             </div>
           </Card>
 
