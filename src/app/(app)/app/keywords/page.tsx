@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/lib/cn";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { SelectOrAdd, saveCustomOption, type CustomOptions } from "@/components/app/SelectOrAdd";
@@ -83,14 +84,16 @@ export default function KeywordsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Edit Keyword</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Personal shorthand for each field, expanded automatically as you type on the consultation
-          screen. e.g. type <span className="rounded bg-line/60 px-1 font-mono text-[13px] text-ink">p5</span> in a
-          medicine to fill <span className="text-ink">Tab. Paracetamol 500mg</span>.
-        </p>
-      </div>
+      <PageHeader
+        title="Edit Keyword"
+        subtitle={
+          <>
+            Personal shorthand for each field, expanded automatically as you type on the consultation
+            screen. e.g. type <span className="rounded bg-line/60 px-1 font-mono text-[13px] text-ink">p5</span> in a
+            medicine to fill <span className="text-ink">Tab. Paracetamol 500mg</span>.
+          </>
+        }
+      />
 
       <div className="flex items-center gap-2 text-xs text-ink-muted">
         <span className="rounded-full bg-brand/10 px-2.5 py-1 font-semibold text-brand">

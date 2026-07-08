@@ -7,6 +7,7 @@ import { audit } from "@/lib/api/audit";
 import { Patient } from "@/models/Patient";
 import { Visit } from "@/models/Visit";
 import { patientRegistrationSchema } from "@/lib/validation/patient";
+import { VISIT_MODES } from "@/lib/constants";
 
 /**
  * Register a new patient (spec §7.2) and enqueue them for the doctor in one
@@ -17,7 +18,12 @@ import { patientRegistrationSchema } from "@/lib/validation/patient";
  * can edit/delete until the doctor confirms (§5.2).
  */
 const schema = patientRegistrationSchema.and(
-  z.object({ visitType: z.enum(["new", "follow-up"]).default("new") }),
+  z.object({
+    visitType: z.enum(["new", "follow-up"]).default("new"),
+    // Distinct from visitType (new/follow-up): the queue mode (consultation vs.
+    // certificate-only fast path).
+    visitMode: z.enum(VISIT_MODES).default("consultation"),
+  }),
 );
 
 export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
@@ -52,6 +58,7 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
     doctorId,
     patientId: patient._id,
     type: data.visitType,
+    visitMode: data.visitMode,
     status: "draft",
     oe,
   });

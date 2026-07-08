@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
+import { Spinner } from "@/components/ui/Spinner";
 
 /**
  * Button primitive. Large touch targets and a single clear primary style per
@@ -43,16 +44,36 @@ const sizes: Record<Size, string> = {
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
+  /**
+   * When true, show a leading spinner and disable the button — the consistent
+   * "working…" state for form submits (build-prompt Phase 1). The spinner
+   * inherits the current text colour so it reads correctly on every variant.
+   */
+  loading?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", type = "button", ...props }, ref) => (
+  (
+    { className, variant = "primary", size = "md", type = "button", loading = false, disabled, children, ...props },
+    ref,
+  ) => (
     <button
       ref={ref}
       type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cn(base, variants[variant], sizes[size], className)}
       {...props}
-    />
+    >
+      {loading && (
+        <Spinner
+          size="sm"
+          className="!border-current !border-t-transparent"
+          label="Working"
+        />
+      )}
+      {children}
+    </button>
   ),
 );
 Button.displayName = "Button";

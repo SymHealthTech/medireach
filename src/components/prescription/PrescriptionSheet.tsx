@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef } from "react";
-import type { CSSProperties } from "react";
 import { getTemplate } from "@/lib/prescription/templates";
 import {
   buildVitals,
@@ -9,6 +8,17 @@ import {
   type RxMedicineInput,
   type VitalsInput,
 } from "@/lib/prescription/render";
+import {
+  Header,
+  SignatureBlock,
+  PAGE_STYLE,
+  wrapText,
+  cap,
+  joinDot,
+  INK,
+  MUTED,
+  type PrescriptionDoctorInfo,
+} from "@/components/prescription/sheetParts";
 
 /**
  * The single A4 prescription sheet used everywhere (spec §8 redesign) — on-screen
@@ -17,25 +27,19 @@ import {
  *
  * All five templates share one clinical core (patient row, vitals, ℞ + medicines,
  * signature, "Powered by MediReach") built once below; only the header and the
- * sponsor-footer chrome differ per template, driven by the id switch. Styling is
- * fully inline (no Tailwind/utility classes) so the node serialises cleanly into
- * the SVG <foreignObject> raster and the print iframe.
+ * sponsor-footer chrome differ per template, driven by the id switch. The header
+ * and signature block live in ./sheetParts so the certificate sheet reuses the
+ * identical letterhead. Styling is fully inline (no Tailwind/utility classes) so
+ * the node serialises cleanly into the SVG <foreignObject> raster and the print
+ * iframe.
  *
  * The page is a fixed-height A4 flex column: header pinned top, footer pinned
  * bottom, and the ℞ area flex-growing between them — so the footer stays at the
  * bottom of the sheet even with a single medicine.
  */
 
-export interface PrescriptionDoctorInfo {
-  name: string;
-  degree?: string;
-  registrationNumber?: string;
-  designation?: string;
-  clinicName: string;
-  clinicAddress?: string;
-  clinicMobile?: string;
-  clinicTimings?: string;
-}
+// Re-exported so existing importers keep resolving it from this module.
+export type { PrescriptionDoctorInfo };
 
 export interface PrescriptionSheetData {
   templateId: string;
@@ -46,106 +50,6 @@ export interface PrescriptionSheetData {
   medicines: RxMedicineInput[];
   signatureDataUrl?: string | null;
   sponsor?: { storeName?: string; storeAddress?: string; storeContact?: string } | null;
-}
-
-const INK = "#1F2933";
-const MUTED = "#7A828A";
-const FAINT = "#C8CDD2";
-
-const PAGE_STYLE: CSSProperties = {
-  width: "210mm",
-  height: "297mm",
-  boxSizing: "border-box",
-  background: "#fff",
-  color: INK,
-  fontFamily: "'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif",
-  display: "flex",
-  flexDirection: "column",
-  position: "relative",
-  overflow: "hidden",
-};
-
-const wrapText: CSSProperties = { overflowWrap: "break-word", wordBreak: "break-word" };
-
-function cap(s: string): string {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-
-function joinDot(parts: (string | undefined | null | false)[]): string {
-  return parts.filter(Boolean).join(" · ");
-}
-
-// ── Per-template header chrome ────────────────────────────────────────────────
-
-function DoctorLines({ d, regColor, designationColor }: { d: PrescriptionDoctorInfo; regColor: string; designationColor: string }) {
-  const line2 = joinDot([d.degree, d.registrationNumber && `Reg. No. ${d.registrationNumber}`]);
-  return (
-    <>
-      <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15, ...wrapText }}>{d.name}</div>
-      {line2 && <div style={{ fontSize: 11, color: regColor, marginTop: 3, ...wrapText }}>{line2}</div>}
-      {d.designation && <div style={{ fontSize: 12, color: designationColor, marginTop: 3, ...wrapText }}>{d.designation}</div>}
-    </>
-  );
-}
-
-function ClinicLines({ d, color }: { d: PrescriptionDoctorInfo; color: string }) {
-  return (
-    <div style={{ textAlign: "right", minWidth: 0 }}>
-      <div style={{ fontSize: 15, fontWeight: 700, ...wrapText }}>{d.clinicName}</div>
-      {d.clinicAddress && <div style={{ fontSize: 11, color, marginTop: 3, ...wrapText }}>{d.clinicAddress}</div>}
-      {d.clinicMobile && <div style={{ fontSize: 11, color, marginTop: 1, ...wrapText }}>{d.clinicMobile}</div>}
-      {d.clinicTimings && <div style={{ fontSize: 11, color, marginTop: 1, ...wrapText }}>{d.clinicTimings}</div>}
-    </div>
-  );
-}
-
-function Header({ id, accent, d }: { id: string; accent: string; d: PrescriptionDoctorInfo }) {
-  const pad = "8mm 12mm";
-
-  // Banded (white-on-colour) headers: Classic Teal + Deep Teal & Gold.
-  if (id === "teal-classic" || id === "teal-gold") {
-    const gold = "#C9A227";
-    const lightTeal = id === "teal-gold" ? "#8FD4C8" : "rgba(255,255,255,0.82)";
-    return (
-      <>
-        <header style={{ background: accent, color: "#fff", padding: pad, display: "flex", justifyContent: "space-between", gap: "8mm" }}>
-          <div style={{ minWidth: 0 }}>
-            <DoctorLines d={d} regColor={lightTeal} designationColor={id === "teal-gold" ? gold : "#fff"} />
-          </div>
-          <ClinicLines d={d} color={lightTeal} />
-        </header>
-        {id === "teal-gold" && <div style={{ height: 3, background: gold }} />}
-      </>
-    );
-  }
-
-  // Centered slate header on a soft band.
-  if (id === "slate-centered") {
-    const line2 = joinDot([d.degree, d.registrationNumber && `Reg. No. ${d.registrationNumber}`, d.designation]);
-    const line3 = joinDot([joinComma([d.clinicName, d.clinicAddress]), d.clinicMobile, d.clinicTimings]);
-    return (
-      <header style={{ background: "#F5F8FC", borderBottom: `3px solid ${accent}`, padding: pad, textAlign: "center" }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "#1A365D", ...wrapText }}>{d.name}</div>
-        {line2 && <div style={{ fontSize: 12, color: "#4A5568", marginTop: 3, ...wrapText }}>{line2}</div>}
-        {line3 && <div style={{ fontSize: 12, color: "#4A5568", marginTop: 2, ...wrapText }}>{line3}</div>}
-      </header>
-    );
-  }
-
-  // Plain white headers with an accent rule (Minimal Amber, Modern Amber).
-  const borderBottom = id === "amber-minimal" ? `2px solid ${accent}` : `3px solid ${accent}`;
-  return (
-    <header style={{ padding: "8mm 12mm 5mm", borderBottom, display: "flex", justifyContent: "space-between", gap: "8mm" }}>
-      <div style={{ minWidth: 0 }}>
-        <DoctorLines d={d} regColor={MUTED} designationColor={MUTED} />
-      </div>
-      <ClinicLines d={d} color={MUTED} />
-    </header>
-  );
-}
-
-function joinComma(parts: (string | undefined | null | false)[]): string {
-  return parts.filter(Boolean).join(", ");
 }
 
 // ── Clinical core (identical in all five) ─────────────────────────────────────
@@ -240,17 +144,7 @@ function Footer({ id, data, accent, pharmacyColor, sponsorBg }: {
   return (
     <div style={{ flexShrink: 0 }}>
       {/* Signature (right) + Powered by MediReach (left) */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "6mm", padding: "6mm 12mm 4mm" }}>
-        <div style={{ fontSize: 10, color: FAINT }}>Powered by MediReach</div>
-        <div style={{ textAlign: "right", minWidth: "45mm" }}>
-          {data.signatureDataUrl && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={data.signatureDataUrl} alt="Signature" style={{ maxHeight: "16mm", maxWidth: "55mm", objectFit: "contain", display: "block", marginLeft: "auto" }} />
-          )}
-          <div style={{ borderTop: "1px solid #9AA1A8", width: "50mm", marginLeft: "auto", marginTop: data.signatureDataUrl ? "2mm" : "11mm" }} />
-          <div style={{ fontSize: 12, fontWeight: 600, marginTop: "1.5mm", color: INK }}>Dr. {data.doctor.name}</div>
-        </div>
-      </div>
+      <SignatureBlock signatureDataUrl={data.signatureDataUrl} doctorName={data.doctor.name} />
 
       {/* Sponsor pharmacy footer — only when a sponsor is set */}
       {hasSponsor && (

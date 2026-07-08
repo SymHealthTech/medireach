@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -281,7 +282,7 @@ export default function RevenuePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight text-ink">Revenue</h1>
+      <PageHeader title="Revenue" subtitle="Track income, expenses, and your daily tally." />
 
       {/* Tab bar */}
       <div className="flex gap-1 rounded-2xl bg-line/30 p-1">

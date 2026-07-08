@@ -62,11 +62,21 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
     };
   }, [q]);
 
-  async function enqueue(patientId: string, type: "new" | "follow-up") {
+  async function enqueue(
+    patientId: string,
+    type: "new" | "follow-up",
+    visitMode: "consultation" | "certificate_only" = "consultation",
+  ) {
     try {
-      const { visitId } = await apiPost<{ visitId: string }>("/api/queue", { patientId, type });
-      if (role === "doctor") router.push(`/app/consult/${visitId}`);
-      else {
+      const { visitId } = await apiPost<{ visitId: string }>("/api/queue", { patientId, type, visitMode });
+      if (role === "doctor") {
+        // Certificate-only → straight to the certificate screen; else the consult.
+        if (visitMode === "certificate_only") {
+          router.push(`/app/records/${patientId}/certificate?visitId=${visitId}`);
+        } else {
+          router.push(`/app/consult/${visitId}`);
+        }
+      } else {
         setQ("");
         setMatches(null);
         setOpen(false);
@@ -134,12 +144,15 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
                         {m.ageYears ? ` · ${m.ageYears}y` : ""}
                       </p>
                     </div>
-                    <div className="flex shrink-0 gap-1.5">
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
                       <Button variant="brand" size="sm" onClick={() => enqueue(m._id, "follow-up")}>
                         Follow-up
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => enqueue(m._id, "new")}>
                         New entry
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => enqueue(m._id, "follow-up", "certificate_only")}>
+                        📄 Certificate
                       </Button>
                     </div>
                   </div>

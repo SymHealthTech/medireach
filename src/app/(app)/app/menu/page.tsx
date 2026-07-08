@@ -2,7 +2,7 @@
 
 import { DoctorMenu } from "@/components/app/DoctorMenu";
 import { ReceptionistMenu } from "@/components/app/ReceptionistMenu";
-import { SpinnerBlock } from "@/components/ui/Spinner";
+import { PageLoader } from "@/components/ui/Spinner";
 import { useMe } from "@/lib/client/useMe";
 
 /**
@@ -12,6 +12,6 @@ import { useMe } from "@/lib/client/useMe";
  */
 export default function MenuPage() {
   const { me, loading } = useMe();
-  if (loading || !me) return <SpinnerBlock />;
+  if (loading || !me) return <PageLoader />;
   return me.role === "receptionist" ? <ReceptionistMenu name={me.name} /> : <DoctorMenu name={me.name} />;
 }

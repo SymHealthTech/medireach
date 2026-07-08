@@ -70,8 +70,8 @@ export interface PublicCardData {
 
 /** Signed delivery URL for an authenticated Cloudinary asset (valid ~1h so a
  *  dynamically-rendered public page load never serves an already-expired link). */
-function deliver(publicId?: string | null): string | null {
-  return publicId ? signedAssetUrl(publicId, 3600) : null;
+function deliver(publicId?: string | null, maxWidth?: number): string | null {
+  return publicId ? signedAssetUrl(publicId, 3600, maxWidth) : null;
 }
 
 /**
@@ -104,7 +104,7 @@ export async function loadPublicCard(slug: string): Promise<PublicCardData | nul
     languages: card.languages ?? [],
     whatsappNumber: card.whatsappNumber ?? doctor.mobile ?? "",
     mapsLink: card.mapsLink ?? "",
-    profilePhotoUrl: deliver(card.profilePhotoUrl),
-    coverPhotoUrl: deliver(card.coverPhotoUrl),
+    profilePhotoUrl: deliver(card.profilePhotoUrl, 240),
+    coverPhotoUrl: deliver(card.coverPhotoUrl, 1040),
   };
 }

@@ -4,6 +4,7 @@ import { errorResponse, jsonOk } from "@/lib/api/errors";
 import { assertCron } from "@/lib/api/cron";
 import { Patient } from "@/models/Patient";
 import { Visit } from "@/models/Visit";
+import { Certificate } from "@/models/Certificate";
 import { deleteAsset } from "@/lib/integrations/cloudinary";
 
 /**
@@ -36,12 +37,32 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Certificates are legal instruments kept on a LONGER schedule than ordinary
+    // visit data (RECORD.CERTIFICATE_RETENTION_DAYS, 3 years) — their own
+    // purgeAfter is set 3 years out at issue, so this same {purgeAfter <= now}
+    // sweep excludes them from the 1-year purge and only removes them once that
+    // longer window elapses. Drop the PDF asset before the row so nothing lingers.
+    const expiredCerts = await Certificate.find({ purgeAfter: { $lte: now } })
+      .select("pdfAssetRef")
+      .lean();
+    for (const c of expiredCerts) {
+      if (!c.pdfAssetRef) continue;
+      try {
+        await deleteAsset(c.pdfAssetRef);
+        assetsDeleted++;
+      } catch {
+        /* best-effort; continue */
+      }
+    }
+
     const visitResult = await Visit.deleteMany({ purgeAfter: { $lte: now } });
+    const certResult = await Certificate.deleteMany({ purgeAfter: { $lte: now } });
     const patientResult = await Patient.deleteMany({ purgeAfter: { $lte: now } });
 
     return jsonOk({
       ok: true,
       visitsDeleted: visitResult.deletedCount ?? 0,
+      certificatesDeleted: certResult.deletedCount ?? 0,
       patientsDeleted: patientResult.deletedCount ?? 0,
       assetsDeleted,
     });

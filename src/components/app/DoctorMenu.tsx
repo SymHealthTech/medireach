@@ -3,9 +3,29 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { apiGet } from "@/lib/client/api";
+
+/** Leading icon per menu destination — keeps the menu scannable (Phase 3). */
+const MENU_ICONS: Record<string, string> = {
+  "/app/recent": "📁",
+  "/app/records/certificates": "📄",
+  "/app/dues": "💸",
+  "/app/revenue": "💰",
+  "/app/billing": "🧾",
+  "/app/keywords": "⌨️",
+  "/app/staff": "👥",
+  "/app/emergency-contacts": "🚑",
+  "/app/design-prescription": "📝",
+  "/app/visiting-card": "💳",
+  "/app/profile": "👤",
+  "/app/whatsapp-default": "💬",
+  "/app/guide": "📖",
+  "/app/medical-disclaimer": "⚕️",
+  "/app/privacy-policy": "🔒",
+};
 
 /**
  * Doctor's full menu (spec §12). The header shows the doctor's app ID
@@ -16,6 +36,8 @@ import { apiGet } from "@/lib/client/api";
 /** Primary menu items, shown in order (spec §12). */
 export const DOCTOR_MENU_ITEMS: { href: string; label: string }[] = [
   { href: "/app/recent", label: "Records" },
+  { href: "/app/records/certificates", label: "Certificate Records" },
+  { href: "/app/dues", label: "Patient Dues" },
   { href: "/app/revenue", label: "Revenue" },
   { href: "/app/billing", label: "Billing" },
   { href: "/app/keywords", label: "Edit Keyword" },
@@ -45,17 +67,27 @@ export function DoctorMenu({ name }: { name: string }) {
   }, []);
 
   const linkClass =
-    "flex items-center justify-between px-4 py-3.5 text-ink hover:bg-line/30";
+    "flex items-center gap-3 px-4 py-3.5 text-ink transition-colors hover:bg-brand/5";
+
+  const renderRow = (item: { href: string; label: string }) => (
+    <Link key={item.href} href={item.href} className={linkClass}>
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-base"
+        aria-hidden
+      >
+        {MENU_ICONS[item.href] ?? "•"}
+      </span>
+      <span className="flex-1 font-medium">{item.label}</span>
+      <span className="text-ink-muted">›</span>
+    </Link>
+  );
 
   return (
     <div className="space-y-5">
+      <PageHeader title="Menu" />
+
       <Card className="divide-y divide-line p-0">
-        {DOCTOR_MENU_ITEMS.map((item) => (
-          <Link key={item.href} href={item.href} className={linkClass}>
-            <span className="font-medium">{item.label}</span>
-            <span className="text-ink-muted">›</span>
-          </Link>
-        ))}
+        {DOCTOR_MENU_ITEMS.map(renderRow)}
 
         <button
           type="button"
@@ -63,17 +95,16 @@ export function DoctorMenu({ name }: { name: string }) {
           className={`${linkClass} w-full text-left`}
           aria-expanded={showMore}
         >
-          <span className="font-medium">{showMore ? "Show less" : "More"}</span>
-          <span className="text-ink-muted">{showMore ? "⌃" : "⌄"}</span>
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-line/40 text-base"
+            aria-hidden
+          >
+            {showMore ? "⌃" : "⌄"}
+          </span>
+          <span className="flex-1 font-medium">{showMore ? "Show less" : "More"}</span>
         </button>
 
-        {showMore &&
-          DOCTOR_MENU_MORE_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} className={linkClass}>
-              <span className="font-medium">{item.label}</span>
-              <span className="text-ink-muted">›</span>
-            </Link>
-          ))}
+        {showMore && DOCTOR_MENU_MORE_ITEMS.map(renderRow)}
       </Card>
 
       <Card className="flex items-center justify-between">

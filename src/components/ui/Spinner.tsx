@@ -31,10 +31,53 @@ export function Spinner({
   );
 }
 
-/** Centered spinner for full-panel / page loading states. */
+/** Centered spinner for in-panel / modal loading states (fixed vertical padding). */
 export function SpinnerBlock({ label }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-12">
+      <Spinner size="lg" />
+      {label && <p className="text-sm text-ink-muted">{label}</p>}
+    </div>
+  );
+}
+
+/**
+ * Canonical page/route loader: fills its container and centers the spinner on
+ * BOTH axes (build-prompt Phase 1: "horizontally AND vertically centered").
+ * Use this for full-page data loads and as the `loading.tsx` route fallback.
+ */
+export function PageLoader({
+  label = "Loading…",
+  className,
+}: {
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-[60vh] w-full flex-col items-center justify-center gap-3",
+        className,
+      )}
+    >
+      <Spinner size="lg" />
+      {label && <p className="text-sm text-ink-muted">{label}</p>}
+    </div>
+  );
+}
+
+/**
+ * Full-screen centered overlay for auth/route transitions where the whole
+ * viewport should read as "loading" — notably the login → app hand-off, which
+ * otherwise looks frozen while the app shell is fetched.
+ */
+export function ScreenLoader({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-surface"
+    >
       <Spinner size="lg" />
       {label && <p className="text-sm text-ink-muted">{label}</p>}
     </div>

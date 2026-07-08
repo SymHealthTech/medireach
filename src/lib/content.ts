@@ -15,7 +15,7 @@ export const CONTENT_DEFAULTS: Record<ContentSlug, { title: string; body: string
       "",
       "What we collect: patient demographics and vitals you enter, consultation records you create, scanned reports you upload, and account/billing details.",
       "",
-      "Retention: patient and visit data is automatically deleted after a maximum of one year, in line with the data-minimisation principle of India's DPDP Act.",
+      "Retention: patient and visit data is automatically deleted after a maximum of one year, in line with the data-minimisation principle of India's DPDP Act. Medical certificates are legally significant documents that an authority, employer, or court may ask the issuing doctor to produce, so a certificate record and its PDF are retained longer — for three years from issue — before automatic deletion.",
       "",
       "Your rights: you may request access, correction, or erasure of personal data, and withdraw consent at any time, by contacting our grievance channel below. Withdrawal is as easy as giving consent.",
       "",

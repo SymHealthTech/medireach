@@ -536,10 +536,10 @@ export function GuideClient({ role }: { role: Role }) {
       {/* Header row: title + language toggle */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="mb-1 text-xs font-medium uppercase tracking-widerr text-ink-muted">
+          <p className="mb-1 text-xs font-medium uppercase tracking-wider text-ink-muted">
             {content.roleLabel}
           </p>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">{content.heading}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{content.heading}</h1>
         </div>
 
         {/* Language toggle */}

@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Input";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
+import { cn } from "@/lib/cn";
 
 interface PatientMatch {
   _id: string;
@@ -43,6 +45,9 @@ export default function RegisterPage() {
     emergencyContact: "",
   });
   const [consent, setConsent] = useState(false);
+  // Queue mode: a normal consultation, or the certificate-only fast path for a
+  // patient who came just for a medical certificate.
+  const [visitMode, setVisitMode] = useState<"consultation" | "certificate_only">("consultation");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const recorder = useRecorder();
@@ -147,9 +152,26 @@ export default function RegisterPage() {
     setExistingPatientId(null);
     setExistingPatientName(null);
     setConsent(false);
+    setVisitMode("consultation");
     setShowQueueConflictModal(false);
     dismissedIds.current.clear();
     dismissedForName.current = "";
+  }
+
+  /** Where to go after a patient lands in the queue. A certificate-only add by
+   *  the doctor jumps straight to the certificate screen (details pre-filled,
+   *  visitId carried so issuing completes the visit); everyone else follows the
+   *  normal flow. */
+  function goAfterAdd(patientId: string | null, visitId: string) {
+    if (me?.role !== "doctor") {
+      router.push("/app/queue");
+      return;
+    }
+    if (visitMode === "certificate_only" && patientId) {
+      router.push(`/app/records/${patientId}/certificate?visitId=${visitId}`);
+    } else {
+      router.push(`/app/consult/${visitId}`);
+    }
   }
 
   async function addAsFollowUp() {
@@ -159,9 +181,9 @@ export default function RegisterPage() {
       const { visitId } = await apiPost<{ visitId: string }>("/api/queue", {
         patientId: existingPatientId,
         type: "follow-up",
+        visitMode,
       });
-      if (me?.role === "doctor") router.push(`/app/consult/${visitId}`);
-      else router.push("/app/queue");
+      goAfterAdd(existingPatientId, visitId);
     } catch (err) {
       setShowQueueConflictModal(false);
       setError((err as Error).message);
@@ -216,10 +238,12 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       let visitId: string;
+      let patientId: string | null = existingPatientId;
       if (existingPatientId) {
         const result = await apiPost<{ visitId: string }>("/api/queue", {
           patientId: existingPatientId,
           type: "new",
+          visitMode,
           bp: form.bp || undefined,
           weightKg: form.weightKg ? Number(form.weightKg) : undefined,
           heightCm: form.heightCm ? Number(form.heightCm) : undefined,
@@ -240,13 +264,14 @@ export default function RegisterPage() {
           allergicTo: form.allergicTo || undefined,
           emergencyContact: form.emergencyContact || undefined,
           visitType: "new" as const,
+          visitMode,
           consent: true as const,
         };
-        const result = await apiPost<{ visitId: string }>("/api/patients", payload);
+        const result = await apiPost<{ patientId: string; visitId: string }>("/api/patients", payload);
         visitId = result.visitId;
+        patientId = result.patientId;
       }
-      if (me?.role === "doctor") router.push(`/app/consult/${visitId}`);
-      else router.push("/app/queue");
+      goAfterAdd(patientId, visitId);
     } catch (err) {
       const msg = (err as Error).message;
       if (existingPatientId && msg.toLowerCase().includes("already has a new entry")) {
@@ -261,7 +286,7 @@ export default function RegisterPage() {
 
   return (
     <div className="space-y-4 lg:mx-8">
-      <h1 className="text-xl font-semibold tracking-tight text-ink">Register patient</h1>
+      <PageHeader title="Register patient" subtitle="Add a new patient and place them in today's queue." />
 
       {error && (
         <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">
@@ -566,6 +591,37 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Visit purpose — normal consultation vs. certificate-only fast path.
+              Certificate-only patients sit in the same queue in normal order. */}
+          <div>
+            <Label htmlFor="visit-mode">Visit purpose</Label>
+            <div id="visit-mode" className="flex gap-2">
+              {([
+                { value: "consultation", label: "Consultation" },
+                { value: "certificate_only", label: "Certificate only" },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setVisitMode(opt.value)}
+                  className={cn(
+                    "flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+                    visitMode === opt.value
+                      ? "border-brand bg-brand/10 text-brand"
+                      : "border-line bg-surface-raised text-ink-muted hover:bg-line/30",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {visitMode === "certificate_only" && (
+              <p className="mt-1 text-xs text-ink-muted">
+                They join the queue in normal order; you&apos;ll go straight to the certificate screen — no full examination needed.
+              </p>
+            )}
+          </div>
+
           {!existingPatientId && (
             <label className="flex items-start gap-3 rounded-xl bg-surface p-3 text-sm text-ink">
               <input
@@ -586,7 +642,7 @@ export default function RegisterPage() {
           )}
 
           <div className="flex gap-3">
-            <Button type="submit" variant="brand" size="lg" disabled={loading}>
+            <Button type="submit" variant="brand" size="lg" loading={loading}>
               {loading ? "Saving…" : existingPatientId ? "Add to queue" : "Save & add to queue"}
             </Button>
             <Button

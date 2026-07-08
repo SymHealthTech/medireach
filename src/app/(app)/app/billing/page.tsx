@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
@@ -9,6 +10,7 @@ import { InvoiceDocument, type InvoiceClinic, type InvoiceDocumentProps } from "
 import type { TaxBreakup } from "@/lib/billing/tax";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { openCheckout } from "@/lib/client/razorpay";
+import { clearMeCache } from "@/lib/client/useMe";
 import { cn } from "@/lib/cn";
 
 interface Invoice {
@@ -109,6 +111,7 @@ export default function BillingPage() {
     setMsg(null);
     try {
       await apiPost("/api/billing/tier", { action: "upgrade" });
+      clearMeCache(); // tier changed — force a fresh /api/me so voice/AI unlock app-wide
       setMsg("Upgraded to Pro — voice and AI are now available.");
       load();
     } catch (e) {
@@ -191,7 +194,7 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold tracking-tight text-ink">Billing</h1>
+      <PageHeader title="Billing" subtitle="Your plan, invoices, and payments." />
 
       {msg && (
         <div className="flex items-start gap-2 rounded-xl border border-brand/20 bg-brand/10 px-4 py-3 text-sm text-brand">

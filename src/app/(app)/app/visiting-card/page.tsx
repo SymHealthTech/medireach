@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -198,12 +199,10 @@ export default function VisitingCardPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Digital Visiting Card</h1>
-        <p className="text-sm text-ink-muted">
-          A shareable, professional page you can send to patients.
-        </p>
-      </div>
+      <PageHeader
+        title="Digital Visiting Card"
+        subtitle="A shareable, professional page you can send to patients."
+      />
 
       {toast && (
         <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{toast}</p>

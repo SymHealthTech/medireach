@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { SpinnerBlock } from "@/components/ui/Spinner";
+import { PageLoader } from "@/components/ui/Spinner";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { uploadSigned } from "@/lib/client/upload";
 import { TEMPLATES, type TemplateId } from "@/lib/prescription/templates";
@@ -174,16 +175,19 @@ export default function DesignPrescriptionPage() {
     }
   }
 
-  if (!tpl || !clinic || !previewData) return <SpinnerBlock />;
+  if (!tpl || !clinic || !previewData) return <PageLoader />;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Design Prescription</h1>
-        <Button variant="outline" onClick={() => { if (sheetRef.current) void printSheet(sheetRef.current); }}>
-          Print / Save PDF
-        </Button>
-      </div>
+      <PageHeader
+        title="Design Prescription"
+        subtitle="Set up how your printed prescription looks."
+        actions={
+          <Button variant="outline" onClick={() => { if (sheetRef.current) void printSheet(sheetRef.current); }}>
+            Print / Save PDF
+          </Button>
+        }
+      />
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_3fr]">

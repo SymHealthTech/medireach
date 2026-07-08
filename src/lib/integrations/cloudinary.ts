@@ -54,8 +54,20 @@ export function createSignedUpload(folder: string): SignedUploadParams {
   return { signature, timestamp, apiKey, cloudName, folder, type: "authenticated" };
 }
 
-/** Generate a short-lived signed delivery URL for an authenticated asset. */
-export function signedAssetUrl(publicId: string, expiresInSeconds = 300): string {
+/**
+ * Generate a short-lived signed delivery URL for an authenticated asset.
+ *
+ * `maxWidth` (optional) bakes an auto-format, auto-quality, width-limited
+ * transformation INTO the signed URL — the correct way to right-size an
+ * authenticated image (a signature covers the exact URL, so the transform must
+ * be signed with it, not appended client-side). Omit it to deliver the original
+ * (e.g. scanned reports the doctor zooms into).
+ */
+export function signedAssetUrl(
+  publicId: string,
+  expiresInSeconds = 300,
+  maxWidth?: number,
+): string {
   configure();
   return cloudinary.url(publicId, {
     type: "authenticated",
@@ -63,6 +75,9 @@ export function signedAssetUrl(publicId: string, expiresInSeconds = 300): string
     secure: true,
     expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds,
     resource_type: "image",
+    ...(maxWidth
+      ? { transformation: [{ width: maxWidth, crop: "limit", quality: "auto", fetch_format: "auto" }] }
+      : {}),
   });
 }
 

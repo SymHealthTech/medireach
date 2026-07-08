@@ -163,6 +163,14 @@ export default function ConsultPage() {
   const [shareBusy, setShareBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
+
+  // Patient Dues (clinic fee bookkeeping — separate from subscription billing).
+  // `duesTotal` = the patient's outstanding dues from PREVIOUS visits (shown as
+  // an indicator by the fees field). `amountPaid` drives the post-prescription
+  // capture; `capturedRef` guards against recording the payment twice.
+  const [duesTotal, setDuesTotal] = useState<number | null>(null);
+  const [amountPaid, setAmountPaid] = useState("");
+  const capturedRef = useRef(false);
   const [patientInfoOpen, setPatientInfoOpen] = useState(false);
   const [kwByField, setKwByField] = useState<Record<string, FieldKeyword[]>>({});
 
@@ -261,6 +269,53 @@ export default function ConsultPage() {
   }, [visitId]);
 
   const kw = useCallback((field: string): FieldKeyword[] => kwByField[field] ?? [], [kwByField]);
+
+  // Load the patient's outstanding dues from previous visits (excluding this one)
+  // so the fees field can show a "Dues: ₹___" indicator for returning patients.
+  useEffect(() => {
+    if (!patientId) return;
+    apiGet<{ items: { visitId: string; dueAmount: number }[] }>(`/api/dues/${patientId}`)
+      .then((d) => {
+        const prev = d.items
+          .filter((it) => it.visitId !== visitId)
+          .reduce((sum, it) => sum + it.dueAmount, 0);
+        setDuesTotal(prev);
+      })
+      .catch(() => {});
+  }, [patientId, visitId]);
+
+  // Persist the in-progress draft, then open this patient's dues detail — so the
+  // doctor can return (via its Back button) to the consult without losing work.
+  async function goToDues() {
+    if (!patientId) return;
+    try {
+      await fetch(`/api/visits/${visitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
+    } catch { /* best-effort — navigate regardless */ }
+    router.push(`/app/dues/${patientId}?from=${encodeURIComponent(`/app/consult/${visitId}`)}`);
+  }
+
+  // Record the payment collected at the post-prescription moment. The fee comes
+  // from the visit server-side; here we send only what was collected. Best-effort
+  // and guarded so it fires once — it must never trap the doctor at the modal.
+  async function captureDues(paidStr: string) {
+    if (capturedRef.current) return;
+    const fee = Number(form.fees) || 0;
+    if (fee <= 0) return;
+    capturedRef.current = true;
+    const paid = Math.max(0, Math.min(Number(paidStr) || 0, fee));
+    try {
+      await apiPost("/api/dues", { visitId, amountPaid: paid });
+    } catch { /* swallow — the doctor can still settle later on the Dues page */ }
+  }
+
+  async function finishToQueue(paidStr: string) {
+    await captureDues(paidStr);
+    router.push("/app/queue");
+  }
 
   function setField<K extends keyof FormState>(k: K, v: FormState[K]) {
     setForm((f) => ({ ...f, [k]: v }));
@@ -508,6 +563,10 @@ export default function ConsultPage() {
         savePatient(),
       ]);
       setStatus("confirmed");
+      // Prime the dues capture: pre-fill "Amount paid" with the full fee (the
+      // 90% paid-in-full case is one tap) and reset the once-only capture guard.
+      setAmountPaid(form.fees ?? "");
+      capturedRef.current = false;
       setSuccessModal("sent");
     } catch (err) {
       setError((err as Error).message);
@@ -587,15 +646,19 @@ export default function ConsultPage() {
   if (step === "review") {
     const activeMeds = form.medicines.filter((m) => m.name.trim());
     const oeEntries = OE_FIELDS.filter(({ key }) => form.oe[key]);
+    // Post-prescription dues capture figures (clamped like the server does).
+    const feeNum = Number(form.fees) || 0;
+    const paidNum = Math.max(0, Math.min(Number(amountPaid) || 0, feeNum));
+    const dueNum = feeNum - paidNum;
 
     return (
       <>
         <div className="space-y-5">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-ink">{patient?.name ?? "Consultation"}</h1>
+            <div className="border-l-4 border-brand pl-3">
+              <h1 className="text-2xl font-bold tracking-tight text-ink">{patient?.name ?? "Consultation"}</h1>
               {patient && (
-                <p className="text-sm text-ink-muted">
+                <p className="mt-1 text-sm text-ink-muted">
                   {patient.gender}{patient.ageYears ? ` · ${patient.ageYears}y` : ""}
                 </p>
               )}
@@ -692,6 +755,35 @@ export default function ConsultPage() {
                     : "The prescription has been confirmed and saved."}
                 </p>
               </div>
+
+              {/* Post-prescription payment capture (Patient Dues). Shows only when
+                  a fee was charged. Amount paid is pre-filled with the full fee —
+                  the paid-in-full case is a single tap. */}
+              {successModal === "sent" && feeNum > 0 && (
+                <div className="rounded-xl border border-line bg-surface-raised p-3 text-left">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="amount-paid" className="text-xs font-medium uppercase tracking-wider text-ink-muted">
+                      Amount paid (₹)
+                    </label>
+                    <span className="text-xs text-ink-muted">Fee ₹{feeNum}</span>
+                  </div>
+                  <Input
+                    id="amount-paid"
+                    inputMode="numeric"
+                    value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value.replace(/[^\d]/g, ""))}
+                    className="mt-1"
+                  />
+                  <p className="mt-1.5 text-xs text-ink-muted">
+                    {dueNum > 0 ? (
+                      <>₹{dueNum} will be recorded as a <span className="font-semibold text-sos">due</span>.</>
+                    ) : (
+                      <span className="font-semibold text-success">Paid in full.</span>
+                    )}
+                  </p>
+                </div>
+              )}
+
               {successModal === "sent" && (
                 <>
                   <Button
@@ -706,14 +798,35 @@ export default function ConsultPage() {
                   <ShareHint hint={shareHint} />
                 </>
               )}
-              <Button
-                variant={successModal === "sent" ? "outline" : "brand"}
-                size="lg"
-                className="w-full"
-                onClick={() => router.push("/app/queue")}
-              >
-                Back to Queue
-              </Button>
+
+              {successModal === "sent" && feeNum > 0 ? (
+                <>
+                  <Button
+                    variant="brand"
+                    size="lg"
+                    className="w-full"
+                    onClick={() => finishToQueue(amountPaid)}
+                  >
+                    {dueNum > 0 ? `Record ₹${paidNum} & Back to Queue` : "Confirm Payment & Back to Queue"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => finishToQueue("0")}
+                    className="w-full text-sm font-semibold text-ink-muted hover:underline"
+                  >
+                    Skip — leave ₹{feeNum} as a due
+                  </button>
+                </>
+              ) : (
+                <Button
+                  variant={successModal === "sent" ? "outline" : "brand"}
+                  size="lg"
+                  className="w-full"
+                  onClick={() => router.push("/app/queue")}
+                >
+                  Back to Queue
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -940,6 +1053,17 @@ export default function ConsultPage() {
             <FL htmlFor="fees">Fees (₹)</FL>
             <KeywordText id="fees" inputMode="numeric" value={form.fees}
               onChange={(v) => setField("fees", v)} keywords={kw("fees")} />
+            {/* Patient Dues indicator — outstanding from previous visits. Tapping
+                opens the dues detail; the consult draft is saved so no work is lost. */}
+            {duesTotal != null && duesTotal > 0 && (
+              <button
+                type="button"
+                onClick={goToDues}
+                className="mt-1 inline-flex items-center gap-1 rounded-lg bg-sos/10 px-2 py-1 text-xs font-semibold text-sos hover:bg-sos/15"
+              >
+                Dues: ₹{duesTotal} ›
+              </button>
+            )}
           </div>
         </div>
 

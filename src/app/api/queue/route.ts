@@ -8,6 +8,7 @@ import { audit } from "@/lib/api/audit";
 import { Visit } from "@/models/Visit";
 import { Patient } from "@/models/Patient";
 import { startOfTodayIST } from "@/lib/time";
+import { VISIT_MODES } from "@/lib/constants";
 
 /**
  * Today's queue (spec §7.1). Returns today's visits (tenant-scoped) with just
@@ -17,7 +18,7 @@ import { startOfTodayIST } from "@/lib/time";
  */
 export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
   const visits = await scopedFind(Visit, ctx, { createdAt: { $gte: startOfTodayIST() } })
-    .select({ patientId: 1, type: 1, status: 1, createdAt: 1 })
+    .select({ patientId: 1, type: 1, visitMode: 1, status: 1, createdAt: 1 })
     .sort({ createdAt: 1 })
     .populate({ path: "patientId", select: "name mobile ageYears gender" })
     .lean();
@@ -32,6 +33,7 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
       ageYears: patient?.ageYears ?? null,
       gender: patient?.gender ?? null,
       type: v.type,
+      visitMode: v.visitMode ?? "consultation",
       status: v.status,
       createdAt: v.createdAt,
     };
@@ -50,6 +52,7 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
 const addSchema = z.object({
   patientId: fields.objectId,
   type: z.enum(["new", "follow-up"]).default("follow-up"),
+  visitMode: z.enum(VISIT_MODES).default("consultation"),
   bp: z.string().trim().max(20).optional(),
   weightKg: z.number().min(0).max(500).optional(),
   heightCm: z.number().min(0).max(300).optional(),
@@ -57,7 +60,7 @@ const addSchema = z.object({
 });
 
 export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
-  const { patientId, type, bp, weightKg, heightCm, temp } = await parseBody(req, addSchema);
+  const { patientId, type, visitMode, bp, weightKg, heightCm, temp } = await parseBody(req, addSchema);
 
   const patient = await scopedFindById(Patient, ctx, patientId).select("_id").lean();
   if (!patient) throw Errors.notFound("Patient not found.");
@@ -82,6 +85,7 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
     doctorId: requireDoctorId(ctx),
     patientId,
     type,
+    visitMode,
     status: "draft",
     oe,
   });

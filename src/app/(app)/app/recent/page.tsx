@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { cn } from "@/lib/cn";
@@ -242,14 +243,16 @@ function DoctorView({
   return (
     <div className="space-y-4">
       <div className="border-l-4 border-brand pl-3">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Patient records</h1>
-        <p className="text-sm text-ink-muted">Tap a date to view patients. Records lock 3 days after visit.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Patient records</h1>
+        <p className="mt-1 text-sm text-ink-muted">Tap a date to view patients. Records lock 3 days after visit.</p>
       </div>
 
       {months.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-line p-8 text-center text-ink-muted">
-          No patient records yet.
-        </p>
+        <EmptyState
+          icon="📁"
+          title="No patient records yet"
+          description="Confirmed consultations will appear here, grouped by day."
+        />
       ) : (
         <div className="space-y-3">
           {months.map((month) => {
@@ -383,14 +386,16 @@ function ReceptionistView({
   return (
     <div className="space-y-4">
       <div className="border-l-4 border-brand pl-3">
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Recent patients</h1>
-        <p className="text-sm text-ink-muted">Last 7 days. Contact corrections only.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Recent patients</h1>
+        <p className="mt-1 text-sm text-ink-muted">Last 7 days. Contact corrections only.</p>
       </div>
 
       {!hasPatients ? (
-        <p className="rounded-2xl border border-dashed border-line p-8 text-center text-ink-muted">
-          No recent patients.
-        </p>
+        <EmptyState
+          icon="📁"
+          title="No recent patients"
+          description="Patients seen in the last 7 days will show up here."
+        />
       ) : (
         <div className="divide-y divide-line overflow-hidden rounded-2xl bg-surface-raised shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70">
           {days.map((day) => {

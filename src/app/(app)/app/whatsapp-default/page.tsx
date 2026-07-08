@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { apiGet } from "@/lib/client/api";
@@ -88,7 +89,10 @@ export default function WhatsappDefaultPage() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold tracking-tight text-ink">WhatsApp delivery default</h1>
+      <PageHeader
+        title="WhatsApp delivery default"
+        subtitle="Choose where prescriptions are sent by default."
+      />
 
       {/* ── Delivery target ─────────────────────────────────── */}
       <Card className="space-y-4">
@@ -133,8 +137,8 @@ export default function WhatsappDefaultPage() {
             </div>
           ))}
         </div>
-        <Button variant="brand" onClick={saveTarget} disabled={targetBusy}>
-          Save
+        <Button variant="brand" onClick={saveTarget} loading={targetBusy}>
+          {targetBusy ? "Saving…" : "Save"}
         </Button>
       </Card>
     </div>

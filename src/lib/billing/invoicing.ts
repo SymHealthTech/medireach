@@ -22,9 +22,14 @@ export async function generateInvoiceForCycle(
   const existing = await Invoice.findOne({ doctorId, cycleNumber: cycle.cycleNumber }).lean();
   if (existing) return { created: false, invoiceId: String(existing._id) };
 
+  // Certificate-only visits use no AI/voice and cost the business nothing, so
+  // they must NOT count toward Pro per-patient billing (₹1.5/patient). `$ne`
+  // also matches legacy visits that predate the visitMode field (they are
+  // consultations). Starter is flat, so this has no effect there.
   const patientCount = await Visit.countDocuments({
     doctorId,
     status: "confirmed",
+    visitMode: { $ne: "certificate_only" },
     confirmedAt: { $gte: cycle.periodStart, $lt: cycle.periodEnd },
   });
   // Bill this cycle at the tier that applied DURING it (currentCycleTier — the

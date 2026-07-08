@@ -66,7 +66,7 @@ export default function QueuePage() {
       <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
         <div className="flex items-center justify-between lg:w-1/2 lg:shrink-0">
           <div className="border-l-4 border-brand pl-3">
-            <h1 className="text-xl font-semibold tracking-tight text-ink">Today&apos;s patients</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Today&apos;s patients</h1>
             <div className="mt-1.5 flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand" />

@@ -21,9 +21,13 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   const doctorId = requireDoctorId(ctx);
 
   const cycle = currentCycle(doctor.cycleStartDate);
+  // Exclude certificate-only visits from the billable count (they use no AI/voice
+  // and cost nothing) — consistent with the invoice generator. `$ne` also keeps
+  // legacy visits without the field counted as consultations.
   const patientCountSoFar = await Visit.countDocuments({
     doctorId,
     status: "confirmed",
+    visitMode: { $ne: "certificate_only" },
     confirmedAt: { $gte: cycle.periodStart, $lt: cycle.periodEnd },
   });
 

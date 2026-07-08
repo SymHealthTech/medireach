@@ -22,8 +22,29 @@ export type VisitStatus = (typeof VISIT_STATUSES)[number];
 export const VISIT_TYPES = ["new", "follow-up"] as const;
 export type VisitType = (typeof VISIT_TYPES)[number];
 
+/**
+ * Visit mode — the reason a patient is in the queue, distinct from VisitType
+ * (new/follow-up). `certificate_only` is the fast path for a patient who came
+ * just for a medical certificate: they sit in the normal queue but skip the full
+ * consultation, and — because they use no AI/voice — are excluded from Pro
+ * per-patient billing. `consultation` is the default for everyone else.
+ */
+export const VISIT_MODES = ["consultation", "certificate_only"] as const;
+export type VisitMode = (typeof VISIT_MODES)[number];
+export const DEFAULT_VISIT_MODE: VisitMode = "consultation";
+
 export const MEDICINE_SOURCES = ["clinic", "pharmacy"] as const;
 export type MedicineSource = (typeof MEDICINE_SOURCES)[number];
+
+/**
+ * Patient Dues status (clinic fee bookkeeping — the Patient Dues feature; NOT
+ * MediReach subscription billing). Derived from feeAmount vs amountPaid:
+ *  - paid:    the whole fee has been collected (nothing owed).
+ *  - partial: some money collected, a balance remains.
+ *  - unpaid:  nothing collected yet — the full fee is outstanding.
+ */
+export const DUES_STATUSES = ["paid", "partial", "unpaid"] as const;
+export type DuesStatus = (typeof DUES_STATUSES)[number];
 
 export const VERIFICATION_DOC_TYPES = [
   "registration",
@@ -146,6 +167,13 @@ export const GST_STATE_CODE_SET: ReadonlySet<string> = new Set(GST_STATE_CODES.m
 export const RECORD = {
   EDIT_LOCK_DAYS: 3,
   RETENTION_DAYS: 365,
+  /**
+   * Certificates are legal instruments an authority/employer/court may ask the
+   * doctor to produce, so they are retained LONGER than ordinary visit data —
+   * excluded from the 1-year purge and kept on this schedule instead. Single
+   * source of truth: change here to change the certificate retention window.
+   */
+  CERTIFICATE_RETENTION_DAYS: 365 * 3, // 3 years
 } as const;
 
 export const MAX_SOS_CONTACTS = 10;

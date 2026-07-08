@@ -7,6 +7,7 @@ import { LogoWordmark } from "@/components/brand/Logo";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
+import { ScreenLoader } from "@/components/ui/Spinner";
 
 /**
  * Clinic login (doctor + receptionist), spec §15.1. Two-step: credentials, then
@@ -20,6 +21,9 @@ export default function LoginPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Held true from a successful login through the client navigation into the
+  // app shell, so the screen never looks frozen during the hand-off (Phase 1).
+  const [redirecting, setRedirecting] = useState(false);
 
   async function submitCredentials(e: React.FormEvent) {
     e.preventDefault();
@@ -34,20 +38,23 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Login failed.");
+        setLoading(false);
         return;
       }
       if (data.onboardingIncomplete) {
+        setRedirecting(true);
         router.push("/signup");
         return;
       }
       if (data.otpRequired) {
         setStep("otp");
+        setLoading(false);
         return;
       }
+      setRedirecting(true);
       router.push(data.role === "receptionist" ? "/app/queue" : "/app");
     } catch {
       setError("Network error. Please try again.");
-    } finally {
       setLoading(false);
     }
   }
@@ -65,15 +72,20 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Verification failed.");
+        setLoading(false);
         return;
       }
+      setRedirecting(true);
       router.push(data.role === "receptionist" ? "/app/queue" : "/app");
     } catch {
       setError("Network error. Please try again.");
-    } finally {
       setLoading(false);
     }
   }
+
+  // Full-screen loader covers the gap between a successful login and the app
+  // shell painting — the worst "frozen" offender the build-prompt calls out.
+  if (redirecting) return <ScreenLoader label="Signing you in…" />;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-8 px-6">
@@ -120,7 +132,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" variant="brand" size="lg" className="w-full" disabled={loading}>
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
               {loading ? "Checking…" : "Continue"}
             </Button>
           </form>
@@ -137,7 +149,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" variant="brand" size="lg" className="w-full" disabled={loading}>
+            <Button type="submit" variant="brand" size="lg" className="w-full" loading={loading}>
               {loading ? "Verifying…" : "Verify & log in"}
             </Button>
           </form>

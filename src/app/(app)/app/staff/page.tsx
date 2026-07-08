@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -69,14 +70,14 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Staff</h1>
-        <p className="text-sm text-ink-muted">
-          {existing
+      <PageHeader
+        title="Staff"
+        subtitle={
+          existing
             ? `Receptionist login: ${existing.username}. Type a new password below to reset her access.`
-            : "Create your receptionist's login. She signs in on the same login screen with these credentials."}
-        </p>
-      </div>
+            : "Create your receptionist's login. She signs in on the same login screen with these credentials."
+        }
+      />
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
       <Card>
         <form onSubmit={save} className="space-y-4">

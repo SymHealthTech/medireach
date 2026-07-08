@@ -36,8 +36,8 @@ function publicUrl(slug: string): string {
   return `${env.appUrl().replace(/\/$/, "")}/card/${slug}`;
 }
 
-function preview(publicId?: string | null): string | null {
-  return publicId ? signedAssetUrl(publicId, 3600) : null;
+function preview(publicId?: string | null, maxWidth?: number): string | null {
+  return publicId ? signedAssetUrl(publicId, 3600, maxWidth) : null;
 }
 
 export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
@@ -67,8 +67,8 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
             publicUrl: publicUrl(card.slug),
             profilePhotoPublicId: card.profilePhotoUrl ?? null,
             coverPhotoPublicId: card.coverPhotoUrl ?? null,
-            profilePhotoPreview: preview(card.profilePhotoUrl),
-            coverPhotoPreview: preview(card.coverPhotoUrl),
+            profilePhotoPreview: preview(card.profilePhotoUrl, 240),
+            coverPhotoPreview: preview(card.coverPhotoUrl, 1040),
             designation: card.designation ?? "",
             tagline: card.tagline ?? "",
             services: card.services ?? [],

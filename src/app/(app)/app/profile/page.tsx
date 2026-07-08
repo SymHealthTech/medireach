@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -68,7 +69,7 @@ export default function ProfilePage() {
 
   if (loadError) return (
     <div className="space-y-5">
-      <h1 className="text-xl font-semibold tracking-tight text-ink">Profile</h1>
+      <PageHeader title="Profile" />
       <Card>
         <div className="space-y-3 py-2 text-center">
           <p className="text-sm text-sos">{loadError}</p>
@@ -105,10 +106,7 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Profile</h1>
-        <p className="text-sm text-ink-muted">ID: {form.appId ?? "—"}</p>
-      </div>
+      <PageHeader title="Profile" subtitle={`ID: ${form.appId ?? "—"}`} />
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
       <Card>
         <form onSubmit={save} className="space-y-4">

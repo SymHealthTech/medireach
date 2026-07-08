@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/client/api";
 import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
@@ -186,22 +187,32 @@ export default function RecordsPage() {
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{error}</p>}
 
       {patient && (
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">{patient.name}</h1>
-          <p className="text-sm text-ink-muted">
-            {patient.gender}
-            {patient.ageYears ? ` · ${patient.ageYears}y` : ""} · {patient.mobile}
-          </p>
-          {patient.allergicTo && (
-            <p className="mt-1 text-sm font-medium text-sos">Allergic to: {patient.allergicTo}</p>
-          )}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="border-l-4 border-brand pl-3">
+            <h1 className="text-2xl font-bold tracking-tight text-ink">{patient.name}</h1>
+            <p className="mt-1 text-sm text-ink-muted">
+              {patient.gender}
+              {patient.ageYears ? ` · ${patient.ageYears}y` : ""} · {patient.mobile}
+            </p>
+            {patient.allergicTo && (
+              <p className="mt-1 text-sm font-medium text-sos">Allergic to: {patient.allergicTo}</p>
+            )}
+          </div>
+          <button
+            onClick={() => router.push(`/app/records/${patientId}/certificate`)}
+            className="shrink-0 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-line/30"
+          >
+            📄 Medical Certificate
+          </button>
         </div>
       )}
 
       {visits.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-line p-8 text-center text-ink-muted">
-          No past visits on record.
-        </p>
+        <EmptyState
+          icon="📋"
+          title="No past visits on record"
+          description="Once this patient has a confirmed consultation, it will appear here."
+        />
       ) : (
         <ul className="space-y-3">
           {visits.map((v) => {

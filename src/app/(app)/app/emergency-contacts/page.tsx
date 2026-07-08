@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -62,10 +64,7 @@ export default function EmergencyContactsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Emergency Contacts</h1>
-        <p className="text-sm text-ink-muted">Add up to {max} fellow doctors.</p>
-      </div>
+      <PageHeader title="Emergency Contacts" subtitle={`Add up to ${max} fellow doctors.`} />
 
       {msg && <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand">{msg}</p>}
 
@@ -82,23 +81,26 @@ export default function EmergencyContactsPage() {
         </form>
       </Card>
 
-      <ul className="space-y-2">
-        {contacts.map((c) => (
-          <li key={c.doctorId} className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3">
-            <span className="text-ink">
-              Dr. {c.name} <span className="text-ink-muted">({c.appId})</span>
-            </span>
-            <button onClick={() => remove(c.doctorId)} className="text-sm text-sos hover:underline">
-              Remove
-            </button>
-          </li>
-        ))}
-        {contacts.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-line p-6 text-center text-ink-muted">
-            No contacts yet. As more doctors join MediReach, you can add them here.
-          </p>
-        )}
-      </ul>
+      {contacts.length === 0 ? (
+        <EmptyState
+          icon="🚑"
+          title="No contacts yet"
+          description="As more doctors join MediReach, you can add them here for emergencies."
+        />
+      ) : (
+        <ul className="space-y-2">
+          {contacts.map((c) => (
+            <li key={c.doctorId} className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3">
+              <span className="text-ink">
+                Dr. {c.name} <span className="text-ink-muted">({c.appId})</span>
+              </span>
+              <button onClick={() => remove(c.doctorId)} className="text-sm text-sos hover:underline">
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

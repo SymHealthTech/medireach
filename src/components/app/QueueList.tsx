@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { Input, Label } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/client/api";
 import type { Role } from "@/lib/constants";
 
@@ -17,6 +18,7 @@ export interface QueueEntry {
   ageYears: number | null;
   gender: string | null;
   type: "new" | "follow-up";
+  visitMode: "consultation" | "certificate_only";
   status: "draft" | "confirmed";
   createdAt: string;
 }
@@ -288,9 +290,11 @@ export function QueueList({
 
   if (entries.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-line p-8 text-center text-ink-muted">
-        No patients in today&apos;s queue yet.
-      </p>
+      <EmptyState
+        icon="🩺"
+        title="No patients in the queue yet"
+        description="Register a patient or add one from search to start today's queue."
+      />
     );
   }
 
@@ -322,7 +326,15 @@ export function QueueList({
                 type="button"
                 disabled={!clickable}
                 onClick={() => {
-                  if (role === "doctor") router.push(`/app/consult/${e.visitId}`);
+                  if (role !== "doctor") return;
+                  // Certificate-only patients skip the full consultation: open the
+                  // certificate screen directly (details pre-filled), carrying the
+                  // visitId so issuing the certificate completes this visit.
+                  if (e.visitMode === "certificate_only" && e.patientId) {
+                    router.push(`/app/records/${e.patientId}/certificate?visitId=${e.visitId}`);
+                  } else {
+                    router.push(`/app/consult/${e.visitId}`);
+                  }
                 }}
                 className={cn("min-w-0 flex-1 text-left", clickable ? "cursor-pointer" : "cursor-default")}
               >
@@ -349,6 +361,11 @@ export function QueueList({
                       >
                         {e.type === "follow-up" ? "Follow-up" : "New"}
                       </span>
+                      {e.visitMode === "certificate_only" && (
+                        <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+                          📄 Certificate only
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-ink-muted">
                       {[

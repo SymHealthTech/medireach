@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { GrievanceForm } from "@/components/site/GrievanceForm";
 import { getContent } from "@/lib/content";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export const metadata: Metadata = { title: "Privacy Policy — MediReach" };
 
@@ -17,7 +18,7 @@ export default async function AppPrivacyPolicyPage() {
       >
         ‹ Menu
       </Link>
-      <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
+      <PageHeader title={title} />
       <div className="space-y-4">
         {body.split("\n").map((line, i) =>
           line.trim() ? (
