@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteFooter } from "@/components/site/SiteFooter";
-import { GrievanceForm } from "@/components/site/GrievanceForm";
+import { SUPPORT_EMAIL } from "@/lib/marketing";
 import { getContent } from "@/lib/content";
 
 export const metadata: Metadata = { title: "Privacy Policy — MediReach" };
@@ -29,9 +29,17 @@ export default async function PrivacyPolicyPage() {
             ),
           )}
         </div>
-        <section className="mt-12">
-          <h2 className="mb-4 text-xl font-bold text-ink">Your data rights</h2>
-          <GrievanceForm />
+        <section className="mt-12 rounded-2xl border border-line bg-surface-raised p-6">
+          <h2 className="text-xl font-bold text-ink">Your data rights</h2>
+          <p className="mt-2 text-ink-muted">
+            To request access, correction, or erasure of your data, or to withdraw consent, email us at{" "}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand hover:underline">{SUPPORT_EMAIL}</a>.
+            Every request is logged and tracked to resolution.
+          </p>
+          <p className="mt-2 text-ink-muted">
+            Already using MediReach? You can raise a data request directly from{" "}
+            <span className="font-medium text-ink">Menu → Privacy Policy</span> inside the app.
+          </p>
         </section>
       </main>
       <SiteFooter />

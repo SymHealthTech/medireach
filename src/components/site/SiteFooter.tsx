@@ -39,7 +39,7 @@ export function SiteFooter() {
         </div>
       </div>
       <p className="pb-6 text-center text-xs text-ink-muted">
-        © {new Date().getFullYear()} MediReach. Not a substitute for professional medical judgment.
+        © {new Date().getFullYear()} MediReach — a product by SymHealthTech.
       </p>
     </footer>
   );

@@ -16,6 +16,10 @@ function handleUnauthorized(): void {
   const path = window.location.pathname;
   // Already on a login screen — let that page show its own inline error.
   if (path === "/login" || path === "/console/login") return;
+  // On signup, a 401 just means the visitor isn't logged in yet — that's the
+  // normal case for a new doctor. The wizard handles it by starting at step 1,
+  // so don't bounce them to /login.
+  if (path === "/signup") return;
   const target = path.startsWith("/console") ? "/console/login" : "/login";
   window.location.assign(target);
 }

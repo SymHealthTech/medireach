@@ -1,0 +1,51 @@
+<svg width="1440" height="760" viewBox="0 0 1440 760" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+  <defs>
+    <!-- soft brand colour fields -->
+    <radialGradient id="blobTeal" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#0E7C7B" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#0E7C7B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobCyan" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#3FA8A6" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#3FA8A6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blobAmber" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#F2994A" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#F2994A" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- faint dot grid -->
+    <pattern id="dots" width="30" height="30" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="2" fill="#0E7C7B" fill-opacity="0.06"/>
+    </pattern>
+
+    <!-- fade the whole thing out toward the left so hero text stays crisp -->
+    <linearGradient id="leftFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F7F9FA" stop-opacity="1"/>
+      <stop offset="0.30" stop-color="#F7F9FA" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#F7F9FA" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="pulse" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0E7C7B" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#0E7C7B" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#3FA8A6" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+
+  <!-- dot grid confined to the right two-thirds -->
+  <rect x="480" y="0" width="960" height="760" fill="url(#dots)"/>
+
+  <!-- overlapping colour fields form a soft mesh gradient -->
+  <ellipse cx="1180" cy="150" rx="620" ry="520" fill="url(#blobTeal)"/>
+  <ellipse cx="1380" cy="560" rx="560" ry="520" fill="url(#blobCyan)"/>
+  <ellipse cx="760" cy="680" rx="620" ry="480" fill="url(#blobAmber)"/>
+  <ellipse cx="980" cy="360" rx="420" ry="360" fill="url(#blobCyan)"/>
+
+  <!-- a single elegant pulse line echoing the MediReach logo -->
+  <path d="M520 400 H860 l26 -58 l30 132 l30 -210 l30 262 l28 -126 H1180 l34 -46 l30 92 H1440"
+        stroke="url(#pulse)" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- left fade for legibility -->
+  <rect width="1440" height="760" fill="url(#leftFade)"/>
+</svg>
