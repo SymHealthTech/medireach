@@ -96,7 +96,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   if (parsed.data.patientId) filter.patientId = parsed.data.patientId;
 
   const certificates = await scopedFind(Certificate, ctx, filter)
-    .select("type patientName patientId diagnosis illness jobPurpose fromDate toDate days resumeDate certificateDate pdfAssetRef createdAt")
+    .select("type patientName patientId visitId diagnosis illness jobPurpose fromDate toDate days resumeDate certificateDate pdfAssetRef createdAt")
     .sort({ certificateDate: -1, createdAt: -1 })
     .limit(200)
     .lean();
@@ -107,6 +107,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
       type: c.type,
       patientName: c.patientName ?? "",
       patientId: c.patientId ? String(c.patientId) : null,
+      visitId: c.visitId ? String(c.visitId) : null,
       diagnosis: c.diagnosis ?? null,
       illness: c.illness ?? null,
       jobPurpose: c.jobPurpose ?? null,

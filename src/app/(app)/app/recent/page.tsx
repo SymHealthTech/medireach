@@ -18,6 +18,8 @@ interface DayPatient {
   visitId: string;
   name: string;
   mobile: string;
+  gender?: string;
+  ageYears?: number;
   isEditLocked: boolean;
 }
 interface DayRecord {
@@ -99,11 +101,10 @@ function IconChevronDown() {
     </svg>
   );
 }
-function IconLock() {
+function IconChevronRight() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0">
-      <rect x="2" y="5" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M4 5V4a2 2 0 1 1 4 0v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0">
+      <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -121,9 +122,19 @@ function DateTile({ dateStr }: { dateStr: string }) {
   const dt = new Date(dateStr + "T00:00:00");
   const wd = dt.toLocaleDateString("en-IN", { weekday: "short" });
   return (
-    <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg bg-brand/10 leading-none">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-brand/80">{wd}</span>
+    <span className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-brand/20 to-brand/5 leading-none ring-1 ring-brand/15">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-brand/70">{wd}</span>
       <span className="text-lg font-bold text-brand">{dt.getDate()}</span>
+    </span>
+  );
+}
+
+/** Amber count pill — the secondary brand accent, so counts stand apart from the
+ *  teal date tiles instead of everything being one colour. */
+function CountPill({ n }: { n: number }) {
+  return (
+    <span className="shrink-0 rounded-full bg-action/15 px-2.5 py-1 text-xs font-bold text-action-hover">
+      {n}
     </span>
   );
 }
@@ -212,22 +223,21 @@ export default function RecentPage() {
     );
   }
 
-  return <DoctorView dates={dates} onNavigate={(id) => router.push(`/app/records/${id}`)} />;
+  return <DoctorView dates={dates} onOpenDay={(date) => router.push(`/app/recent/${date}`)} />;
 }
 
-// ─── Doctor view (month + day accordion) ─────────────────────────────────────
+// ─── Doctor view (month + day list; a day opens its own patient page) ─────────
 
 function DoctorView({
   dates,
-  onNavigate,
+  onOpenDay,
 }: {
   dates: DayRecord[];
-  onNavigate: (patientId: string) => void;
+  onOpenDay: (date: string) => void;
 }) {
   const months = groupByMonth(dates);
   const currentMonthKey = todayIST().slice(0, 7);
   const [openMonths, setOpenMonths] = useState<Set<string>>(new Set([currentMonthKey]));
-  const [openDay, setOpenDay] = useState<string | null>(null);
 
   function toggleMonth(key: string) {
     setOpenMonths((prev) => {
@@ -235,9 +245,6 @@ function DoctorView({
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
-  }
-  function toggleDay(date: string) {
-    setOpenDay((prev) => (prev === date ? null : date));
   }
 
   return (
@@ -259,14 +266,17 @@ function DoctorView({
             const isMonthOpen = openMonths.has(month.key);
             const monthTotal = month.days.reduce((s, d) => s + d.patientCount, 0);
             return (
-              <div className="overflow-hidden rounded-2xl bg-surface-raised shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70" key={month.key}>
-                {/* Month header */}
+              <div className="overflow-hidden rounded-2xl bg-surface-raised shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70" key={month.key}>
+                {/* Month header — soft teal tint sets it apart from the white day rows */}
                 <button
                   type="button"
                   onClick={() => toggleMonth(month.key)}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                  className={cn(
+                    "flex w-full items-center gap-3 bg-brand/15 px-4 py-3.5 text-left transition-colors hover:bg-brand/20",
+                    isMonthOpen && "border-b border-line",
+                  )}
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-fg shadow-sm">
                     <IconCalendar />
                   </span>
                   <span className="flex-1">
@@ -275,82 +285,31 @@ function DoctorView({
                       {monthTotal} {monthTotal === 1 ? "patient" : "patients"}
                     </span>
                   </span>
-                  <span className={cn("text-ink-muted transition-transform duration-200", isMonthOpen && "rotate-180")}>
+                  <CountPill n={monthTotal} />
+                  <span className={cn("text-brand/60 transition-transform duration-200", isMonthOpen && "rotate-180")}>
                     <IconChevronDown />
                   </span>
                 </button>
 
                 {isMonthOpen && (
-                  <div className="divide-y divide-line border-t border-line">
-                    {month.days.map((day) => {
-                      const isDayOpen = openDay === day.date;
-                      return (
-                        <div key={day.date}>
-                          {/* Day header */}
-                          <button
-                            type="button"
-                            onClick={() => toggleDay(day.date)}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5"
-                          >
-                            <DateTile dateStr={day.date} />
-                            <DayHeading dateStr={day.date} />
-                            <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
-                              {day.patientCount}
-                            </span>
-                            <span className={cn("text-ink-muted transition-transform duration-200", isDayOpen && "rotate-180")}>
-                              <IconChevronDown />
-                            </span>
-                          </button>
-
-                          {/* Patient list */}
-                          {isDayOpen && (
-                            <div className="bg-surface px-3 pb-3 pt-1">
-                              {day.patientCount === 0 ? (
-                                <p className="py-4 text-center text-sm text-ink-muted">
-                                  0 patients this day
-                                </p>
-                              ) : (
-                                <ul className="space-y-2">
-                                  {day.patients.map((p, idx) => (
-                                    <li
-                                      key={p.id}
-                                      className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70"
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={() => onNavigate(p.id)}
-                                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                                      >
-                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
-                                          {idx + 1}
-                                        </span>
-                                        <span className="min-w-0">
-                                          <span className="block truncate font-medium text-ink">{p.name}</span>
-                                          <span className="block text-xs text-ink-muted">{p.mobile}</span>
-                                        </span>
-                                      </button>
-                                      {p.isEditLocked ? (
-                                        <span className="flex shrink-0 items-center gap-1 text-xs text-ink-muted">
-                                          <IconLock /> Locked
-                                        </span>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          onClick={() => onNavigate(p.id)}
-                                          className="shrink-0 rounded-lg px-2.5 py-1 text-xs font-semibold text-brand hover:bg-brand/10"
-                                        >
-                                          Edit
-                                        </button>
-                                      )}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="divide-y divide-line">
+                    {month.days.map((day) => (
+                      /* Tapping a day opens its own patient list page — a day can
+                         hold 50+ patients, too many to expand inline. */
+                      <button
+                        key={day.date}
+                        type="button"
+                        onClick={() => onOpenDay(day.date)}
+                        className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5"
+                      >
+                        <DateTile dateStr={day.date} />
+                        <DayHeading dateStr={day.date} />
+                        <CountPill n={day.patientCount} />
+                        <span className="text-ink-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-brand">
+                          <IconChevronRight />
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -405,14 +364,15 @@ function ReceptionistView({
                 <button
                   type="button"
                   onClick={() => toggleDay(day.date)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5"
+                  className={cn(
+                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5",
+                    isDayOpen && "bg-gradient-to-r from-brand/10 to-transparent",
+                  )}
                 >
                   <DateTile dateStr={day.date} />
                   <DayHeading dateStr={day.date} />
-                  <span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
-                    {day.patientCount}
-                  </span>
-                  <span className={cn("text-ink-muted transition-transform duration-200", isDayOpen && "rotate-180")}>
+                  <CountPill n={day.patientCount} />
+                  <span className={cn("text-brand/60 transition-transform duration-200", isDayOpen && "rotate-180")}>
                     <IconChevronDown />
                   </span>
                 </button>
@@ -437,7 +397,7 @@ function ReceptionistView({
                               className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70"
                             >
                               <div className="flex min-w-0 items-center gap-3">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand/70 text-sm font-semibold text-brand-fg shadow-sm">
                                   {idx + 1}
                                 </span>
                                 <div className="min-w-0">

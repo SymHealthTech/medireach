@@ -58,11 +58,15 @@ export const DOCTOR_MENU_MORE_ITEMS: { href: string; label: string }[] = [
 
 export function DoctorMenu({ name }: { name: string }) {
   const [appId, setAppId] = useState<string | null>(null);
+  const [clinicName, setClinicName] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
 
   useEffect(() => {
-    apiGet<{ appId: string | null }>("/api/profile")
-      .then((d) => setAppId(d.appId))
+    apiGet<{ appId: string | null; clinicName?: string | null }>("/api/profile")
+      .then((d) => {
+        setAppId(d.appId);
+        setClinicName(d.clinicName ?? null);
+      })
       .catch(() => {});
   }, []);
 
@@ -111,6 +115,7 @@ export function DoctorMenu({ name }: { name: string }) {
         <div>
           <p className="text-lg font-semibold text-ink">Dr. {name}</p>
           <p className="text-sm text-ink-muted">ID: {appId ?? "—"}</p>
+          {clinicName && <p className="text-sm text-ink-muted">{clinicName}</p>}
         </div>
         <ThemeToggle />
       </Card>

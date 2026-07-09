@@ -2,13 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/client/api";
 import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
+import { cn } from "@/lib/cn";
+
+/** A labelled clinical field — small uppercase label over the value; renders
+ *  nothing when empty so a sparse (e.g. certificate-only) visit stays clean. */
+function Field({ label, value }: { label: string; value?: string }) {
+  if (!(value ?? "").trim()) return null;
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{label}</p>
+      <p className="whitespace-pre-wrap text-sm text-ink">{value}</p>
+    </div>
+  );
+}
 
 interface VisitMedicine {
   type?: string; name?: string; generic?: string; dose?: string; frequency?: string; timing?: string;
@@ -18,10 +30,20 @@ interface Visit {
   _id: string;
   confirmedAt?: string;
   type: string;
+  visitMode?: string;
+  ho?: string;
+  fh?: string;
   co?: string;
-  diagnosis?: string;
+  notes?: string;
   provisionalDiagnosis?: string;
-  oe?: { bp?: string; temp?: string; weight?: string; bsl?: string };
+  diagnosis?: string;
+  followUp?: string;
+  adviceGeneral?: string;
+  adviceLabTest?: string;
+  oe?: {
+    bp?: string; weight?: string; height?: string; pulse?: string; temp?: string;
+    rr?: string; pa?: string; cvs?: string; cns?: string; bsl?: string;
+  };
   medicines: VisitMedicine[];
   fees?: number;
 }
@@ -67,6 +89,10 @@ export default function RecordsPage() {
   const [tpl, setTpl] = useState<TplInfo | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [sendBusyId, setSendBusyId] = useState<string | null>(null);
+  // Certificate issued per visit (certificate-only fast-path), keyed by visitId,
+  // so a certificate-only record shows "Show certificate" instead of "Send Rx".
+  const [certByVisit, setCertByVisit] = useState<Map<string, { id: string; hasPdf: boolean }>>(new Map());
+  const [openingCertVisit, setOpeningCertVisit] = useState<string | null>(null);
   // Set to the sheet + share payload of the visit being sent; the effect below
   // rasterises the hidden sheet once React has rendered it.
   const [pendingShare, setPendingShare] = useState<{
@@ -94,7 +120,37 @@ export default function RecordsPage() {
         if (d.template.signatureUrl) setSignatureDataUrl(await imageUrlToDataUrl(d.template.signatureUrl));
       })
       .catch(() => {});
+    apiGet<{ certificates: { id: string; visitId: string | null; hasPdf: boolean }[] }>(
+      `/api/certificates?patientId=${patientId}`,
+    )
+      .then((d) => {
+        const m = new Map<string, { id: string; hasPdf: boolean }>();
+        for (const c of d.certificates) if (c.visitId) m.set(c.visitId, { id: c.id, hasPdf: c.hasPdf });
+        setCertByVisit(m);
+      })
+      .catch(() => {});
   }, [patientId]);
+
+  /** Open the certificate PDF issued for a certificate-only visit. Opens the tab
+   *  synchronously (inside the click) so the async signed-URL fetch isn't
+   *  popup-blocked; falls back to the certificate generator when no PDF exists. */
+  async function openCertificate(cert: { id: string; hasPdf: boolean }, visitId: string) {
+    if (!cert.hasPdf) {
+      router.push(`/app/records/${patientId}/certificate`);
+      return;
+    }
+    const win = window.open("", "_blank");
+    setOpeningCertVisit(visitId);
+    try {
+      const { url } = await apiGet<{ url: string }>(`/api/certificates/${cert.id}/pdf`);
+      if (win && !win.closed) win.location.href = url;
+      else window.open(url, "_blank");
+    } catch {
+      if (win && !win.closed) win.close();
+    } finally {
+      setOpeningCertVisit(null);
+    }
+  }
 
   useEffect(() => {
     if (!pendingShare) return;
@@ -187,23 +243,18 @@ export default function RecordsPage() {
       {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{error}</p>}
 
       {patient && (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="border-l-4 border-brand pl-3">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">{patient.name}</h1>
-            <p className="mt-1 text-sm text-ink-muted">
-              {patient.gender}
-              {patient.ageYears ? ` · ${patient.ageYears}y` : ""} · {patient.mobile}
+        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-brand/12 via-brand/[0.05] to-action/10 p-4 shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70">
+          <h1 className="text-2xl font-medium tracking-tight text-ink">{patient.name}</h1>
+          <p className="mt-0.5 text-sm text-ink-muted">
+            {[patient.gender, patient.ageYears ? `${patient.ageYears}y` : null, patient.mobile]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          {patient.allergicTo && (
+            <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-sos/10 px-2.5 py-0.5 text-xs font-medium text-sos">
+              ⚠ Allergic to: {patient.allergicTo}
             </p>
-            {patient.allergicTo && (
-              <p className="mt-1 text-sm font-medium text-sos">Allergic to: {patient.allergicTo}</p>
-            )}
-          </div>
-          <button
-            onClick={() => router.push(`/app/records/${patientId}/certificate`)}
-            className="shrink-0 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-line/30"
-          >
-            📄 Medical Certificate
-          </button>
+          )}
         </div>
       )}
 
@@ -218,57 +269,148 @@ export default function RecordsPage() {
           {visits.map((v) => {
             const editable = isWithin3Days(v.confirmedAt);
             const isSendingThis = sendBusyId === v._id;
+            const isCertOnly = v.visitMode === "certificate_only";
+            const cert = certByVisit.get(v._id);
+            const isOpeningCert = openingCertVisit === v._id;
+            // Match the queue's visit-type pills (QueueList): teal tint for
+            // follow-up, amber tint for new.
+            const typeStyle =
+              v.type === "follow-up" ? "bg-brand/10 text-brand" : "bg-action/15 text-action";
+            const oe = v.oe ?? {};
+            const oeItems = ([
+              ["BP", oe.bp], ["Pulse", oe.pulse], ["Temp", oe.temp], ["RR", oe.rr],
+              ["Wt", oe.weight], ["Ht", oe.height], ["P/A", oe.pa], ["CVS", oe.cvs],
+              ["CNS", oe.cns], ["BSL", oe.bsl],
+            ] as [string, string | undefined][]).filter(
+              (pair): pair is [string, string] => !!(pair[1] ?? "").trim(),
+            );
+            const hasBody =
+              !!(v.co || v.ho || v.fh || v.notes || v.diagnosis || v.provisionalDiagnosis ||
+                v.followUp || v.adviceGeneral || v.adviceLabTest) ||
+              oeItems.length > 0 ||
+              v.medicines.length > 0 ||
+              v.fees != null ||
+              shareResult?.id === v._id;
             return (
-              <Card key={v._id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-ink">
-                    {v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : "—"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs text-brand">{v.type}</span>
-                    {editable && (
+              <li
+                key={v._id}
+                className="overflow-hidden rounded-2xl bg-surface-raised shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70"
+              >
+                {/* Header — faint tint separates the date/type from the white body */}
+                <div className={cn("flex items-center justify-between gap-2 bg-brand/5 px-4 py-2.5", hasBody && "border-b border-line")}>
+                  {/* Left: date + new/follow-up */}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="text-sm font-semibold text-ink">
+                      {v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : "—"}
+                    </span>
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-medium", typeStyle)}>
+                      {v.type === "follow-up" ? "Follow-up" : "New"}
+                    </span>
+                  </div>
+                  {/* Right: edit-or-locked + Send Rx / View certificate */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {editable ? (
                       <button
                         onClick={() => router.push(`/app/records/${patientId}/edit/${v._id}`)}
-                        className="rounded-lg border border-line px-2.5 py-0.5 text-xs font-medium text-ink hover:bg-line/30"
+                        className="rounded-lg border border-line bg-surface-raised px-2.5 py-1 text-xs font-medium text-ink hover:bg-line/30"
                       >
                         Edit
                       </button>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs font-medium text-ink-muted">🔒 Locked</span>
                     )}
-                    <button
-                      onClick={() => handleSendPrescription(v)}
-                      disabled={isSendingThis}
-                      className="rounded-lg bg-brand/10 px-2.5 py-0.5 text-xs font-medium text-brand hover:bg-brand/20 disabled:opacity-50"
-                    >
-                      {isSendingThis ? "Sending…" : "Send Rx"}
-                    </button>
+                    {isCertOnly ? (
+                      <button
+                        onClick={() => (cert ? openCertificate(cert, v._id) : router.push(`/app/records/${patientId}/certificate`))}
+                        disabled={isOpeningCert}
+                        className="rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-fg shadow-sm hover:bg-brand/90 disabled:opacity-50"
+                      >
+                        {isOpeningCert ? "Opening…" : "View certificate"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSendPrescription(v)}
+                        disabled={isSendingThis}
+                        className="rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-fg shadow-sm hover:bg-brand/90 disabled:opacity-50"
+                      >
+                        {isSendingThis ? "Sending…" : "Send Rx"}
+                      </button>
+                    )}
                   </div>
                 </div>
-                {v.co && <p className="text-sm text-ink"><span className="text-ink-muted">C/O:</span> {v.co}</p>}
-                {(v.diagnosis || v.provisionalDiagnosis) && (
-                  <p className="text-sm text-ink">
-                    <span className="text-ink-muted">Diagnosis:</span> {v.diagnosis || v.provisionalDiagnosis}
-                  </p>
+
+                {/* Body — omitted entirely when the visit carries no clinical detail
+                    (e.g. a certificate-only visit) so no empty box shows. */}
+                {hasBody && (
+                  <div className="space-y-3 px-4 py-3">
+                    <Field label="Complaints" value={v.co} />
+                    <Field label="History of present illness" value={v.ho} />
+                    <Field label="Family history" value={v.fh} />
+                    {oeItems.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">On examination</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {oeItems.map(([label, val]) => (
+                            <span key={label} className="rounded-md bg-surface px-2 py-1 text-xs text-ink ring-1 ring-line/60">
+                              <span className="text-ink-muted">{label}</span> {val}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <Field
+                      label={v.diagnosis ? "Diagnosis" : "Provisional diagnosis"}
+                      value={v.diagnosis || v.provisionalDiagnosis}
+                    />
+                    {v.medicines.length > 0 && (
+                      <div>
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Medicines</p>
+                        <ul className="space-y-1.5">
+                          {v.medicines.map((m, i) => {
+                            const nameLine =
+                              (m.name ?? "").trim()
+                                ? `${(m.type ?? "").trim() ? `${m.type} ` : ""}${m.name}`
+                                : m.clinicalText || m.patientText || "Medicine";
+                            const details = [m.generic, m.dose, m.frequency, m.timing]
+                              .map((s) => (s ?? "").trim())
+                              .filter(Boolean)
+                              .join(" · ");
+                            return (
+                              <li
+                                key={i}
+                                className="rounded-lg border-l-2 border-brand/40 bg-surface px-3 py-2"
+                              >
+                                <span className="block text-sm font-medium text-ink">{nameLine}</span>
+                                {details && <span className="mt-0.5 block text-xs text-ink-muted">{details}</span>}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    <Field label="Advice" value={v.adviceGeneral} />
+                    <Field label="Lab tests" value={v.adviceLabTest} />
+                    <Field label="Follow-up" value={v.followUp} />
+                    <Field label="Notes" value={v.notes} />
+                    {v.fees != null && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success">
+                        Fees ₹{v.fees}
+                      </span>
+                    )}
+                    {shareResult?.id === v._id && (
+                      shareResult.kind === "link" ? (
+                        <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+                          📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
+                        </p>
+                      ) : (
+                        <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="status">
+                          ⚠️ Couldn&apos;t prepare the prescription link. Please tap Send Rx again.
+                        </p>
+                      )
+                    )}
+                  </div>
                 )}
-                {v.medicines.length > 0 && (
-                  <ul className="list-inside list-disc text-sm text-ink-muted">
-                    {v.medicines.map((m, i) => (
-                      <li key={i}>{m.clinicalText || m.patientText || m.name || ""}</li>
-                    ))}
-                  </ul>
-                )}
-                {v.fees != null && <p className="text-sm text-ink-muted">Fees: ₹{v.fees}</p>}
-                {shareResult?.id === v._id && (
-                  shareResult.kind === "link" ? (
-                    <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
-                      📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
-                    </p>
-                  ) : (
-                    <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="status">
-                      ⚠️ Couldn&apos;t prepare the prescription link. Please tap Send Rx again.
-                    </p>
-                  )
-                )}
-              </Card>
+              </li>
             );
           })}
         </ul>
@@ -288,24 +430,29 @@ function RecordsSkeleton({ onBack }: { onBack: () => void }) {
   return (
     <div className="space-y-5">
       <button onClick={onBack} className="text-sm text-ink-muted hover:underline">← Back</button>
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-56" />
+      <div className="flex items-center gap-4 rounded-2xl bg-surface-raised p-4 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70">
+        <Skeleton className="h-14 w-14 rounded-2xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-4 w-52" />
+        </div>
       </div>
       <ul className="space-y-3">
         {[0, 1, 2].map((i) => (
-          <Card key={i} className="space-y-2">
-            <div className="flex items-center justify-between">
+          <li key={i} className="overflow-hidden rounded-2xl bg-surface-raised shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70">
+            <div className="flex items-center justify-between border-b border-line bg-brand/[0.04] px-4 py-2.5">
               <Skeleton className="h-4 w-24" />
               <div className="flex gap-2">
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-5 w-14 rounded-lg" />
+                <Skeleton className="h-6 w-14 rounded-lg" />
+                <Skeleton className="h-6 w-16 rounded-lg" />
               </div>
             </div>
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-3 w-2/3" />
-          </Card>
+            <div className="space-y-2 px-4 py-3">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-9 w-2/3 rounded-lg" />
+            </div>
+          </li>
         ))}
       </ul>
     </div>
