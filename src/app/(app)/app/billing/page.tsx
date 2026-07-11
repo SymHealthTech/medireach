@@ -16,6 +16,7 @@ import { cn } from "@/lib/cn";
 interface Invoice {
   id: string;
   cycleNumber: number;
+  tier: "starter" | "pro";
   periodStart: string;
   periodEnd: string;
   patientCount: number;
@@ -162,6 +163,7 @@ export default function BillingPage() {
       clinic,
       invoiceNumber: `SAMPLE-${c.cycleNumber}`,
       cycleNumber: c.cycleNumber,
+      tier: summary!.currentCycleTier, // this cycle bills at the snapshot tier
       periodStart: c.periodStart,
       periodEnd: new Date(),
       issueDate: new Date(),
@@ -180,6 +182,7 @@ export default function BillingPage() {
       clinic,
       invoiceNumber: `INV-${inv.cycleNumber}`,
       cycleNumber: inv.cycleNumber,
+      tier: inv.tier,
       periodStart: inv.periodStart,
       periodEnd: inv.periodEnd,
       issueDate: inv.periodEnd,

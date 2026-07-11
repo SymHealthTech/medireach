@@ -284,6 +284,11 @@ export const KEYWORD_FIELDS = [
   { key: "fees",      label: "Fees",                short: "₹",     hint: "Consultation fee shortcuts." },
   { key: "advice",    label: "Advice",              short: "Adv",   hint: "General advice given to the patient." },
   { key: "labTest",   label: "Lab Test",            short: "Lab",   hint: "Investigations / lab tests." },
+  { key: "nebuliserAgent",    label: "Nebulising Agent",     short: "Neb",  hint: "Drugs / solutions nebulised — e.g. Budesonide, Salbutamol + Ipratropium." },
+  { key: "injectionDetails",  label: "Injection",            short: "Inj",  hint: "Outside injection name, dose & route — e.g. Inj. Diclofenac 75mg IM." },
+  { key: "woundSpec",         label: "Wound",                short: "Wnd",  hint: "Wound type, site, size & appearance — e.g. laceration, abrasion." },
+  { key: "mechanismOfInjury", label: "Mechanism of Injury",  short: "MOI",  hint: "How the wound was caused — e.g. RTA, sharp cut, fall." },
+  { key: "dressingNotes",     label: "Dressing",             short: "Drsg", hint: "Dressing material & technique — e.g. Betadine, saline gauze, next change." },
 ] as const;
 
 export type KeywordField = (typeof KEYWORD_FIELDS)[number]["key"];

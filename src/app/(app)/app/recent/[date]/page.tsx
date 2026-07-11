@@ -63,14 +63,24 @@ function IconChevronRight() {
   );
 }
 
-/** Big calendar tile for the page banner: month over a large day number. */
+/**
+ * Big calendar-page tile for the page banner — the larger sibling of the tile on
+ * the Patient Records list, kept identical in style for consistency: a soft teal
+ * month strip over the day number and weekday.
+ */
 function BigDateTile({ dateStr }: { dateStr: string }) {
   const dt = new Date(dateStr + "T00:00:00");
   const mon = dt.toLocaleDateString("en-IN", { month: "short" });
+  const wd = dt.toLocaleDateString("en-IN", { weekday: "short" });
   return (
-    <span className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl bg-brand text-brand-fg shadow-sm">
-      <span className="text-[11px] font-semibold uppercase tracking-wide opacity-90">{mon}</span>
-      <span className="text-2xl font-bold leading-none">{dt.getDate()}</span>
+    <span className="flex h-16 w-14 shrink-0 flex-col items-center overflow-hidden rounded-2xl bg-surface-raised ring-1 ring-line">
+      <span className="w-full bg-brand/15 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wider text-brand">
+        {mon}
+      </span>
+      <span className="flex flex-1 flex-col items-center justify-center leading-none">
+        <span className="text-2xl font-bold text-ink">{dt.getDate()}</span>
+        <span className="text-[9px] font-medium uppercase tracking-wide text-ink-muted">{wd}</span>
+      </span>
     </span>
   );
 }
@@ -106,14 +116,14 @@ export default function RecentDatePage() {
         ← Back
       </button>
 
-      {/* Banner — brand→amber wash gives the page a warm, distinct header */}
-      <div className="flex items-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br from-brand/12 via-brand/[0.05] to-action/10 p-4 shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70">
+      {/* Banner — clean, soft card (matches the Patient Records header) */}
+      <div className="flex items-center gap-4 rounded-2xl bg-surface-raised p-4 shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70">
         <BigDateTile dateStr={date} />
         <div className="min-w-0">
           <h1 className="truncate text-xl font-bold tracking-tight text-ink">{rel ?? fullDate(date)}</h1>
           <p className="mt-0.5 text-sm text-ink-muted">
             {rel ? `${fullDate(date)} · ` : ""}
-            <span className="font-semibold text-action-hover">
+            <span className="font-semibold text-brand">
               {patients.length} {patients.length === 1 ? "patient" : "patients"}
             </span>
           </p>
@@ -137,7 +147,7 @@ export default function RecentDatePage() {
                 onClick={() => router.push(`/app/records/${p.id}`)}
                 className="group flex w-full items-center gap-3 rounded-xl bg-surface-raised px-3 py-3 text-left shadow-card ring-1 ring-line/50 transition-all hover:-translate-y-px hover:shadow-md hover:ring-brand/30 dark:shadow-card-dark dark:ring-line/70"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand/70 text-sm font-semibold text-brand-fg shadow-sm">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
                   {idx + 1}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -166,7 +176,7 @@ function DateSkeleton({ onBack }: { onBack: () => void }) {
     <div className="space-y-4">
       <button onClick={onBack} className="text-sm text-ink-muted hover:underline">← Back</button>
       <div className="flex items-center gap-4 rounded-2xl bg-surface-raised p-4 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70">
-        <Skeleton className="h-16 w-16 rounded-2xl" />
+        <Skeleton className="h-16 w-14 rounded-2xl" />
         <div className="space-y-2">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-4 w-28" />

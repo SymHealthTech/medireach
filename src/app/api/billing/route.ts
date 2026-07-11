@@ -79,6 +79,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
     invoices: invoices.map((i) => ({
       id: String(i._id),
       cycleNumber: i.cycleNumber,
+      tier: i.tier, // Starter (flat) vs Pro (per-patient) — drives the invoice line items
       periodStart: i.periodStart,
       periodEnd: i.periodEnd,
       patientCount: i.patientCount,

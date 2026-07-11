@@ -117,23 +117,31 @@ function IconCalendar() {
   );
 }
 
-/** Small calendar tile: weekday label over the day-of-month number. */
+/**
+ * Mini "calendar-page" tile: a soft teal month strip over the day number and
+ * weekday — a quiet brand tint, not a solid block, so the list stays calm.
+ */
 function DateTile({ dateStr }: { dateStr: string }) {
   const dt = new Date(dateStr + "T00:00:00");
   const wd = dt.toLocaleDateString("en-IN", { weekday: "short" });
+  const mon = dt.toLocaleDateString("en-IN", { month: "short" });
   return (
-    <span className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-br from-brand/20 to-brand/5 leading-none ring-1 ring-brand/15">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-brand/70">{wd}</span>
-      <span className="text-lg font-bold text-brand">{dt.getDate()}</span>
+    <span className="flex h-14 w-12 shrink-0 flex-col items-center overflow-hidden rounded-xl bg-surface-raised ring-1 ring-line">
+      <span className="w-full bg-brand/15 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider text-brand">
+        {mon}
+      </span>
+      <span className="flex flex-1 flex-col items-center justify-center leading-none">
+        <span className="text-lg font-bold text-ink">{dt.getDate()}</span>
+        <span className="text-[9px] font-medium uppercase tracking-wide text-ink-muted">{wd}</span>
+      </span>
     </span>
   );
 }
 
-/** Amber count pill — the secondary brand accent, so counts stand apart from the
- *  teal date tiles instead of everything being one colour. */
+/** Soft teal count pill — a quiet brand accent for the patient count. */
 function CountPill({ n }: { n: number }) {
   return (
-    <span className="shrink-0 rounded-full bg-action/15 px-2.5 py-1 text-xs font-bold text-action-hover">
+    <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
       {n}
     </span>
   );
@@ -154,9 +162,27 @@ function DayHeading({ dateStr }: { dateStr: string }) {
   });
   return (
     <span className="min-w-0 flex-1">
-      <span className="block font-medium text-ink">{isRelative ? rel : full}</span>
+      <span className="block truncate font-medium text-ink">{isRelative ? rel : full}</span>
       {isRelative && <span className="block text-xs text-ink-muted">{full}</span>}
     </span>
+  );
+}
+
+/**
+ * Shared page banner: a clean, soft card with a quiet teal icon badge. Simple
+ * and professional — no gradients.
+ */
+function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3.5 rounded-2xl bg-surface-raised p-4 shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+        <IconCalendar />
+      </span>
+      <div className="min-w-0">
+        <h1 className="truncate text-xl font-bold tracking-tight text-ink">{title}</h1>
+        <p className="mt-0.5 text-sm text-ink-muted">{subtitle}</p>
+      </div>
+    </div>
   );
 }
 
@@ -249,10 +275,10 @@ function DoctorView({
 
   return (
     <div className="space-y-4">
-      <div className="border-l-4 border-brand pl-3">
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Patient records</h1>
-        <p className="mt-1 text-sm text-ink-muted">Tap a date to view patients. Records lock 3 days after visit.</p>
-      </div>
+      <PageHeader
+        title="Patient records"
+        subtitle="Tap a date to view patients. Records lock 3 days after visit."
+      />
 
       {months.length === 0 ? (
         <EmptyState
@@ -267,16 +293,17 @@ function DoctorView({
             const monthTotal = month.days.reduce((s, d) => s + d.patientCount, 0);
             return (
               <div className="overflow-hidden rounded-2xl bg-surface-raised shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70" key={month.key}>
-                {/* Month header — soft teal tint sets it apart from the white day rows */}
+                {/* Month header — a soft, neutral gray tint sets it gently apart
+                    from the plain day rows */}
                 <button
                   type="button"
                   onClick={() => toggleMonth(month.key)}
                   className={cn(
-                    "flex w-full items-center gap-3 bg-brand/15 px-4 py-3.5 text-left transition-colors hover:bg-brand/20",
+                    "flex w-full items-center gap-3 bg-ink/[0.03] px-4 py-3.5 text-left transition-colors hover:bg-ink/[0.06]",
                     isMonthOpen && "border-b border-line",
                   )}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand text-brand-fg shadow-sm">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
                     <IconCalendar />
                   </span>
                   <span className="flex-1">
@@ -286,7 +313,7 @@ function DoctorView({
                     </span>
                   </span>
                   <CountPill n={monthTotal} />
-                  <span className={cn("text-brand/60 transition-transform duration-200", isMonthOpen && "rotate-180")}>
+                  <span className={cn("text-ink-muted transition-transform duration-200", isMonthOpen && "rotate-180")}>
                     <IconChevronDown />
                   </span>
                 </button>
@@ -300,7 +327,7 @@ function DoctorView({
                         key={day.date}
                         type="button"
                         onClick={() => onOpenDay(day.date)}
-                        className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5"
+                        className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface"
                       >
                         <DateTile dateStr={day.date} />
                         <DayHeading dateStr={day.date} />
@@ -344,10 +371,7 @@ function ReceptionistView({
 
   return (
     <div className="space-y-4">
-      <div className="border-l-4 border-brand pl-3">
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Recent patients</h1>
-        <p className="mt-1 text-sm text-ink-muted">Last 7 days. Contact corrections only.</p>
-      </div>
+      <PageHeader title="Recent patients" subtitle="Last 7 days. Contact corrections only." />
 
       {!hasPatients ? (
         <EmptyState
@@ -365,14 +389,14 @@ function ReceptionistView({
                   type="button"
                   onClick={() => toggleDay(day.date)}
                   className={cn(
-                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-brand/5",
-                    isDayOpen && "bg-gradient-to-r from-brand/10 to-transparent",
+                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface",
+                    isDayOpen && "bg-ink/[0.04]",
                   )}
                 >
                   <DateTile dateStr={day.date} />
                   <DayHeading dateStr={day.date} />
                   <CountPill n={day.patientCount} />
-                  <span className={cn("text-brand/60 transition-transform duration-200", isDayOpen && "rotate-180")}>
+                  <span className={cn("text-ink-muted transition-transform duration-200", isDayOpen && "rotate-180")}>
                     <IconChevronDown />
                   </span>
                 </button>
@@ -397,7 +421,7 @@ function ReceptionistView({
                               className="flex items-center justify-between gap-3 rounded-xl bg-surface-raised px-3 py-2.5 shadow-card dark:shadow-card-dark dark:ring-1 dark:ring-line/70"
                             >
                               <div className="flex min-w-0 items-center gap-3">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand/70 text-sm font-semibold text-brand-fg shadow-sm">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
                                   {idx + 1}
                                 </span>
                                 <div className="min-w-0">

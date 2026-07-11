@@ -1,4 +1,4 @@
-import { BILLING, TAX } from "@/lib/constants";
+import { BILLING, TAX, type Tier } from "@/lib/constants";
 import type { TaxBreakup } from "@/lib/billing/tax";
 
 export interface InvoiceClinic {
@@ -14,6 +14,8 @@ export interface InvoiceDocumentProps {
   clinic: InvoiceClinic;
   invoiceNumber: string;
   cycleNumber: number;
+  /** Plan this cycle was billed at: Starter (flat fee) or Pro (per-patient). */
+  tier: Tier;
   periodStart: string | Date;
   periodEnd: string | Date;
   issueDate: string | Date;
@@ -41,6 +43,7 @@ export function InvoiceDocument({
   clinic,
   invoiceNumber,
   cycleNumber,
+  tier,
   periodStart,
   periodEnd,
   issueDate,
@@ -49,14 +52,16 @@ export function InvoiceDocument({
   tax,
   watermark,
 }: InvoiceDocumentProps) {
-  // Line-item breakdown that reconciles to `amount` (spec §11: greater of the
-  // monthly minimum or the per-patient total).
+  const isPro = tier === "pro";
+  // Pro line-item breakdown that reconciles to `amount` (spec §11: greater of
+  // the monthly minimum or the per-patient total). Unused for Starter, which is
+  // a single flat cycle fee regardless of patient count.
   const perPatientTotal =
     patientCount <= BILLING.DISCOUNT_THRESHOLD
       ? patientCount * BILLING.PER_PATIENT_INR
       : BILLING.DISCOUNT_THRESHOLD * BILLING.PER_PATIENT_INR +
         (patientCount - BILLING.DISCOUNT_THRESHOLD) * BILLING.PER_PATIENT_DISCOUNTED_INR;
-  const minimumApplied = amount > perPatientTotal;
+  const minimumApplied = isPro && amount > perPatientTotal;
   const taxed = Boolean(tax?.enabled);
 
   return (
@@ -87,6 +92,9 @@ export function InvoiceDocument({
           <p className="text-sm font-bold tracking-tight text-teal-700">{TAX.SELLER_LEGAL_NAME || "MediReach"}</p>
           <p className="mt-2 text-xs uppercase tracking-wide text-gray-400">{taxed ? "Tax Invoice" : "Invoice"}</p>
           <p className="font-mono text-sm text-gray-900">{invoiceNumber}</p>
+          <p className="mt-1 inline-block rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-teal-700">
+            {isPro ? "Pro plan" : "Starter plan"}
+          </p>
           {taxed && TAX.SELLER_GSTIN && (
             <p className="mt-1 text-[10px] text-gray-500">
               GSTIN: <span className="font-mono">{TAX.SELLER_GSTIN}</span>
@@ -119,24 +127,40 @@ export function InvoiceDocument({
           </tr>
         </thead>
         <tbody>
-          <tr className="border-b border-gray-100">
-            <td className="py-3 pr-2">
-              Consultations
-              <span className="block text-xs text-gray-500">Confirmed visits in cycle</span>
-            </td>
-            <td className="py-3 text-right tabular-nums">{patientCount}</td>
-            <td className="py-3 text-right tabular-nums">{inr(BILLING.PER_PATIENT_INR)}</td>
-            <td className="py-3 text-right tabular-nums">{inr(perPatientTotal)}</td>
-          </tr>
-          {minimumApplied && (
+          {isPro ? (
+            <>
+              <tr className="border-b border-gray-100">
+                <td className="py-3 pr-2">
+                  Consultations
+                  <span className="block text-xs text-gray-500">Confirmed visits in cycle</span>
+                </td>
+                <td className="py-3 text-right tabular-nums">{patientCount}</td>
+                <td className="py-3 text-right tabular-nums">{inr(BILLING.PER_PATIENT_INR)}</td>
+                <td className="py-3 text-right tabular-nums">{inr(perPatientTotal)}</td>
+              </tr>
+              {minimumApplied && (
+                <tr className="border-b border-gray-100">
+                  <td className="py-3 pr-2" colSpan={3}>
+                    Monthly minimum adjustment
+                    <span className="block text-xs text-gray-500">
+                      Minimum charge of {inr(BILLING.MONTHLY_MINIMUM_INR)} applies
+                    </span>
+                  </td>
+                  <td className="py-3 text-right tabular-nums">{inr(amount - perPatientTotal)}</td>
+                </tr>
+              )}
+            </>
+          ) : (
             <tr className="border-b border-gray-100">
-              <td className="py-3 pr-2" colSpan={3}>
-                Monthly minimum adjustment
+              <td className="py-3 pr-2">
+                Starter plan — cycle fee
                 <span className="block text-xs text-gray-500">
-                  Minimum charge of {inr(BILLING.MONTHLY_MINIMUM_INR)} applies
+                  Flat rate · {patientCount} consultation{patientCount === 1 ? "" : "s"} in cycle
                 </span>
               </td>
-              <td className="py-3 text-right tabular-nums">{inr(amount - perPatientTotal)}</td>
+              <td className="py-3 text-right tabular-nums">1</td>
+              <td className="py-3 text-right tabular-nums">{inr(BILLING.STARTER_FLAT_INR)}</td>
+              <td className="py-3 text-right tabular-nums">{inr(BILLING.STARTER_FLAT_INR)}</td>
             </tr>
           )}
         </tbody>
@@ -178,9 +202,18 @@ export function InvoiceDocument({
       </div>
 
       <p className="mt-6 border-t border-gray-200 pt-4 text-xs leading-relaxed text-gray-500">
-        Billed per confirmed consultation at {inr(BILLING.PER_PATIENT_INR)} each (
-        {inr(BILLING.PER_PATIENT_DISCOUNTED_INR)} beyond {BILLING.DISCOUNT_THRESHOLD.toLocaleString("en-IN")}{" "}
-        in a cycle), subject to a {inr(BILLING.MONTHLY_MINIMUM_INR)} monthly minimum
+        {isPro ? (
+          <>
+            Billed per confirmed consultation at {inr(BILLING.PER_PATIENT_INR)} each (
+            {inr(BILLING.PER_PATIENT_DISCOUNTED_INR)} beyond {BILLING.DISCOUNT_THRESHOLD.toLocaleString("en-IN")}{" "}
+            in a cycle), subject to a {inr(BILLING.MONTHLY_MINIMUM_INR)} monthly minimum
+          </>
+        ) : (
+          <>
+            Starter plan billed at a flat {inr(BILLING.STARTER_FLAT_INR)} per 30-day cycle, regardless of the
+            number of consultations
+          </>
+        )}
         {taxed ? "; all amounts are inclusive of GST at " + tax!.rate + "%" : ""}. This is a computer-generated
         invoice from {TAX.SELLER_LEGAL_NAME || "MediReach"}.
       </p>

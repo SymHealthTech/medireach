@@ -321,9 +321,9 @@ export default function RecordsPage() {
                 className="overflow-hidden rounded-2xl bg-surface-raised shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70"
               >
                 {/* Header — faint tint separates the date/type from the white body */}
-                <div className={cn("flex items-center justify-between gap-2 bg-brand/5 px-4 py-2.5", hasBody && "border-b border-line")}>
+                <div className={cn("flex flex-col gap-2 bg-brand/5 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between", hasBody && "border-b border-line")}>
                   {/* Left: date + new/follow-up */}
-                  <div className="flex min-w-0 items-center gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-ink">
                       {v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : "—"}
                     </span>
