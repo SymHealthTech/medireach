@@ -3,6 +3,7 @@ import { route, Roles } from "@/lib/api/guard";
 import { requireDoctorId } from "@/lib/api/context";
 import { Doctor } from "@/models/Doctor";
 import { SOSEvent } from "@/models/SOSEvent";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
@@ -32,7 +33,7 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
     const doc = byId.get(String(e.doctorId));
     return {
       id: String(e._id),
-      title: `🚨 SOS — Dr. ${doc?.name ?? "Unknown"} needs help`,
+      title: `🚨 SOS — ${doctorDisplayName(doc?.name) || "Dr. Unknown"} needs help`,
       body: doc?.clinicName ?? "",
       gps: e.gpsCoordinate ?? null,
       clinicAddress: e.clinicAddress,

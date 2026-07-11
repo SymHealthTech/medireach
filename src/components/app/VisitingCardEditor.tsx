@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Input";
 import { uploadSigned } from "@/lib/client/upload";
 import { apiPost, apiPatch } from "@/lib/client/api";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 /** Prefilled, live profile fields the card reuses — never re-entered by the doctor. */
 export interface CardProfile {
@@ -280,7 +281,7 @@ export function VisitingCardEditor({
 
       {/* Prefilled, read-only summary so the doctor sees what's reused. */}
       <div className="rounded-xl bg-brand/5 p-3 text-sm">
-        <p className="font-medium text-ink">Dr. {profile.name}</p>
+        <p className="font-medium text-ink">{doctorDisplayName(profile.name)}</p>
         <p className="text-ink-muted">
           {[profile.degree, profile.clinicName].filter(Boolean).join(" · ") || "—"}
         </p>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { apiGet } from "@/lib/client/api";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 interface SponsorRow {
   id: string;
@@ -27,7 +28,7 @@ export default function AdminSponsorsPage() {
         <Card key={s.id} className="flex items-center justify-between">
           <div>
             <p className="font-medium text-ink">{s.storeName}</p>
-            <p className="text-sm text-ink-muted">{s.contactNumber} · sponsors Dr. {s.doctorName} ({s.doctorAppId})</p>
+            <p className="text-sm text-ink-muted">{s.contactNumber} · sponsors {doctorDisplayName(s.doctorName)} ({s.doctorAppId})</p>
           </div>
           <span className={s.paymentResponsibility === "active" ? "text-success text-sm" : "text-ink-muted text-sm"}>
             {s.paymentResponsibility}

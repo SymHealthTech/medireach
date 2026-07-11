@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connectToDatabase } from "@/lib/db";
 import { loadPublicCard } from "@/lib/visiting-card";
 import { PublicCard } from "@/components/card/PublicCard";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 /**
  * PUBLIC visiting-card page — `/card/[slug]`. No login required (patients open
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   await connectToDatabase();
   const card = await loadPublicCard(slug);
   if (!card) return { title: "Card not available — MediReach" };
-  const name = /^dr\.?\s/i.test(card.name) ? card.name : `Dr. ${card.name}`;
+  const name = doctorDisplayName(card.name);
   return {
     title: `${name}${card.degree ? ` — ${card.degree}` : ""}`,
     description: card.tagline || `${name}${card.clinicName ? ` · ${card.clinicName}` : ""}`,

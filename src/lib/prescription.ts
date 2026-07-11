@@ -7,6 +7,8 @@
  * name, a tappable link to the prescription PDF, and a one-line MediReach note.
  */
 
+import { doctorDisplayName } from "@/lib/doctorName";
+
 export interface PrescriptionSender {
   /** Doctor's display name (without the "Dr." prefix). */
   name: string;
@@ -18,7 +20,7 @@ export function buildPrescriptionText(sender: PrescriptionSender, pdfUrl?: strin
   const clinic = sender.clinicName?.trim() || "Clinic";
   const lines: string[] = [];
   lines.push(`*${clinic}*`);
-  if (sender.name?.trim()) lines.push(`Dr. ${sender.name.trim()}`);
+  if (sender.name?.trim()) lines.push(doctorDisplayName(sender.name));
   lines.push("");
   if (pdfUrl) {
     lines.push("Namaste 🙏 Here is your prescription — tap the link below to view or download it (PDF):");

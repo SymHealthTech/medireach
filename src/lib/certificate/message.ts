@@ -7,12 +7,13 @@
  */
 
 import type { PrescriptionSender } from "@/lib/prescription";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 export function buildCertificateText(sender: PrescriptionSender, pdfUrl?: string): string {
   const clinic = sender.clinicName?.trim() || "Clinic";
   const lines: string[] = [];
   lines.push(`*${clinic}*`);
-  if (sender.name?.trim()) lines.push(`Dr. ${sender.name.trim()}`);
+  if (sender.name?.trim()) lines.push(doctorDisplayName(sender.name));
   lines.push("");
   if (pdfUrl) {
     lines.push("Namaste 🙏 Please find your medical certificate here — tap the link below to view or download it (PDF):");

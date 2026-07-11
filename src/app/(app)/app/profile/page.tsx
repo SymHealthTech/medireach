@@ -50,7 +50,9 @@ export default function ProfilePage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: form.name,
+          // Stored without the "Dr." prefix (the field shows it as a fixed
+          // adornment) — strip it if it was typed in, so it's never doubled.
+          name: form.name.trim().replace(/^dr\.?\s+/i, ""),
           registrationNumber: form.registrationNumber,
           degree: form.degree,
           clinicName: form.clinicName,
@@ -124,8 +126,25 @@ export default function ProfilePage() {
               </Button>
             </div>
           </div>
+          <div>
+            <Label htmlFor="name">Doctor name</Label>
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-medium text-ink-muted"
+                aria-hidden
+              >
+                Dr.
+              </span>
+              <Input
+                id="name"
+                value={form.name.replace(/^dr\.?\s+/i, "")}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="Your full name"
+                className="pl-11"
+              />
+            </div>
+          </div>
           {([
-            ["name", "Doctor name"],
             ["registrationNumber", "Registration number"],
             ["degree", "Degree / qualification"],
             ["clinicName", "Clinic name"],

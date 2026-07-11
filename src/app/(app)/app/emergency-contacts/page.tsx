@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { apiGet, apiPost } from "@/lib/client/api";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 interface Contact {
   doctorId: string;
@@ -50,7 +51,7 @@ export default function EmergencyContactsPage() {
     try {
       const res = await apiPost<{ name: string }>("/api/sos/contacts", { query });
       setQuery("");
-      setMsg(`Dr. ${res.name} added to your emergency contacts.`);
+      setMsg(`${doctorDisplayName(res.name)} added to your emergency contacts.`);
       load();
     } catch (err) {
       setMsg((err as Error).message);
@@ -92,7 +93,7 @@ export default function EmergencyContactsPage() {
           {contacts.map((c) => (
             <li key={c.doctorId} className="flex items-center justify-between rounded-xl border border-line bg-surface-raised p-3">
               <span className="text-ink">
-                Dr. {c.name} <span className="text-ink-muted">({c.appId})</span>
+                {doctorDisplayName(c.name)} <span className="text-ink-muted">({c.appId})</span>
               </span>
               <button onClick={() => remove(c.doctorId)} className="text-sm text-sos hover:underline">
                 Remove

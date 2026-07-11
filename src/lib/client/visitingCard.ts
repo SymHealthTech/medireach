@@ -2,6 +2,7 @@
 
 import QRCode from "qrcode";
 import type { PublicCardData } from "@/lib/visiting-card";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 /**
  * Client helpers for the visiting-card share features: QR-code generation and a
@@ -69,7 +70,7 @@ export async function buildShareCardImage(opts: ShareImageOpts): Promise<Blob> {
   ctx.fillText("Digital Visiting Card", W / 2, 130);
 
   // Identity
-  const displayName = /^dr\.?\s/i.test(opts.name) ? opts.name : `Dr. ${opts.name}`;
+  const displayName = doctorDisplayName(opts.name);
   let y = 310;
   ctx.fillStyle = "#1F2933";
   ctx.font = "700 40px Inter, system-ui, sans-serif";
@@ -221,7 +222,7 @@ export async function buildFullCardImage(data: PublicCardData): Promise<Blob> {
     loadCorsImage(data.profilePhotoUrl),
   ]);
 
-  const displayName = /^dr\.?\s/i.test(data.name) ? data.name : `Dr. ${data.name}`;
+  const displayName = doctorDisplayName(data.name);
   const initials =
     data.name
       .replace(/^dr\.?\s*/i, "")

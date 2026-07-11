@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 /**
  * Shared A4 sheet building blocks — the doctor letterhead (per-template header
@@ -157,7 +158,7 @@ export function SignatureBlock({
           <img src={signatureDataUrl} alt="Signature" style={{ maxHeight: "16mm", maxWidth: "55mm", objectFit: "contain", display: "block", marginLeft: "auto" }} />
         )}
         <div style={{ borderTop: "1px solid #9AA1A8", width: "50mm", marginLeft: "auto", marginTop: signatureDataUrl ? "2mm" : "11mm" }} />
-        <div style={{ fontSize: 12, fontWeight: 600, marginTop: "1.5mm", color: INK }}>Dr. {doctorName}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginTop: "1.5mm", color: INK }}>{doctorDisplayName(doctorName)}</div>
         {registrationNumber && (
           <div style={{ fontSize: 10.5, color: MUTED, marginTop: "0.5mm" }}>Reg. No. {registrationNumber}</div>
         )}

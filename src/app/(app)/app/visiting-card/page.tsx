@@ -10,6 +10,7 @@ import { apiGet } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { PublicCard } from "@/components/card/PublicCard";
 import type { PublicCardData } from "@/lib/visiting-card";
+import { doctorDisplayName } from "@/lib/doctorName";
 import {
   VisitingCardEditor,
   type CardData,
@@ -105,7 +106,7 @@ export default function VisitingCardPage() {
   }
 
   async function shareLink(url: string, name: string) {
-    const text = `Dr. ${name}'s visiting card`;
+    const text = `${doctorDisplayName(name)}'s visiting card`;
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: text, text, url });

@@ -1,4 +1,5 @@
 import type { PublicCardData } from "@/lib/visiting-card";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 /**
  * The Digital Visiting Card, rendered exactly as a patient sees it. Deliberately
@@ -48,7 +49,7 @@ export function PublicCard({ data }: { data: PublicCardData }) {
     .join("")
     .toUpperCase();
 
-  const displayName = /^dr\.?\s/i.test(data.name) ? data.name : `Dr. ${data.name}`;
+  const displayName = doctorDisplayName(data.name);
   const wa = waNumber(data.whatsappNumber);
 
   return (

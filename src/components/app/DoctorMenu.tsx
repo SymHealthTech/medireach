@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LogoutButton } from "@/components/app/LogoutButton";
 import { apiGet } from "@/lib/client/api";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 /** Leading icon per menu destination — keeps the menu scannable (Phase 3). */
 const MENU_ICONS: Record<string, string> = {
@@ -113,7 +114,7 @@ export function DoctorMenu({ name }: { name: string }) {
 
       <Card className="flex items-center justify-between">
         <div>
-          <p className="text-lg font-semibold text-ink">Dr. {name}</p>
+          <p className="text-lg font-semibold text-ink">{doctorDisplayName(name)}</p>
           <p className="text-sm text-ink-muted">ID: {appId ?? "—"}</p>
           {clinicName && <p className="text-sm text-ink-muted">{clinicName}</p>}
         </div>

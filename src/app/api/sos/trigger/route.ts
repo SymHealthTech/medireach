@@ -8,6 +8,7 @@ import { audit } from "@/lib/api/audit";
 import { Doctor } from "@/models/Doctor";
 import { SOSEvent } from "@/models/SOSEvent";
 import { pushToDoctor } from "@/lib/integrations/push";
+import { doctorDisplayName } from "@/lib/doctorName";
 
 const schema = z.object({
   lat: z.number().min(-90).max(90).optional(),
@@ -28,7 +29,7 @@ export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   const allContactIds = me.emergencyContacts.map((c) => c.contactDoctorId);
   const contacts = await Doctor.find({ _id: { $in: allContactIds } }).select("_id").lean();
 
-  const title = `🚨 SOS — Dr. ${me.name} needs help`;
+  const title = `🚨 SOS — ${doctorDisplayName(me.name)} needs help`;
   const body = `${me.clinicName || "Clinic"}${me.clinicAddress ? ` — ${me.clinicAddress}` : ""}. ${locationLine}`;
 
   // Create the event first so its ID can be embedded in the push payload,

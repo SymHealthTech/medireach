@@ -41,7 +41,10 @@ export function AccountStep({ onDone }: { onDone: () => void }) {
     setError(null);
     setLoading(true);
     try {
-      await apiPost("/api/onboarding/register", { name, email, mobile, code, password });
+      // Names are stored without the "Dr." prefix (the form shows it as a fixed
+      // adornment). Strip it if the doctor typed it anyway, so it's never doubled.
+      const cleanName = name.trim().replace(/^dr\.?\s+/i, "");
+      await apiPost("/api/onboarding/register", { name: cleanName, email, mobile, code, password });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -71,7 +74,23 @@ export function AccountStep({ onDone }: { onDone: () => void }) {
         <form onSubmit={sendCode} className="space-y-4">
           <div>
             <Label htmlFor="name">Your name</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-medium text-ink-muted"
+                aria-hidden
+              >
+                Dr.
+              </span>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your full name"
+                className="pl-11"
+                required
+              />
+            </div>
+            <p className="mt-1 text-xs text-ink-muted">Just your name — we add “Dr.” for you.</p>
           </div>
           <div>
             <Label htmlFor="email">Email</Label>

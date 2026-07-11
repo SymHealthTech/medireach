@@ -34,7 +34,12 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
     setError(null);
     setLoading(true);
     try {
-      await apiPost("/api/onboarding/profile", form);
+      // Name is stored without the "Dr." prefix (shown as a fixed adornment) —
+      // strip it if the doctor typed it, so it's never doubled on display.
+      await apiPost("/api/onboarding/profile", {
+        ...form,
+        name: form.name.trim().replace(/^dr\.?\s+/i, ""),
+      });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -58,7 +63,22 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
 
       <div>
         <Label htmlFor="dname">Doctor name</Label>
-        <Input id="dname" value={form.name} onChange={(e) => set("name", e.target.value)} required />
+        <div className="relative">
+          <span
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-medium text-ink-muted"
+            aria-hidden
+          >
+            Dr.
+          </span>
+          <Input
+            id="dname"
+            value={form.name.replace(/^dr\.?\s+/i, "")}
+            onChange={(e) => set("name", e.target.value)}
+            placeholder="Your full name"
+            className="pl-11"
+            required
+          />
+        </div>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -103,7 +123,7 @@ export function ProfileStep({ onDone }: { onDone: () => void }) {
         <Label htmlFor="ctime">Clinic timings <span className="text-ink-muted font-normal">(optional)</span></Label>
         <Input
           id="ctime"
-          placeholder="e.g. Mon–Sat, 10am–2pm & 5pm–9pm"
+          placeholder="Mor- 10am to 2pm, Eve- 5pm to 9pm, Sun closed"
           value={form.clinicTimings}
           onChange={(e) => set("clinicTimings", e.target.value)}
         />
