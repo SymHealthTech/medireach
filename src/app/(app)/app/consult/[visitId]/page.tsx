@@ -13,8 +13,9 @@ import { apiGet, apiPost } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
-import { sharePrescriptionPdf, normalizeWhatsappNumber, writePreparingDoc } from "@/lib/client/share";
+import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
+import { PreparingOverlay } from "@/components/prescription/PreparingOverlay";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 import { isQuickServicePurpose, isCertificatePurpose, visitPurposeLabel } from "@/lib/constants";
 
@@ -107,18 +108,12 @@ const emptyForm: FormState = {
 };
 
 /** Feedback shown under the "Send on WhatsApp" button after a share attempt. */
-function ShareHint({ hint }: { hint: "link" | "nolink" | "cancelled" | null }) {
+function ShareHint({ hint }: { hint: "link" | "nolink" | null }) {
   if (!hint) return null;
   if (hint === "link")
     return (
       <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
         📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
-      </p>
-    );
-  if (hint === "cancelled")
-    return (
-      <p className="rounded-xl bg-line/40 px-3 py-2 text-sm text-ink-muted" role="status">
-        The WhatsApp tab was closed before the prescription was ready. Tap Send again and keep the tab open.
       </p>
     );
   return (
@@ -168,7 +163,7 @@ export default function ConsultPage() {
   const [sendBusy, setSendBusy] = useState(false);
   const [successModal, setSuccessModal] = useState<"saved" | "sent" | null>(null);
   // Result of the last WhatsApp share — drives the on-screen hint under the button.
-  const [shareHint, setShareHint] = useState<"link" | "nolink" | "cancelled" | null>(null);
+  const [shareHint, setShareHint] = useState<"link" | "nolink" | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
@@ -586,11 +581,8 @@ export default function ConsultPage() {
   }
 
   async function shareWhatsApp() {
-    // Reserve the WhatsApp popup synchronously inside the click gesture so the
-    // browser doesn't block it after the (async) PDF upload, and paint a branded
-    // "preparing…" screen so it isn't a bare blank tab meanwhile.
-    const win = window.open("", "_blank");
-    writePreparingDoc(win);
+    // The in-app <PreparingOverlay> (shown while shareBusy is set) covers the
+    // raster + upload; WhatsApp opens from sharePrescriptionPdf once it's ready.
     const c = clinic ?? {
       clinicName: "", clinicAddress: "", clinicTimings: "",
       doctorName: "", degree: "", registrationNumber: "",
@@ -613,15 +605,12 @@ export default function ConsultPage() {
     try {
       if (!sheetRef.current) throw new Error("Sheet not ready.");
       const pdf = await sheetToPdf(sheetRef.current);
-      const { linkIncluded, opened } = await sharePrescriptionPdf({
-        pdf, visitId, sender, recipientDigits, filename: `prescription-${safeName}.pdf`, win,
+      const { linkIncluded } = await sharePrescriptionPdf({
+        pdf, visitId, sender, recipientDigits, filename: `prescription-${safeName}.pdf`,
       });
-      setShareHint(!opened ? "cancelled" : linkIncluded ? "link" : "nolink");
+      setShareHint(linkIncluded ? "link" : "nolink");
     } catch {
-      // Rasterise/upload failed — close the "preparing…" tab rather than leaving
-      // it hanging, and let the doctor retry. We deliberately don't spawn a stray
-      // WhatsApp-Web tab here.
-      if (win && !win.closed) win.close();
+      // Rasterise/upload failed — let the doctor retry.
       setShareHint("nolink");
     } finally {
       setShareBusy(false);
@@ -649,6 +638,8 @@ export default function ConsultPage() {
         loading={reportsLoading}
         reports={reportsData}
       />
+      {/* Full-screen in-app loader while the PDF builds + uploads and WhatsApp opens. */}
+      <PreparingOverlay open={shareBusy} />
       {/* Off-screen A4 sheet — rasterised to a PNG for the WhatsApp share. */}
       <div aria-hidden style={{ position: "fixed", left: 0, top: 0, opacity: 0, pointerEvents: "none", zIndex: -1 }}>
         <PrescriptionSheet ref={sheetRef} data={sheetData} />

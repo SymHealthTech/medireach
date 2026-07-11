@@ -5,8 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/client/api";
-import { sharePrescriptionPdf, normalizeWhatsappNumber, writePreparingDoc } from "@/lib/client/share";
+import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
+import { PreparingOverlay } from "@/components/prescription/PreparingOverlay";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 import { cn } from "@/lib/cn";
 import { isCertificatePurpose, isQuickServicePurpose, visitPurposeLabel } from "@/lib/constants";
@@ -109,10 +110,8 @@ export default function RecordsPage() {
     recipientDigits: string; filename: string;
   } | null>(null);
   // Outcome of the last share, keyed to the visit — drives the hint under its card.
-  const [shareResult, setShareResult] = useState<{ id: string; kind: "link" | "nolink" | "cancelled" } | null>(null);
+  const [shareResult, setShareResult] = useState<{ id: string; kind: "link" | "nolink" } | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-  // WhatsApp popup opened synchronously on the Send click (survives the async upload).
-  const shareWinRef = useRef<Window | null>(null);
 
   useEffect(() => {
     apiGet<{ patient: Patient; visits: Visit[] }>(`/api/patients/${patientId}/history`)
@@ -171,24 +170,18 @@ export default function RecordsPage() {
           if (cancelled) return;
           if (!sheetRef.current) throw new Error("Sheet not ready.");
           const pdf = await sheetToPdf(sheetRef.current);
-          const { linkIncluded, opened } = await sharePrescriptionPdf({
+          const { linkIncluded } = await sharePrescriptionPdf({
             pdf,
             visitId: pendingShare.visitId,
             sender: pendingShare.sender,
             recipientDigits: pendingShare.recipientDigits,
             filename: pendingShare.filename,
-            win: shareWinRef.current,
           });
           if (!cancelled)
-            setShareResult({
-              id: pendingShare.visitId,
-              kind: !opened ? "cancelled" : linkIncluded ? "link" : "nolink",
-            });
+            setShareResult({ id: pendingShare.visitId, kind: linkIncluded ? "link" : "nolink" });
         } catch {
-          if (shareWinRef.current && !shareWinRef.current.closed) shareWinRef.current.close();
           if (!cancelled) setShareResult({ id: pendingShare.visitId, kind: "nolink" });
         } finally {
-          shareWinRef.current = null;
           if (!cancelled) {
             setSendBusyId(null);
             setPendingShare(null);
@@ -203,11 +196,8 @@ export default function RecordsPage() {
   }, [pendingShare]);
 
   async function handleSendPrescription(v: Visit) {
-    // Reserve the WhatsApp popup now, inside the click gesture, so it survives
-    // the async raster + upload that happens in the effect below, and paint a
-    // branded "preparing…" screen so it isn't a bare blank tab meanwhile.
-    shareWinRef.current = window.open("", "_blank");
-    writePreparingDoc(shareWinRef.current);
+    // The in-app <PreparingOverlay> (shown while sendBusyId is set) covers the
+    // raster + upload; WhatsApp opens from sharePrescriptionPdf once it's ready.
     const c = clinic ?? { clinicName: "", clinicAddress: "", clinicTimings: "", doctorName: "", degree: "", registrationNumber: "" };
     const sender = { name: c.doctorName, clinicName: c.clinicName };
 
@@ -457,10 +447,6 @@ export default function RecordsPage() {
                         <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
                           📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
                         </p>
-                      ) : shareResult.kind === "cancelled" ? (
-                        <p className="rounded-xl bg-line/40 px-3 py-2 text-sm text-ink-muted" role="status">
-                          The WhatsApp tab was closed before the prescription was ready. Tap Send Rx again and keep the tab open.
-                        </p>
                       ) : (
                         <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="status">
                           ⚠️ Couldn&apos;t prepare the prescription link. Please tap Send Rx again.
@@ -474,6 +460,9 @@ export default function RecordsPage() {
           })}
         </ul>
       )}
+
+      {/* Full-screen in-app loader while the PDF builds + uploads and WhatsApp opens. */}
+      <PreparingOverlay open={!!sendBusyId} />
 
       {/* Off-screen A4 sheet — rasterised to the prescription PDF for the WhatsApp share. */}
       {pendingShare && (
