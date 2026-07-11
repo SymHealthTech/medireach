@@ -30,24 +30,40 @@ export function normalizeWhatsappNumber(raw: string | undefined | null): string 
   return digits;
 }
 
-function whatsappUrl(recipientDigits: string, text: string): string {
-  return recipientDigits
-    ? `https://wa.me/${recipientDigits}?text=${encodeURIComponent(text)}`
-    : `https://wa.me/?text=${encodeURIComponent(text)}`;
+/** Rough mobile (phone/tablet) detection from the UA — enough to decide whether
+ *  the native WhatsApp app is the right target vs. WhatsApp Web on a laptop. */
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /android|iphone|ipad|ipod|iemobile|blackberry|opera mini|mobile/i.test(navigator.userAgent);
 }
 
 /**
- * Open the WhatsApp chat as reliably as possible after the async upload. We
- * prefer a new tab so the doctor keeps the app open, but browsers revoke the
- * popup allowance once the click gesture's transient activation expires (a few
- * seconds), so we fall back to navigating the current tab — which is never
- * blocked. Either way WhatsApp opens; on mobile the `wa.me` link hands off to
- * the WhatsApp app directly.
+ * Open a WhatsApp chat on the recipient's number with the message prefilled,
+ * routed the best way for the device:
+ *
+ * - Mobile: the native `whatsapp://send` scheme, so the chat opens DIRECTLY in
+ *   the installed app with no "Continue to Chat" landing page. Navigating the
+ *   current tab hands off to the app without visibly leaving our page.
+ * - Desktop/laptop: WhatsApp Web (`web.whatsapp.com/send`), because the phone
+ *   very likely has no WhatsApp desktop app and `whatsapp://` would silently do
+ *   nothing. We try a new tab first (keeps MediReach open) and fall back to
+ *   same-tab navigation if the browser blocked the popup after the async upload.
+ *
+ * `recipientDigits` must be digits-only with the country code (no "+").
  */
-function openWhatsapp(url: string): void {
-  const tab = window.open(url, "_blank", "noopener");
-  if (tab) return;
-  window.location.href = url;
+function openWhatsapp(recipientDigits: string, text: string): void {
+  const t = encodeURIComponent(text);
+  if (isMobileDevice()) {
+    window.location.href = recipientDigits
+      ? `whatsapp://send?phone=${recipientDigits}&text=${t}`
+      : `whatsapp://send?text=${t}`;
+    return;
+  }
+  const webUrl = recipientDigits
+    ? `https://web.whatsapp.com/send?phone=${recipientDigits}&text=${t}`
+    : `https://web.whatsapp.com/send?text=${t}`;
+  const tab = window.open(webUrl, "_blank", "noopener");
+  if (!tab) window.location.href = webUrl;
 }
 
 /**
@@ -78,6 +94,6 @@ export async function sharePrescriptionPdf(opts: {
   }
 
   const text = buildPrescriptionText(sender, pdfUrl);
-  openWhatsapp(whatsappUrl(recipientDigits, text));
+  openWhatsapp(recipientDigits, text);
   return { linkIncluded: !!pdfUrl };
 }
