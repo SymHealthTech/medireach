@@ -75,7 +75,7 @@ function DoctorLines({ d, regColor, designationColor }: { d: PrescriptionDoctorI
 function ClinicLines({ d, color }: { d: PrescriptionDoctorInfo; color: string }) {
   return (
     <div style={{ textAlign: "right", minWidth: 0 }}>
-      <div style={{ fontSize: 15, fontWeight: 700, ...wrapText }}>{d.clinicName}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, ...wrapText }}>{d.clinicName}</div>
       {d.clinicAddress && <div style={{ fontSize: 11, color, marginTop: 3, ...wrapText }}>{d.clinicAddress}</div>}
       {d.clinicMobile && <div style={{ fontSize: 11, color, marginTop: 1, ...wrapText }}>{d.clinicMobile}</div>}
       {d.clinicTimings && <div style={{ fontSize: 11, color, marginTop: 1, ...wrapText }}>{d.clinicTimings}</div>}
@@ -158,9 +158,9 @@ export function SignatureBlock({
           <img src={signatureDataUrl} alt="Signature" style={{ maxHeight: "16mm", maxWidth: "55mm", objectFit: "contain", display: "block", marginLeft: "auto" }} />
         )}
         <div style={{ borderTop: "1px solid #9AA1A8", width: "50mm", marginLeft: "auto", marginTop: signatureDataUrl ? "2mm" : "11mm" }} />
-        <div style={{ fontSize: 12, fontWeight: 600, marginTop: "1.5mm", color: INK }}>{doctorDisplayName(doctorName)}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: "1.5mm", color: INK }}>{doctorDisplayName(doctorName)}</div>
         {registrationNumber && (
-          <div style={{ fontSize: 10.5, color: MUTED, marginTop: "0.5mm" }}>Reg. No. {registrationNumber}</div>
+          <div style={{ fontSize: 12, color: MUTED, marginTop: "0.5mm" }}>Reg. No. {registrationNumber}</div>
         )}
       </div>
     </div>

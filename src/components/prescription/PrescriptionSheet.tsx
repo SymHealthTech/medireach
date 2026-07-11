@@ -65,10 +65,10 @@ function ClinicalCore({ data, accent, vitalsBg }: { data: PrescriptionSheetData;
       {/* Patient row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "6mm" }}>
         <div style={{ ...wrapText }}>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "#000000" }}>{patient.name}</span>
-          {ageGender && <span style={{ fontSize: 12, fontWeight: 400, color: MUTED, marginLeft: 8 }}>{ageGender}</span>}
+          <span style={{ fontSize: 22, fontWeight: 700, color: "#000000" }}>{patient.name}</span>
+          {ageGender && <span style={{ fontSize: 15, fontWeight: 400, color: MUTED, marginLeft: 8 }}>{ageGender}</span>}
         </div>
-        <div style={{ fontSize: 12, color: MUTED, whiteSpace: "nowrap" }}>{date}</div>
+        <div style={{ fontSize: 15, color: MUTED, whiteSpace: "nowrap" }}>{date}</div>
       </div>
 
       {/* Vitals row — only present values; nothing renders if empty */}
@@ -79,7 +79,7 @@ function ClinicalCore({ data, accent, vitalsBg }: { data: PrescriptionSheetData;
             display: "flex",
             flexWrap: "wrap",
             gap: "1.5mm 6mm",
-            fontSize: 11,
+            fontSize: 13,
             color: "#5A6670",
             background: vitalsBg ?? "transparent",
             padding: vitalsBg ? "2.5mm 3mm" : 0,
@@ -97,21 +97,21 @@ function ClinicalCore({ data, accent, vitalsBg }: { data: PrescriptionSheetData;
       {/* ℞ + medicines */}
       <div style={{ marginTop: "6mm", flex: 1, display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 30, fontWeight: 700, color: accent, lineHeight: 1, fontFamily: "Georgia, 'Times New Roman', serif" }}>℞</div>
-        <div style={{ marginTop: "4mm", display: "flex", flexDirection: "column", gap: "3.5mm" }}>
+        <div style={{ marginTop: "8mm", display: "flex", flexDirection: "column", gap: "4.5mm" }}>
           {rx.length === 0 ? (
-            <div style={{ fontSize: 12, fontStyle: "italic", color: MUTED }}>No medicines prescribed.</div>
+            <div style={{ fontSize: 14, fontStyle: "italic", color: MUTED }}>No medicines prescribed.</div>
           ) : (
             rx.map((m, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: "6mm", alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: INK, ...wrapText }}>
+                  <div style={{ fontSize: 19, fontWeight: 600, color: INK, ...wrapText }}>
                     {i + 1}. {m.name}
                   </div>
-                  {m.salt && <div style={{ fontSize: 11, fontStyle: "italic", color: MUTED, marginTop: 1, ...wrapText }}>{m.salt}</div>}
+                  {m.salt && <div style={{ fontSize: 14.5, fontStyle: "italic", color: MUTED, marginTop: 1, ...wrapText }}>{m.salt}</div>}
                 </div>
                 <div style={{ textAlign: "right", whiteSpace: "nowrap", flexShrink: 0 }}>
-                  {m.grid && <div style={{ fontSize: 13, fontWeight: 600, color: INK, letterSpacing: 0.3 }}>{m.grid}</div>}
-                  {m.timingLine && <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>{m.timingLine}</div>}
+                  {m.grid && <div style={{ fontSize: 18, fontWeight: 600, color: INK, letterSpacing: 0.3 }}>{m.grid}</div>}
+                  {m.timingLine && <div style={{ fontSize: 14.5, color: MUTED, marginTop: 1 }}>{m.timingLine}</div>}
                 </div>
               </div>
             ))
@@ -159,8 +159,8 @@ function Footer({ id, data, accent, pharmacyColor, sponsorBg }: {
             gap: "6mm",
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 700, color: pharmacyColor, ...wrapText }}>{sp!.storeName}</div>
-          <div style={{ textAlign: "right", fontSize: 10.5, color: sponsorText, ...wrapText }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: pharmacyColor, ...wrapText }}>{sp!.storeName}</div>
+          <div style={{ textAlign: "right", fontSize: 12.5, color: sponsorText, ...wrapText }}>
             {sp!.storeAddress && <div>{sp!.storeAddress}</div>}
             {sp!.storeContact && <div>{sp!.storeContact}</div>}
           </div>

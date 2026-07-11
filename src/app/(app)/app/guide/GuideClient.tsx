@@ -274,10 +274,11 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
           steps: [
             'On the "Today" screen, tap a patient with "Pending" status.',
             'Tap "Start Consultation" to begin.',
-            "Tap the microphone button and speak naturally — English, Hindi, or Marathi all work.",
-            "The AI structures your spoken notes into diagnosis, treatment, and prescription automatically.",
-            "Review the structured output; tap any field to edit it.",
-            'Tap "Done" to confirm the visit and send the prescription via WhatsApp.',
+            'On the Pro plan, tap "🎤 Dictate" and speak naturally — English, Hindi, or Marathi all work — and the AI fills in diagnosis, treatment, and prescription for you.',
+            "On the Starter plan, type each field yourself. Keyword shortcuts expand into full text as you type, so entry stays quick.",
+            "Review or edit every field — complaints, examination, diagnosis, medicines, advice, and fees.",
+            'Tap "Next" to review the prescription, then "Send Prescription".',
+            "Share it on WhatsApp and record the fee collected before returning to the queue.",
           ],
         },
         {
@@ -297,6 +298,55 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
             "Search for a patient by name or mobile number.",
             "Tap on a patient to view their complete visit history.",
             "Each visit shows date, diagnosis, and whether a prescription was delivered.",
+          ],
+        },
+        {
+          title: "Issuing a Medical Certificate",
+          steps: [
+            'Open a patient from Records and tap "Certificate" — or register the patient with the "Certificate" purpose to start one straight from the queue.',
+            "Choose the type — Unfit / Sick Leave, Fitness to Resume Duty, or Fitness for Employment.",
+            "The patient's name, age, and sex fill in automatically; add the diagnosis, dates, and any remarks. Leave days are calculated for you.",
+            'Check the live A4 preview, then tap "Send on WhatsApp", "Download PDF", or "Print".',
+            "Every certificate is saved under Menu → Certificate Records, searchable by patient, type, and date, and kept for 3 years for legal retrieval.",
+            "Certificates work on both Starter and Pro — they never use voice or AI.",
+          ],
+        },
+        {
+          title: "Patient Dues (Outstanding Fees)",
+          steps: [
+            'When you send a prescription, the "Amount paid" box is pre-filled with the full fee — confirm it, or enter a lower amount to leave the balance as a due.',
+            "Go to Menu → Patient Dues to see everyone who still owes, newest first, with the total outstanding.",
+            "Search by name and tap a patient to open their dues detail, then record a payment to clear or reduce the balance.",
+            "Note: This is your clinic's own fee bookkeeping — it is separate from your MediReach subscription billing.",
+          ],
+        },
+        {
+          title: "Revenue — Income, Expenses & Tally",
+          steps: [
+            "Go to Menu → Revenue.",
+            "The Income tab totals fees collected — today, this month, and month-by-month; expand a month, then a day, to see each patient and amount. Income comes from the fees you enter when confirming a consultation.",
+            "The Expenses tab lets you add clinic costs (rent, electricity, medicine purchase, staff salary, equipment, other) with bill number, vendor, amount paid, and balance due.",
+            "The Tally tab shows Income − Expenses = Net for each month and all-time.",
+          ],
+        },
+        {
+          title: "Keyword Shortcuts (Edit Keyword)",
+          steps: [
+            "Go to Menu → Edit Keyword.",
+            "Each consultation field (complaints, diagnosis, medicines, advice, and more) has its own shortcut dictionary — tap a field to expand it.",
+            "Add a shortcut and the full text it should expand to. For medicines, one shortcut can capture type, contains, dose, frequency, timing, and dispense-from.",
+            'On the consultation screen, typing the shortcut fills in the full text automatically — e.g. "p5" becomes "Tab. Paracetamol 500mg".',
+            "Edit or delete any shortcut anytime. Shortcuts speed up typing on both Starter and Pro.",
+          ],
+        },
+        {
+          title: "Digital Visiting Card",
+          steps: [
+            'Go to Menu → Digital Visiting Card and tap "Get started" — your profile details are pre-filled.',
+            "Add a tagline, services, languages, photos, and a maps link, then save to publish.",
+            'Share the public link or QR code with patients, or tap "Open" to view the live page.',
+            "Download the QR (PNG) for your prescription pad or clinic door, or download the full card image.",
+            "Edit or delete the card anytime; deleting stops the public link from working.",
           ],
         },
         {
@@ -333,8 +383,10 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
           title: "Billing & Subscription",
           steps: [
             "Go to Menu → Billing.",
-            "View your current subscription plan, billing cycle start date, and usage.",
-            "The per-patient charge applies for each visit confirmed on the platform.",
+            "Your plan is shown at the top — Starter (typing only, flat ₹499 per cycle) or Pro (voice + AI, billed per patient with a ₹299 monthly minimum).",
+            'To change plans, tap "Upgrade to Pro" or "Downgrade". Upgrading unlocks voice and AI immediately; downgrading keeps them until the current cycle ends, then moves you to the flat ₹499 Starter plan.',
+            "On Pro, only full consultations and follow-ups are billed — certificates, dressing, BP checks and other quick services don't count toward the per-patient charge.",
+            'The current cycle\'s live projected charge is shown at the top; open or pay invoices from the Invoices list ("View invoice up to today" shows a live sample).',
             "Contact support if you have billing queries: admin.medireach@gmail.com",
           ],
         },
@@ -360,10 +412,11 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
           steps: [
             '"आजचे" (Today) स्क्रीनवर "प्रतीक्षेत" (Pending) स्थितीतील रुग्णावर टॅप करा.',
             '"सल्लामसलत सुरू करा" (Start Consultation) टॅप करा.',
-            "मायक्रोफोन बटण टॅप करा आणि स्वाभाविकपणे बोला — इंग्रजी, हिंदी किंवा मराठी सर्व चालते.",
-            "AI आपल्या बोलण्याचे निदान, उपचार आणि प्रिस्क्रिप्शनमध्ये आपोआप रूपांतर करेल.",
-            "तयार आउटपुट पुनरावलोकन करा; संपादित करण्यासाठी कोणत्याही फील्डवर टॅप करा.",
-            '"पूर्ण" (Done) टॅप करून भेट अंतिम करा आणि WhatsApp वर प्रिस्क्रिप्शन पाठवा.',
+            'Pro प्लॅनवर "🎤 डिक्टेट" (Dictate) टॅप करा आणि स्वाभाविकपणे बोला — इंग्रजी, हिंदी किंवा मराठी सर्व चालते — AI आपोआप निदान, उपचार आणि प्रिस्क्रिप्शन भरेल.',
+            "Starter प्लॅनवर प्रत्येक फील्ड स्वतः टाइप करा. टाइप करताना कीवर्ड शॉर्टकट पूर्ण मजकुरात विस्तारतात, त्यामुळे नोंद जलद होते.",
+            "प्रत्येक फील्ड तपासा किंवा संपादित करा — तक्रारी, तपासणी, निदान, औषधे, सल्ला आणि फी.",
+            '"पुढे" (Next) टॅप करून प्रिस्क्रिप्शन तपासा, नंतर "प्रिस्क्रिप्शन पाठवा" (Send Prescription) टॅप करा.',
+            "रांगेत परत जाण्यापूर्वी WhatsApp वर प्रिस्क्रिप्शन शेअर करा आणि जमा झालेली फी नोंदवा.",
           ],
         },
         {
@@ -383,6 +436,55 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
             "नाव किंवा मोबाइल नंबरने रुग्ण शोधा.",
             "संपूर्ण भेट इतिहास पाहण्यासाठी रुग्णावर टॅप करा.",
             "प्रत्येक भेटीत तारीख, निदान आणि प्रिस्क्रिप्शन पोहोचले का ते दिसते.",
+          ],
+        },
+        {
+          title: "वैद्यकीय प्रमाणपत्र देणे",
+          steps: [
+            'Records मधून रुग्ण उघडा आणि "Certificate" टॅप करा — किंवा रुग्णाची "Certificate" उद्देशाने नोंदणी करून थेट रांगेतून सुरू करा.',
+            "प्रकार निवडा — Unfit / आजारी रजा, कामावर परतण्यास योग्य (Fitness to Resume), किंवा नोकरीसाठी योग्यता (Fitness for Employment).",
+            "रुग्णाचे नाव, वय आणि लिंग आपोआप भरले जाते; निदान, तारखा आणि टिप्पणी जोडा. रजेचे दिवस आपोआप मोजले जातात.",
+            'थेट A4 प्रीव्ह्यू तपासा, नंतर "Send on WhatsApp", "Download PDF" किंवा "Print" टॅप करा.',
+            "प्रत्येक प्रमाणपत्र मेनू → Certificate Records मध्ये जतन होते — रुग्ण, प्रकार आणि तारखेनुसार शोधता येते आणि कायदेशीर गरजेसाठी 3 वर्षे ठेवले जाते.",
+            "प्रमाणपत्रे Starter आणि Pro दोन्हीवर चालतात — ती व्हॉइस किंवा AI वापरत नाहीत.",
+          ],
+        },
+        {
+          title: "रुग्णाची बाकी (थकीत फी)",
+          steps: [
+            'प्रिस्क्रिप्शन पाठवताना "Amount paid" बॉक्स पूर्ण फीने आधीच भरलेला असतो — त्याची पुष्टी करा, किंवा कमी रक्कम टाकून उर्वरित बाकी म्हणून ठेवा.',
+            "थकबाकी असलेले सर्व रुग्ण पाहण्यासाठी मेनू → Patient Dues मध्ये जा — नवीनतम प्रथम, एकूण थकीत रकमेसह.",
+            "नावाने शोधा आणि रुग्णावर टॅप करून त्यांचा बाकी तपशील उघडा, नंतर पेमेंट नोंदवून बाकी संपवा किंवा कमी करा.",
+            "नोंद: ही आपल्या क्लिनिकची स्वतःची फी नोंदवही आहे — ती आपल्या MediReach सदस्यता बिलिंगपेक्षा वेगळी आहे.",
+          ],
+        },
+        {
+          title: "महसूल — उत्पन्न, खर्च आणि ताळेबंद",
+          steps: [
+            "मेनू → Revenue मध्ये जा.",
+            "Income टॅब जमा झालेली फी दाखवतो — आज, या महिन्यात आणि महिन्यानुसार; महिना, नंतर दिवस विस्तारून प्रत्येक रुग्ण व रक्कम पाहा. उत्पन्न सल्लामसलत पुष्टी करताना टाकलेल्या फीमधून येते.",
+            "Expenses टॅबमध्ये क्लिनिकचे खर्च (भाडे, वीज, औषध खरेदी, कर्मचारी पगार, उपकरणे, इतर) बिल क्रमांक, विक्रेता, भरलेली रक्कम आणि उर्वरित बाकीसह जोडा.",
+            "Tally टॅब प्रत्येक महिन्यासाठी आणि सर्वकाळासाठी उत्पन्न − खर्च = निव्वळ दाखवतो.",
+          ],
+        },
+        {
+          title: "कीवर्ड शॉर्टकट (Edit Keyword)",
+          steps: [
+            "मेनू → Edit Keyword मध्ये जा.",
+            "प्रत्येक सल्लामसलत फील्डला (तक्रारी, निदान, औषधे, सल्ला आणि अधिक) स्वतःची शॉर्टकट डिक्शनरी असते — फील्ड विस्तारण्यासाठी त्यावर टॅप करा.",
+            "शॉर्टकट आणि तो कशात विस्तारावा तो पूर्ण मजकूर जोडा. औषधांसाठी एका शॉर्टकटमध्ये प्रकार, घटक, डोस, वारंवारता, वेळ आणि कोठून द्यायचे हे सर्व नोंदवता येते.",
+            'सल्लामसलत स्क्रीनवर शॉर्टकट टाइप केल्यास पूर्ण मजकूर आपोआप भरतो — उदा. "p5" चे "Tab. Paracetamol 500mg" होते.',
+            "कोणताही शॉर्टकट कधीही संपादित किंवा हटवा. शॉर्टकट Starter आणि Pro दोन्हीवर टायपिंग जलद करतात.",
+          ],
+        },
+        {
+          title: "डिजिटल व्हिजिटिंग कार्ड",
+          steps: [
+            'मेनू → Digital Visiting Card मध्ये जा आणि "Get started" टॅप करा — आपल्या प्रोफाइलचे तपशील आधीच भरलेले असतात.',
+            "टॅगलाइन, सेवा, भाषा, फोटो आणि नकाशा लिंक जोडा, नंतर प्रकाशित करण्यासाठी जतन करा.",
+            'सार्वजनिक लिंक किंवा QR कोड रुग्णांना शेअर करा, किंवा थेट पान पाहण्यासाठी "Open" टॅप करा.',
+            "प्रिस्क्रिप्शन पॅड किंवा क्लिनिकच्या दारासाठी QR (PNG) डाउनलोड करा, किंवा पूर्ण कार्ड इमेज डाउनलोड करा.",
+            "कार्ड कधीही संपादित किंवा हटवा; हटवल्यास सार्वजनिक लिंक चालणे थांबते.",
           ],
         },
         {
@@ -419,8 +521,10 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
           title: "बिलिंग आणि सदस्यता",
           steps: [
             "मेनू → बिलिंग (Billing) मध्ये जा.",
-            "आपली सध्याची सदस्यता योजना, बिलिंग चक्राची सुरुवात तारीख आणि वापर पाहा.",
-            "प्रत्येक पुष्टी केलेल्या भेटीसाठी प्रति-रुग्ण शुल्क लागू होते.",
+            "आपली योजना वरती दिसते — Starter (फक्त टायपिंग, दर चक्राला सपाट ₹499) किंवा Pro (व्हॉइस + AI, प्रति-रुग्ण शुल्क, दरमहा किमान ₹299).",
+            'योजना बदलण्यासाठी "Upgrade to Pro" किंवा "Downgrade" टॅप करा. अपग्रेड केल्यास व्हॉइस आणि AI लगेच सुरू होतात; डाउनग्रेड केल्यास चालू चक्र संपेपर्यंत ते राहतात, नंतर सपाट ₹499 Starter योजनेवर जाता.',
+            "Pro वर फक्त पूर्ण सल्लामसलत आणि फॉलो-अप बिल होतात — प्रमाणपत्र, ड्रेसिंग, BP तपासणी व इतर जलद सेवा प्रति-रुग्ण शुल्कात मोजल्या जात नाहीत.",
+            "चालू चक्राचे अंदाजित शुल्क वरती थेट दिसते; \"View invoice up to today\" थेट नमुना दाखवते आणि Invoices यादीतून इनव्हॉइस पाहा किंवा भरा.",
             "बिलिंगबद्दल प्रश्न असल्यास संपर्क करा: admin.medireach@gmail.com",
           ],
         },
@@ -446,10 +550,11 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
           steps: [
             '"आज" (Today) स्क्रीन पर "प्रतीक्षा में" (Pending) स्थिति के मरीज पर टैप करें।',
             '"परामर्श शुरू करें" (Start Consultation) टैप करें।',
-            "माइक्रोफोन बटन टैप करें और स्वाभाविक रूप से बोलें — अंग्रेजी, हिंदी या मराठी सब काम करते हैं।",
-            "AI आपकी बोली को निदान, उपचार और नुस्खे में स्वतः संरचित करेगा।",
-            "तैयार आउटपुट की समीक्षा करें; संपादित करने के लिए किसी भी फ़ील्ड पर टैप करें।",
-            '"पूर्ण" (Done) टैप करके यात्रा अंतिम करें और WhatsApp पर नुस्खा भेजें।',
+            'Pro प्लान पर "🎤 डिक्टेट" (Dictate) टैप करें और स्वाभाविक रूप से बोलें — अंग्रेजी, हिंदी या मराठी सब काम करते हैं — AI स्वतः निदान, उपचार और नुस्खा भर देगा।',
+            "Starter प्लान पर हर फ़ील्ड खुद टाइप करें। टाइप करते समय कीवर्ड शॉर्टकट पूरे पाठ में विस्तृत हो जाते हैं, जिससे प्रविष्टि तेज रहती है।",
+            "हर फ़ील्ड की समीक्षा या संपादन करें — शिकायतें, जांच, निदान, दवाएं, सलाह और फीस।",
+            '"आगे" (Next) टैप करके नुस्खे की समीक्षा करें, फिर "नुस्खा भेजें" (Send Prescription) टैप करें।',
+            "कतार में लौटने से पहले WhatsApp पर नुस्खा साझा करें और वसूली गई फीस दर्ज करें।",
           ],
         },
         {
@@ -469,6 +574,55 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
             "नाम या मोबाइल नंबर से मरीज खोजें।",
             "पूर्ण यात्रा इतिहास देखने के लिए मरीज पर टैप करें।",
             "प्रत्येक यात्रा में तारीख, निदान और नुस्खा पहुंचा या नहीं दिखता है।",
+          ],
+        },
+        {
+          title: "मेडिकल सर्टिफिकेट जारी करना",
+          steps: [
+            'Records से मरीज खोलें और "Certificate" टैप करें — या मरीज को "Certificate" उद्देश्य से पंजीकृत करके सीधे कतार से शुरू करें।',
+            "प्रकार चुनें — Unfit / बीमारी की छुट्टी, काम पर लौटने की फिटनेस (Fitness to Resume), या नौकरी के लिए फिटनेस (Fitness for Employment)।",
+            "मरीज का नाम, उम्र और लिंग स्वतः भर जाता है; निदान, तारीखें और टिप्पणियां जोड़ें। छुट्टी के दिन स्वतः गिने जाते हैं।",
+            'लाइव A4 पूर्वावलोकन जांचें, फिर "Send on WhatsApp", "Download PDF" या "Print" टैप करें।',
+            "हर सर्टिफिकेट मेनू → Certificate Records में सहेजा जाता है — मरीज, प्रकार और तारीख से खोजा जा सकता है और कानूनी जरूरत के लिए 3 साल रखा जाता है।",
+            "सर्टिफिकेट Starter और Pro दोनों पर काम करते हैं — वे कभी वॉइस या AI का उपयोग नहीं करते।",
+          ],
+        },
+        {
+          title: "मरीज की बकाया (लंबित फीस)",
+          steps: [
+            'नुस्खा भेजते समय "Amount paid" बॉक्स पूरी फीस से पहले से भरा होता है — इसकी पुष्टि करें, या कम राशि दर्ज करके शेष को बकाया के रूप में छोड़ दें।',
+            "बकाया रखने वाले सभी मरीज देखने के लिए मेनू → Patient Dues में जाएं — नवीनतम पहले, कुल लंबित राशि के साथ।",
+            "नाम से खोजें और मरीज पर टैप करके उनका बकाया विवरण खोलें, फिर भुगतान दर्ज करके शेष को साफ करें या घटाएं।",
+            "नोट: यह आपके क्लिनिक की अपनी फीस बहीखाता है — यह आपकी MediReach सदस्यता बिलिंग से अलग है।",
+          ],
+        },
+        {
+          title: "राजस्व — आय, व्यय और तालमेल",
+          steps: [
+            "मेनू → Revenue में जाएं।",
+            "Income टैब वसूली गई फीस दिखाता है — आज, इस माह और महीने-दर-महीने; महीना, फिर दिन विस्तृत करके हर मरीज और राशि देखें। आय परामर्श की पुष्टि करते समय दर्ज की गई फीस से आती है।",
+            "Expenses टैब में क्लिनिक के खर्च (किराया, बिजली, दवा खरीद, स्टाफ वेतन, उपकरण, अन्य) बिल नंबर, विक्रेता, भुगतान की गई राशि और शेष बकाया के साथ जोड़ें।",
+            "Tally टैब हर महीने और सर्वकालिक के लिए आय − व्यय = शुद्ध दिखाता है।",
+          ],
+        },
+        {
+          title: "कीवर्ड शॉर्टकट (Edit Keyword)",
+          steps: [
+            "मेनू → Edit Keyword में जाएं।",
+            "हर परामर्श फ़ील्ड (शिकायतें, निदान, दवाएं, सलाह और अधिक) की अपनी शॉर्टकट डिक्शनरी होती है — फ़ील्ड विस्तृत करने के लिए उस पर टैप करें।",
+            "शॉर्टकट और वह पूरा पाठ जोड़ें जिसमें वह विस्तृत होना चाहिए। दवाओं के लिए एक ही शॉर्टकट में प्रकार, घटक, खुराक, आवृत्ति, समय और कहां से देना है, सब दर्ज किया जा सकता है।",
+            'परामर्श स्क्रीन पर शॉर्टकट टाइप करने पर पूरा पाठ स्वतः भर जाता है — जैसे "p5" से "Tab. Paracetamol 500mg" बन जाता है।',
+            "किसी भी शॉर्टकट को कभी भी संपादित या हटाएं। शॉर्टकट Starter और Pro दोनों पर टाइपिंग तेज करते हैं।",
+          ],
+        },
+        {
+          title: "डिजिटल विजिटिंग कार्ड",
+          steps: [
+            'मेनू → Digital Visiting Card में जाएं और "Get started" टैप करें — आपके प्रोफ़ाइल विवरण पहले से भरे होते हैं।',
+            "एक टैगलाइन, सेवाएं, भाषाएं, फोटो और मैप्स लिंक जोड़ें, फिर प्रकाशित करने के लिए सहेजें।",
+            'सार्वजनिक लिंक या QR कोड मरीजों को साझा करें, या लाइव पेज देखने के लिए "Open" टैप करें।',
+            "प्रिस्क्रिप्शन पैड या क्लिनिक के दरवाजे के लिए QR (PNG) डाउनलोड करें, या पूरी कार्ड इमेज डाउनलोड करें।",
+            "कार्ड को कभी भी संपादित या हटाएं; हटाने पर सार्वजनिक लिंक काम करना बंद कर देता है।",
           ],
         },
         {
@@ -505,8 +659,10 @@ const GUIDE: Record<"reception" | "doctor", Record<Lang, GuideContent>> = {
           title: "बिलिंग और सदस्यता",
           steps: [
             "मेनू → बिलिंग (Billing) में जाएं।",
-            "अपनी वर्तमान सदस्यता योजना, बिलिंग चक्र आरंभ तारीख और उपयोग देखें।",
-            "प्लेटफॉर्म पर पुष्टि की गई प्रत्येक यात्रा के लिए प्रति-मरीज शुल्क लागू होता है।",
+            "आपकी योजना ऊपर दिखती है — Starter (केवल टाइपिंग, प्रति चक्र सपाट ₹499) या Pro (वॉइस + AI, प्रति-मरीज शुल्क, प्रति माह न्यूनतम ₹299)।",
+            'योजना बदलने के लिए "Upgrade to Pro" या "Downgrade" टैप करें। अपग्रेड करने पर वॉइस और AI तुरंत चालू हो जाते हैं; डाउनग्रेड करने पर वे चालू चक्र के अंत तक बने रहते हैं, फिर आप सपाट ₹499 Starter योजना पर आ जाते हैं।',
+            "Pro पर केवल पूर्ण परामर्श और फॉलो-अप बिल होते हैं — प्रमाणपत्र, ड्रेसिंग, BP जांच और अन्य त्वरित सेवाएं प्रति-मरीज शुल्क में नहीं गिनी जातीं।",
+            "चालू चक्र का अनुमानित शुल्क ऊपर सीधे दिखता है; \"View invoice up to today\" एक लाइव नमूना दिखाता है और Invoices सूची से चालान देखें या भुगतान करें।",
             "बिलिंग संबंधी प्रश्नों के लिए संपर्क करें: admin.medireach@gmail.com",
           ],
         },

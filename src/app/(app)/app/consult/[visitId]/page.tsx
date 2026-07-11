@@ -13,8 +13,7 @@ import { apiGet, apiPost } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
-import { buildPrescriptionText } from "@/lib/prescription";
-import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
+import { sharePrescriptionPdf, normalizeWhatsappNumber, writePreparingDoc } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 import { isQuickServicePurpose, isCertificatePurpose, visitPurposeLabel } from "@/lib/constants";
@@ -108,13 +107,21 @@ const emptyForm: FormState = {
 };
 
 /** Feedback shown under the "Send on WhatsApp" button after a share attempt. */
-function ShareHint({ hint }: { hint: "link" | "nolink" | null }) {
+function ShareHint({ hint }: { hint: "link" | "nolink" | "cancelled" | null }) {
   if (!hint) return null;
-  return hint === "link" ? (
-    <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
-      📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
-    </p>
-  ) : (
+  if (hint === "link")
+    return (
+      <p className="rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+        📄 Prescription link added to the WhatsApp message — the patient taps it to view or download the PDF.
+      </p>
+    );
+  if (hint === "cancelled")
+    return (
+      <p className="rounded-xl bg-line/40 px-3 py-2 text-sm text-ink-muted" role="status">
+        The WhatsApp tab was closed before the prescription was ready. Tap Send again and keep the tab open.
+      </p>
+    );
+  return (
     <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="status">
       ⚠️ Couldn&apos;t add the prescription link — the message opened without it. Please tap Send again.
     </p>
@@ -161,7 +168,7 @@ export default function ConsultPage() {
   const [sendBusy, setSendBusy] = useState(false);
   const [successModal, setSuccessModal] = useState<"saved" | "sent" | null>(null);
   // Result of the last WhatsApp share — drives the on-screen hint under the button.
-  const [shareHint, setShareHint] = useState<"link" | "nolink" | null>(null);
+  const [shareHint, setShareHint] = useState<"link" | "nolink" | "cancelled" | null>(null);
   const [shareBusy, setShareBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
@@ -580,8 +587,10 @@ export default function ConsultPage() {
 
   async function shareWhatsApp() {
     // Reserve the WhatsApp popup synchronously inside the click gesture so the
-    // browser doesn't block it after the (async) PDF upload.
+    // browser doesn't block it after the (async) PDF upload, and paint a branded
+    // "preparing…" screen so it isn't a bare blank tab meanwhile.
     const win = window.open("", "_blank");
+    writePreparingDoc(win);
     const c = clinic ?? {
       clinicName: "", clinicAddress: "", clinicTimings: "",
       doctorName: "", degree: "", registrationNumber: "",
@@ -604,13 +613,15 @@ export default function ConsultPage() {
     try {
       if (!sheetRef.current) throw new Error("Sheet not ready.");
       const pdf = await sheetToPdf(sheetRef.current);
-      const { linkIncluded } = await sharePrescriptionPdf({
+      const { linkIncluded, opened } = await sharePrescriptionPdf({
         pdf, visitId, sender, recipientDigits, filename: `prescription-${safeName}.pdf`, win,
       });
-      setShareHint(linkIncluded ? "link" : "nolink");
+      setShareHint(!opened ? "cancelled" : linkIncluded ? "link" : "nolink");
     } catch {
-      const url = `https://wa.me/${recipientDigits}?text=${encodeURIComponent(buildPrescriptionText(sender))}`;
-      if (win && !win.closed) win.location.href = url; else window.open(url, "_blank");
+      // Rasterise/upload failed — close the "preparing…" tab rather than leaving
+      // it hanging, and let the doctor retry. We deliberately don't spawn a stray
+      // WhatsApp-Web tab here.
+      if (win && !win.closed) win.close();
       setShareHint("nolink");
     } finally {
       setShareBusy(false);
