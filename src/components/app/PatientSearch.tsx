@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { cn } from "@/lib/cn";
 import { apiGet, apiPost } from "@/lib/client/api";
-import type { Role } from "@/lib/constants";
+import { VISIT_PURPOSE_OPTIONS, isCertificatePurpose, isQuickServicePurpose, type Role, type VisitMode } from "@/lib/constants";
 
 interface Match {
   _id: string;
+  code?: string;
   name: string;
   mobile: string;
   ageYears?: number;
@@ -21,6 +23,8 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  // The patient whose purpose is being chosen in the modal (null = closed).
+  const [picking, setPicking] = useState<Match | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -62,17 +66,17 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
     };
   }, [q]);
 
-  async function enqueue(
-    patientId: string,
-    type: "new" | "follow-up",
-    visitMode: "consultation" | "certificate_only" = "consultation",
-  ) {
+  async function enqueue(patientId: string, type: "new" | "follow-up", visitMode: VisitMode) {
     try {
       const { visitId } = await apiPost<{ visitId: string }>("/api/queue", { patientId, type, visitMode });
       if (role === "doctor") {
-        // Certificate-only → straight to the certificate screen; else the consult.
-        if (visitMode === "certificate_only") {
+        // Certificate → certificate screen; a quick procedure (nebulisation,
+        // dressing, BP checkup, outside injection) → its own procedure form;
+        // consultation / follow-up → the full consult.
+        if (isCertificatePurpose(visitMode)) {
           router.push(`/app/records/${patientId}/certificate?visitId=${visitId}`);
+        } else if (isQuickServicePurpose(visitMode)) {
+          router.push(`/app/procedure/${visitId}`);
         } else {
           router.push(`/app/consult/${visitId}`);
         }
@@ -80,10 +84,12 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
         setQ("");
         setMatches(null);
         setOpen(false);
+        setPicking(null);
         onAdded();
       }
     } catch (err) {
       setError((err as Error).message);
+      setPicking(null);
     }
   }
 
@@ -136,32 +142,151 @@ export function PatientSearch({ role, onAdded }: { role: Role; onAdded: () => vo
             <ul>
               {matches.map((m) => (
                 <li key={m._id} className="border-b border-line last:border-0">
-                  <div className="flex items-center justify-between gap-2 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setPicking(m)}
+                    className="flex w-full items-center justify-between gap-2 p-3 text-left transition-colors hover:bg-line/20"
+                  >
                     <div className="min-w-0">
                       <p className="truncate font-medium text-ink">{m.name}</p>
                       <p className="text-xs text-ink-muted">
+                        {m.code ? `${m.code} · ` : ""}
                         {m.mobile}
                         {m.ageYears ? ` · ${m.ageYears}y` : ""}
                       </p>
                     </div>
-                    <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-                      <Button variant="brand" size="sm" onClick={() => enqueue(m._id, "follow-up")}>
-                        Follow-up
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => enqueue(m._id, "new")}>
-                        New entry
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => enqueue(m._id, "follow-up", "certificate_only")}>
-                        📄 Certificate
-                      </Button>
-                    </div>
-                  </div>
+                    <span className="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-fg">
+                      + Add
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>
           )}
         </div>
       )}
+
+      {picking && (
+        <PurposeModal
+          patient={picking}
+          onClose={() => setPicking(null)}
+          onConfirm={(type, visitMode) => enqueue(picking._id, type, visitMode)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Add-to-queue modal: choose the visit type (new / follow-up) and the purpose
+ * (consultation, follow-up, certificate, or a quick procedure) before the
+ * patient joins the queue. Opened by tapping a search result.
+ */
+function PurposeModal({
+  patient,
+  onClose,
+  onConfirm,
+}: {
+  patient: Match;
+  onClose: () => void;
+  onConfirm: (type: "new" | "follow-up", visitMode: VisitMode) => void | Promise<void>;
+}) {
+  const [type, setType] = useState<"new" | "follow-up">("new");
+  const [purpose, setPurpose] = useState<VisitMode>("consultation");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onEsc);
+    return () => document.removeEventListener("keydown", onEsc);
+  }, [onClose]);
+
+  async function add() {
+    setBusy(true);
+    try {
+      await onConfirm(type, purpose);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-md rounded-t-2xl bg-surface p-5 shadow-xl sm:rounded-2xl">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-lg font-semibold text-ink">Add to queue</p>
+            <p className="truncate text-sm text-ink-muted">
+              {patient.name}
+              {patient.ageYears ? ` · ${patient.ageYears}y` : ""}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-lg text-ink-muted hover:text-sos" aria-label="Close">✕</button>
+        </div>
+
+        {/* Type — new vs follow-up entry */}
+        <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-ink-muted">Type</p>
+        <div className="mb-4 flex gap-2">
+          {([
+            { value: "new", label: "New entry" },
+            { value: "follow-up", label: "Follow-up" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setType(opt.value)}
+              className={cn(
+                "flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+                type === opt.value
+                  ? "border-brand bg-brand/10 text-brand"
+                  : "border-line bg-surface-raised text-ink-muted hover:bg-line/30",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Purpose — the reason for the visit */}
+        <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-ink-muted">Purpose</p>
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          {VISIT_PURPOSE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setPurpose(opt.value)}
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+                purpose === opt.value
+                  ? "border-brand bg-brand/10 text-brand"
+                  : "border-line bg-surface-raised text-ink-muted hover:bg-line/30",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {isCertificatePurpose(purpose) && (
+          <p className="mb-4 -mt-2 text-xs text-ink-muted">
+            You&apos;ll go straight to the certificate screen — no full examination needed.
+          </p>
+        )}
+
+        <div className="flex gap-2">
+          <Button variant="ghost" size="lg" className="flex-1" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button variant="primary" size="lg" className="flex-1" onClick={add} disabled={busy}>
+            {busy ? "Adding…" : "Add to queue"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

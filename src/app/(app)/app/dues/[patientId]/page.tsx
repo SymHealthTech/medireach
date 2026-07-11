@@ -15,8 +15,10 @@ import type { DuesStatus } from "@/lib/constants";
  * Per-patient dues detail (the Patient Dues feature — clinic fee bookkeeping,
  * separate from MediReach subscription billing). Doctor-only. Shows the total
  * outstanding, a per-visit breakdown, and the payment history. Clearing a due
- * happens ONLY here: "Record payment" settles a visit (full or partial) and adds
- * a history entry; "Edit fee" corrects a mistyped amount.
+ * happens ONLY here. Each visit shows a single primary action — "Record payment"
+ * while a balance is due (settles full or partial and adds a history entry),
+ * else "Edit fee". Correcting the fee stays reachable as a subtle switch inside
+ * the open panel, so the two actions are no longer mistaken for one another.
  */
 
 interface DueItem {
@@ -172,9 +174,12 @@ export default function DuesDetailPage() {
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* One action per row: record payment while a balance is due,
+                      otherwise just fee-correction. Editing the fee stays reachable
+                      as a subtle switch inside the panel below, so the two are no
+                      longer confused. */}
                   <div className="flex flex-wrap gap-3 border-t border-line px-4 py-2">
-                    {item.dueAmount > 0 && (
+                    {item.dueAmount > 0 ? (
                       <button
                         type="button"
                         onClick={() => openAction(item, "settle")}
@@ -182,14 +187,15 @@ export default function DuesDetailPage() {
                       >
                         Record payment
                       </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openAction(item, "adjust")}
+                        className="text-xs font-semibold text-ink-muted hover:underline"
+                      >
+                        Edit fee
+                      </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => openAction(item, "adjust")}
-                      className="text-xs font-semibold text-ink-muted hover:underline"
-                    >
-                      Edit fee
-                    </button>
                   </div>
 
                   {/* Inline form */}
@@ -218,6 +224,25 @@ export default function DuesDetailPage() {
                           Up to ₹{item.dueAmount} outstanding. A partial amount leaves the rest as a due.
                         </p>
                       )}
+                      {/* Subtle switch to the less-common action, so each row keeps
+                          a single primary button. */}
+                      {action!.mode === "settle" ? (
+                        <button
+                          type="button"
+                          onClick={() => setAction((a) => (a ? { ...a, mode: "adjust", value: String(item.feeAmount) } : a))}
+                          className="text-[11px] font-medium text-ink-muted hover:underline"
+                        >
+                          Wrong fee? Edit the fee instead
+                        </button>
+                      ) : item.dueAmount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setAction((a) => (a ? { ...a, mode: "settle", value: String(item.dueAmount) } : a))}
+                          className="text-[11px] font-medium text-brand hover:underline"
+                        >
+                          Record a payment instead
+                        </button>
+                      ) : null}
                     </div>
                   )}
                 </li>

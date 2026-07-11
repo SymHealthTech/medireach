@@ -15,6 +15,7 @@ import "server-only";
  */
 export const RECEPTIONIST_PATIENT_FIELDS = {
   _id: 1,
+  code: 1,
   name: 1,
   address: 1,
   ageYears: 1,

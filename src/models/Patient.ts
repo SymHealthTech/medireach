@@ -12,6 +12,10 @@ import { RECORD } from "@/lib/constants";
 export interface PatientDoc {
   _id: Types.ObjectId;
   doctorId: Types.ObjectId;
+  // Human-facing patient ID, unique per clinic (e.g. "P-0001"), minted from a
+  // per-doctor atomic sequence at registration. Searchable in Records alongside
+  // name/mobile. Absent on patients created before this field existed.
+  code?: string;
   name: string;
   gender: "male" | "female" | "other";
   dob?: Date;
@@ -37,6 +41,7 @@ export interface PatientDoc {
 const patientSchema = new Schema<PatientDoc>(
   {
     doctorId: { type: Schema.Types.ObjectId, ref: "Doctor", required: true, index: true },
+    code: { type: String, trim: true },
     name: { type: String, required: true, trim: true },
     gender: { type: String, enum: ["male", "female", "other"], required: true },
     dob: { type: Date },
@@ -63,6 +68,10 @@ const patientSchema = new Schema<PatientDoc>(
 
 // Receptionist lookup by mobile within a clinic; family members share a number.
 patientSchema.index({ doctorId: 1, mobile: 1 });
+// Records search by the human-facing patient ID within a clinic. Uniqueness is
+// guaranteed by the per-doctor sequence, so a plain (non-unique) index suffices
+// and avoids null-collisions on legacy patients that predate the field.
+patientSchema.index({ doctorId: 1, code: 1 });
 
 // In development, delete the cached model on every module evaluation so that
 // schema changes (new fields, etc.) take effect across Next.js hot-reloads

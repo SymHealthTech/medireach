@@ -37,7 +37,7 @@ const RECEPTIONIST_NAV: NavItem[] = [
 export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", children }: { role: Role; name: string; doctorAppId?: string; doctorClinicName?: string; children: React.ReactNode }) {
   const pathname = usePathname();
   const [showMore, setShowMore] = useState(false);
-  const onConsult = pathname.startsWith("/app/consult/");
+  const onConsult = pathname.startsWith("/app/consult/") || pathname.startsWith("/app/procedure/");
   const nav = role === "receptionist" ? RECEPTIONIST_NAV : DOCTOR_NAV;
   // Primary nav items (Today + Records) — Menu is replaced by inline items on desktop
   const primaryNav = nav.filter((item) => item.href !== "/app/menu");

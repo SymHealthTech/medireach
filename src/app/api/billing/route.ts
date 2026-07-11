@@ -8,7 +8,7 @@ import { Sponsor } from "@/models/Sponsor";
 import { currentCycle } from "@/lib/billing/cycle";
 import { computeCycleCharge } from "@/lib/billing/charge";
 import { computeInclusiveTax, isInterStateSupply } from "@/lib/billing/tax";
-import { BILLING } from "@/lib/constants";
+import { BILLING, BILLABLE_VISIT_MODES } from "@/lib/constants";
 
 /**
  * Billing summary for the doctor's Billing screen (spec §12). Shows the current
@@ -21,13 +21,13 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   const doctorId = requireDoctorId(ctx);
 
   const cycle = currentCycle(doctor.cycleStartDate);
-  // Exclude certificate-only visits from the billable count (they use no AI/voice
-  // and cost nothing) — consistent with the invoice generator. `$ne` also keeps
-  // legacy visits without the field counted as consultations.
+  // Count only full consultations/follow-ups (quick-service purposes use no
+  // AI/voice and cost nothing) — consistent with the invoice generator. `null`
+  // keeps legacy visits without the field counted as consultations.
   const patientCountSoFar = await Visit.countDocuments({
     doctorId,
     status: "confirmed",
-    visitMode: { $ne: "certificate_only" },
+    visitMode: { $in: [null, ...BILLABLE_VISIT_MODES] },
     confirmedAt: { $gte: cycle.periodStart, $lt: cycle.periodEnd },
   });
 

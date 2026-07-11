@@ -12,7 +12,7 @@ import { Certificate } from "@/models/Certificate";
 import { certificateCreateSchema } from "@/lib/validation/certificate";
 import { daysBetween } from "@/lib/certificate/render";
 import { buildCertificateListFilter } from "@/lib/certificate/query";
-import { RECORD } from "@/lib/constants";
+import { RECORD, isCertificatePurpose } from "@/lib/constants";
 
 /**
  * Medical Certificates (spec: Medical Certificates feature). Doctor-only — a
@@ -54,12 +54,12 @@ export const POST = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
     certificateDate: toDate(data.certificateDate) ?? new Date(),
   });
 
-  // Certificate-only fast path: completing the certificate completes the visit,
+  // Certificate fast path: completing the certificate completes the visit,
   // so it drops out of the pending queue and shows as seen. A normal
   // consultation visit is left untouched (its own Confirm flow finalizes it).
   if (data.visitId) {
     const visit = await scopedFindById(Visit, ctx, data.visitId);
-    if (visit && visit.visitMode === "certificate_only" && visit.status !== "confirmed") {
+    if (visit && isCertificatePurpose(visit.visitMode) && visit.status !== "confirmed") {
       const now = new Date();
       visit.status = "confirmed";
       visit.confirmedAt = now;

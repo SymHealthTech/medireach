@@ -10,9 +10,11 @@ import { apiGet, apiPost } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
 import { useRecorder } from "@/lib/client/recorder";
 import { cn } from "@/lib/cn";
+import { VISIT_PURPOSE_OPTIONS, isCertificatePurpose, isQuickServicePurpose, type VisitMode } from "@/lib/constants";
 
 interface PatientMatch {
   _id: string;
+  code?: string;
   name: string;
   mobile: string;
   ageYears?: number;
@@ -45,9 +47,9 @@ export default function RegisterPage() {
     emergencyContact: "",
   });
   const [consent, setConsent] = useState(false);
-  // Queue mode: a normal consultation, or the certificate-only fast path for a
-  // patient who came just for a medical certificate.
-  const [visitMode, setVisitMode] = useState<"consultation" | "certificate_only">("consultation");
+  // Visit purpose: a full consultation/follow-up, the certificate fast path, or
+  // a quick procedure (nebulisation, dressing, BP checkup, outside injection).
+  const [visitMode, setVisitMode] = useState<VisitMode>("consultation");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const recorder = useRecorder();
@@ -167,8 +169,10 @@ export default function RegisterPage() {
       router.push("/app/queue");
       return;
     }
-    if (visitMode === "certificate_only" && patientId) {
+    if (isCertificatePurpose(visitMode) && patientId) {
       router.push(`/app/records/${patientId}/certificate?visitId=${visitId}`);
+    } else if (isQuickServicePurpose(visitMode)) {
+      router.push(`/app/procedure/${visitId}`);
     } else {
       router.push(`/app/consult/${visitId}`);
     }
@@ -317,6 +321,7 @@ export default function RegisterPage() {
                   <div className="min-w-0">
                     <p className="font-semibold text-ink">{p.name}</p>
                     <p className="mt-0.5 text-sm text-ink-muted">
+                      {p.code ? `${p.code} · ` : ""}
                       {p.mobile}
                       {p.ageYears ? ` · ${p.ageYears} yrs` : ""}
                       {p.gender ? ` · ${p.gender}` : ""}
@@ -591,21 +596,18 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Visit purpose — normal consultation vs. certificate-only fast path.
-              Certificate-only patients sit in the same queue in normal order. */}
+          {/* Visit purpose — a full consultation/follow-up, the certificate fast
+              path, or a quick procedure. All join the same queue in normal order. */}
           <div>
             <Label htmlFor="visit-mode">Visit purpose</Label>
-            <div id="visit-mode" className="flex gap-2">
-              {([
-                { value: "consultation", label: "Consultation" },
-                { value: "certificate_only", label: "Certificate only" },
-              ] as const).map((opt) => (
+            <div id="visit-mode" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {VISIT_PURPOSE_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => setVisitMode(opt.value)}
                   className={cn(
-                    "flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+                    "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
                     visitMode === opt.value
                       ? "border-brand bg-brand/10 text-brand"
                       : "border-line bg-surface-raised text-ink-muted hover:bg-line/30",
@@ -615,7 +617,7 @@ export default function RegisterPage() {
                 </button>
               ))}
             </div>
-            {visitMode === "certificate_only" && (
+            {isCertificatePurpose(visitMode) && (
               <p className="mt-1 text-xs text-ink-muted">
                 They join the queue in normal order; you&apos;ll go straight to the certificate screen — no full examination needed.
               </p>

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { buildCertificateListFilter } from "@/lib/certificate/query";
-import { RECORD, VISIT_MODES, DEFAULT_VISIT_MODE } from "@/lib/constants";
+import {
+  RECORD,
+  VISIT_MODES,
+  DEFAULT_VISIT_MODE,
+  BILLABLE_VISIT_MODES,
+  isCertificatePurpose,
+  isQuickServicePurpose,
+  visitPurposeLabel,
+} from "@/lib/constants";
 
 /**
  * Part A/B pure logic: the Certificate Records search filter, the 3-year
@@ -47,5 +55,39 @@ describe("retention + visit-mode constants", () => {
     expect(VISIT_MODES).toContain("certificate_only");
     expect(VISIT_MODES).toContain("consultation");
     expect(DEFAULT_VISIT_MODE).toBe("consultation");
+  });
+
+  it("includes the expanded visit purposes", () => {
+    for (const p of ["followup", "certificate", "nebulisation", "dressing", "bp_checkup", "outside_injection"]) {
+      expect(VISIT_MODES).toContain(p);
+    }
+  });
+});
+
+describe("visit purpose helpers + billing", () => {
+  it("bills only full consultations/follow-ups", () => {
+    expect(BILLABLE_VISIT_MODES).toEqual(["consultation", "followup"]);
+  });
+
+  it("treats the legacy certificate_only value as a certificate", () => {
+    expect(isCertificatePurpose("certificate")).toBe(true);
+    expect(isCertificatePurpose("certificate_only")).toBe(true);
+    expect(isCertificatePurpose("consultation")).toBe(false);
+    expect(isCertificatePurpose(null)).toBe(false);
+  });
+
+  it("flags quick-service purposes but not full visits or legacy null", () => {
+    for (const p of ["certificate", "certificate_only", "nebulisation", "dressing", "bp_checkup", "outside_injection"]) {
+      expect(isQuickServicePurpose(p)).toBe(true);
+    }
+    expect(isQuickServicePurpose("consultation")).toBe(false);
+    expect(isQuickServicePurpose("followup")).toBe(false);
+    expect(isQuickServicePurpose(null)).toBe(false);
+  });
+
+  it("labels purposes for display, including the legacy alias and null", () => {
+    expect(visitPurposeLabel("bp_checkup")).toBe("BP checkup");
+    expect(visitPurposeLabel("certificate_only")).toBe("Certificate");
+    expect(visitPurposeLabel(null)).toBe("Consultation");
   });
 });

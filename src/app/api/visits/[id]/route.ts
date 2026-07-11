@@ -40,6 +40,7 @@ export const PATCH = route<{ id: string }>({ roles: Roles.doctorOnly }, async (r
   if (data.fh !== undefined) visit.fh = data.fh;
   if (data.co !== undefined) visit.co = data.co;
   if (data.oe !== undefined) visit.oe = data.oe;
+  if (data.procedure !== undefined) visit.procedure = data.procedure;
   if (data.notes !== undefined) visit.notes = data.notes;
   if (data.provisionalDiagnosis !== undefined) visit.provisionalDiagnosis = data.provisionalDiagnosis;
   if (data.diagnosis !== undefined) visit.diagnosis = data.diagnosis;

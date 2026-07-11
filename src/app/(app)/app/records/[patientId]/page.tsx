@@ -9,6 +9,7 @@ import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/shar
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
 import { cn } from "@/lib/cn";
+import { isCertificatePurpose, isQuickServicePurpose, visitPurposeLabel } from "@/lib/constants";
 
 /** A labelled clinical field — small uppercase label over the value; renders
  *  nothing when empty so a sparse (e.g. certificate-only) visit stays clean. */
@@ -40,6 +41,13 @@ interface Visit {
   followUp?: string;
   adviceGeneral?: string;
   adviceLabTest?: string;
+  procedure?: {
+    nebuliserAgent?: string;
+    injectionDetails?: string;
+    woundSpec?: string;
+    mechanismOfInjury?: string;
+    dressingNotes?: string;
+  };
   oe?: {
     bp?: string; weight?: string; height?: string; pulse?: string; temp?: string;
     rr?: string; pa?: string; cvs?: string; cns?: string; bsl?: string;
@@ -48,6 +56,7 @@ interface Visit {
   fees?: number;
 }
 interface Patient {
+  code?: string;
   name: string;
   ageYears?: number;
   gender?: string;
@@ -244,7 +253,14 @@ export default function RecordsPage() {
 
       {patient && (
         <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-brand/12 via-brand/[0.05] to-action/10 p-4 shadow-card ring-1 ring-line/60 dark:shadow-card-dark dark:ring-line/70">
-          <h1 className="text-2xl font-medium tracking-tight text-ink">{patient.name}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-medium tracking-tight text-ink">{patient.name}</h1>
+            {patient.code && (
+              <span className="rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                ID {patient.code}
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 text-sm text-ink-muted">
             {[patient.gender, patient.ageYears ? `${patient.ageYears}y` : null, patient.mobile]
               .filter(Boolean)
@@ -269,7 +285,7 @@ export default function RecordsPage() {
           {visits.map((v) => {
             const editable = isWithin3Days(v.confirmedAt);
             const isSendingThis = sendBusyId === v._id;
-            const isCertOnly = v.visitMode === "certificate_only";
+            const isCertOnly = isCertificatePurpose(v.visitMode);
             const cert = certByVisit.get(v._id);
             const isOpeningCert = openingCertVisit === v._id;
             // Match the queue's visit-type pills (QueueList): teal tint for
@@ -284,10 +300,22 @@ export default function RecordsPage() {
             ] as [string, string | undefined][]).filter(
               (pair): pair is [string, string] => !!(pair[1] ?? "").trim(),
             );
+            const procItems = v.procedure
+              ? ([
+                  ["Nebulising agent", v.procedure.nebuliserAgent],
+                  ["Injection details", v.procedure.injectionDetails],
+                  ["Wound specifications", v.procedure.woundSpec],
+                  ["Mechanism of injury", v.procedure.mechanismOfInjury],
+                  ["Dressing notes", v.procedure.dressingNotes],
+                ] as [string, string | undefined][]).filter(
+                  (pair): pair is [string, string] => !!(pair[1] ?? "").trim(),
+                )
+              : [];
             const hasBody =
               !!(v.co || v.ho || v.fh || v.notes || v.diagnosis || v.provisionalDiagnosis ||
                 v.followUp || v.adviceGeneral || v.adviceLabTest) ||
               oeItems.length > 0 ||
+              procItems.length > 0 ||
               v.medicines.length > 0 ||
               v.fees != null ||
               shareResult?.id === v._id;
@@ -303,9 +331,23 @@ export default function RecordsPage() {
                     <span className="text-sm font-semibold text-ink">
                       {v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : "—"}
                     </span>
+                    {v.confirmedAt && (
+                      <span className="shrink-0 text-xs text-ink-muted">
+                        {new Date(v.confirmedAt).toLocaleTimeString("en-IN", {
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })}
+                      </span>
+                    )}
                     <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-medium", typeStyle)}>
                       {v.type === "follow-up" ? "Follow-up" : "New"}
                     </span>
+                    {isQuickServicePurpose(v.visitMode) && (
+                      <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+                        {isCertificatePurpose(v.visitMode) ? "📄 " : ""}{visitPurposeLabel(v.visitMode)}
+                      </span>
+                    )}
                   </div>
                   {/* Right: edit-or-locked + Send Rx / View certificate */}
                   <div className="flex shrink-0 items-center gap-2">
@@ -356,6 +398,13 @@ export default function RecordsPage() {
                             </span>
                           ))}
                         </div>
+                      </div>
+                    )}
+                    {procItems.length > 0 && (
+                      <div className="space-y-2">
+                        {procItems.map(([label, val]) => (
+                          <Field key={label} label={label} value={val} />
+                        ))}
                       </div>
                     )}
                     <Field

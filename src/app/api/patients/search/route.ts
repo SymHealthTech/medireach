@@ -38,6 +38,9 @@ export const GET = route({ roles: Roles.clinic }, async (req, ctx) => {
     conditions.push({ name: { $regex: `(^|\\s)${safe}`, $options: "i" } });
     const digits = q.replace(/\D/g, "");
     if (digits.length >= 4) conditions.push({ mobile: { $regex: escapeRegex(digits) } });
+    // Patient ID lookup: matches the clinic-unique code (e.g. "P-0001"), whether
+    // the user types the full code, just the number ("1", "0001"), or a prefix.
+    conditions.push({ code: { $regex: safe, $options: "i" } });
 
     // Initials search: "R S" or "RS" → match "Ramesh Sharma", "Raj Singh"
     const spaceTokens = q.trim().split(/\s+/);

@@ -70,6 +70,20 @@ export interface Dues {
   payments: DuesPayment[];
 }
 
+/**
+ * Procedure-specific fields for quick-service visits (nebulisation, dressing,
+ * BP checkup, outside injection). Each purpose captures its own form; only the
+ * relevant sub-fields are set. Kept in a nested doc so the main consultation
+ * schema stays uncluttered.
+ */
+export interface Procedure {
+  nebuliserAgent?: string;    // nebulisation: the drug/solution nebulised
+  injectionDetails?: string;  // outside injection: injection name & details
+  woundSpec?: string;         // dressing: wound specifications
+  mechanismOfInjury?: string; // dressing: how the wound was caused
+  dressingNotes?: string;     // dressing: dressing notes
+}
+
 export interface OnExamination {
   bp?: string;
   weight?: string;
@@ -88,13 +102,14 @@ export interface VisitDoc {
   patientId: Types.ObjectId;
   doctorId: Types.ObjectId;
   type: VisitType;
-  visitMode: VisitMode; // consultation (default) | certificate_only (§ certificate fast-path)
+  visitMode: VisitMode; // visit purpose: consultation (default) | followup | certificate | nebulisation | dressing | bp_checkup | outside_injection (legacy: certificate_only)
   status: VisitStatus;
   // clinical (doctor-only, §5.2 absolute restriction for receptionist)
   ho?: string; // history of present illness
   fh?: string; // family history
   co?: string; // complaints of
   oe: OnExamination;
+  procedure?: Procedure;
   notes?: string;
   provisionalDiagnosis?: string;
   diagnosis?: string;
@@ -154,6 +169,17 @@ const duesSchema = new Schema<Dues>(
   { _id: false },
 );
 
+const procedureSchema = new Schema<Procedure>(
+  {
+    nebuliserAgent: String,
+    injectionDetails: String,
+    woundSpec: String,
+    mechanismOfInjury: String,
+    dressingNotes: String,
+  },
+  { _id: false },
+);
+
 const oeSchema = new Schema<OnExamination>(
   {
     bp: String,
@@ -182,6 +208,7 @@ const visitSchema = new Schema<VisitDoc>(
     fh: String,
     co: String,
     oe: { type: oeSchema, default: () => ({}) },
+    procedure: { type: procedureSchema, default: undefined },
     notes: String,
     provisionalDiagnosis: String,
     diagnosis: String,

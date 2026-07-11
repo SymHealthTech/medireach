@@ -6,6 +6,7 @@ import { requireDoctorId } from "@/lib/api/context";
 import { audit } from "@/lib/api/audit";
 import { Patient } from "@/models/Patient";
 import { Visit } from "@/models/Visit";
+import { nextSequence } from "@/models/Counter";
 import { patientRegistrationSchema } from "@/lib/validation/patient";
 import { VISIT_MODES } from "@/lib/constants";
 
@@ -30,8 +31,14 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
   const data = await parseBody(req, schema);
   const doctorId = requireDoctorId(ctx);
 
+  // Mint the clinic-unique, human-facing patient ID from a per-doctor atomic
+  // sequence so IDs read cleanly (P-0001, P-0002, …) per clinic and never race.
+  const seq = await nextSequence(`patientCode:${doctorId.toString()}`);
+  const code = `P-${String(seq).padStart(4, "0")}`;
+
   const patient = await Patient.create({
     doctorId,
+    code,
     name: data.name,
     gender: data.gender,
     dob: data.dob ? new Date(data.dob) : undefined,
@@ -66,7 +73,7 @@ export const POST = route({ roles: Roles.clinic }, async (req, ctx) => {
   await audit(ctx, "patient.register", { targetType: "Patient", targetId: patient._id });
 
   return jsonOk(
-    { patientId: patient._id.toString(), visitId: visit._id.toString() },
+    { patientId: patient._id.toString(), visitId: visit._id.toString(), code },
     201,
   );
 });

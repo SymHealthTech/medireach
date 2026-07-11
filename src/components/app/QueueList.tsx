@@ -8,7 +8,15 @@ import { Button } from "@/components/ui/Button";
 import { SpinnerBlock } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { apiGet } from "@/lib/client/api";
-import type { Role } from "@/lib/constants";
+import {
+  VISIT_PURPOSE_OPTIONS,
+  normalizeVisitPurpose,
+  isCertificatePurpose,
+  isQuickServicePurpose,
+  visitPurposeLabel,
+  type Role,
+  type VisitMode,
+} from "@/lib/constants";
 
 export interface QueueEntry {
   visitId: string;
@@ -18,7 +26,7 @@ export interface QueueEntry {
   ageYears: number | null;
   gender: string | null;
   type: "new" | "follow-up";
-  visitMode: "consultation" | "certificate_only";
+  visitMode: string;
   status: "draft" | "confirmed";
   createdAt: string;
 }
@@ -59,6 +67,7 @@ function EditModal({
     heightCm: "",
     temp: "",
   });
+  const [purpose, setPurpose] = useState<VisitMode>(normalizeVisitPurpose(entry.visitMode));
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +136,19 @@ function EditModal({
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Could not save changes.");
+      }
+
+      // Persist a changed visit purpose too (queue metadata, both roles allowed).
+      if (purpose !== normalizeVisitPurpose(entry.visitMode)) {
+        const pres = await fetch(`/api/visits/${entry.visitId}/purpose`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visitMode: purpose }),
+        });
+        if (!pres.ok) {
+          const data = await pres.json().catch(() => ({}));
+          throw new Error(data.error ?? "Could not update visit purpose.");
+        }
       }
 
       onSaved();
@@ -233,6 +255,28 @@ function EditModal({
                 </div>
               </div>
 
+              {/* Visit purpose — queue metadata, editable while draft */}
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-ink">Visit purpose</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {VISIT_PURPOSE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPurpose(opt.value)}
+                      className={cn(
+                        "rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors",
+                        purpose === opt.value
+                          ? "border-brand bg-brand/10 text-brand"
+                          : "border-line bg-surface-raised text-ink-muted hover:bg-line/30",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-1">
                 <Button type="submit" variant="brand" size="lg" disabled={loading}>
                   {loading ? "Saving…" : "Save changes"}
@@ -271,18 +315,23 @@ export function QueueList({
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<QueueEntry | null>(null);
+  const [deleting, setDeleting] = useState<QueueEntry | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  async function remove(visitId: string) {
-    if (!confirm("Remove this patient from today's queue?")) return;
+  async function confirmRemove() {
+    if (!deleting) return;
+    const visitId = deleting.visitId;
     setBusy(visitId);
+    setDeleteError(null);
     try {
       const res = await fetch(`/api/visits/${visitId}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        alert(data.error ?? "Could not remove.");
-      } else {
-        onChanged();
+        setDeleteError(data.error ?? "Could not remove.");
+        return;
       }
+      setDeleting(null);
+      onChanged();
     } finally {
       setBusy(null);
     }
@@ -308,6 +357,48 @@ export function QueueList({
         />
       )}
 
+      {deleting && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+          onClick={(ev) => { if (ev.target === ev.currentTarget && busy !== deleting.visitId) setDeleting(null); }}
+        >
+          <div className="w-full max-w-sm rounded-t-2xl bg-surface p-6 shadow-xl sm:rounded-2xl">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-sos/15">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-6 w-6 text-sos">
+                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.177-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <p className="text-center text-lg font-semibold text-ink">Remove from queue?</p>
+            <p className="mt-1 text-center text-sm text-ink-muted">
+              Remove <span className="font-semibold text-ink">{deleting.name}</span> from today&apos;s queue? This can&apos;t be undone.
+            </p>
+            {deleteError && (
+              <p className="mt-3 rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos">{deleteError}</p>
+            )}
+            <div className="mt-5 flex gap-3">
+              <Button
+                variant="ghost"
+                size="lg"
+                className="flex-1"
+                onClick={() => setDeleting(null)}
+                disabled={busy === deleting.visitId}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="lg"
+                className="flex-1"
+                onClick={confirmRemove}
+                disabled={busy === deleting.visitId}
+              >
+                {busy === deleting.visitId ? "Removing…" : "Remove"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ul className="space-y-2">
         {entries.map((e, idx) => {
           const examined = e.status === "confirmed";
@@ -327,11 +418,12 @@ export function QueueList({
                 disabled={!clickable}
                 onClick={() => {
                   if (role !== "doctor") return;
-                  // Certificate-only patients skip the full consultation: open the
-                  // certificate screen directly (details pre-filled), carrying the
-                  // visitId so issuing the certificate completes this visit.
-                  if (e.visitMode === "certificate_only" && e.patientId) {
+                  // Certificate → certificate screen; a quick procedure →
+                  // its own procedure form; consultation/follow-up → consult.
+                  if (isCertificatePurpose(e.visitMode) && e.patientId) {
                     router.push(`/app/records/${e.patientId}/certificate?visitId=${e.visitId}`);
+                  } else if (isQuickServicePurpose(e.visitMode)) {
+                    router.push(`/app/procedure/${e.visitId}`);
                   } else {
                     router.push(`/app/consult/${e.visitId}`);
                   }
@@ -361,9 +453,9 @@ export function QueueList({
                       >
                         {e.type === "follow-up" ? "Follow-up" : "New"}
                       </span>
-                      {e.visitMode === "certificate_only" && (
+                      {isQuickServicePurpose(e.visitMode) && (
                         <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
-                          📄 Certificate only
+                          {isCertificatePurpose(e.visitMode) ? "📄 " : ""}{visitPurposeLabel(e.visitMode)}
                         </span>
                       )}
                     </div>
@@ -389,7 +481,7 @@ export function QueueList({
                   </button>
                   <button
                     type="button"
-                    onClick={() => remove(e.visitId)}
+                    onClick={() => { setDeleteError(null); setDeleting(e); }}
                     disabled={busy === e.visitId}
                     className="rounded-lg px-2 py-1 text-sm text-sos hover:bg-sos/10"
                   >

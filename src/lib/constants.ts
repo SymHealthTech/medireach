@@ -23,15 +23,76 @@ export const VISIT_TYPES = ["new", "follow-up"] as const;
 export type VisitType = (typeof VISIT_TYPES)[number];
 
 /**
- * Visit mode — the reason a patient is in the queue, distinct from VisitType
- * (new/follow-up). `certificate_only` is the fast path for a patient who came
- * just for a medical certificate: they sit in the normal queue but skip the full
- * consultation, and — because they use no AI/voice — are excluded from Pro
- * per-patient billing. `consultation` is the default for everyone else.
+ * Visit mode / purpose — the reason a patient is in the queue, distinct from
+ * VisitType (new/follow-up). `consultation` and `followup` are full visits that
+ * may use AI/voice and are billable. The rest are quick-service purposes that
+ * skip the full consultation and cost the business nothing, so they are excluded
+ * from Pro per-patient billing (see BILLABLE_VISIT_MODES). `certificate_only` is
+ * the legacy value for `certificate` — kept in the enum so existing visits stay
+ * valid; treat the two identically via isCertificatePurpose().
  */
-export const VISIT_MODES = ["consultation", "certificate_only"] as const;
+export const VISIT_MODES = [
+  "consultation",
+  "followup",
+  "certificate",
+  "nebulisation",
+  "dressing",
+  "bp_checkup",
+  "outside_injection",
+  "certificate_only", // legacy alias for "certificate"
+] as const;
 export type VisitMode = (typeof VISIT_MODES)[number];
 export const DEFAULT_VISIT_MODE: VisitMode = "consultation";
+
+/**
+ * The selectable visit purposes (register + queue pickers), in display order.
+ * `followup` is intentionally NOT here — new-vs-follow-up is the separate
+ * `type` axis, chosen alongside the purpose. The legacy `certificate_only`
+ * alias is also excluded — new visits always store `certificate`.
+ */
+export const VISIT_PURPOSE_OPTIONS = [
+  { value: "consultation",      label: "Consultation" },
+  { value: "certificate",       label: "Certificate" },
+  { value: "nebulisation",      label: "Nebulisation" },
+  { value: "dressing",          label: "Dressing" },
+  { value: "bp_checkup",        label: "BP checkup" },
+  { value: "outside_injection", label: "Outside injection" },
+] as const satisfies ReadonlyArray<{ value: VisitMode; label: string }>;
+
+/** Normalize a stored visit mode to a value present in VISIT_PURPOSE_OPTIONS
+ *  (legacy certificate_only → certificate; followup / unknown → consultation),
+ *  so an edit picker can pre-select it. */
+export function normalizeVisitPurpose(mode?: string | null): VisitMode {
+  if (isCertificatePurpose(mode)) return "certificate";
+  return VISIT_PURPOSE_OPTIONS.some((o) => o.value === mode) ? (mode as VisitMode) : "consultation";
+}
+
+/**
+ * Purposes that count toward Pro per-patient billing — full consultations that
+ * may use AI/voice. Quick-service purposes (certificate, nebulisation, dressing,
+ * BP checkup, outside injection) are excluded. Legacy visits with no visitMode
+ * are consultations, so the billing query also counts null/absent.
+ */
+export const BILLABLE_VISIT_MODES = ["consultation", "followup"] as const;
+
+/** True for a certificate visit — the legacy `certificate_only` value included. */
+export function isCertificatePurpose(mode?: string | null): boolean {
+  return mode === "certificate" || mode === "certificate_only";
+}
+
+/**
+ * Quick-service purposes skip the full consultation and are not billable. A
+ * plain consultation/follow-up returns false (and legacy null → false).
+ */
+export function isQuickServicePurpose(mode?: string | null): boolean {
+  return !!mode && mode !== "consultation" && mode !== "followup";
+}
+
+/** Human label for a stored visit purpose (handles the legacy alias + null). */
+export function visitPurposeLabel(mode?: string | null): string {
+  if (isCertificatePurpose(mode)) return "Certificate";
+  return VISIT_PURPOSE_OPTIONS.find((o) => o.value === mode)?.label ?? "Consultation";
+}
 
 export const MEDICINE_SOURCES = ["clinic", "pharmacy"] as const;
 export type MedicineSource = (typeof MEDICINE_SOURCES)[number];

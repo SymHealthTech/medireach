@@ -34,11 +34,22 @@ export const oeSchema = z
   })
   .optional();
 
+export const procedureSchema = z
+  .object({
+    nebuliserAgent: z.string().trim().max(300).optional(),
+    injectionDetails: z.string().trim().max(500).optional(),
+    woundSpec: z.string().trim().max(1000).optional(),
+    mechanismOfInjury: z.string().trim().max(300).optional(),
+    dressingNotes: z.string().trim().max(1000).optional(),
+  })
+  .optional();
+
 export const visitUpdateSchema = z.object({
   ho: z.string().trim().max(2000).optional(),
   fh: z.string().trim().max(2000).optional(),
   co: z.string().trim().max(2000).optional(),
   oe: oeSchema,
+  procedure: procedureSchema,
   notes: z.string().trim().max(2000).optional(),
   provisionalDiagnosis: z.string().trim().max(500).optional(),
   diagnosis: z.string().trim().max(500).optional(),

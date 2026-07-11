@@ -52,13 +52,20 @@ export const PATCH = route<{ id: string }>({ roles: Roles.clinic }, async (req, 
 
   // Doctor edit lock: the most recent confirmed visit sets editLockAt = confirmedAt + 3 days.
   // After that window the record is read-only from the records view (spec §9.2).
+  // The lock protects HISTORICAL records only — while a visit is in progress (a
+  // draft in today's queue, e.g. a returning patient being seen now) the doctor
+  // must still be able to correct the patient's details, so skip the lock when an
+  // active draft visit exists.
   if (ctx.role === "doctor") {
-    const latestVisit = await Visit.findOne(
-      { patientId: id, doctorId: ctx.doctorId, status: "confirmed" },
-      { editLockAt: 1 },
-    ).sort({ confirmedAt: -1 }).lean();
-    if (latestVisit?.editLockAt && Date.now() > latestVisit.editLockAt.getTime()) {
-      throw Errors.forbidden("This record is locked. Patient records can only be edited within 3 days of the visit.");
+    const activeDraft = await Visit.exists({ patientId: id, doctorId: ctx.doctorId, status: "draft" });
+    if (!activeDraft) {
+      const latestVisit = await Visit.findOne(
+        { patientId: id, doctorId: ctx.doctorId, status: "confirmed" },
+        { editLockAt: 1 },
+      ).sort({ confirmedAt: -1 }).lean();
+      if (latestVisit?.editLockAt && Date.now() > latestVisit.editLockAt.getTime()) {
+        throw Errors.forbidden("This record is locked. Patient records can only be edited within 3 days of the visit.");
+      }
     }
   }
 

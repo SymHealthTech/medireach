@@ -17,6 +17,7 @@ import { buildPrescriptionText } from "@/lib/prescription";
 import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
 import { PrescriptionSheet, type PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { sheetToPdf, imageUrlToDataUrl } from "@/lib/client/prescriptionRaster";
+import { isQuickServicePurpose, isCertificatePurpose, visitPurposeLabel } from "@/lib/constants";
 
 interface OE {
   bp?: string; weight?: string; height?: string; pulse?: string; temp?: string;
@@ -151,6 +152,7 @@ export default function ConsultPage() {
   const sheetRef = useRef<HTMLDivElement>(null);
   const [reportFiles, setReportFiles] = useState<{ name: string; publicId: string }[]>([]);
   const [status, setStatus] = useState<"draft" | "confirmed">("draft");
+  const [visitMode, setVisitMode] = useState<string>("consultation");
   const [step, setStep] = useState<"form" | "review">("form");
   const [aiState, setAiState] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +242,7 @@ export default function ConsultPage() {
           prescriptionLanguage: (visit.prescriptionLanguage as FormState["prescriptionLanguage"]) ?? "english",
         });
         setStatus((visit.status as "draft" | "confirmed") ?? "draft");
+        setVisitMode((visit.visitMode as string) ?? "consultation");
         const existingIds = (visit.reportPublicIds as string[]) ?? [];
         setReportFiles(existingIds.map((id, i) => ({ name: `Report ${i + 1}`, publicId: id })));
       })
@@ -843,7 +846,14 @@ export default function ConsultPage() {
           {/* Left: patient name + queue + records */}
           <Card className="flex flex-col justify-center gap-2 p-4 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
             <div>
-              <h1 className="text-lg font-semibold tracking-tight text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg font-semibold tracking-tight text-ink">{patientEdits.name || (patient?.name ?? "Consultation")}</h1>
+                {isQuickServicePurpose(visitMode) && (
+                  <span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-xs font-medium text-success">
+                    {isCertificatePurpose(visitMode) ? "📄 " : ""}{visitPurposeLabel(visitMode)}
+                  </span>
+                )}
+              </div>
               {patient && (
                 <p className="text-sm text-ink-muted">
                   {patientEdits.gender || patient.gender}

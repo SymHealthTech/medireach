@@ -24,6 +24,17 @@ export const metadata: Metadata = {
   description:
     "Write prescriptions by speaking. A voice-first clinic management app for solo GPs and small clinics in India.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      // Crisp vector for modern browsers, with raster fallbacks for Safari/older.
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: [{ url: "/favicon.ico" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+  },
   applicationName: "MediReach",
   appleWebApp: { capable: true, title: "MediReach", statusBarStyle: "default" },
 };
