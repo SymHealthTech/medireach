@@ -88,6 +88,12 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
+// A pass-through fetch handler. It changes no behaviour (requests go straight to
+// the network), but its mere presence is part of the PWA installability criteria
+// in some browsers — without it, `beforeinstallprompt` may never fire and the
+// "Install app" button in the site header would have nothing to trigger.
+self.addEventListener("fetch", () => {});
+
 // Take control promptly so push works without a reload.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));

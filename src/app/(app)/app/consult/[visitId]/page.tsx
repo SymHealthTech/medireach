@@ -11,6 +11,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { apiGet, apiPost } from "@/lib/client/api";
 import { useMe } from "@/lib/client/useMe";
+import { useOnlineStatus } from "@/lib/client/useOnlineStatus";
+import { saveConsultDraft, loadConsultDraft, clearConsultDraft } from "@/lib/client/consultDraft";
+import { enqueueVisitFinalize } from "@/lib/client/outbox";
 import { useRecorder } from "@/lib/client/recorder";
 import { uploadSigned } from "@/lib/client/upload";
 import { sharePrescriptionPdf, normalizeWhatsappNumber } from "@/lib/client/share";
@@ -107,6 +110,17 @@ const emptyForm: FormState = {
   adviceGeneral: "", adviceLabTest: "", prescriptionLanguage: "english",
 };
 
+// True when a form carries no doctor-entered content (prescriptionLanguage
+// always has a default, so it's ignored). Used to reject a stray empty draft.
+function isFormEmpty(f: FormState): boolean {
+  const textFilled = [f.ho, f.fh, f.co, f.notes, f.provisionalDiagnosis, f.diagnosis, f.followUp, f.fees, f.adviceGeneral, f.adviceLabTest]
+    .some((v) => (v ?? "").trim() !== "");
+  const oeFilled = Object.values(f.oe ?? {}).some((v) => (v ?? "").trim() !== "");
+  const medsFilled = (f.medicines ?? []).some((m) => m.name.trim() !== "");
+  const reportsFilled = (f.reportPublicIds ?? []).length > 0;
+  return !(textFilled || oeFilled || medsFilled || reportsFilled);
+}
+
 /** Feedback shown under the "Send on WhatsApp" button after a share attempt. */
 function ShareHint({ hint }: { hint: "link" | "nolink" | null }) {
   if (!hint) return null;
@@ -168,6 +182,20 @@ export default function ConsultPage() {
   const [loading, setLoading] = useState(true);
   const [oeExpanded, setOeExpanded] = useState(false);
 
+  // Stage 0 offline handling: ambient connectivity + on-device draft mirror.
+  // `hydratedRef` gates autosave until after the initial server load (and draft
+  // overlay) so we never clobber a saved draft with the empty starting form.
+  const online = useOnlineStatus();
+  const [draftRestored, setDraftRestored] = useState(false);
+  const hydratedRef = useRef(false);
+  // Always-current form/patient/status, for the flush-on-unmount cleanup below
+  // (which otherwise closes over stale values).
+  const latestRef = useRef<{ form: FormState; patientEdits: PatientEdits }>({ form: emptyForm, patientEdits: { name: "", gender: "", ageYears: "", mobile: "", emergencyContact: "", address: "", allergicTo: "" } });
+  const statusRef = useRef<"draft" | "confirmed">("draft");
+  // Set when a save was parked in the offline outbox instead of reaching the
+  // server — flips the success modal into "will sync when you reconnect" copy.
+  const [queuedSync, setQueuedSync] = useState(false);
+
   // Patient Dues (clinic fee bookkeeping — separate from subscription billing).
   // `duesTotal` = the patient's outstanding dues from PREVIOUS visits (shown as
   // an indicator by the fees field). `amountPaid` drives the post-prescription
@@ -206,7 +234,7 @@ export default function ConsultPage() {
           emergencyContact: p.emergencyContact as string | undefined,
         });
         setPatientId(String(p._id));
-        setPatientEdits({
+        const serverEdits: PatientEdits = {
           name: (p.name as string) ?? "",
           gender: (p.gender as string) ?? "",
           ageYears: p.ageYears != null ? String(p.ageYears) : "",
@@ -214,8 +242,8 @@ export default function ConsultPage() {
           emergencyContact: (p.emergencyContact as string) ?? "",
           address: (p.address as string) ?? "",
           allergicTo: (p.allergicTo as string) ?? "",
-        });
-        setForm({
+        };
+        const serverForm: FormState = {
           ho: (visit.ho as string) ?? "",
           fh: (visit.fh as string) ?? "",
           co: (visit.co as string) ?? "",
@@ -242,7 +270,20 @@ export default function ConsultPage() {
           adviceGeneral: (visit.adviceGeneral as string) ?? "",
           adviceLabTest: (visit.adviceLabTest as string) ?? "",
           prescriptionLanguage: (visit.prescriptionLanguage as FormState["prescriptionLanguage"]) ?? "english",
-        });
+        };
+        // Overlay any on-device draft (unsaved work from a previous session)
+        // ATOMICALLY with the server load — done here, in the same callback that
+        // sets the server data, so no separate effect can race and blank it out.
+        const draft = loadConsultDraft<FormState, PatientEdits>(visitId);
+        if (draft && draft.form && !isFormEmpty(draft.form)) {
+          setForm(draft.form);
+          setPatientEdits(draft.patientEdits ?? serverEdits);
+          setDraftRestored(true);
+        } else {
+          setForm(serverForm);
+          setPatientEdits(serverEdits);
+        }
+        hydratedRef.current = true;
         setStatus((visit.status as "draft" | "confirmed") ?? "draft");
         setVisitMode((visit.visitMode as string) ?? "consultation");
         const existingIds = (visit.reportPublicIds as string[]) ?? [];
@@ -271,6 +312,35 @@ export default function ConsultPage() {
         setKwByField(grouped);
       })
       .catch(() => {});
+  }, [visitId]);
+
+  // Keep the latest values reachable from the unmount cleanup (which otherwise
+  // closes over stale state).
+  latestRef.current = { form, patientEdits };
+  statusRef.current = status;
+
+  // Mirror edits to the device (debounced). Rule is deliberately simple: while
+  // the visit is still an unsaved draft, persist whatever the doctor has typed;
+  // if the form is empty, clear instead so we never store a blank draft. Once
+  // the visit is confirmed the server holds it, so autosave stops (and the
+  // status-change re-run cancels any pending timer, avoiding a post-save write).
+  useEffect(() => {
+    if (!hydratedRef.current || status !== "draft") return;
+    const t = setTimeout(() => {
+      if (isFormEmpty(form)) clearConsultDraft(visitId);
+      else saveConsultDraft(visitId, form, patientEdits);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form, patientEdits, visitId, status]);
+
+  // Flush the latest edits synchronously on navigation away, so keystrokes still
+  // inside the debounce window when the doctor leaves are never lost.
+  useEffect(() => {
+    return () => {
+      if (!hydratedRef.current || statusRef.current !== "draft") return;
+      const { form: f, patientEdits: pe } = latestRef.current;
+      if (!isFormEmpty(f)) saveConsultDraft(visitId, f, pe);
+    };
   }, [visitId]);
 
   const kw = useCallback((field: string): FieldKeyword[] => kwByField[field] ?? [], [kwByField]);
@@ -410,6 +480,32 @@ export default function ConsultPage() {
 
   if (loading) return <ConsultSkeleton />;
 
+  // Targeted connectivity notices, rendered next to the save/send actions so the
+  // doctor knows exactly why a save can't complete (the app-wide banner covers
+  // the ambient state; this explains it right where they're about to act).
+  const connectivityNotices = (
+    <>
+      {!online && (
+        <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300" role="status">
+          📴 You&rsquo;re offline. Keep working — everything is kept on this device. Saving to records and sending the prescription will resume automatically once you reconnect.
+        </p>
+      )}
+      {draftRestored && online && (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-brand/10 px-3 py-2 text-sm text-brand" role="status">
+          <span>↩️ Restored your unsaved work from this device.</span>
+          <button
+            type="button"
+            onClick={() => setDraftRestored(false)}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-md px-2 py-0.5 font-semibold text-brand hover:bg-brand/10"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+    </>
+  );
+
   async function openHistory() {
     setHistoryOpen(true);
     if (historyData !== null || !patientId) return;
@@ -438,20 +534,26 @@ export default function ConsultPage() {
     }
   }
 
+  // The demographics payload sent to PATCH /api/patients/[id]. Shared by the
+  // live save and the offline outbox job so a queued replay is byte-identical.
+  function buildPatientPayload() {
+    return {
+      name: patientEdits.name || undefined,
+      gender: (patientEdits.gender as "male" | "female" | "other") || undefined,
+      ageYears: patientEdits.ageYears ? Number(patientEdits.ageYears) : undefined,
+      mobile: patientEdits.mobile || undefined,
+      emergencyContact: patientEdits.emergencyContact || undefined,
+      address: patientEdits.address || undefined,
+      allergicTo: patientEdits.allergicTo || undefined,
+    };
+  }
+
   async function savePatient() {
     if (!patientId) return;
     await fetch(`/api/patients/${patientId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: patientEdits.name || undefined,
-        gender: (patientEdits.gender as "male" | "female" | "other") || undefined,
-        ageYears: patientEdits.ageYears ? Number(patientEdits.ageYears) : undefined,
-        mobile: patientEdits.mobile || undefined,
-        emergencyContact: patientEdits.emergencyContact || undefined,
-        address: patientEdits.address || undefined,
-        allergicTo: patientEdits.allergicTo || undefined,
-      }),
+      body: JSON.stringify(buildPatientPayload()),
     });
   }
 
@@ -532,6 +634,25 @@ export default function ConsultPage() {
     setField("reportPublicIds", updated.map((r) => r.publicId));
   }
 
+  // A save that fails because the device is offline (either the browser reports
+  // offline, or fetch itself rejects with a TypeError) is recoverable — we queue
+  // it rather than surface an error. A rejected *response* is a real error.
+  function isOfflineFailure(err: unknown): boolean {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return true;
+    return err instanceof TypeError;
+  }
+
+  // Park this finalize in the offline outbox; OutboxSync replays it (patient
+  // PATCH + visit confirm, both idempotent) the moment we're back online.
+  function queueFinalize() {
+    enqueueVisitFinalize({
+      visitId,
+      patientId,
+      visitPayload: buildPayload(),
+      patientPayload: patientId ? buildPatientPayload() : null,
+    });
+  }
+
   async function save() {
     setSaveBusy(true);
     setError(null);
@@ -541,9 +662,17 @@ export default function ConsultPage() {
         savePatient(),
       ]);
       setStatus("confirmed");
+      clearConsultDraft(visitId); // safely on the server now — drop the local mirror
+      setQueuedSync(false);
       setSuccessModal("saved");
     } catch (err) {
-      setError((err as Error).message);
+      if (isOfflineFailure(err)) {
+        queueFinalize();
+        setQueuedSync(true);
+        setSuccessModal("saved");
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
       setSaveBusy(false);
     }
@@ -572,9 +701,21 @@ export default function ConsultPage() {
       // 90% paid-in-full case is one tap) and reset the once-only capture guard.
       setAmountPaid(form.fees ?? "");
       capturedRef.current = false;
+      clearConsultDraft(visitId); // safely on the server now — drop the local mirror
+      setQueuedSync(false);
       setSuccessModal("sent");
     } catch (err) {
-      setError((err as Error).message);
+      if (isOfflineFailure(err)) {
+        // The record is queued; the WhatsApp share + dues capture need a live
+        // connection, so the queued modal offers only "Back to Queue".
+        queueFinalize();
+        setAmountPaid(form.fees ?? "");
+        capturedRef.current = false;
+        setQueuedSync(true);
+        setSuccessModal("sent");
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
       setSendBusy(false);
     }
@@ -680,6 +821,7 @@ export default function ConsultPage() {
 
           <PatientInfoCard patientEdits={patientEdits} />
 
+          {connectivityNotices}
           {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
           <Card className="space-y-4">
@@ -745,26 +887,34 @@ export default function ConsultPage() {
         {successModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl text-center space-y-4">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-8 w-8 text-success">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-                </svg>
+              <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${queuedSync ? "bg-amber-500/15" : "bg-success/15"}`}>
+                {queuedSync ? (
+                  <span className="text-3xl" aria-hidden>📴</span>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-8 w-8 text-success">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                  </svg>
+                )}
               </div>
               <div>
                 <p className="text-lg font-semibold text-ink">
-                  {successModal === "saved" ? "Visit Saved" : "Visit Confirmed"}
+                  {queuedSync
+                    ? "Saved on this device"
+                    : successModal === "saved" ? "Visit Saved" : "Visit Confirmed"}
                 </p>
                 <p className="mt-1 text-sm text-ink-muted">
-                  {successModal === "saved"
-                    ? "The consultation has been saved and confirmed."
-                    : "The prescription has been confirmed and saved."}
+                  {queuedSync
+                    ? "You're offline, so this isn't in records yet — it'll sync automatically the moment you're back online. WhatsApp and payment can be done once it's synced."
+                    : successModal === "saved"
+                      ? "The consultation has been saved and confirmed."
+                      : "The prescription has been confirmed and saved."}
                 </p>
               </div>
 
               {/* Post-prescription payment capture (Patient Dues). Shows only when
                   a fee was charged. Amount paid is pre-filled with the full fee —
                   the paid-in-full case is a single tap. */}
-              {successModal === "sent" && feeNum > 0 && (
+              {successModal === "sent" && !queuedSync && feeNum > 0 && (
                 <div className="rounded-xl border border-line bg-surface-raised p-3 text-left">
                   <div className="flex items-center justify-between">
                     <label htmlFor="amount-paid" className="text-xs font-medium uppercase tracking-wider text-ink-muted">
@@ -789,7 +939,7 @@ export default function ConsultPage() {
                 </div>
               )}
 
-              {successModal === "sent" && (
+              {successModal === "sent" && !queuedSync && (
                 <>
                   <Button
                     variant="primary"
@@ -804,7 +954,7 @@ export default function ConsultPage() {
                 </>
               )}
 
-              {successModal === "sent" && feeNum > 0 ? (
+              {successModal === "sent" && !queuedSync && feeNum > 0 ? (
                 <>
                   <Button
                     variant="brand"
@@ -824,7 +974,7 @@ export default function ConsultPage() {
                 </>
               ) : (
                 <Button
-                  variant={successModal === "sent" ? "outline" : "brand"}
+                  variant={successModal === "sent" && !queuedSync ? "outline" : "brand"}
                   size="lg"
                   className="w-full"
                   onClick={() => router.push("/app/queue")}
@@ -920,6 +1070,7 @@ export default function ConsultPage() {
           <p className="text-sm text-ink-muted">Voice capture isn&apos;t supported on this browser — type the fields below.</p>
         )}
 
+        {connectivityNotices}
         {error && <p className="rounded-xl bg-sos/10 px-3 py-2 text-sm text-sos" role="alert">{error}</p>}
 
         {/* Confirmed success banner */}

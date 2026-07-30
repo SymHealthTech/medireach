@@ -252,7 +252,7 @@ export default function RecentPage() {
   return <DoctorView dates={dates} onOpenDay={(date) => router.push(`/app/recent/${date}`)} />;
 }
 
-// ─── Doctor view (month + day list; a day opens its own patient page) ─────────
+// ─── Doctor view (tabs: browse records + download an Excel export) ────────────
 
 function DoctorView({
   dates,
@@ -261,9 +261,76 @@ function DoctorView({
   dates: DayRecord[];
   onOpenDay: (date: string) => void;
 }) {
+  const [tab, setTab] = useState<"records" | "download">("records");
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Patient records"
+        subtitle="Tap a month to open its dates. Records lock 3 days after visit."
+      />
+
+      <TabBar tab={tab} setTab={setTab} />
+
+      {tab === "records" ? (
+        <RecordsList dates={dates} onOpenDay={onOpenDay} />
+      ) : (
+        <DownloadPanel />
+      )}
+    </div>
+  );
+}
+
+// ─── Horizontal tabs ──────────────────────────────────────────────────────────
+
+function TabBar({
+  tab,
+  setTab,
+}: {
+  tab: "records" | "download";
+  setTab: (t: "records" | "download") => void;
+}) {
+  const tabs: { key: "records" | "download"; label: string }[] = [
+    { key: "records", label: "Records" },
+    { key: "download", label: "Download" },
+  ];
+  return (
+    <div className="flex gap-1 rounded-2xl bg-ink/[0.04] p-1">
+      {tabs.map((t) => {
+        const active = tab === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors",
+              active
+                ? "bg-surface-raised text-brand shadow-card dark:shadow-card-dark"
+                : "text-ink-muted hover:text-ink",
+            )}
+          >
+            {t.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Records list (month + day list; a day opens its own patient page) ────────
+
+function RecordsList({
+  dates,
+  onOpenDay,
+}: {
+  dates: DayRecord[];
+  onOpenDay: (date: string) => void;
+}) {
   const months = groupByMonth(dates);
-  const currentMonthKey = todayIST().slice(0, 7);
-  const [openMonths, setOpenMonths] = useState<Set<string>>(new Set([currentMonthKey]));
+  // Start with every month collapsed — the list shows only months first; a
+  // month's dates appear when its dropdown is tapped.
+  const [openMonths, setOpenMonths] = useState<Set<string>>(new Set());
 
   function toggleMonth(key: string) {
     setOpenMonths((prev) => {
@@ -274,12 +341,7 @@ function DoctorView({
   }
 
   return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Patient records"
-        subtitle="Tap a date to view patients. Records lock 3 days after visit."
-      />
-
+    <>
       {months.length === 0 ? (
         <EmptyState
           icon="📁"
@@ -344,7 +406,189 @@ function DoctorView({
           })}
         </div>
       )}
-    </div>
+    </>
+  );
+}
+
+// ─── Download panel (date-range presets → Excel export) ───────────────────────
+
+type Preset = "today" | "yesterday" | "week" | "month" | "custom";
+
+function shiftDate(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y ?? 2000, (m ?? 1) - 1, d ?? 1));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
+/** Monday of the IST week that contains `dateStr`. */
+function startOfWeek(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dow = new Date(Date.UTC(y ?? 2000, (m ?? 1) - 1, d ?? 1)).getUTCDay(); // 0=Sun
+  return shiftDate(dateStr, -((dow + 6) % 7));
+}
+
+/** Resolve a preset to an inclusive {from, to} date range in IST. */
+function presetRange(preset: Preset): { from: string; to: string } {
+  const today = todayIST();
+  switch (preset) {
+    case "today":
+      return { from: today, to: today };
+    case "yesterday": {
+      const y = yesterdayIST();
+      return { from: y, to: y };
+    }
+    case "week":
+      return { from: startOfWeek(today), to: today };
+    case "month":
+      return { from: today.slice(0, 7) + "-01", to: today };
+    default:
+      return { from: today, to: today };
+  }
+}
+
+function rangeLabel(from: string, to: string): string {
+  const fmt = (s: string) =>
+    new Date(s + "T00:00:00").toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  return from === to ? fmt(from) : `${fmt(from)} — ${fmt(to)}`;
+}
+
+function DownloadPanel() {
+  const [preset, setPreset] = useState<Preset>("today");
+  const [customFrom, setCustomFrom] = useState<string>(todayIST());
+  const [customTo, setCustomTo] = useState<string>(todayIST());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const range = preset === "custom" ? { from: customFrom, to: customTo } : presetRange(preset);
+  const invalidCustom = preset === "custom" && (!customFrom || !customTo || customFrom > customTo);
+
+  const options: { key: Preset; label: string }[] = [
+    { key: "today", label: "Today" },
+    { key: "yesterday", label: "Yesterday" },
+    { key: "week", label: "This week" },
+    { key: "month", label: "This month" },
+    { key: "custom", label: "Custom dates" },
+  ];
+
+  async function download() {
+    if (invalidCustom) {
+      setError("Please pick a valid date range (start on or before end).");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    try {
+      const res = await fetch(
+        `/api/records/export?from=${range.from}&to=${range.to}`,
+        { cache: "no-store" },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Could not export records.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `patient-records_${range.from}_to_${range.to}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setDone("Download started — check your downloads folder.");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="space-y-4">
+      <div>
+        <h2 className="font-semibold text-ink">Download records (Excel)</h2>
+        <p className="mt-0.5 text-sm text-ink-muted">
+          Export patient records with all fields to an .xlsx spreadsheet.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => {
+          const active = preset === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              onClick={() => {
+                setPreset(o.key);
+                setDone(null);
+                setError(null);
+              }}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition-colors",
+                active
+                  ? "bg-brand/10 text-brand ring-brand/30"
+                  : "bg-surface-raised text-ink-muted ring-line hover:text-ink",
+              )}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {preset === "custom" && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-ink">From</span>
+            <Input
+              type="date"
+              value={customFrom}
+              max={customTo || undefined}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setDone(null);
+              }}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-medium text-ink">To</span>
+            <Input
+              type="date"
+              value={customTo}
+              min={customFrom || undefined}
+              max={todayIST()}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setDone(null);
+              }}
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="rounded-xl bg-surface px-3.5 py-2.5 text-sm text-ink-muted">
+        {invalidCustom ? (
+          <span className="text-sos">Start date must be on or before the end date.</span>
+        ) : (
+          <>Selected: <span className="font-medium text-ink">{rangeLabel(range.from, range.to)}</span></>
+        )}
+      </div>
+
+      {error && <p className="text-sm text-sos">{error}</p>}
+      {done && <p className="text-sm text-brand">{done}</p>}
+
+      <Button variant="brand" onClick={download} loading={busy} disabled={invalidCustom}>
+        Download Excel
+      </Button>
+    </Card>
   );
 }
 

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { InstallAppButton } from "@/components/site/InstallAppButton";
 import { whatsappLink } from "@/lib/marketing";
 
 /**
@@ -29,13 +30,14 @@ export function SiteHeader() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-5 text-sm font-medium md:flex">
+        <nav className="hidden items-center gap-5 text-sm font-medium lg:flex">
           {NAV_LINKS.map((n) => (
             <Link key={n.href} href={n.href} className="text-ink-muted hover:text-ink">
               {n.label}
             </Link>
           ))}
           <ThemeToggle />
+          <InstallAppButton />
           <a
             href={whatsappLink()}
             target="_blank"
@@ -47,7 +49,7 @@ export function SiteHeader() {
         </nav>
 
         {/* Mobile controls */}
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <ThemeToggle />
           <button
             type="button"
@@ -76,7 +78,7 @@ export function SiteHeader() {
 
       {/* Mobile dropdown panel */}
       {open && (
-        <nav className="border-t border-line bg-surface md:hidden">
+        <nav className="border-t border-line bg-surface lg:hidden">
           <div className="mx-auto flex max-w-6xl flex-col px-5 py-2">
             {NAV_LINKS.map((n) => (
               <Link
@@ -88,12 +90,15 @@ export function SiteHeader() {
                 {n.label}
               </Link>
             ))}
+            <div className="my-3">
+              <InstallAppButton className="w-full justify-center py-3" onAction={() => setOpen(false)} />
+            </div>
             <a
               href={whatsappLink()}
               target="_blank"
               rel="noopener"
               onClick={() => setOpen(false)}
-              className="my-3 rounded-xl bg-[#25D366] px-4 py-3 text-center font-semibold text-white hover:opacity-90"
+              className="mb-3 rounded-xl bg-[#25D366] px-4 py-3 text-center font-semibold text-white hover:opacity-90"
             >
               WhatsApp us
             </a>

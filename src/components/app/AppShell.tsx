@@ -8,6 +8,8 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { SosButton } from "@/components/app/SosButton";
 import { SosAlertModal } from "@/components/app/SosAlertModal";
 import { LogoutButton } from "@/components/app/LogoutButton";
+import { OfflineBanner } from "@/components/app/OfflineBanner";
+import { OutboxSync } from "@/components/app/OutboxSync";
 import { DOCTOR_MENU_ITEMS, DOCTOR_MENU_MORE_ITEMS } from "@/components/app/DoctorMenu";
 import { RECEPTIONIST_MENU_ITEMS } from "@/components/app/ReceptionistMenu";
 import { ReceptionistProfileCard } from "@/components/app/ReceptionistProfileCard";
@@ -55,6 +57,7 @@ export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", 
   return (
     <div className="min-h-screen">
       {role === "doctor" && <SosAlertModal />}
+      <OutboxSync />
       {/* Top bar */}
       <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
         <div className="flex items-center justify-between px-4 py-3 lg:px-6">
@@ -75,6 +78,8 @@ export function AppShell({ role, name, doctorAppId = "", doctorClinicName = "", 
           </div>
         </div>
       </header>
+
+      <OfflineBanner />
 
       <div className="flex">
         {/* Sidebar — desktop only */}
