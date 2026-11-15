@@ -1,19 +1,89 @@
 import type { Metadata } from "next";
-import { Settings } from "lucide-react";
-import { rolesFor } from "@/components/admin/nav";
-import { SectionPlaceholder } from "@/components/admin/SectionPlaceholder";
-import { requireAdminPage } from "@/lib/auth/admin";
+import { DEFAULT_BANNED_PHRASES } from "@/config/banned-phrases";
+import { Pill } from "@/components/admin/StatusBadge";
+import { rolesFor, ROLE_LABEL } from "@/components/admin/nav";
+import { can, requireAdminPage } from "@/lib/auth/admin";
+import { connectToDatabase } from "@/lib/db";
+import { timeAgo } from "@/lib/format";
+import { getSettings } from "@/lib/settings";
+import { Admin } from "@/models/Admin";
+import { DoctorProfile } from "@/models/DoctorProfile";
+import { AdminUserActions, BannedPhrasesForm, GeneralSettingsForm, NewAdminUserButton } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function Page() {
-  await requireAdminPage(rolesFor("/admin/settings"));
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <SectionPlaceholder
-      icon={Settings}
-      intro="Prices, Founding Doctor count, contact numbers, GST mode, WhatsApp share text, banned-phrase list and admin users."
-      emptyTitle="Settings arrive with the dashboard features"
-      emptyDescription="Defaults were created by the seed: ₹1,999 plans, 100 founding spots, GST inclusive."
-    />
+    <section className="space-y-4 rounded-xl border border-line bg-card p-5 shadow-soft sm:p-6">
+      <h2 className="font-display text-xl font-semibold text-ink">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+export default async function SettingsPage() {
+  const admin = await requireAdminPage(rolesFor("/admin/settings"));
+  await connectToDatabase();
+  const [settings, foundingUsed, users] = await Promise.all([
+    getSettings(),
+    DoctorProfile.countDocuments({ foundingDoctor: true }),
+    can.manageAdmins(admin.role) ? Admin.find().sort({ role: 1, name: 1 }).lean() : Promise.resolve([]),
+  ]);
+
+  return (
+    <div className="space-y-6">
+      <Section title="Prices, contact and GST">
+        <GeneralSettingsForm
+          foundingUsed={foundingUsed}
+          initial={{
+            prices: settings.prices,
+            foundingTotal: settings.foundingTotal,
+            contactPhone: settings.contactPhone ?? "",
+            whatsappNumber: settings.whatsappNumber ?? "",
+            gstMode: settings.gstMode,
+            whatsappShareTemplate: settings.whatsappShareTemplate,
+          }}
+        />
+      </Section>
+
+      <Section title="Banned phrases (NMC)">
+        <BannedPhrasesForm phrases={settings.bannedPhrases} overridden={settings.bannedPhrasesOverridden} defaults={[...DEFAULT_BANNED_PHRASES]} />
+      </Section>
+
+      {can.manageAdmins(admin.role) && (
+        <Section title="Dashboard users">
+          <div className="flex justify-end">
+            <NewAdminUserButton />
+          </div>
+          <ul className="divide-y divide-line rounded-lg border border-line">
+            {users.map((u) => (
+              <li key={String(u._id)} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-2 font-medium text-ink">
+                    {u.name} {String(u._id) === admin.id && <span className="text-xs text-muted-foreground">(you)</span>}
+                    <Pill tone={u.role === "superadmin" ? "ink" : u.role === "admin" ? "leaf" : "muted"}>{ROLE_LABEL[u.role]}</Pill>
+                    {!u.active && <Pill tone="clay">Inactive</Pill>}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {u.email} · {u.lastLoginAt ? `last login ${timeAgo(u.lastLoginAt)}` : "never logged in"}
+                  </span>
+                </span>
+                <AdminUserActions
+                  user={{
+                    id: String(u._id),
+                    name: u.name,
+                    email: u.email,
+                    role: u.role,
+                    active: u.active,
+                    lastLogin: u.lastLoginAt ? new Date(u.lastLoginAt).toISOString() : "",
+                    isMe: String(u._id) === admin.id,
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+    </div>
   );
 }
