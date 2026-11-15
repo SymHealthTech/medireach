@@ -6,17 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src scripts test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:masters": "node --env-file-if-exists=.env.local --import tsx scripts/seed-masters.ts"
+    "seed:masters": "node --env-file-if-exists=.env.local --import tsx scripts/seed-masters.ts",
+    "seed:samples": "node --env-file-if-exists=.env.local --import tsx scripts/seed-samples.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
     "clsx": "^2.1.1",
     "jose": "^5.9.6",
+    "lucide-react": "^1.73.0",
     "mongoose": "^8.8.3",
     "next": "^15.3.4",
     "qrcode": "^1.5.4",

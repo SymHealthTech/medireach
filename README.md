@@ -27,7 +27,17 @@ npm run seed:masters         # cities, areas, specialties, degrees, councils, te
 npm run dev
 ```
 
-Other scripts: `npm run typecheck`, `npm run test`, `npm run build`.
+For local testing with sample pages, point at a dev database and publish the
+two fictional sample doctors (refuses to run against `medireach_portfolio`):
+
+```bash
+MONGODB_DB=medireach_dev npm run seed:masters
+MONGODB_DB=medireach_dev npm run seed:samples
+# → /pune/doctor/dr-aditi-sample-general-physician, http://sample-gp.localhost:3000
+```
+
+Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`,
+`npx tsx scripts/make-favicon.tsx` (regenerates `public/favicon.ico`).
 
 ## Build phases
 
@@ -35,7 +45,7 @@ Other scripts: `npm run typecheck`, `npm run test`, `npm run build`.
 |------|-------|
 | 0 | Audit, preserve clinic code, remove clinic-only files ✅ |
 | 1 | Data model and master lists ✅ |
-| 2 | Public pages and SEO |
+| 2 | Public pages and SEO ✅ |
 | 3 | Admin auth and dashboard shell |
 | 4 | Dashboard features |
 | 5 | Template registry and visiting cards |

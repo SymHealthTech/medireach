@@ -3,92 +3,68 @@
 @tailwind utilities;
 
 /*
- * Brand design tokens (build-prompt design spec). RGB triplets so Tailwind's
- * <alpha-value> works. Dark mode swaps the values without changing class names,
- * so every screen is themed from this one place.
+ * Design tokens (DESIGN_BRIEF.md §2). RGB triplets so Tailwind's
+ * <alpha-value> works. Public pages are light-only; the `.dark` overrides are
+ * applied only by the admin dashboard (it sets the class itself).
  *
- *   Typography : Inter (loaded in layout via next/font → --font-sans)
- *   Teal       : #0E7C7B light / #3FA8A6 dark   (primary brand)
- *   Amber      : #F2994A  (primary action buttons; hover darkens 10% → #DA8A43)
- *   SOS red    : #E63946  (SOS button + error states only)
- *   Success    : #27AE60
- *   Ink        : #1F2933 light / #E8EAED dark   (body / headings)
- *   Ink muted  : #6B7280 light / #9CA3AF dark   (secondary/helper text)
- *   Surface    : page #F7F9FA / card #FFFFFF (light)
- *                page #121417 / card #1E2328 (dark)
- *   Line       : #E5E7EB light / #2D3748 dark   (dividers / hairlines)
- *   Input edge : #D1D5DB light / #374151 dark
+ *   ink      #0E3B3C  primary: headings, primary buttons, sidebar
+ *   ink-700  #155456  hover / secondary emphasis
+ *   paper    #FBF8F3  page background
+ *   surface  #FFFFFF  cards, inputs
+ *   marigold #E3A23B  accent (never body text)
+ *   sage     #DCE8E2  soft section backgrounds, chips
+ *   clay     #C8664B  errors / compliance warnings
+ *   leaf     #2F8F5B  success / published / open now
+ *   body     #1C2526  body text
+ *   muted    #5D6B6C  secondary text
+ *   line     #E6E1D8  borders, dividers
  */
 :root {
-  --brand-teal: 14 124 123;
-  --brand-teal-fg: 255 255 255;
-  --brand-amber: 242 153 74;
-  --brand-amber-hover: 218 138 67;
-  --brand-sos: 230 57 70;
-  --brand-success: 39 174 96;
-
-  --surface: 247 249 250;
-  --surface-raised: 255 255 255;
-  --ink: 31 41 51;
-  --ink-subtle: 75 85 99;
-  --ink-muted: 107 114 128;
-  --line: 229 231 235;
-  --input-border: 209 213 219;
+  --ink: 14 59 60;
+  --ink-700: 21 84 86;
+  --on-ink: 251 248 243;
+  --paper: 251 248 243;
+  --surface: 255 255 255;
+  --marigold: 227 162 59;
+  --sage: 220 232 226;
+  --clay: 200 102 75;
+  --leaf: 47 143 91;
+  --body: 28 37 38;
+  --muted: 93 107 108;
+  --line: 230 225 216;
 }
 
 .dark {
-  --brand-teal: 63 168 166;
-  --brand-teal-fg: 18 20 23;
-  --brand-amber: 242 153 74;
-  --brand-amber-hover: 218 138 67;
-  --brand-sos: 230 57 70;
-  --brand-success: 39 174 96;
-
-  --surface: 18 20 23;
-  --surface-raised: 30 35 40;
-  --ink: 232 234 237;
-  --ink-subtle: 176 183 192;
-  --ink-muted: 156 163 175;
-  --line: 45 55 72;
-  --input-border: 55 65 81;
+  --ink: 234 241 239;
+  --ink-700: 200 214 210;
+  --on-ink: 11 31 32;
+  --paper: 11 31 32;
+  --surface: 18 43 44;
+  --sage: 30 64 62;
+  --body: 234 241 239;
+  --muted: 160 178 176;
+  --line: 38 70 71;
 }
 
-html,
-body {
-  height: 100%;
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background-color: rgb(var(--surface));
-  color: rgb(var(--ink));
+  background-color: rgb(var(--paper));
+  color: rgb(var(--body));
   font-size: 16px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/*
- * Soft brand wash on the page background (light mode). Two low-opacity radial
- * glows — teal from the top-right, warm amber from the bottom-left — give the
- * app colour and depth so white cards read as floating surfaces instead of a
- * flat grey sheet. Fixed attachment keeps the glow steady while scrolling.
- */
-body {
-  background-image:
-    radial-gradient(1100px 520px at 100% -8%, rgb(var(--brand-teal) / 0.10), transparent 60%),
-    radial-gradient(820px 520px at -5% 108%, rgb(var(--brand-amber) / 0.08), transparent 58%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+@media (min-width: 1024px) {
+  body {
+    font-size: 17px;
+  }
 }
 
-.dark body {
-  /* Dark mode: a single restrained teal glow so the near-black page still has
-   * dimension without muddy colour. */
-  background-image:
-    radial-gradient(1100px 560px at 100% -10%, rgb(var(--brand-teal) / 0.14), transparent 62%);
-}
-
-/* Inter's tabular numerals keep vitals / fees columns aligned. */
 input,
 select,
 textarea,
@@ -96,9 +72,7 @@ button {
   font-family: inherit;
 }
 
-/* ── Loading spinner ─────────────────────────────────────────────────────────
- * Subtle teal spinner (build-prompt: "teal-coloured spinner, not generic grey").
- * Track is the teal at low opacity; the head is solid teal. */
+/* ── Loading spinner ── */
 @keyframes mr-spin {
   to { transform: rotate(360deg); }
 }
@@ -107,26 +81,35 @@ button {
   display: inline-block;
   border-radius: 9999px;
   border-style: solid;
-  border-color: rgb(var(--brand-teal) / 0.25);
-  border-top-color: rgb(var(--brand-teal));
+  border-color: rgb(var(--ink) / 0.2);
+  border-top-color: rgb(var(--ink));
   animation: mr-spin 0.7s linear infinite;
 }
 
-/* ── Skeleton shimmer ────────────────────────────────────────────────────────
- * Kept for content-shaped placeholders; tinted toward the teal track so it
- * reads as "MediReach loading", not a generic grey block. */
+/* ── Skeleton shimmer ── */
 @keyframes shimmer {
   from { background-position: -200% center; }
   to   { background-position:  200% center; }
 }
 
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    rgb(var(--line))            0%,
-    rgb(var(--surface-raised))  50%,
-    rgb(var(--line))            100%
-  );
+  background: linear-gradient(90deg, rgb(var(--line)) 0%, rgb(var(--surface)) 50%, rgb(var(--line)) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* ── Rich text (doctor bio): only p / strong / em / lists survive sanitising ── */
+.prose-bio p + p { margin-top: 0.75rem; }
+.prose-bio ul { list-style: disc; padding-left: 1.25rem; margin-top: 0.5rem; }
+.prose-bio ol { list-style: decimal; padding-left: 1.25rem; margin-top: 0.5rem; }
+.prose-bio li + li { margin-top: 0.25rem; }
+.prose-bio strong, .prose-bio b { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

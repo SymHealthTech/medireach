@@ -1,54 +1,58 @@
 import type { Config } from "tailwindcss";
 
 /**
- * MediReach brand palette (spec §2 / build-prompt design direction).
- * Colors are wired through CSS variables (see globals.css) so dark mode
- * swaps the teal/background/text values without changing class names.
+ * Tailwind theme wired to the DESIGN_BRIEF.md tokens in globals.css.
+ *
+ * The legacy aliases at the bottom (brand, action, sos, success, ink-muted,
+ * surface-raised, input) keep the older UI primitives in src/components/ui
+ * rendering on the new palette until they're replaced in Phase 3.
  */
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 const config: Config = {
   darkMode: "class",
-  content: [
-    "./src/app/**/*.{ts,tsx}",
-    "./src/components/**/*.{ts,tsx}",
-    "./src/features/**/*.{ts,tsx}",
-  ],
+  content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        // Resolved at runtime from CSS variables so the same token works in
-        // light and dark mode.
-        brand: {
-          DEFAULT: "rgb(var(--brand-teal) / <alpha-value>)",
-          fg: "rgb(var(--brand-teal-fg) / <alpha-value>)",
-        },
-        action: {
-          DEFAULT: "rgb(var(--brand-amber) / <alpha-value>)",
-          hover: "rgb(var(--brand-amber-hover) / <alpha-value>)",
-        },
-        sos: "rgb(var(--brand-sos) / <alpha-value>)",
-        success: "rgb(var(--brand-success) / <alpha-value>)",
-        surface: "rgb(var(--surface) / <alpha-value>)",
-        "surface-raised": "rgb(var(--surface-raised) / <alpha-value>)",
-        ink: "rgb(var(--ink) / <alpha-value>)",
-        "ink-subtle": "rgb(var(--ink-subtle) / <alpha-value>)",
-        "ink-muted": "rgb(var(--ink-muted) / <alpha-value>)",
-        line: "rgb(var(--line) / <alpha-value>)",
-        input: "rgb(var(--input-border) / <alpha-value>)",
+        ink: { DEFAULT: token("ink"), 700: token("ink-700") },
+        "on-ink": token("on-ink"),
+        paper: token("paper"),
+        surface: token("surface"),
+        marigold: token("marigold"),
+        sage: token("sage"),
+        clay: token("clay"),
+        leaf: token("leaf"),
+        body: token("body"),
+        muted: token("muted"),
+        line: token("line"),
+
+        // Legacy aliases (pre-portfolio UI primitives).
+        brand: { DEFAULT: token("ink"), fg: token("on-ink") },
+        action: { DEFAULT: token("marigold"), hover: token("marigold") },
+        sos: token("clay"),
+        success: token("leaf"),
+        "surface-raised": token("surface"),
+        "ink-subtle": token("muted"),
+        "ink-muted": token("muted"),
+        input: token("line"),
       },
       borderRadius: {
-        lg: "0.5rem",   // 8px — inputs, small controls
-        xl: "0.75rem",  // 12px — cards, buttons
-        "2xl": "1rem",  // 16px — modals / large surfaces
+        lg: "10px", // inputs, buttons
+        xl: "12px", // cards
+        "2xl": "16px",
       },
       boxShadow: {
-        // Soft, low-contrast card elevation (build-prompt: soft shadow, no
-        // harsh borders). Dark variant is applied per-component via dark:shadow.
-        card: "0 1px 3px rgba(0,0,0,0.08)",
+        soft: "0 1px 2px rgba(14,59,60,.06), 0 8px 24px rgba(14,59,60,.06)",
+        card: "0 1px 2px rgba(14,59,60,.06), 0 8px 24px rgba(14,59,60,.06)",
         "card-dark": "0 1px 3px rgba(0,0,0,0.2)",
-        fab: "0 6px 16px rgba(230,57,70,0.35)",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "var(--font-devanagari)", "system-ui", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
+      },
+      maxWidth: {
+        content: "1160px",
       },
     },
   },
