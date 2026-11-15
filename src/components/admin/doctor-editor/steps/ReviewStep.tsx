@@ -137,7 +137,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
               type="date"
               value={f.approval.doctorApprovedAt}
               disabled={readOnly}
-              onChange={(e) => set({ approval: { ...f.approval, doctorApprovedAt: e.target.value } })}
+              onChange={(e) => set((f) => ({ approval: { ...f.approval, doctorApprovedAt: e.target.value } }))}
             />
           </Field>
           <Field label="Approved via" htmlFor="approval.approvedVia">
@@ -145,7 +145,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
               id="approval.approvedVia"
               value={f.approval.approvedVia}
               disabled={readOnly}
-              onChange={(e) => set({ approval: { ...f.approval, approvedVia: e.target.value as typeof f.approval.approvedVia } })}
+              onChange={(e) => set((f) => ({ approval: { ...f.approval, approvedVia: e.target.value as typeof f.approval.approvedVia } }))}
             >
               <option value="">Choose…</option>
               {APPROVAL_CHANNELS.map((c) => (

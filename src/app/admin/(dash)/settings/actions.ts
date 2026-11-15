@@ -18,23 +18,24 @@ const digits = z
   .refine((s) => s === "" || /^\d{10,13}$/.test(s), "Enter the number with country code, e.g. 9198XXXXXXXX.")
   .transform((s) => (s.length === 10 ? `91${s}` : s) || undefined);
 
+// Schemas live at module level: Next treats inline callbacks inside an
+// exported action's arguments as server actions.
+const settingsSchema = z.object({
+  prices: z.object({ gp: price, consultant: price, update: price }),
+  foundingTotal: z.number().int().min(0).max(10_000),
+  contactPhone: digits,
+  whatsappNumber: digits,
+  gstMode: z.enum(GST_MODES),
+  whatsappShareTemplate: z
+    .string()
+    .trim()
+    .min(5)
+    .max(500)
+    .refine((s) => s.includes("{link}"), "Include {link} where the page link should go."),
+});
+
 export const saveSettingsAction = adminAction(
-  {
-    schema: z.object({
-      prices: z.object({ gp: price, consultant: price, update: price }),
-      foundingTotal: z.number().int().min(0).max(10_000),
-      contactPhone: digits,
-      whatsappNumber: digits,
-      gstMode: z.enum(GST_MODES),
-      whatsappShareTemplate: z
-        .string()
-        .trim()
-        .min(5)
-        .max(500)
-        .refine((s) => s.includes("{link}"), "Include {link} where the page link should go."),
-    }),
-    roles: ADMINS,
-  },
+  { schema: settingsSchema, roles: ADMINS },
   async (input, admin) => {
     const before = await getSettings();
     await Setting.updateOne({ key: SETTINGS_KEY }, { $set: input, $setOnInsert: { key: SETTINGS_KEY } }, { upsert: true });

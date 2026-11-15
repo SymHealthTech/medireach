@@ -48,7 +48,7 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run bui
 | 1 | Data model and master lists ✅ |
 | 2 | Public pages and SEO ✅ |
 | 3 | Admin auth and dashboard shell ✅ |
-| 4 | Dashboard features |
+| 4 | Dashboard features ✅ |
 | 5 | Template registry and visiting cards |
 | 6 | Homepage and marketing pages |
 | 7 | Doctor self-edit login |

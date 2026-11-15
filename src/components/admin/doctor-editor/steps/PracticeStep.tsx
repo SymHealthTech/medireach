@@ -34,10 +34,10 @@ export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps
               value={f.primarySpecialtyId}
               disabled={readOnly}
               onChange={(e) =>
-                set({
+                set((f) => ({
                   primarySpecialtyId: e.target.value,
                   secondarySpecialtyIds: f.secondarySpecialtyIds.filter((x) => x !== e.target.value),
-                })
+                }))
               }
             >
               <option value="">Choose…</option>
@@ -64,11 +64,11 @@ export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps
                       checked={secondary.has(s.id)}
                       disabled={readOnly || (!secondary.has(s.id) && secondary.size >= 5)}
                       onCheckedChange={(on) =>
-                        set({
+                        set((f) => ({
                           secondarySpecialtyIds: on
                             ? [...f.secondarySpecialtyIds, s.id]
                             : f.secondarySpecialtyIds.filter((x) => x !== s.id),
-                        })
+                        }))
                       }
                     />
                     {s.name}
@@ -82,14 +82,14 @@ export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps
       <Group title="Services" description="What the doctor offers, e.g. “Diabetes care”, “Vaccination”. Factual — no claims.">
         <div className="space-y-3">
           {f.services.map((sv, i) => (
-            <RepeatItem key={i} title={`Service ${i + 1}`} disabled={readOnly} onRemove={() => set({ services: removeAt(f.services, i) })}>
+            <RepeatItem key={i} title={`Service ${i + 1}`} disabled={readOnly} onRemove={() => set((f) => ({ services: removeAt(f.services, i) }))}>
               <div className={grid2}>
                 <Field label="Name" htmlFor={`services.${i}.name`} required error={err(`services.${i}.name`)}>
                   <Input
                     id={`services.${i}.name`}
                     value={sv.name}
                     disabled={readOnly}
-                    onChange={(e) => set({ services: updateAt(f.services, i, { name: e.target.value }) })}
+                    onChange={(e) => set((f) => ({ services: updateAt(f.services, i, { name: e.target.value }) }))}
                   />
                 </Field>
                 <Field label="Short description (optional)" htmlFor={`services.${i}.description`} error={err(`services.${i}.description`)}>
@@ -97,13 +97,13 @@ export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps
                     id={`services.${i}.description`}
                     value={sv.description}
                     disabled={readOnly}
-                    onChange={(e) => set({ services: updateAt(f.services, i, { description: e.target.value }) })}
+                    onChange={(e) => set((f) => ({ services: updateAt(f.services, i, { description: e.target.value }) }))}
                   />
                 </Field>
               </div>
             </RepeatItem>
           ))}
-          <AddButton disabled={readOnly || f.services.length >= 30} onClick={() => set({ services: [...f.services, { name: "", description: "" }] })}>
+          <AddButton disabled={readOnly || f.services.length >= 30} onClick={() => set((f) => ({ services: [...f.services, { name: "", description: "" }] }))}>
             Add service
           </AddButton>
         </div>

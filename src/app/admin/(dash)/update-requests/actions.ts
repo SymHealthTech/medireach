@@ -17,9 +17,14 @@ const ADMINS = ["superadmin", "admin"] as const;
 export const createUpdateRequestAction = adminAction(
   { schema: z.object({ doctorId: objectId, description: requiredText(2000, "Description") }), roles: ADMINS },
   async ({ doctorId, description }, admin) => {
-    const doctor = await DoctorProfile.findById(doctorId).select({ freeUpdateUsed: 1 });
-    if (!doctor) throw new ActionError("Doctor not found.");
-    const free = !doctor.freeUpdateUsed;
+    // Claim the free update atomically, so two quick requests can't both be free.
+    const claimed = await DoctorProfile.findOneAndUpdate(
+      { _id: doctorId, freeUpdateUsed: { $ne: true } },
+      { $set: { freeUpdateUsed: true } },
+      { projection: { _id: 1 } },
+    ).lean();
+    if (!claimed && !(await DoctorProfile.exists({ _id: doctorId }))) throw new ActionError("Doctor not found.");
+    const free = Boolean(claimed);
     const settings = await getSettings();
     const req = await UpdateRequest.create({
       doctorId,
@@ -28,10 +33,6 @@ export const createUpdateRequestAction = adminAction(
       price: free ? 0 : settings.prices.update,
       paid: free,
     });
-    if (free) {
-      doctor.freeUpdateUsed = true;
-      await doctor.save();
-    }
     await audit(auditCtx(admin), "update_request.create", { entity: "UpdateRequest", entityId: req._id, diff: { doctorId, free } });
     return { id: String(req._id), free };
   },

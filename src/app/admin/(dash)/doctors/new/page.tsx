@@ -4,7 +4,9 @@ import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { isObjectId } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
-import { emptyClinic, emptyDoctorForm } from "@/lib/doctors/form";
+import { emptyClinic, emptyDoctorForm, STEPS, type StepKey } from "@/lib/doctors/form";
+import { docToForm } from "@/lib/doctors/server";
+import { DoctorProfile } from "@/models/DoctorProfile";
 import { getEditorOptions } from "@/lib/doctors/options";
 import { Hospital } from "@/models/Hospital";
 import { Lead } from "@/models/Lead";
@@ -12,14 +14,29 @@ import { Lead } from "@/models/Lead";
 export const metadata: Metadata = { title: "New doctor" };
 
 /**
- * New doctor. Optional prefills:
+ * New doctor. Once the draft exists the URL becomes /admin/doctors/new?id=…
+ * (same route, so the editor keeps its state); reloading that URL resumes it.
+ * Optional prefills:
  *  ?hospital=<id> — "Add consultant" from a hospital: clinic pre-set as visiting
  *  ?lead=<id>     — convert a lead: name and phone pre-filled, lead marked won on save
  */
-export default async function NewDoctorPage({ searchParams }: { searchParams: Promise<{ hospital?: string; lead?: string }> }) {
+export default async function NewDoctorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ hospital?: string; lead?: string; id?: string; step?: string }>;
+}) {
   const admin = await requireAdminPage(rolesFor("/admin/doctors"));
-  const [{ hospital, lead }, options] = await Promise.all([searchParams, getEditorOptions()]);
+  const [{ hospital, lead, id, step }, options] = await Promise.all([searchParams, getEditorOptions()]);
   await connectToDatabase();
+
+  if (isObjectId(id)) {
+    const existing = await DoctorProfile.findById(id).lean();
+    if (existing) {
+      const initialStep = STEPS.some((s) => s.key === step) ? (step as StepKey) : "basics";
+      return <DoctorEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} />;
+    }
+  }
+
   const form = emptyDoctorForm();
 
   if (isObjectId(hospital)) {

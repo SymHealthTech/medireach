@@ -16,13 +16,14 @@ function coordsFromMapsUrl(url: string): { lat: string; lng: string } | null {
 
 export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps) {
   const defaultCity = options.cities.find((c) => c.slug === "pune")?.id ?? options.cities[0]?.id ?? "";
-  const setClinic = (i: number, patch: Partial<ClinicForm>) => set({ clinics: updateAt(f.clinics, i, patch) });
-  const move = (i: number, dir: -1 | 1) => {
-    const next = [...f.clinics];
-    const [item] = next.splice(i, 1);
-    next.splice(i + dir, 0, item!);
-    set({ clinics: next });
-  };
+  const setClinic = (i: number, patch: Partial<ClinicForm>) => set((f) => ({ clinics: updateAt(f.clinics, i, patch) }));
+  const move = (i: number, dir: -1 | 1) =>
+    set((prev) => {
+      const next = [...prev.clinics];
+      const [item] = next.splice(i, 1);
+      next.splice(i + dir, 0, item!);
+      return { clinics: next };
+    });
 
   return (
     <div className="space-y-5">
@@ -37,7 +38,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
         const hospitals = options.hospitals.filter((h) => h.cityId === c.cityId);
         return (
           <Group key={c.key} title={i === 0 ? "Primary clinic" : `Clinic ${i + 1}`}>
-            <RepeatItem title={c.name || "New clinic"} disabled={readOnly} onRemove={() => set({ clinics: removeAt(f.clinics, i) })}>
+            <RepeatItem title={c.name || "New clinic"} disabled={readOnly} onRemove={() => set((f) => ({ clinics: removeAt(f.clinics, i) }))}>
               {f.clinics.length > 1 && (
                 <div className="flex gap-2">
                   <Button type="button" size="sm" variant="ghost" disabled={readOnly || i === 0} onClick={() => move(i, -1)}>
@@ -210,7 +211,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
           </Group>
         );
       })}
-      <AddButton disabled={readOnly || f.clinics.length >= 6} onClick={() => set({ clinics: [...f.clinics, emptyClinic(defaultCity)] })}>
+      <AddButton disabled={readOnly || f.clinics.length >= 6} onClick={() => set((f) => ({ clinics: [...f.clinics, emptyClinic(defaultCity)] }))}>
         Add clinic
       </AddButton>
     </div>

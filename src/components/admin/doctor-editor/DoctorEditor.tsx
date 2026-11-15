@@ -126,7 +126,9 @@ export function DoctorEditor({
             : {}),
         }));
         if (!current.id) {
-          window.history.replaceState(null, "", `/admin/doctors/${server.id}?step=${stepRef.current}`);
+          // Stay on the same route (/new) so Next.js doesn't mount a second
+          // editor for /[id]; ?id= lets a reload pick the draft back up.
+          window.history.replaceState(window.history.state, "", `/admin/doctors/new?id=${server.id}&step=${stepRef.current}`);
           toast.success("Draft created");
         }
         setSave({ status: "saved", at: res.data.savedAt });
@@ -160,7 +162,7 @@ export function DoctorEditor({
     setStep(next);
     const url = new URL(window.location.href);
     url.searchParams.set("step", next);
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (focusPath) setTimeout(() => document.getElementById(focusPath)?.focus(), 350);
   }

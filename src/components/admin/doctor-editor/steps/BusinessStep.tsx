@@ -90,14 +90,14 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
       <Group title="Own domain (optional)" description="Charged at actual cost. Hosting on own domains comes later; this records the request.">
         <div className={grid2}>
           <Field label="Domain" htmlFor="ownDomain.name" error={err("ownDomain.name")}>
-            <Input id="ownDomain.name" placeholder="drshah.in" value={f.ownDomain.name} disabled={readOnly || !isAdmin} onChange={(e) => set({ ownDomain: { ...f.ownDomain, name: e.target.value } })} />
+            <Input id="ownDomain.name" placeholder="drshah.in" value={f.ownDomain.name} disabled={readOnly || !isAdmin} onChange={(e) => set((f) => ({ ownDomain: { ...f.ownDomain, name: e.target.value } }))} />
           </Field>
           <Field label="Status" htmlFor="ownDomain.status">
             <NativeSelect
               id="ownDomain.status"
               value={f.ownDomain.status}
               disabled={readOnly || !isAdmin}
-              onChange={(e) => set({ ownDomain: { ...f.ownDomain, status: e.target.value as typeof f.ownDomain.status } })}
+              onChange={(e) => set((f) => ({ ownDomain: { ...f.ownDomain, status: e.target.value as typeof f.ownDomain.status } }))}
             >
               {DOMAIN_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -107,10 +107,10 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
             </NativeSelect>
           </Field>
           <Field label="Cost (₹)" htmlFor="ownDomain.cost">
-            <NumberInput id="ownDomain.cost" value={f.ownDomain.cost} disabled={readOnly || !isAdmin} onChange={(cost) => set({ ownDomain: { ...f.ownDomain, cost } })} />
+            <NumberInput id="ownDomain.cost" value={f.ownDomain.cost} disabled={readOnly || !isAdmin} onChange={(cost) => set((f) => ({ ownDomain: { ...f.ownDomain, cost } }))} />
           </Field>
           <Field label="Renewal date" htmlFor="ownDomain.renewalDate">
-            <Input id="ownDomain.renewalDate" type="date" value={f.ownDomain.renewalDate} disabled={readOnly || !isAdmin} onChange={(e) => set({ ownDomain: { ...f.ownDomain, renewalDate: e.target.value } })} />
+            <Input id="ownDomain.renewalDate" type="date" value={f.ownDomain.renewalDate} disabled={readOnly || !isAdmin} onChange={(e) => set((f) => ({ ownDomain: { ...f.ownDomain, renewalDate: e.target.value } }))} />
           </Field>
         </div>
       </Group>

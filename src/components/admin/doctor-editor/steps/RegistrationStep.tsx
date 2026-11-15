@@ -17,7 +17,7 @@ const SYSTEM_LABEL: Record<(typeof SYSTEMS_OF_MEDICINE)[number], string> = {
 
 export function RegistrationStep({ form: f, set, err, options, readOnly }: StepProps) {
   const reg = f.registration;
-  const setReg = (patch: Partial<typeof reg>) => set({ registration: { ...reg, ...patch } });
+  const setReg = (patch: Partial<typeof reg>) => set((f) => ({ registration: { ...f.registration, ...patch } }));
 
   return (
     <div className="space-y-5">
@@ -62,14 +62,14 @@ export function RegistrationStep({ form: f, set, err, options, readOnly }: StepP
       <Group title="Qualifications" description="Degrees, in the order you want them shown.">
         <div className="space-y-3">
           {f.qualifications.map((q, i) => (
-            <RepeatItem key={i} title={`Qualification ${i + 1}`} disabled={readOnly} onRemove={() => set({ qualifications: removeAt(f.qualifications, i) })}>
+            <RepeatItem key={i} title={`Qualification ${i + 1}`} disabled={readOnly} onRemove={() => set((f) => ({ qualifications: removeAt(f.qualifications, i) }))}>
               <div className={grid2}>
                 <Field label="Degree" htmlFor={`qualifications.${i}.degreeId`} required error={err(`qualifications.${i}.degreeId`)}>
                   <NativeSelect
                     id={`qualifications.${i}.degreeId`}
                     value={q.degreeId}
                     disabled={readOnly}
-                    onChange={(e) => set({ qualifications: updateAt(f.qualifications, i, { degreeId: e.target.value }) })}
+                    onChange={(e) => set((f) => ({ qualifications: updateAt(f.qualifications, i, { degreeId: e.target.value }) }))}
                   >
                     <option value="">Choose…</option>
                     {options.degrees.map((d) => (
@@ -84,7 +84,7 @@ export function RegistrationStep({ form: f, set, err, options, readOnly }: StepP
                     id={`qualifications.${i}.specialization`}
                     value={q.specialization}
                     disabled={readOnly}
-                    onChange={(e) => set({ qualifications: updateAt(f.qualifications, i, { specialization: e.target.value }) })}
+                    onChange={(e) => set((f) => ({ qualifications: updateAt(f.qualifications, i, { specialization: e.target.value }) }))}
                   />
                 </Field>
                 <Field label="Institute" htmlFor={`qualifications.${i}.institute`} required error={err(`qualifications.${i}.institute`)}>
@@ -92,7 +92,7 @@ export function RegistrationStep({ form: f, set, err, options, readOnly }: StepP
                     id={`qualifications.${i}.institute`}
                     value={q.institute}
                     disabled={readOnly}
-                    onChange={(e) => set({ qualifications: updateAt(f.qualifications, i, { institute: e.target.value }) })}
+                    onChange={(e) => set((f) => ({ qualifications: updateAt(f.qualifications, i, { institute: e.target.value }) }))}
                   />
                 </Field>
                 <Field label="Year" htmlFor={`qualifications.${i}.year`} error={err(`qualifications.${i}.year`)}>
@@ -101,7 +101,7 @@ export function RegistrationStep({ form: f, set, err, options, readOnly }: StepP
                     maxLength={4}
                     value={q.year}
                     disabled={readOnly}
-                    onChange={(year) => set({ qualifications: updateAt(f.qualifications, i, { year }) })}
+                    onChange={(year) => set((f) => ({ qualifications: updateAt(f.qualifications, i, { year }) }))}
                   />
                 </Field>
               </div>
@@ -109,7 +109,7 @@ export function RegistrationStep({ form: f, set, err, options, readOnly }: StepP
           ))}
           <AddButton
             disabled={readOnly || f.qualifications.length >= 12}
-            onClick={() => set({ qualifications: [...f.qualifications, { degreeId: "", specialization: "", institute: "", year: undefined }] })}
+            onClick={() => set((f) => ({ qualifications: [...f.qualifications, { degreeId: "", specialization: "", institute: "", year: undefined }] }))}
           >
             Add qualification
           </AddButton>

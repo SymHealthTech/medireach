@@ -161,7 +161,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <StatCard label="In review" value={count("review")} hint="Waiting for an admin to publish" href="/admin/doctors?status=review" />
         <StatCard label="New leads" value={newLeads} href="/admin/leads?status=new" />
         {showMoney ? (
-          <StatCard label="This month's sales" value={formatINR(monthSales[0]?.amount ?? 0)} hint={`${monthSales[0]?.n ?? 0} payments`} href="/admin/payments" />
+          <StatCard label="This month's sales" value={formatINR(monthSales[0]?.amount ?? 0)} hint={`${monthSales[0]?.n ?? 0} payment${monthSales[0]?.n === 1 ? "" : "s"}`} href="/admin/payments" />
         ) : (
           <StatCard label="Published" value={count("published")} href="/admin/pages" />
         )}
@@ -196,9 +196,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <section className="rounded-xl border border-line bg-card p-5 shadow-soft">
           {showMoney ? (
-            <MonthlyBars title="Sales, last 6 months" points={salesPoints} format={formatINR} />
+            <MonthlyBars title="Sales, last 6 months" points={salesPoints} unit="inr" />
           ) : (
-            <MonthlyBars title="Pages published, last 6 months" points={publishedPoints} format={(n) => String(Math.round(n))} />
+            <MonthlyBars title="Pages published, last 6 months" points={publishedPoints} unit="count" />
           )}
         </section>
 

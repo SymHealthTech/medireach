@@ -339,7 +339,8 @@ export async function urlKeyAvailable(
 
 /**
  * Fill in city slug, canonical slug and short slug once we have enough data
- * (name, primary specialty, primary clinic). Existing keys are kept so
+ * (name, primary specialty and primary clinic for the slug; name and primary
+ * clinic for the short link). Existing keys are kept so
  * published URLs don't change unexpectedly.
  */
 export async function ensureUrlKeys(doc: DoctorDocument): Promise<void> {
@@ -359,8 +360,10 @@ export async function ensureUrlKeys(doc: DoctorDocument): Promise<void> {
       doc.slug = candidate;
     }
   }
-  if (!doc.shortSlug && doc.firstName && doc.lastName) {
-    const areaSlug = clinic ? (await Area.findById(clinic.areaId).select({ slug: 1 }).lean())?.slug : undefined;
+  // Wait for the primary clinic so a clash can use the area suffix
+  // (dr-first-last-area) before falling back to -2, -3…
+  if (!doc.shortSlug && doc.firstName && doc.lastName && clinic) {
+    const areaSlug = (await Area.findById(clinic.areaId).select({ slug: 1 }).lean())?.slug;
     for (const candidate of shortSlugCandidates(doc.firstName, doc.lastName, areaSlug)) {
       if (!(await DoctorProfile.exists({ _id: { $ne: doc._id }, shortSlug: candidate }))) {
         doc.shortSlug = candidate;

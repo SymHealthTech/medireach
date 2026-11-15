@@ -25,15 +25,22 @@ function niceMax(max: number): number {
   return step * pow;
 }
 
+const FORMATS = {
+  inr: (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`,
+  count: (n: number) => String(Math.round(n)),
+};
+
 export function MonthlyBars({
   title,
   points,
-  format,
+  unit,
 }: {
   title: string;
   points: MonthPoint[];
-  format: (n: number) => string;
+  /** How values are shown (a name, not a function: this is rendered from server pages). */
+  unit: keyof typeof FORMATS;
 }) {
+  const format = FORMATS[unit];
   const [active, setActive] = useState<number | null>(null);
   const max = niceMax(Math.max(...points.map((p) => p.value)));
   const ticks = [0, max / 2, max];
@@ -42,7 +49,7 @@ export function MonthlyBars({
   return (
     <figure className="space-y-3">
       <figcaption className="text-sm font-semibold text-ink">{title}</figcaption>
-      <div className="relative h-48 pl-14">
+      <div className="relative mt-4 h-48 pl-14">
         {/* Gridlines + y ticks (hairline, recessive) */}
         {ticks.map((t) => (
           <div key={t} className="absolute inset-x-0 flex items-center" style={{ bottom: `${(t / max) * 100}%` }}>

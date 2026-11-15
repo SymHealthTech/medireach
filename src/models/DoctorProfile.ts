@@ -408,8 +408,9 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
  * (MEDIREACH_BUILD_PROMPT.md, DoctorProfile.gallery).
  */
 doctorProfileSchema.pre("validate", function (next) {
-  const awardPhotos = this.awards.filter((a) => a.photo).length;
-  if (this.gallery.length + awardPhotos > LIMITS.galleryMax) {
+  // Partial documents (loaded with a projection) may not have these paths.
+  const awardPhotos = (this.awards ?? []).filter((a) => a.photo).length;
+  if ((this.gallery ?? []).length + awardPhotos > LIMITS.galleryMax) {
     this.invalidate(
       "gallery",
       `At most ${LIMITS.galleryMax} photos in total (gallery + award photos).`,

@@ -139,17 +139,17 @@ export function SeoStep({ form: f, set, err, options, readOnly, doctorId }: Step
 
       <Group title="Overrides (optional)" description="Leave empty to use the automatic title and description.">
         <Field label="Title override" htmlFor="seo.titleOverride" help={`${f.seo.titleOverride.length}/70`} error={err("seo.titleOverride")}>
-          <Input id="seo.titleOverride" maxLength={70} value={f.seo.titleOverride} disabled={readOnly} onChange={(e) => set({ seo: { ...f.seo, titleOverride: e.target.value } })} />
+          <Input id="seo.titleOverride" maxLength={70} value={f.seo.titleOverride} disabled={readOnly} onChange={(e) => set((f) => ({ seo: { ...f.seo, titleOverride: e.target.value } }))} />
         </Field>
         <Field label="Description override" htmlFor="seo.descriptionOverride" help={`${f.seo.descriptionOverride.length}/160`} error={err("seo.descriptionOverride")}>
-          <Textarea id="seo.descriptionOverride" rows={2} maxLength={160} value={f.seo.descriptionOverride} disabled={readOnly} onChange={(e) => set({ seo: { ...f.seo, descriptionOverride: e.target.value } })} />
+          <Textarea id="seo.descriptionOverride" rows={2} maxLength={160} value={f.seo.descriptionOverride} disabled={readOnly} onChange={(e) => set((f) => ({ seo: { ...f.seo, descriptionOverride: e.target.value } }))} />
         </Field>
         <SwitchField
           label="Hide from Google (noindex)"
           description="The page stays reachable by link but won't appear in search or the sitemap."
           checked={f.seo.noindex}
           disabled={readOnly}
-          onCheckedChange={(noindex) => set({ seo: { ...f.seo, noindex } })}
+          onCheckedChange={(noindex) => set((f) => ({ seo: { ...f.seo, noindex } }))}
         />
       </Group>
     </div>

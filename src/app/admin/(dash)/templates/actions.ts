@@ -9,13 +9,16 @@ import { TemplateSlot } from "@/models/TemplateSlot";
 const ADMINS = ["superadmin", "admin"] as const;
 const slotKey = z.object({ type: z.enum(TEMPLATE_TYPES), key: z.enum(TEMPLATE_KEYS) });
 
+// Module-level so its callback isn't mistaken for a server action.
+const cloudinaryUrl = z.string().url().refine((u) => u.startsWith("https://res.cloudinary.com/"), "Upload the image first.");
+
 export const updateTemplateSlotAction = adminAction(
   {
     schema: slotKey.extend({
       name: requiredText(60, "Name"),
       status: z.enum(TEMPLATE_STATUSES),
       previewImage: z
-        .object({ publicId: z.string().min(1).max(300), url: z.string().url().refine((u) => u.startsWith("https://res.cloudinary.com/")) })
+        .object({ publicId: z.string().min(1).max(300), url: cloudinaryUrl })
         .nullable(),
     }),
     roles: ADMINS,

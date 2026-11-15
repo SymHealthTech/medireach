@@ -45,7 +45,7 @@ export function ContactStep({ form: f, set, err, readOnly }: StepProps) {
                 placeholder={l.placeholder}
                 value={f.links[l.key]}
                 disabled={readOnly}
-                onChange={(e) => set({ links: { ...f.links, [l.key]: e.target.value } })}
+                onChange={(e) => set((f) => ({ links: { ...f.links, [l.key]: e.target.value } }))}
               />
             </Field>
           ))}
@@ -60,7 +60,7 @@ export function ContactStep({ form: f, set, err, readOnly }: StepProps) {
           disabled={readOnly}
           onCheckedChange={(on) => {
             setSelfEdit(on);
-            set({ ownerEmail: on ? f.ownerEmail || f.email : "" });
+            set((f) => ({ ownerEmail: on ? f.ownerEmail || f.email : "" }));
           }}
         />
         {selfEdit && (
