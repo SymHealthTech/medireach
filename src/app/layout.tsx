@@ -8,26 +8,26 @@ import "./globals.css";
 /**
  * Fonts (DESIGN_BRIEF.md §2): Fraunces for display, Plus Jakarta Sans for UI
  * and body, Noto Sans Devanagari reserved for Hindi/Marathi. Self-hosted via
- * next/font, exposed as CSS variables for Tailwind's `font-display` / `font-sans`.
+ * next/font; globals.css maps these variables to `font-display` / `font-sans`.
  */
 const display = Fraunces({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
-  variable: "--font-display",
+  variable: "--font-fraunces",
   display: "swap",
 });
 
 const sans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-sans",
+  variable: "--font-jakarta",
   display: "swap",
 });
 
 const devanagari = Noto_Sans_Devanagari({
   subsets: ["devanagari"],
   weight: ["400", "600"],
-  variable: "--font-devanagari",
+  variable: "--font-noto-devanagari",
   display: "swap",
   preload: false,
 });

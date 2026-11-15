@@ -4,7 +4,7 @@ import type { Crumb } from "@/lib/seo/profile";
 /** Visible breadcrumb trail (matches the BreadcrumbList JSON-LD). Absolute links. */
 export function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-sm text-muted">
+    <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
       <ol className="flex flex-wrap items-center gap-x-1 gap-y-1">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;

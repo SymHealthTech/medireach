@@ -12,7 +12,7 @@ export function PublicHeader() {
         <a href={absUrl("/")} aria-label="MediReach home">
           <LogoWordmark />
         </a>
-        <a href={absUrl("/")} className="text-sm font-medium text-muted hover:text-ink">
+        <a href={absUrl("/")} className="text-sm font-medium text-muted-foreground hover:text-ink">
           For doctors
         </a>
       </div>

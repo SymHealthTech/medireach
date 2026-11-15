@@ -31,7 +31,7 @@ export function ClinicHours({ timings }: { timings: DayTimings[] }) {
   }, []);
 
   if (!hasAnyTimings(timings)) {
-    return <p className="text-sm text-muted">Please call the clinic for timings.</p>;
+    return <p className="text-sm text-muted-foreground">Please call the clinic for timings.</p>;
   }
 
   const open = now ? isOpenAt(timings, now) : null;
@@ -44,10 +44,10 @@ export function ClinicHours({ timings }: { timings: DayTimings[] }) {
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                open ? "bg-leaf/10 text-leaf" : "bg-line text-muted",
+                open ? "bg-leaf/10 text-leaf" : "bg-line text-muted-foreground",
               )}
             >
-              <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", open ? "bg-leaf" : "bg-muted")} />
+              <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", open ? "bg-leaf" : "bg-muted-foreground")} />
               {open ? "Open now" : "Closed now"}
             </span>
             <span className="text-sm text-body">

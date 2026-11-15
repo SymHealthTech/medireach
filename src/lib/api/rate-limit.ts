@@ -1,37 +1,36 @@
 import "server-only";
-import { Errors } from "@/lib/api/errors";
+import { connectToDatabase } from "@/lib/db";
+import { RateLimit } from "@/models/RateLimit";
 
 /**
- * Minimal in-memory sliding-window rate limiter (spec §15.1: rate-limit login
- * attempts, lock after repeated failures). Sufficient for a single-instance v1;
- * swap for a Redis/Upstash backend when the app scales beyond one Vercel
- * instance, since in-memory state is per-lambda.
+ * Database-backed fixed-window rate limiter (works across serverless
+ * instances). `hit` counts one attempt and reports whether it is allowed.
  */
-interface Bucket {
-  count: number;
-  resetAt: number;
+export async function hitRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+  now: number = Date.now(),
+): Promise<{ allowed: boolean; remaining: number; retryAfterSeconds: number }> {
+  await connectToDatabase();
+  const windowIndex = Math.floor(now / windowMs);
+  const windowEnd = (windowIndex + 1) * windowMs;
+  const doc = await RateLimit.findOneAndUpdate(
+    { key: `${key}:${windowIndex}` },
+    { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date(windowEnd) } },
+    { upsert: true, new: true },
+  ).lean();
+  const count = doc?.count ?? 1;
+  return {
+    allowed: count <= limit,
+    remaining: Math.max(0, limit - count),
+    retryAfterSeconds: Math.ceil((windowEnd - now) / 1000),
+  };
 }
 
-const buckets = new Map<string, Bucket>();
-
-export function rateLimit(key: string, limit: number, windowMs: number): void {
-  const now = Date.now();
-  const bucket = buckets.get(key);
-
-  if (!bucket || bucket.resetAt < now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return;
-  }
-
-  bucket.count += 1;
-  if (bucket.count > limit) {
-    throw Errors.tooManyRequests();
-  }
-}
-
-/** Derive a best-effort client IP from forwarded headers. */
-export function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
+/** Best-effort client IP from proxy headers (Vercel sets x-forwarded-for). */
+export function clientIpFrom(headers: Headers): string {
+  const xff = headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0]!.trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
+  return headers.get("x-real-ip") ?? "unknown";
 }

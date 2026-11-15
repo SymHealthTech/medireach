@@ -63,12 +63,12 @@ function ClinicCard({ clinic }: { clinic: PublicClinic }) {
         </span>
       </div>
       <address className="mt-2 flex gap-2 not-italic text-sm text-body">
-        <MapPin aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted" strokeWidth={1.75} />
+        <MapPin aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
         {clinic.fullAddress}
       </address>
       {clinic.phone && (
         <p className="mt-1.5 flex items-center gap-2 text-sm">
-          <Phone aria-hidden className="h-4 w-4 text-muted" strokeWidth={1.75} />
+          <Phone aria-hidden className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           <a href={`tel:+${clinic.phone}`} className="text-ink underline-offset-2 hover:underline">
             {formatPhone(clinic.phone)}
           </a>
@@ -119,8 +119,8 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
           <div className="min-w-0 space-y-2">
             {seo.heading}
             {d.degreesLine && <p className="text-body">{d.degreesLine}</p>}
-            {reg && <p className="text-sm text-muted">Registration: {reg}</p>}
-            {d.practiceSinceYear && <p className="text-sm text-muted">In practice since {d.practiceSinceYear}</p>}
+            {reg && <p className="text-sm text-muted-foreground">Registration: {reg}</p>}
+            {d.practiceSinceYear && <p className="text-sm text-muted-foreground">In practice since {d.practiceSinceYear}</p>}
           </div>
         </div>
         <div className="mt-5">
@@ -135,7 +135,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
           {d.shortBio && <p>{d.shortBio}</p>}
           {d.fullBioHtml && <div className="prose-bio" dangerouslySetInnerHTML={{ __html: d.fullBioHtml }} />}
           {d.languages.length > 0 && (
-            <p className="text-sm text-muted">Languages: {d.languages.join(", ")}</p>
+            <p className="text-sm text-muted-foreground">Languages: {d.languages.join(", ")}</p>
           )}
         </div>
       </Section>
@@ -158,7 +158,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
             {services.length > 0 && <Chips items={services} />}
             {d.conditionsTreated.length > 0 && (
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-muted">Conditions treated</h3>
+                <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Conditions treated</h3>
                 <Chips items={d.conditionsTreated} />
               </div>
             )}
@@ -208,11 +208,11 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
             )}
             {d.memberships.length > 0 && (
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-muted">Memberships</h3>
+                <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Memberships</h3>
                 <ul className="space-y-1.5">
                   {d.memberships.map((m) => (
                     <li key={m.name} className="flex gap-2 text-body">
-                      <Building2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted" strokeWidth={1.75} />
+                      <Building2 aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.75} />
                       {m.name}
                       {m.since ? ` (since ${m.since})` : ""}
                     </li>
@@ -222,7 +222,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
             )}
             {d.publications.length > 0 && (
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-muted">Publications</h3>
+                <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Publications</h3>
                 <ul className="space-y-1.5 text-body">
                   {d.publications.map((p) => (
                     <li key={p.title}>
@@ -234,7 +234,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
                         p.title
                       )}
                       {[p.journal, p.year].filter(Boolean).length > 0 && (
-                        <span className="text-muted"> – {[p.journal, p.year].filter(Boolean).join(", ")}</span>
+                        <span className="text-muted-foreground"> – {[p.journal, p.year].filter(Boolean).join(", ")}</span>
                       )}
                     </li>
                   ))}
@@ -265,7 +265,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
           <ul className="space-y-2 text-body">
             {d.email && (
               <li className="flex items-center gap-2">
-                <Mail aria-hidden className="h-4 w-4 text-muted" strokeWidth={1.75} />
+                <Mail aria-hidden className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
                 <a href={`mailto:${d.email}`} className="text-ink underline-offset-2 hover:underline">
                   {d.email}
                 </a>

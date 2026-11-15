@@ -1,101 +1,163 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
 
 /*
- * Design tokens (DESIGN_BRIEF.md §2). RGB triplets so Tailwind's
- * <alpha-value> works. Public pages are light-only; the `.dark` overrides are
- * applied only by the admin dashboard (it sets the class itself).
+ * Design tokens (DESIGN_BRIEF.md §2), Tailwind v4 CSS-first config.
  *
- *   ink      #0E3B3C  primary: headings, primary buttons, sidebar
- *   ink-700  #155456  hover / secondary emphasis
- *   paper    #FBF8F3  page background
- *   surface  #FFFFFF  cards, inputs
- *   marigold #E3A23B  accent (never body text)
- *   sage     #DCE8E2  soft section backgrounds, chips
- *   clay     #C8664B  errors / compliance warnings
- *   leaf     #2F8F5B  success / published / open now
- *   body     #1C2526  body text
- *   muted    #5D6B6C  secondary text
- *   line     #E6E1D8  borders, dividers
+ * Brand tokens (ink, paper, marigold, sage, clay, leaf, body, line) are used
+ * by public pages and templates. shadcn/ui's semantic tokens (background,
+ * primary, muted, accent, …) are mapped onto the same palette so dashboard
+ * components match the brand.
+ *
+ * Public pages are light-only. Dark mode is dashboard-only: the admin shell
+ * puts `.dark` on its wrapper (and on <html> while mounted, for portals).
  */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --ink: 14 59 60;
-  --ink-700: 21 84 86;
-  --on-ink: 251 248 243;
-  --paper: 251 248 243;
-  --surface: 255 255 255;
-  --marigold: 227 162 59;
-  --sage: 220 232 226;
-  --clay: 200 102 75;
-  --leaf: 47 143 91;
-  --body: 28 37 38;
-  --muted: 93 107 108;
-  --line: 230 225 216;
+  /* Brand */
+  --ink: #0e3b3c;
+  --ink-700: #155456;
+  --on-ink: #fbf8f3;
+  --paper: #fbf8f3;
+  --surface: #ffffff;
+  --marigold: #e3a23b;
+  --sage: #dce8e2;
+  --clay: #c8664b;
+  --leaf: #2f8f5b;
+  --body: #1c2526;
+  --muted-foreground: #5d6b6c;
+  --line: #e6e1d8;
+
+  /* shadcn semantic */
+  --background: var(--paper);
+  --foreground: var(--body);
+  --card: var(--surface);
+  --card-foreground: var(--body);
+  --popover: var(--surface);
+  --popover-foreground: var(--body);
+  --primary: var(--ink);
+  --primary-foreground: var(--on-ink);
+  --secondary: var(--sage);
+  --secondary-foreground: var(--ink);
+  --muted: #f3efe8;
+  --accent: var(--sage);
+  --accent-foreground: var(--ink);
+  --destructive: var(--clay);
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--ink);
+
+  /* Dashboard sidebar (ink in light mode) */
+  --sidebar: #0e3b3c;
+  --sidebar-foreground: #fbf8f3;
+  --sidebar-muted: rgb(251 248 243 / 0.7);
+  --sidebar-hover: rgb(251 248 243 / 0.08);
 }
 
 .dark {
-  --ink: 234 241 239;
-  --ink-700: 200 214 210;
-  --on-ink: 11 31 32;
-  --paper: 11 31 32;
-  --surface: 18 43 44;
-  --sage: 30 64 62;
-  --body: 234 241 239;
-  --muted: 160 178 176;
-  --line: 38 70 71;
+  --ink: #eaf1ef;
+  --ink-700: #c9d8d4;
+  --on-ink: #0b1f20;
+  --paper: #0b1f20;
+  --surface: #122b2c;
+  --sage: #1d4342;
+  --body: #eaf1ef;
+  --muted-foreground: #a0b2b0;
+  --line: #24494a;
+
+  --muted: #163536;
+  --secondary-foreground: #eaf1ef;
+  --accent-foreground: #eaf1ef;
+
+  --sidebar: #081718;
+  --sidebar-foreground: #eaf1ef;
+  --sidebar-muted: rgb(234 241 239 / 0.65);
+  --sidebar-hover: rgb(234 241 239 / 0.06);
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-700: var(--ink-700);
+  --color-on-ink: var(--on-ink);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-marigold: var(--marigold);
+  --color-sage: var(--sage);
+  --color-clay: var(--clay);
+  --color-leaf: var(--leaf);
+  --color-body: var(--body);
+  --color-line: var(--line);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-hover: var(--sidebar-hover);
+
+  --font-sans: var(--font-jakarta), var(--font-noto-devanagari), system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px; /* inputs, buttons */
+  --radius-xl: 12px; /* cards */
+  --radius-2xl: 16px;
+
+  --shadow-soft: 0 1px 2px rgba(14, 59, 60, 0.06), 0 8px 24px rgba(14, 59, 60, 0.06);
+
+  --container-content: 1160px;
+  --container-dashboard: 1280px;
 }
 
-body {
-  background-color: rgb(var(--paper));
-  color: rgb(var(--body));
-  font-size: 16px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-@media (min-width: 1024px) {
-  body {
-    font-size: 17px;
+@layer base {
+  * {
+    border-color: var(--border);
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
   }
-}
 
-input,
-select,
-textarea,
-button {
-  font-family: inherit;
-}
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
 
-/* ── Loading spinner ── */
-@keyframes mr-spin {
-  to { transform: rotate(360deg); }
-}
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-.spinner {
-  display: inline-block;
-  border-radius: 9999px;
-  border-style: solid;
-  border-color: rgb(var(--ink) / 0.2);
-  border-top-color: rgb(var(--ink));
-  animation: mr-spin 0.7s linear infinite;
-}
+  @media (min-width: 1024px) {
+    body {
+      font-size: 17px;
+    }
+  }
 
-/* ── Skeleton shimmer ── */
-@keyframes shimmer {
-  from { background-position: -200% center; }
-  to   { background-position:  200% center; }
-}
-
-.skeleton {
-  background: linear-gradient(90deg, rgb(var(--line)) 0%, rgb(var(--surface)) 50%, rgb(var(--line)) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.6s ease-in-out infinite;
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 /* ── Rich text (doctor bio): only p / strong / em / lists survive sanitising ── */

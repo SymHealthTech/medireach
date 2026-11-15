@@ -47,7 +47,7 @@ export function HubPage({
         {!doctors ? null : doctors.length > 0 ? (
           <section aria-label="Doctors">
             <DoctorCardGrid doctors={doctors} />
-            <p className="mt-3 text-sm text-muted">Listed alphabetically by name.</p>
+            <p className="mt-3 text-sm text-muted-foreground">Listed alphabetically by name.</p>
           </section>
         ) : (
           <section className="rounded-xl border border-dashed border-line bg-surface p-8 text-center">
@@ -69,7 +69,7 @@ export function HubPage({
                     className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm text-ink hover:border-ink/40"
                   >
                     {l.name}
-                    <span className="text-muted">{l.count}</span>
+                    <span className="text-muted-foreground">{l.count}</span>
                   </a>
                 </li>
               ))}

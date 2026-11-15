@@ -29,7 +29,7 @@ export function Gallery({ images }: { images: PublicImage[] }) {
               >
                 <Image src={img.url} alt={img.alt} fill sizes="(min-width: 640px) 33vw, 50vw" className="object-cover" />
               </button>
-              {img.caption && <figcaption className="mt-1.5 text-sm text-muted">{img.caption}</figcaption>}
+              {img.caption && <figcaption className="mt-1.5 text-sm text-muted-foreground">{img.caption}</figcaption>}
             </figure>
           </li>
         ))}

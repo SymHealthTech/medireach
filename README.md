@@ -16,7 +16,7 @@ look and feel is in [`DESIGN_BRIEF.md`](./DESIGN_BRIEF.md).
 - Next.js (App Router) + TypeScript (strict)
 - MongoDB Atlas via Mongoose
 - Cloudinary (images), Resend (email)
-- Tailwind CSS
+- Tailwind CSS v4, shadcn/ui (Radix), lucide-react
 
 ## Getting started
 
@@ -24,7 +24,8 @@ look and feel is in [`DESIGN_BRIEF.md`](./DESIGN_BRIEF.md).
 cp .env.example .env.local   # fill in real values — never commit secrets
 npm install
 npm run seed:masters         # cities, areas, specialties, degrees, councils, template slots
-npm run dev
+npm run seed:admin           # first superadmin from ADMIN_EMAIL / ADMIN_PASSWORD (12+ chars)
+npm run dev                  # dashboard: http://localhost:3000/admin
 ```
 
 For local testing with sample pages, point at a dev database and publish the
@@ -46,7 +47,7 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run bui
 | 0 | Audit, preserve clinic code, remove clinic-only files ✅ |
 | 1 | Data model and master lists ✅ |
 | 2 | Public pages and SEO ✅ |
-| 3 | Admin auth and dashboard shell |
+| 3 | Admin auth and dashboard shell ✅ |
 | 4 | Dashboard features |
 | 5 | Template registry and visiting cards |
 | 6 | Homepage and marketing pages |

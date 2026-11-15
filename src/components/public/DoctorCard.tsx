@@ -16,9 +16,9 @@ export function DoctorCard({ doctor }: { doctor: DoctorCardData }) {
           {doctor.fullName}
         </span>
         {meta && <span className="block truncate text-sm text-body">{meta}</span>}
-        {doctor.degreesLine && <span className="block truncate text-sm text-muted">{doctor.degreesLine}</span>}
+        {doctor.degreesLine && <span className="block truncate text-sm text-muted-foreground">{doctor.degreesLine}</span>}
       </span>
-      <ChevronRight aria-hidden className="h-5 w-5 shrink-0 text-muted" strokeWidth={1.75} />
+      <ChevronRight aria-hidden className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
     </a>
   );
 }
