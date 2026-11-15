@@ -101,6 +101,7 @@ export function ChipInput({
   placeholder,
   suggestions = [],
   max = 30,
+  disabled,
 }: {
   id?: string;
   value: string[];
@@ -108,9 +109,11 @@ export function ChipInput({
   placeholder?: string;
   suggestions?: string[];
   max?: number;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState("");
   function add(raw: string) {
+    if (disabled) return;
     const v = raw.trim().replace(/,$/, "").trim();
     if (!v || value.some((x) => x.toLowerCase() === v.toLowerCase()) || value.length >= max) return;
     onChange([...value, v]);
@@ -126,6 +129,7 @@ export function ChipInput({
             <button
               type="button"
               aria-label={`Remove ${v}`}
+              disabled={disabled}
               className="rounded-full p-0.5 hover:bg-ink/10"
               onClick={() => onChange(value.filter((x) => x !== v))}
             >
@@ -136,6 +140,7 @@ export function ChipInput({
         <input
           id={id}
           value={draft}
+          disabled={disabled}
           placeholder={value.length === 0 ? placeholder : undefined}
           onChange={(e) => (e.target.value.endsWith(",") ? add(e.target.value) : setDraft(e.target.value))}
           onKeyDown={(e) => {
@@ -150,7 +155,7 @@ export function ChipInput({
           className="h-8 min-w-[8rem] flex-1 bg-transparent px-1 text-base outline-none md:text-sm"
         />
       </div>
-      {remaining.length > 0 && (
+      {remaining.length > 0 && !disabled && (
         <div className="flex flex-wrap gap-1.5">
           {remaining.slice(0, 8).map((s) => (
             <button
