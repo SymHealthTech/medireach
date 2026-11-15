@@ -156,12 +156,12 @@ export default function ConsultPage() {
   const [clinic, setClinic] = useState<{
     clinicName: string; clinicAddress: string; clinicTimings: string; clinicMobile?: string;
     doctorName: string; degree: string; registrationNumber: string;
+    designation?: string; services?: string[];
     defaultWhatsappTarget?: string;
     clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
   } | null>(null);
   const [tpl, setTpl] = useState<{
     presetKey: string;
-    designation?: string;
     footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
   } | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
@@ -292,11 +292,11 @@ export default function ConsultPage() {
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
     apiGet<{
-      template: { presetKey: string; designation?: string; footer?: { storeName?: string; storeAddress?: string; storeContact?: string }; signatureUrl?: string };
+      template: { presetKey: string; footer?: { storeName?: string; storeAddress?: string; storeContact?: string }; signatureUrl?: string };
       clinic: NonNullable<typeof clinic>;
     }>("/api/template")
       .then(async (d) => {
-        setTpl({ presetKey: d.template.presetKey, designation: d.template.designation, footer: d.template.footer });
+        setTpl({ presetKey: d.template.presetKey, footer: d.template.footer });
         setClinic(d.clinic);
         if (d.template.signatureUrl) setSignatureDataUrl(await imageUrlToDataUrl(d.template.signatureUrl));
       })
@@ -464,7 +464,8 @@ export default function ConsultPage() {
         clinicAddress: clinic?.clinicAddress,
         clinicMobile: clinic?.clinicMobile,
         clinicTimings: clinic?.clinicTimings,
-        designation: tpl?.designation,
+        designation: clinic?.designation,
+        services: clinic?.services,
       },
       patient: { name: patient?.name ?? "Patient", ageYears: patient?.ageYears, gender: patient?.gender },
       date: new Date().toLocaleDateString("en-IN"),

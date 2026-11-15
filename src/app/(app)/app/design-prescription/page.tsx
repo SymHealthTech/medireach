@@ -12,6 +12,7 @@ import { TEMPLATES, type TemplateId } from "@/lib/prescription/templates";
 import { PrescriptionPreview } from "@/components/prescription/PrescriptionPreview";
 import type { PrescriptionSheetData } from "@/components/prescription/PrescriptionSheet";
 import { imageUrlToDataUrl, printSheet } from "@/lib/client/prescriptionRaster";
+import { SignaturePad } from "@/components/app/SignaturePad";
 import { cn } from "@/lib/cn";
 
 interface Footer {
@@ -21,7 +22,6 @@ interface Footer {
 }
 interface TemplateState {
   presetKey: string;
-  designation: string;
   footer: Footer;
   signaturePublicId: string;
   signatureUrl: string;
@@ -34,6 +34,8 @@ interface Clinic {
   doctorName: string;
   degree: string;
   registrationNumber: string;
+  designation: string;
+  services: string[];
 }
 
 // Sample consultation used only to populate the live preview with the doctor's
@@ -49,8 +51,9 @@ const SAMPLE_MEDICINES = [
 /**
  * Design Prescription (spec §8 redesign). The customise screen contains ONLY a
  * template picker, an optional signature upload, and the sponsor pharmacy
- * details — no logo or services options. The preview is the exact A4 sheet that
- * prints and ships on WhatsApp.
+ * details. Header identity — name, designation and services — is owned by the
+ * doctor Profile and read here as read-only preview data. The preview is the
+ * exact A4 sheet that prints and ships on WhatsApp.
  */
 export default function DesignPrescriptionPage() {
   const [tpl, setTpl] = useState<TemplateState | null>(null);
@@ -58,6 +61,7 @@ export default function DesignPrescriptionPage() {
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [sigMode, setSigMode] = useState<"upload" | "draw">("upload");
   const [msg, setMsg] = useState<string | null>(null);
   const [linkUrl, setLinkUrl] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -84,7 +88,8 @@ export default function DesignPrescriptionPage() {
         clinicAddress: clinic.clinicAddress,
         clinicMobile: clinic.clinicMobile,
         clinicTimings: clinic.clinicTimings,
-        designation: tpl.designation,
+        designation: clinic.designation,
+        services: clinic.services,
       },
       patient: { name: "Sample Patient", ageYears: 34, gender: "male" },
       date: new Date().toLocaleDateString("en-IN"),
@@ -99,10 +104,10 @@ export default function DesignPrescriptionPage() {
     setTpl((t) => (t ? { ...t, footer: { ...t.footer, ...v } } : t));
   }
 
-  async function onSignatureFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file || !tpl) return;
+  // Shared by both signature methods (uploaded image + drawn PNG): show it
+  // immediately, then upload for the stored public_id.
+  async function handleSignatureFile(file: File) {
+    if (!tpl) return;
     if (file.size > 3 * 1024 * 1024) {
       setMsg("Signature image must be under 3 MB.");
       return;
@@ -110,7 +115,6 @@ export default function DesignPrescriptionPage() {
     setUploading(true);
     setMsg(null);
     try {
-      // Show the picked image immediately, then upload for the stored public_id.
       const localUrl = await fileToDataUrl(file);
       setSignatureDataUrl(localUrl);
       const { publicId } = await uploadSigned(file, "signature");
@@ -120,6 +124,12 @@ export default function DesignPrescriptionPage() {
     } finally {
       setUploading(false);
     }
+  }
+
+  function onSignatureFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) void handleSignatureFile(file);
   }
 
   function removeSignature() {
@@ -137,7 +147,6 @@ export default function DesignPrescriptionPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           presetKey: tpl.presetKey,
-          designation: tpl.designation,
           signaturePublicId: tpl.signaturePublicId,
           footer: tpl.footer,
         }),
@@ -212,17 +221,14 @@ export default function DesignPrescriptionPage() {
                 </button>
               ))}
             </div>
-            <div>
-              <label htmlFor="designation" className="mb-1 block text-xs font-medium uppercase tracking-wider text-ink-muted">
-                Designation
-              </label>
-              <Input
-                id="designation"
-                placeholder="e.g. General Physician"
-                value={tpl.designation}
-                onChange={(e) => setTpl((t) => (t ? { ...t, designation: e.target.value } : t))}
-              />
-              <p className="mt-1 text-xs text-ink-muted">Shown under your name in the prescription header.</p>
+            <div className="rounded-xl border border-line bg-surface-raised p-3">
+              <p className="text-xs text-ink-muted">
+                Your <span className="font-medium text-ink">name</span>,{" "}
+                <span className="font-medium text-ink">designation</span> and{" "}
+                <span className="font-medium text-ink">services</span> in the header come from your{" "}
+                <a href="/app/profile" className="font-medium text-brand underline">Profile</a>. To edit them,
+                update your Profile page — the changes appear here automatically.
+              </p>
             </div>
           </Card>
 
@@ -230,33 +236,52 @@ export default function DesignPrescriptionPage() {
           <Card className="space-y-3">
             <p className="text-sm font-semibold text-ink">Signature</p>
             <p className="text-xs text-ink-muted">
-              Optional. When uploaded it appears above your printed name; otherwise only the name shows.
+              Optional. When set it appears above your printed name; otherwise only the name shows.
             </p>
-            {signatureDataUrl ? (
+
+            {signatureDataUrl && (
               <div className="space-y-2">
                 <div className="flex items-center justify-center rounded-xl border border-line bg-surface-raised p-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={signatureDataUrl} alt="Signature" className="max-h-20 object-contain" />
                 </div>
-                <div className="flex gap-2">
-                  <label className="cursor-pointer rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink hover:bg-line/30">
-                    {uploading ? "Uploading…" : "Replace"}
-                    <input type="file" accept="image/*" onChange={onSignatureFile} disabled={uploading} className="hidden" />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={removeSignature}
-                    className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-sos hover:bg-sos/5"
-                  >
-                    Remove
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={removeSignature}
+                  className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-sos hover:bg-sos/5"
+                >
+                  Remove signature
+                </button>
               </div>
-            ) : (
+            )}
+
+            {/* Method toggle: upload an image, or draw a digital signature. */}
+            <div className="flex gap-1 rounded-xl border border-line p-1">
+              {([
+                ["upload", "Upload image"],
+                ["draw", "Draw signature"],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setSigMode(mode)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+                    sigMode === mode ? "bg-brand text-brand-fg" : "text-ink-muted hover:bg-line/30",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {sigMode === "upload" ? (
               <label className="flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-line bg-surface-raised px-3 py-6 text-sm font-semibold text-brand hover:bg-line/20">
-                {uploading ? "Uploading…" : "+ Upload signature image"}
+                {uploading ? "Uploading…" : signatureDataUrl ? "Replace with an image" : "+ Upload signature image"}
                 <input type="file" accept="image/*" onChange={onSignatureFile} disabled={uploading} className="hidden" />
               </label>
+            ) : (
+              <SignaturePad onSave={handleSignatureFile} busy={uploading} />
             )}
           </Card>
 

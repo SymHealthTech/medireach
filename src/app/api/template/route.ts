@@ -28,7 +28,6 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
   return jsonOk({
     template: {
       presetKey: tpl.presetKey,
-      designation: tpl.designation ?? "",
       footer: tpl.footer ?? {},
       signaturePublicId: tpl.signaturePublicId ?? "",
       // Short-lived signed URL for the authenticated signature asset (§15.3).
@@ -42,6 +41,10 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
       doctorName: doctor.name,
       degree: doctor.degree,
       registrationNumber: doctor.registrationNumber,
+      // Designation & services live on the doctor profile now — the source of
+      // truth for the prescription header (edited in /app/profile).
+      designation: doctor.designation ?? "",
+      services: doctor.services ?? [],
       defaultWhatsappTarget: doctor.defaultWhatsappTarget,
       clinicWhatsapp: doctor.clinicWhatsapp ?? "",
       receptionistWhatsapp: doctor.receptionistWhatsapp ?? "",
@@ -52,7 +55,6 @@ export const GET = route({ roles: Roles.doctorOnly }, async (_req, ctx) => {
 
 const updateSchema = z.object({
   presetKey: z.enum(TEMPLATE_IDS).optional(),
-  designation: z.string().trim().max(120).optional(),
   // Empty string clears the signature (remove); a public_id sets/replaces it.
   signaturePublicId: z.string().trim().max(300).optional(),
   footer: z
@@ -70,7 +72,6 @@ export const PATCH = route({ roles: Roles.doctorOnly }, async (req, ctx) => {
   const tpl = await getOrCreate(doctorId);
 
   if (data.presetKey !== undefined) tpl.presetKey = data.presetKey;
-  if (data.designation !== undefined) tpl.designation = data.designation || undefined;
   if (data.signaturePublicId !== undefined) tpl.signaturePublicId = data.signaturePublicId || undefined;
   if (data.footer !== undefined) tpl.footer = data.footer;
   await tpl.save();

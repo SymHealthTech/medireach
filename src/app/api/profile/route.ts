@@ -26,6 +26,8 @@ export const GET = route({ roles: Roles.clinic }, async (_req, ctx) => {
     clinicAddress: doctor.clinicAddress,
     clinicStateCode: doctor.clinicStateCode ?? "",
     clinicTimings: doctor.clinicTimings,
+    designation: doctor.designation ?? "",
+    services: doctor.services ?? [],
     themePreference: doctor.themePreference,
     defaultWhatsappTarget: doctor.defaultWhatsappTarget,
     clinicWhatsapp: doctor.clinicWhatsapp ?? "",
@@ -47,6 +49,8 @@ const updateSchema = z.object({
     .refine((v) => v === "" || GST_STATE_CODE_SET.has(v), "Invalid state.")
     .optional(),
   clinicTimings: z.string().trim().max(160).optional(),
+  designation: z.string().trim().max(120).optional(),
+  services: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
   photoPublicId: z.string().trim().optional(),
   themePreference: z.enum(["light", "dark"]).optional(),
   defaultWhatsappTarget: z.enum(["patient", "clinic", "receptionist", "store"]).optional(),

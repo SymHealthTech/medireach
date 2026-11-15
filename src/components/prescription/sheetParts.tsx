@@ -41,6 +41,7 @@ export interface PrescriptionDoctorInfo {
   degree?: string;
   registrationNumber?: string;
   designation?: string;
+  services?: string[];
   clinicName: string;
   clinicAddress?: string;
   clinicMobile?: string;
@@ -63,11 +64,13 @@ export function joinComma(parts: (string | undefined | null | false)[]): string 
 
 function DoctorLines({ d, regColor, designationColor }: { d: PrescriptionDoctorInfo; regColor: string; designationColor: string }) {
   const line2 = joinDot([d.degree, d.registrationNumber && `Reg. No. ${d.registrationNumber}`]);
+  const services = joinDot(d.services ?? []);
   return (
     <>
       <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.15, ...wrapText }}>{d.name}</div>
       {line2 && <div style={{ fontSize: 11, color: regColor, marginTop: 3, ...wrapText }}>{line2}</div>}
       {d.designation && <div style={{ fontSize: 12, color: designationColor, marginTop: 3, ...wrapText }}>{d.designation}</div>}
+      {services && <div style={{ fontSize: 11, color: regColor, marginTop: 2, ...wrapText }}>{services}</div>}
     </>
   );
 }
@@ -108,11 +111,13 @@ export function Header({ id, accent, d }: { id: string; accent: string; d: Presc
   // Centered slate header on a soft band.
   if (id === "slate-centered") {
     const line2 = joinDot([d.degree, d.registrationNumber && `Reg. No. ${d.registrationNumber}`, d.designation]);
+    const services = joinDot(d.services ?? []);
     const line3 = joinDot([joinComma([d.clinicName, d.clinicAddress]), d.clinicMobile, d.clinicTimings]);
     return (
       <header style={{ background: "#F5F8FC", borderBottom: `3px solid ${accent}`, padding: pad, textAlign: "center" }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: "#1A365D", ...wrapText }}>{d.name}</div>
         {line2 && <div style={{ fontSize: 12, color: "#4A5568", marginTop: 3, ...wrapText }}>{line2}</div>}
+        {services && <div style={{ fontSize: 12, color: "#4A5568", marginTop: 2, ...wrapText }}>{services}</div>}
         {line3 && <div style={{ fontSize: 12, color: "#4A5568", marginTop: 2, ...wrapText }}>{line3}</div>}
       </header>
     );

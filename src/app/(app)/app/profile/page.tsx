@@ -16,10 +16,77 @@ interface Profile {
   mobile: string;
   registrationNumber: string;
   degree: string;
+  designation: string;
+  services: string[];
   clinicName: string;
   clinicAddress: string;
   clinicStateCode: string;
   clinicTimings: string;
+}
+
+/** Comma/Enter-driven chip input for a short list of tags (services). */
+function TagInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  placeholder: string;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function commit(raw: string) {
+    const parts = raw.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    const next = [...value];
+    for (const p of parts) {
+      if (!next.some((v) => v.toLowerCase() === p.toLowerCase())) next.push(p);
+    }
+    onChange(next);
+    setDraft("");
+  }
+
+  return (
+    <div>
+      <div className="flex gap-2">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commit(draft);
+            }
+          }}
+          placeholder={placeholder}
+        />
+        <Button type="button" variant="outline" onClick={() => commit(draft)}>
+          Add
+        </Button>
+      </div>
+      {value.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {value.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1 text-sm font-medium text-brand"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((v) => v !== tag))}
+                className="text-brand/60 hover:text-brand"
+                aria-label={`Remove ${tag}`}
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Profile (spec §12) — editable doctor + clinic details; app ID shown. */
@@ -36,7 +103,7 @@ export default function ProfilePage() {
       .catch((err) => setLoadError(err instanceof Error ? err.message : "Couldn't load your profile."));
   }, []);
 
-  function set<K extends keyof Profile>(k: K, v: string) {
+  function set<K extends keyof Profile>(k: K, v: Profile[K]) {
     setForm((f) => (f ? { ...f, [k]: v } : f));
   }
 
@@ -55,6 +122,8 @@ export default function ProfilePage() {
           name: form.name.trim().replace(/^dr\.?\s+/i, ""),
           registrationNumber: form.registrationNumber,
           degree: form.degree,
+          designation: form.designation,
+          services: form.services,
           clinicName: form.clinicName,
           clinicAddress: form.clinicAddress,
           clinicStateCode: form.clinicStateCode,
@@ -147,6 +216,36 @@ export default function ProfilePage() {
           {([
             ["registrationNumber", "Registration number"],
             ["degree", "Degree / qualification"],
+          ] as const).map(([key, label]) => (
+            <div key={key}>
+              <Label htmlFor={key}>{label}</Label>
+              <Input id={key} value={form[key] as string} onChange={(e) => set(key, e.target.value)} />
+            </div>
+          ))}
+          <div>
+            <Label htmlFor="designation">Designation</Label>
+            <Input
+              id="designation"
+              value={form.designation}
+              onChange={(e) => set("designation", e.target.value)}
+              placeholder="e.g. General Physician"
+            />
+            <p className="mt-1 text-xs text-ink-muted">
+              Shown under your name on your prescription and certificate header.
+            </p>
+          </div>
+          <div>
+            <Label>Services</Label>
+            <TagInput
+              value={form.services}
+              onChange={(v) => set("services", v)}
+              placeholder="e.g. Diabetes Care"
+            />
+            <p className="mt-1 text-xs text-ink-muted">
+              Services you offer — shown on your prescription header. Press Enter or comma to add.
+            </p>
+          </div>
+          {([
             ["clinicName", "Clinic name"],
             ["clinicAddress", "Clinic address"],
           ] as const).map(([key, label]) => (

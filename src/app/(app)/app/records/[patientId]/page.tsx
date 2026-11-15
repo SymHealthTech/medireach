@@ -67,12 +67,12 @@ interface Patient {
 type ClinicInfo = {
   clinicName: string; clinicAddress: string; clinicTimings: string; clinicMobile?: string;
   doctorName: string; degree: string; registrationNumber: string;
+  designation?: string; services?: string[];
   defaultWhatsappTarget?: string;
   clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
 };
 type TplInfo = {
   presetKey: string;
-  designation?: string;
   footer?: { storeName?: string; storeAddress?: string; storeContact?: string };
   signatureUrl?: string;
 };
@@ -220,7 +220,8 @@ export default function RecordsPage() {
         clinicAddress: c.clinicAddress,
         clinicMobile: c.clinicMobile,
         clinicTimings: c.clinicTimings,
-        designation: tpl?.designation,
+        designation: c.designation,
+        services: c.services,
       },
       patient: { name: patient?.name ?? "Patient", ageYears: patient?.ageYears, gender: patient?.gender },
       date: v.confirmedAt ? new Date(v.confirmedAt).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN"),

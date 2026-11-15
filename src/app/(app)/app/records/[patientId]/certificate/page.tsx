@@ -27,12 +27,12 @@ interface Patient {
 type ClinicInfo = {
   clinicName: string; clinicAddress: string; clinicTimings: string; clinicMobile?: string;
   doctorName: string; degree: string; registrationNumber: string;
+  designation?: string; services?: string[];
   defaultWhatsappTarget?: string;
   clinicWhatsapp?: string; receptionistWhatsapp?: string; storeWhatsapp?: string;
 };
 type TplInfo = {
   presetKey: string;
-  designation?: string;
   signatureUrl?: string;
 };
 
@@ -110,7 +110,8 @@ export default function CertificatePage() {
         clinicAddress: clinic.clinicAddress,
         clinicMobile: clinic.clinicMobile,
         clinicTimings: clinic.clinicTimings,
-        designation: tpl?.designation,
+        designation: clinic.designation,
+        services: clinic.services,
       },
       type,
       fields,

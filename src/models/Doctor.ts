@@ -67,6 +67,8 @@ export interface DoctorDoc {
   clinicAddress: string;
   clinicStateCode: string; // 2-digit GST state code (India) — intra/inter-state tax split
   clinicTimings: string;
+  designation: string; // e.g. "General Physician" — shown under the name on prescriptions (§12)
+  services: string[]; // services offered, shown on the prescription header / letterhead
   // preferences
   themePreference: "light" | "dark";
   defaultWhatsappTarget: "patient" | "clinic" | "receptionist" | "store";
@@ -151,6 +153,8 @@ const doctorSchema = new Schema<DoctorDoc>(
     clinicAddress: { type: String, default: "" },
     clinicStateCode: { type: String, default: "" },
     clinicTimings: { type: String, default: "" },
+    designation: { type: String, default: "" },
+    services: { type: [String], default: [] },
 
     themePreference: { type: String, enum: ["light", "dark"], default: "light" },
     defaultWhatsappTarget: {

@@ -13,7 +13,6 @@ export interface PrescriptionTemplateDoc {
   presetKey: string; // TemplateId of the chosen A4 template (spec §8 redesign)
   clinicNameOverride?: string;
   logoPlacement: "left" | "center" | "right";
-  designation?: string; // e.g. "General Physician" — shown under the doctor name
   signaturePublicId?: string; // Cloudinary public_id of the doctor's signature (§15.3)
   footer?: {
     storeName?: string;
@@ -30,7 +29,6 @@ const prescriptionTemplateSchema = new Schema<PrescriptionTemplateDoc>(
     presetKey: { type: String, required: true, default: "teal-classic" },
     clinicNameOverride: { type: String },
     logoPlacement: { type: String, enum: ["left", "center", "right"], default: "left" },
-    designation: { type: String },
     signaturePublicId: { type: String },
     footer: {
       storeName: String,
