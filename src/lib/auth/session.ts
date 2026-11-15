@@ -2,42 +2,28 @@ import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
-import type { Role } from "@/lib/constants";
+import { ROLES, type Role } from "@/lib/constants";
 
 /**
- * Session tokens (spec §15.1): signed JWTs stored in secure, httpOnly cookies —
- * never localStorage (XSS-exposed). jose is used because it runs in both the
- * Node and Edge (middleware) runtimes.
- *
- * The session payload deliberately carries `doctorId` for clinic-scoped roles
- * so authorization checks never have to trust a client-supplied tenant id.
+ * Session tokens: signed JWTs stored in secure, httpOnly cookies — never
+ * localStorage (XSS-exposed). jose is used because it runs in both the Node and
+ * Edge (middleware) runtimes.
  */
 
 export const SESSION_COOKIE = "mr_session";
 
-/** Seconds from now until midnight IST (UTC+5:30), minimum 60. */
-function secondsUntilMidnightIST(): number {
-  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-  const nowInISTMs = Date.now() + IST_OFFSET_MS;
-  const msIntoDayIST = nowInISTMs % (24 * 60 * 60 * 1000);
-  const msUntilMidnight = 24 * 60 * 60 * 1000 - msIntoDayIST;
-  return Math.max(60, Math.floor(msUntilMidnight / 1000));
-}
+/** Admin sessions last a working day; doctor sessions are long-lived (Phase 7). */
+export const SESSION_TTL_SECONDS: Record<Role, number> = {
+  superadmin: 12 * 60 * 60,
+  admin: 12 * 60 * 60,
+  sales: 12 * 60 * 60,
+  doctor: 30 * 24 * 60 * 60,
+};
 
 export interface SessionClaims {
-  sub: string; // user _id
+  sub: string; // user _id (Admin) or DoctorProfile _id (doctor)
   role: Role;
-  // For doctor: own id. For receptionist: their linked doctor's id. Absent for admin.
-  doctorId?: string;
   name: string;
-  // Token version for the receptionist role — checked per request so the doctor
-  // changing the password (or deleting the account) invalidates the session
-  // immediately. Absent for doctor/admin.
-  tv?: number;
-  // Session version for the doctor role — incremented on every login so that a
-  // new device login immediately invalidates all prior device sessions (§15.1).
-  // Absent for receptionist/admin and for incomplete-onboarding doctor sessions.
-  sv?: number;
 }
 
 function secretKey(): Uint8Array {
@@ -45,32 +31,24 @@ function secretKey(): Uint8Array {
 }
 
 export async function createSessionToken(claims: SessionClaims): Promise<string> {
-  const exp = Math.floor(Date.now() / 1000) + secondsUntilMidnightIST();
-  return new SignJWT({
-    role: claims.role,
-    doctorId: claims.doctorId,
-    name: claims.name,
-    ...(typeof claims.tv === "number" ? { tv: claims.tv } : {}),
-    ...(typeof claims.sv === "number" ? { sv: claims.sv } : {}),
-  })
+  return new SignJWT({ role: claims.role, name: claims.name })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
     .setIssuedAt()
-    .setExpirationTime(exp)
+    .setExpirationTime(`${SESSION_TTL_SECONDS[claims.role]}s`)
     .sign(secretKey());
 }
 
 export async function verifySessionToken(token: string): Promise<SessionClaims | null> {
   try {
     const { payload } = await jwtVerify(token, secretKey(), { algorithms: ["HS256"] });
-    if (!payload.sub || typeof payload.role !== "string") return null;
+    if (!payload.sub || !(ROLES as readonly string[]).includes(payload.role as string)) {
+      return null;
+    }
     return {
       sub: payload.sub,
       role: payload.role as Role,
-      doctorId: typeof payload.doctorId === "string" ? payload.doctorId : undefined,
       name: typeof payload.name === "string" ? payload.name : "",
-      tv: typeof payload.tv === "number" ? payload.tv : undefined,
-      sv: typeof payload.sv === "number" ? payload.sv : undefined,
     };
   } catch {
     return null;
@@ -86,7 +64,7 @@ export async function setSessionCookie(claims: SessionClaims): Promise<void> {
     secure: env.isProduction,
     sameSite: "lax",
     path: "/",
-    maxAge: secondsUntilMidnightIST(),
+    maxAge: SESSION_TTL_SECONDS[claims.role],
   });
 }
 

@@ -3,14 +3,12 @@ import type { NextRequest, NextResponse } from "next/server";
 import type { Role } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-import { isReceptionistSessionValid, isDoctorSessionValid } from "@/lib/auth/users";
 import { Errors, errorResponse } from "@/lib/api/errors";
 import type { AuthContext } from "@/lib/api/context";
 
 /**
- * route() — the single authentication + authorization gate every API route
- * goes through (spec §15.2, build-prompt "shared middleware, written once,
- * applied everywhere"). It:
+ * route() — the single authentication + authorization gate every protected API
+ * route goes through. It:
  *
  *   1. ensures the DB is connected,
  *   2. verifies a valid session exists (else 401),
@@ -18,8 +16,7 @@ import type { AuthContext } from "@/lib/api/context";
  *   4. hands the handler a trusted AuthContext derived only from the session,
  *   5. converts any thrown ApiError into a clean JSON response.
  *
- * Routes NEVER read identity/tenant from the request body — only from `ctx`.
- * This is what makes "anyone can call the API directly via dev tools" safe.
+ * Routes NEVER read identity from the request body — only from `ctx`.
  */
 
 type Handler<P> = (
@@ -29,7 +26,7 @@ type Handler<P> = (
 ) => Promise<NextResponse> | NextResponse;
 
 interface RouteOptions {
-  roles: Role[];
+  roles: readonly Role[];
 }
 
 // Next.js 15 passes the second arg as `{ params: Promise<...> }` for every
@@ -47,27 +44,11 @@ export function route<P = Record<string, string>>(
 
       const session = await getSession();
       if (!session) throw Errors.unauthorized();
-
-      if (!opts.roles.includes(session.role)) {
-        throw Errors.forbidden();
-      }
-
-      // Receptionist sessions are invalidated immediately when the doctor
-      // changes the password or deletes the account (Change 1).
-      if (session.role === "receptionist" && !(await isReceptionistSessionValid(session.sub, session.tv))) {
-        throw Errors.unauthorized("Your session is no longer valid. Please log in again.");
-      }
-
-      // Doctor sessions are invalidated when a newer device logs in (single-device
-      // enforcement). sv is absent for incomplete-onboarding sessions, which pass.
-      if (session.role === "doctor" && !(await isDoctorSessionValid(session.sub, session.sv))) {
-        throw Errors.unauthorized("You have been signed in on another device. Please log in again.");
-      }
+      if (!opts.roles.includes(session.role)) throw Errors.forbidden();
 
       const ctx: AuthContext = {
         userId: session.sub,
         role: session.role,
-        doctorId: session.doctorId ?? null,
         name: session.name,
       };
 
@@ -81,8 +62,10 @@ export function route<P = Record<string, string>>(
 
 /** Convenience presets for the common role sets. */
 export const Roles = {
-  doctorOnly: ["doctor"] as Role[],
-  receptionistOnly: ["receptionist"] as Role[],
-  clinic: ["doctor", "receptionist"] as Role[], // either front-desk role
-  adminOnly: ["admin"] as Role[],
-};
+  superadmin: ["superadmin"] as const,
+  /** Can publish, see payment totals, manage masters. */
+  admin: ["superadmin", "admin"] as const,
+  /** Any staff member, including sales (drafts + leads only). */
+  staff: ["superadmin", "admin", "sales"] as const,
+  doctor: ["doctor"] as const,
+} satisfies Record<string, readonly Role[]>;

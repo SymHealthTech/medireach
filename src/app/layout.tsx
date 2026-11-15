@@ -15,19 +15,16 @@ const inter = Inter({
 
 /**
  * Root layout. The inline theme script applies the persisted dark/light choice
- * before first paint to avoid a flash (spec §2 dark/light support). The web app
- * manifest + theme color make the app installable as a PWA (spec §3.2).
+ * before first paint to avoid a flash.
  */
 
 export const metadata: Metadata = {
-  title: "MediReach — Voice-first clinic management",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  title: "MediReach — Websites and digital visiting cards for doctors",
   description:
-    "Write prescriptions by speaking. A voice-first clinic management app for solo GPs and small clinics in India.",
-  manifest: "/manifest.webmanifest",
+    "A professional one-page website and digital visiting card for doctors in India.",
   icons: {
     icon: [
-      // Crisp vector for modern browsers, with raster fallbacks for Safari/older.
-      { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
       { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
       { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
@@ -36,12 +33,11 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   applicationName: "MediReach",
-  appleWebApp: { capable: true, title: "MediReach", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0E7C7B" },
+    { media: "(prefers-color-scheme: light)", color: "#0E3B3C" },
     { media: "(prefers-color-scheme: dark)", color: "#121417" },
   ],
   width: "device-width",

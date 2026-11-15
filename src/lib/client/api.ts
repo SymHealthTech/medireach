@@ -2,26 +2,14 @@
 
 /**
  * Thin client-side fetch wrapper for our JSON API. Throws an Error carrying the
- * server's user-facing message so components can show it directly.
- *
- * A 401 means the session is gone — expired, or (single-device enforcement,
- * §15.1) invalidated because the account logged in on another device. The Edge
- * middleware can't catch this: it only checks the JWT is structurally valid and
- * never touches the DB, so a session killed server-side still renders the shell,
- * and the next fetch is the first place we learn it's dead. So we handle it here
- * — bounce straight to the login screen instead of leaving the page spinning.
+ * server's user-facing message so components can show it directly. A 401 means
+ * the session is gone, so we bounce to the matching login screen.
  */
 function handleUnauthorized(): void {
   if (typeof window === "undefined") return;
   const path = window.location.pathname;
-  // Already on a login screen — let that page show its own inline error.
-  if (path === "/login" || path === "/console/login") return;
-  // On signup, a 401 just means the visitor isn't logged in yet — that's the
-  // normal case for a new doctor. The wizard handles it by starting at step 1,
-  // so don't bounce them to /login.
-  if (path === "/signup") return;
-  const target = path.startsWith("/console") ? "/console/login" : "/login";
-  window.location.assign(target);
+  if (path === "/login" || path === "/admin/login") return;
+  window.location.assign(path.startsWith("/admin") ? "/admin/login" : "/login");
 }
 
 async function handle<T>(res: Response): Promise<T> {

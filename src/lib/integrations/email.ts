@@ -3,10 +3,10 @@ import { Resend } from "resend";
 import { optionalEnv } from "@/lib/env";
 
 /**
- * Transactional email (Change 3 — email is the single OTP/recovery channel; no
- * SMS or WhatsApp). Uses Resend. If RESEND_API_KEY is unset, it logs to the
- * server console in development so OTP flows stay testable end-to-end without a
- * live provider. Never throws in a way that breaks the calling flow.
+ * Transactional email via Resend (lead notifications, doctor login links). No
+ * SMS anywhere in this project. If RESEND_API_KEY is unset, it logs to the
+ * server console in development so flows stay testable without a live
+ * provider. Never throws in a way that breaks the calling flow.
  */
 let client: Resend | null = null;
 function getClient(): Resend | null {
@@ -54,20 +54,4 @@ export async function sendEmail(opts: {
     console.error("[email] send error:", err);
     return { ok: false };
   }
-}
-
-/** Deliver a 6-digit OTP to an email address (signup verify, new device, reset). */
-export async function sendOtpEmail(to: string, code: string): Promise<{ ok: boolean }> {
-  return sendEmail({
-    to,
-    subject: `Your MediReach code: ${code}`,
-    text: `Your MediReach verification code is ${code}. It expires in 5 minutes. If you didn't request this, you can ignore this email.`,
-    html:
-      `<div style="font-family:system-ui,sans-serif;max-width:420px;margin:auto">` +
-      `<h2 style="color:#0E7C7B">MediReach</h2>` +
-      `<p>Your verification code is:</p>` +
-      `<p style="font-size:30px;font-weight:700;letter-spacing:4px">${code}</p>` +
-      `<p style="color:#5A6670">It expires in 5 minutes. If you didn't request this, ignore this email.</p>` +
-      `</div>`,
-  });
 }

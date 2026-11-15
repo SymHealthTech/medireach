@@ -7,7 +7,7 @@
  * a feature that needs it actually runs, instead of crashing cryptically deep
  * inside a vendor SDK.
  *
- * NEVER expose non-NEXT_PUBLIC_ values to the client (spec §15.3).
+ * NEVER expose non-NEXT_PUBLIC_ values to the client.
  */
 
 export function requireEnv(key: string): string {
@@ -22,15 +22,21 @@ export function requireEnv(key: string): string {
 }
 
 export function optionalEnv(key: string, fallback = ""): string {
-  return process.env[key] ?? fallback;
+  return process.env[key] || fallback;
 }
 
+/**
+ * Database the portfolio app writes to. Deliberately separate from the parked
+ * clinic software's `medireach` database (same cluster), whose collection names
+ * (leads, auditlogs, admins) overlap with ours.
+ */
+export const DEFAULT_DB_NAME = "medireach_portfolio";
+export const CLINIC_DB_NAME = "medireach";
+
 export const env = {
-  appUrl: () => optionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000"),
+  siteUrl: () => optionalEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000"),
   mongoUri: () => requireEnv("MONGODB_URI"),
+  mongoDbName: () => optionalEnv("MONGODB_DB", DEFAULT_DB_NAME),
   sessionSecret: () => requireEnv("AUTH_SESSION_SECRET"),
-  deviceSecret: () => requireEnv("AUTH_DEVICE_SECRET"),
-  adminRouteSecret: () => requireEnv("ADMIN_ROUTE_SECRET"),
-  cronSecret: () => requireEnv("CRON_SECRET"),
   isProduction: process.env.NODE_ENV === "production",
 };

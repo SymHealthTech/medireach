@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { env } from "@/lib/env";
+import { CLINIC_DB_NAME, env } from "@/lib/env";
 
 /**
  * MongoDB (Atlas) connection helper for the Next.js serverless runtime.
@@ -7,6 +7,10 @@ import { env } from "@/lib/env";
  * In dev and on Vercel, modules are re-evaluated across hot reloads / lambda
  * invocations. Caching the connection promise on `globalThis` prevents opening
  * a brand-new connection pool on every request (which exhausts Atlas limits).
+ *
+ * The database is chosen explicitly via `dbName` (not the URI path) so the
+ * portfolio app can share the cluster connection string with the parked clinic
+ * software without ever writing into the clinic's database.
  */
 
 interface MongooseCache {
@@ -28,9 +32,16 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
   if (cache.conn) return cache.conn;
 
   if (!cache.promise) {
+    const dbName = env.mongoDbName();
+    if (dbName === CLINIC_DB_NAME) {
+      throw new Error(
+        `MONGODB_DB is set to "${CLINIC_DB_NAME}", the clinic software's database. ` +
+          `The portfolio app must use its own database.`,
+      );
+    }
     mongoose.set("strictQuery", true);
     cache.promise = mongoose.connect(env.mongoUri(), {
-      // Reasonable serverless defaults; Atlas Flex includes backups (spec §14).
+      dbName,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 10_000,
     });
