@@ -49,7 +49,30 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run bui
 | 2 | Public pages and SEO ✅ |
 | 3 | Admin auth and dashboard shell ✅ |
 | 4 | Dashboard features ✅ |
-| 5 | Template registry and visiting cards |
+| 5 | Template registry and visiting cards ✅ |
 | 6 | Homepage and marketing pages |
 | 7 | Doctor self-edit login |
 | 8 | QA and deploy checklist |
+
+## Adding a new design (template slots)
+
+Every doctor stores a portfolio design and a card design by **slot key**
+(`classic`, `t2` … `t5`). Slots `t2`–`t5` currently render Classic with a
+dev-only "TODO" banner, so adding a design never touches doctor data:
+
+1. **Build the component** in the slot's folder:
+   - portfolio page → `src/templates/portfolio/t2/index.tsx` (props:
+     `PortfolioTemplateProps`; place `seo.heading` and `seo.intro` in your
+     layout — metadata, JSON-LD, breadcrumbs, quick facts and nearby doctors
+     are added by the shared wrapper, so SEO stays identical across designs);
+   - visiting card → `src/templates/card/t2/index.tsx` (props:
+     `CardTemplateProps`; render both `variant="print"` (1004 × 650) and
+     `variant="phone"` (1080 × 1920)). Cards are also rendered to PNG/PDF by
+     Satori, so use **inline styles and flexbox only** (every element with
+     several children needs `display: "flex"`), `<img>` and inline `<svg>`,
+     and the `fonts` prop for font families.
+2. **Preview it** with the fictional sample doctors: Dashboard → Design
+   templates → Preview (`/admin/templates/preview/t2` or `?type=card`).
+3. **Mark the slot Ready** in Dashboard → Design templates (and upload a
+   preview thumbnail). Ready slots become selectable in the doctor form; pages
+   already using the slot switch from Classic on their next render.

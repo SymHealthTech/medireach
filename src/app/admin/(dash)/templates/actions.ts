@@ -5,6 +5,8 @@ import { ActionError, adminAction, auditCtx, requiredText } from "@/lib/admin/ac
 import { audit } from "@/lib/api/audit";
 import { TEMPLATE_KEYS, TEMPLATE_STATUSES, TEMPLATE_TYPES } from "@/lib/constants";
 import { TemplateSlot } from "@/models/TemplateSlot";
+import { revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/public/tags";
 
 const ADMINS = ["superadmin", "admin"] as const;
 const slotKey = z.object({ type: z.enum(TEMPLATE_TYPES), key: z.enum(TEMPLATE_KEYS) });
@@ -32,6 +34,8 @@ export const updateTemplateSlotAction = adminAction(
     slot.status = status;
     slot.previewImage = previewImage ?? undefined;
     await slot.save();
+    // Pages using this slot switch between it and Classic.
+    revalidateTag(CACHE_TAGS.templates);
     await audit(auditCtx(admin), "template.update", { entity: "TemplateSlot", entityId: slot._id, diff: { before, after: { name, status } } });
     return { ok: true };
   },

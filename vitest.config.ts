@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
  * (our data-access + auth helpers) can be unit-tested outside the RSC runtime.
  */
 export default defineConfig({
+  // tsconfig uses jsx: "preserve" for Next; tests compile JSX themselves.
+  esbuild: { jsx: "automatic" },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

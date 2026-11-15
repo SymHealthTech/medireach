@@ -4,7 +4,6 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { connectToDatabase } from "@/lib/db";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { TemplateSlot } from "@/models/TemplateSlot";
-import { portfolioTemplates } from "@/templates/registry";
 import { TemplateSlotCard, type SlotView } from "./TemplateSlotCard";
 
 export const metadata: Metadata = { title: "Design templates" };
@@ -29,8 +28,8 @@ export default async function TemplatesPage() {
         isDefault: s.isDefault,
         ...(s.previewImage?.url ? { preview: { publicId: s.previewImage.publicId, url: s.previewImage.url } } : {}),
         doctorsUsing: (type === "portfolio" ? portfolioUse : cardUse).find((u) => u._id === s.key)?.n ?? 0,
-        // Portfolio previews render the real template with a sample doctor; card previews arrive with the card designs.
-        ...(type === "portfolio" && portfolioTemplates[s.key] ? { previewHref: `/admin/templates/preview/${s.key}` } : {}),
+        // Previews render the real template (Classic until a slot is designed) with a fictional sample doctor.
+        previewHref: `/admin/templates/preview/${s.key}${type === "card" ? "?type=card" : ""}`,
       }));
 
   return (

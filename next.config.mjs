@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["mongoose", "bcryptjs"],
+  // Card images read the brand fonts from disk; make sure they ship with these routes.
+  outputFileTracingIncludes: {
+    "/[city]/doctor/[slug]/card/[file]": ["./src/assets/fonts/**"],
+    "/[city]/doctor/[slug]/opengraph-image": ["./src/assets/fonts/**"],
+    "/admin/cards/[id]/[file]": ["./src/assets/fonts/**"],
+  },
   images: {
     loader: "custom",
     loaderFile: "./src/lib/image-loader.ts",

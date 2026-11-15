@@ -142,3 +142,44 @@ export interface PortfolioTemplateProps {
   doctor: PublicDoctor;
   seo: ProfileSeoSlots;
 }
+
+// ---------------------------------------------------------------------------
+// Visiting cards
+// ---------------------------------------------------------------------------
+
+export type CardVariant = "print" | "phone";
+
+/**
+ * Pixel sizes cards are designed at. Print is 85 × 55 mm at 300 dpi
+ * (1004 × 650); phone-share is 1080 × 1920.
+ */
+export const CARD_SIZE: Record<CardVariant, { width: number; height: number }> = {
+  print: { width: 1004, height: 650 },
+  phone: { width: 1080, height: 1920 },
+};
+
+/** QR code as an SVG path over a `size` × `size` module grid (quiet zone excluded). */
+export interface CardQr {
+  size: number;
+  path: string;
+  /** What the code opens (subdomain URL, else short link). */
+  url: string;
+}
+
+/**
+ * Card templates are written once and rendered two ways: as HTML (card page,
+ * dashboard) and as an image (PNG/PDF via Satori). So they may only use inline
+ * styles, flexbox (every multi-child element sets display:flex), <img> and
+ * inline <svg> — no classes or grid, and no CSS variables beyond `fonts`.
+ */
+export interface CardTemplateProps {
+  doctor: PublicDoctor;
+  variant: CardVariant;
+  qr: CardQr;
+  /** Font-family values: CSS variables in HTML, registered font names in images. */
+  fonts: { display: string; body: string };
+  /** Photo URL safe for both renderers (JPEG); undefined when there's no photo. */
+  photoUrl?: string;
+  /** Show the dev-only "not designed yet" banner (placeholder slots). */
+  devBanner?: string;
+}

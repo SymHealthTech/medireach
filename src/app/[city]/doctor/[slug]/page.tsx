@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/public/ProfileView";
 import { getCityDoctorCards, getPublishedDoctor, getPublishedRoutes } from "@/lib/public/data";
+import { getReadyTemplates } from "@/lib/public/templates";
 import { primaryClinic, profileDescription, profileTitle } from "@/lib/seo/profile";
 import { SLUG_RE } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
@@ -70,5 +71,5 @@ export default async function DoctorProfilePage({ params }: { params: Promise<Pa
           .slice(0, 6)
       : [];
 
-  return <ProfileView doctor={d} nearby={nearby} />;
+  return <ProfileView doctor={d} nearby={nearby} ready={await getReadyTemplates()} />;
 }

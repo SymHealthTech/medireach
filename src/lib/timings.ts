@@ -84,6 +84,34 @@ export function weekSummary(timings: DayTimings[]): string {
     .join(" · ");
 }
 
+/**
+ * Compact summary of open days only, grouping days that share the same hours:
+ * "Mon–Sat · 10 am – 1 pm, 6 pm – 9 pm" or "Mon, Wed, Fri · 5 pm – 8:30 pm".
+ * Returns "" when closed all week; groups joined with " | ".
+ */
+export function openDaysSummary(timings: DayTimings[]): string {
+  const byHours = new Map<string, number[]>();
+  for (const day of WEEK_ORDER) {
+    const slots = slotsForDay(timings, day);
+    if (slots.length === 0) continue;
+    const text = formatSlots(slots);
+    byHours.set(text, [...(byHours.get(text) ?? []), day]);
+  }
+  const position = (d: number) => WEEK_ORDER.indexOf(d as (typeof WEEK_ORDER)[number]);
+  const dayLabel = (days: number[]) => {
+    const runs: number[][] = [];
+    for (const d of days) {
+      const last = runs.at(-1);
+      if (last && position(d) === position(last.at(-1)!) + 1) last.push(d);
+      else runs.push([d]);
+    }
+    return runs
+      .map((r) => (r.length >= 3 ? `${DAY_SHORT[r[0]!]}–${DAY_SHORT[r.at(-1)!]}` : r.map((d) => DAY_SHORT[d]).join(", ")))
+      .join(", ");
+  };
+  return [...byHours.entries()].map(([hours, days]) => `${dayLabel(days)} · ${hours}`).join(" | ");
+}
+
 /** schema.org OpeningHoursSpecification, grouping days that share a slot. */
 export function openingHoursSpecification(timings: DayTimings[]) {
   const bySlot = new Map<string, number[]>();

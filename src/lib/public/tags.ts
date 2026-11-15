@@ -4,4 +4,6 @@ export const CACHE_TAGS = {
   doctors: "doctors",
   /** Cities, areas, specialties, degrees, councils. */
   masters: "masters",
+  /** Template slot statuses (which designs are ready). */
+  templates: "templates",
 } as const;

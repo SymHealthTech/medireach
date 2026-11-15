@@ -13,6 +13,9 @@ import { getSettings } from "@/lib/settings";
 import { fillShareTemplate } from "@/lib/share-message";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
 import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
+import { CardView } from "@/components/cards/CardView";
+import { loadDoctorForCard } from "@/lib/cards/admin";
+import { getReadyTemplates } from "@/lib/public/templates";
 import { CardTools } from "./CardTools";
 
 export const metadata: Metadata = { title: "Visiting cards" };
@@ -41,6 +44,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
       .lean(),
   ]);
 
+  const ready = await getReadyTemplates();
   const cards = await Promise.all(
     docs.map(async (d) => {
       const name = d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`;
@@ -56,7 +60,9 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
         ? await QRCode.toString(shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0E3B3C", light: "#FFFFFF" } })
         : undefined;
       const published = d.status === "published" && d.slug && d.citySlug;
+      const publicDoctor = await loadDoctorForCard(String(d._id));
       return {
+        publicDoctor,
         id: String(d._id),
         name,
         status: d.status,
@@ -72,32 +78,44 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       <p className="max-w-2xl text-muted-foreground">
-        QR codes point to the doctor&apos;s website address (or short link). Printable and phone-share card designs arrive with the card
-        templates; QR, links, contact file and the WhatsApp message work now.
+        Each doctor&apos;s card in their chosen design. The QR opens their website address (or short link). Download the PDF for the
+        printer, or the phone PNG to share on WhatsApp.
       </p>
       <ListToolbar placeholder="Search doctors…" />
       {cards.length === 0 ? (
         <EmptyState icon={IdCard} title="No cards yet" description="A card is created automatically for every doctor." />
       ) : (
-        <ul className="grid gap-3 md:grid-cols-2">
+        <ul className="grid gap-4 lg:grid-cols-2">
           {cards.map((c) => (
-            <li key={c.id} className="flex gap-4 rounded-xl border border-line bg-card p-4 shadow-soft">
-              <div className="size-28 shrink-0 overflow-hidden rounded-lg border border-line bg-white p-1">
-                {c.qrSvg ? (
-                  <div className="size-full [&>svg]:size-full" dangerouslySetInnerHTML={{ __html: c.qrSvg }} />
-                ) : (
-                  <p className="p-2 text-center text-xs text-muted-foreground">Set name and clinic to get a link</p>
-                )}
+            <li key={c.id} className="space-y-3 rounded-xl border border-line bg-card p-4 shadow-soft">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate font-semibold text-ink">{c.name}</p>
+                <StatusBadge status={c.status} />
               </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="truncate font-semibold text-ink">{c.name}</p>
-                  <StatusBadge status={c.status} />
+              {c.publicDoctor && c.shareUrl ? (
+                <CardView doctor={c.publicDoctor} variant="print" ready={ready} />
+              ) : (
+                <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">Add the name and a clinic to generate the card.</p>
+              )}
+              {c.shareUrl && <p className="break-all text-xs text-muted-foreground">QR opens {c.shareUrl}</p>}
+              {c.shareUrl && (
+                <div className="flex flex-wrap gap-2">
+                  <a className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${c.id}/print.pdf?download=1`}>
+                    PDF (print)
+                  </a>
+                  <a className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${c.id}/print.png?download=1`}>
+                    PNG (print)
+                  </a>
+                  <a className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${c.id}/phone.png?download=1`}>
+                    PNG (phone)
+                  </a>
+                  <a className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-ink hover:underline" href={`/admin/cards/${c.id}/phone.png`} target="_blank" rel="noopener">
+                    View phone card
+                  </a>
                 </div>
-                {c.shareUrl && <p className="break-all text-xs text-muted-foreground">{c.shareUrl}</p>}
-                {c.shareUrl && c.qrSvg && <CardTools qrSvg={c.qrSvg} fileBase={c.fileBase} shareUrl={c.shareUrl} message={c.message} vcfUrl={c.vcfUrl} />}
-                {c.status !== "published" && <p className="text-xs text-marigold">Not published yet — the link won&apos;t work until it is.</p>}
-              </div>
+              )}
+              {c.shareUrl && c.qrSvg && <CardTools qrSvg={c.qrSvg} fileBase={c.fileBase} shareUrl={c.shareUrl} message={c.message} vcfUrl={c.vcfUrl} />}
+              {c.status !== "published" && <p className="text-xs text-marigold">Not published yet — the QR link won&apos;t open until it is.</p>}
             </li>
           ))}
         </ul>

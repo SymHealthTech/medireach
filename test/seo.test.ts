@@ -9,7 +9,7 @@ import {
   truncate,
 } from "@/lib/seo/profile";
 import { sanitizeBioHtml, bioText } from "@/lib/sanitize";
-import { formatSlots, isOpenAt, nowInIndia, openingHoursSpecification, weekSummary } from "@/lib/timings";
+import { formatSlots, isOpenAt, nowInIndia, openDaysSummary, openingHoursSpecification, weekSummary } from "@/lib/timings";
 import { doctorVcard } from "@/lib/vcard";
 import type { PublicDoctor } from "@/templates/types";
 
@@ -161,6 +161,14 @@ describe("timings", () => {
     expect(formatSlots(t[0]!.slots)).toBe("10 am – 1:30 pm, 6 pm – 9 pm");
     expect(formatSlots([])).toBe("Closed");
   });
+  it("summarises open days for cards", () => {
+    expect(openDaysSummary(t)).toBe("Mon, Tue · 10 am – 1:30 pm, 6 pm – 9 pm");
+    const sixDays = [1, 2, 3, 4, 5, 6].map((day) => ({ day, slots: [{ open: "10:00", close: "13:00" }] }));
+    expect(openDaysSummary(sixDays)).toBe("Mon–Sat · 10 am – 1 pm");
+    expect(openDaysSummary([1, 3, 5].map((day) => ({ day, slots: [{ open: "17:00", close: "20:30" }] })))).toBe("Mon, Wed, Fri · 5 pm – 8:30 pm");
+    expect(openDaysSummary([])).toBe("");
+  });
+
   it("summarises the week", () => {
     expect(weekSummary(t)).toBe("Mon–Tue: 10 am – 1:30 pm, 6 pm – 9 pm · Wed–Sun: Closed");
   });

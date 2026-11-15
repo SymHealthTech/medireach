@@ -11,7 +11,7 @@ import {
   quickFacts,
 } from "@/lib/seo/profile";
 import { absUrl } from "@/lib/site";
-import { resolvePortfolioTemplate } from "@/templates/registry";
+import { resolvePortfolioTemplate, type ReadyTemplates } from "@/templates/registry";
 import type { DoctorCardData, PublicDoctor } from "@/templates/types";
 
 /**
@@ -20,8 +20,17 @@ import type { DoctorCardData, PublicDoctor } from "@/templates/types";
  * rendered here, identically for every template. Used by the public profile
  * page and the admin preview.
  */
-export function ProfileView({ doctor: d, nearby }: { doctor: PublicDoctor; nearby: DoctorCardData[] }) {
-  const Template = resolvePortfolioTemplate(d.portfolioTemplateId);
+export function ProfileView({
+  doctor: d,
+  nearby,
+  ready,
+}: {
+  doctor: PublicDoctor;
+  nearby: DoctorCardData[];
+  /** Ready design slots; omit to render the doctor's chosen slot regardless (previews). */
+  ready?: ReadyTemplates;
+}) {
+  const Template = resolvePortfolioTemplate(d.portfolioTemplateId, ready);
   const clinic = primaryClinic(d);
   const facts = quickFacts(d);
   const subheading = profileSubheading(d);
@@ -82,7 +91,10 @@ export function ProfileView({ doctor: d, nearby }: { doctor: PublicDoctor; nearb
           <a href={absUrl("/")} className="underline underline-offset-2">
             MediReach
           </a>
-          .
+          .{" "}
+          <a href={`${d.url}/card`} className="underline underline-offset-2">
+            Visiting card
+          </a>
         </p>
       </PublicFooter>
       {/* Room for the sticky contact bar on mobile. */}
