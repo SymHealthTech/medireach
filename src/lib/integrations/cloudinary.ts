@@ -3,15 +3,13 @@ import { v2 as cloudinary } from "cloudinary";
 import { requireEnv } from "@/lib/env";
 
 /**
- * Cloudinary integration (spec §14, §15.3). Two hard rules:
- *  1. Uploads are SIGNED (server mints a signature) — never an unsigned upload
- *     preset, which anyone could abuse to upload arbitrary content.
- *  2. Stored assets use `type: "authenticated"` and are retrieved only via
- *     short-lived SIGNED URLs — never a plain public link, since these are
- *     real patient lab/imaging documents and doctor verification certificates.
+ * Cloudinary for portfolio images (doctor photos, gallery, award photos,
+ * template previews). These are PUBLIC by design — they appear on public
+ * pages and in Google — but uploads are still SIGNED by the server, so only a
+ * signed-in admin can upload, only into our folders, and only images.
  *
- * We persist only the Cloudinary `public_id`; signed URLs are generated on
- * demand and never stored long-lived (spec §13 Visit note).
+ * Never upload patient photos or before/after images (NMC); the dashboard
+ * says so next to every upload control.
  */
 
 let configured = false;
@@ -26,63 +24,44 @@ function configure() {
   configured = true;
 }
 
+export const UPLOAD_PURPOSES = ["doctor-photo", "gallery", "award", "template-preview"] as const;
+export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
+
+const ALLOWED_FORMATS = "jpg,jpeg,png,webp,heic";
+
 export interface SignedUploadParams {
   signature: string;
   timestamp: number;
   apiKey: string;
   cloudName: string;
   folder: string;
-  type: "authenticated";
+  allowedFormats: string;
 }
 
 /**
- * Mint params for a direct, signed client→Cloudinary upload. The signature
- * covers exactly the params the client must echo back, so the upload can't be
- * tampered to a different folder/type.
+ * Params for a direct browser → Cloudinary upload. The signature covers the
+ * folder, timestamp and allowed formats, so the client can't change them.
  */
-export function createSignedUpload(folder: string): SignedUploadParams {
+export function createSignedUpload(purpose: UploadPurpose): SignedUploadParams {
   configure();
   const timestamp = Math.floor(Date.now() / 1000);
-  const apiKey = requireEnv("CLOUDINARY_API_KEY");
-  const cloudName = requireEnv("CLOUDINARY_CLOUD_NAME");
-
+  const folder = `medireach-portfolio/${purpose}`;
   const signature = cloudinary.utils.api_sign_request(
-    { folder, timestamp, type: "authenticated" },
+    { folder, timestamp, allowed_formats: ALLOWED_FORMATS },
     requireEnv("CLOUDINARY_API_SECRET"),
   );
-
-  return { signature, timestamp, apiKey, cloudName, folder, type: "authenticated" };
+  return {
+    signature,
+    timestamp,
+    apiKey: requireEnv("CLOUDINARY_API_KEY"),
+    cloudName: requireEnv("CLOUDINARY_CLOUD_NAME"),
+    folder,
+    allowedFormats: ALLOWED_FORMATS,
+  };
 }
 
-/**
- * Generate a short-lived signed delivery URL for an authenticated asset.
- *
- * `maxWidth` (optional) bakes an auto-format, auto-quality, width-limited
- * transformation INTO the signed URL — the correct way to right-size an
- * authenticated image (a signature covers the exact URL, so the transform must
- * be signed with it, not appended client-side). Omit it to deliver the original
- * (e.g. scanned reports the doctor zooms into).
- */
-export function signedAssetUrl(
-  publicId: string,
-  expiresInSeconds = 300,
-  maxWidth?: number,
-): string {
+/** Delete an image we no longer reference (best effort). */
+export async function deleteImage(publicId: string): Promise<void> {
   configure();
-  return cloudinary.url(publicId, {
-    type: "authenticated",
-    sign_url: true,
-    secure: true,
-    expires_at: Math.floor(Date.now() / 1000) + expiresInSeconds,
-    resource_type: "image",
-    ...(maxWidth
-      ? { transformation: [{ width: maxWidth, crop: "limit", quality: "auto", fetch_format: "auto" }] }
-      : {}),
-  });
-}
-
-/** Permanently delete an asset. */
-export async function deleteAsset(publicId: string): Promise<void> {
-  configure();
-  await cloudinary.uploader.destroy(publicId, { type: "authenticated", resource_type: "image" });
+  await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
 }
