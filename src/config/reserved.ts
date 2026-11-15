@@ -1,0 +1,72 @@
+/**
+ * Reserved URL segments and subdomains. Every city / specialty / area slug and
+ * every doctor subdomain is validated against these so public routes never
+ * collide (see MEDIREACH_BUILD_PROMPT.md, Phase 2 "Routes").
+ */
+
+/** Top-level segments that can never be a city slug (or a doctor short slug). */
+export const RESERVED_SLUGS = [
+  "admin",
+  "api",
+  "login",
+  "logout",
+  "account",
+  "pricing",
+  "hospitals",
+  "terms",
+  "privacy",
+  "contact",
+  "sitemap",
+  "sitemap.xml",
+  "robots",
+  "robots.txt",
+  "favicon.ico",
+  "icon",
+  "apple-icon",
+  "opengraph-image",
+  "manifest",
+  "_next",
+  "static",
+  "assets",
+  "public",
+  "about",
+  "help",
+  "support",
+  "blog",
+  "search",
+  "card",
+] as const;
+
+/**
+ * Second-level segments under `/[city]/…` that are fixed routes, so a
+ * specialty slug may never take them (`/[city]/[specialty]` vs
+ * `/[city]/area/…` and `/[city]/doctor/…`).
+ */
+export const RESERVED_CITY_SUBPATHS = ["area", "doctor", "doctors", "specialty", "specialties"] as const;
+
+export const RESERVED_SUBDOMAINS = [
+  "www",
+  "app",
+  "admin",
+  "api",
+  "mail",
+  "email",
+  "blog",
+  "cdn",
+  "static",
+  "assets",
+  "help",
+  "support",
+  "status",
+  "dev",
+  "staging",
+  "test",
+  "m",
+  "ftp",
+  "ns1",
+  "ns2",
+  "medireach",
+] as const;
+
+/** Prefix that marks a top-level doctor short slug (`/dr-amit-shah`). */
+export const DOCTOR_SHORT_SLUG_PREFIX = "dr-";
