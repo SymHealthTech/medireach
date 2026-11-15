@@ -21,10 +21,13 @@ export function ListToolbar({
   placeholder = "Search…",
   filters = [],
   sorts,
+  search = true,
 }: {
   placeholder?: string;
   filters?: FilterDef[];
   sorts?: { value: string; label: string }[];
+  /** Hide the text search when a list is filter-only. */
+  search?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,7 +55,7 @@ export function ListToolbar({
 
   return (
     <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-      <label className="relative flex-1">
+      {search && <label className="relative flex-1">
         <span className="sr-only">Search</span>
         {pending ? (
           <Loader2 className="absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -65,7 +68,7 @@ export function ListToolbar({
           placeholder={placeholder}
           className="h-11 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
         />
-      </label>
+      </label>}
       {(filters.length > 0 || sorts) && (
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0">
           {filters.map((f) => (
