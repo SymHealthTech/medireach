@@ -155,6 +155,28 @@ describe("account (self-edit) schema", () => {
     expect(paths).toEqual(expect.arrayContaining(["mobile", "clinics.0.pincode", "clinics.0.timings.0.slots.0"]));
   });
 
+  it("accepts the Beyond medicine photo and story, and scans their text", () => {
+    const photo = { publicId: "p", url: "https://res.cloudinary.com/x/image/upload/p.jpg", caption: "100% fit at 40" };
+    const input = accountSchema.parse({
+      mobile: "",
+      whatsapp: "",
+      clinics: [clinic],
+      interestsStory: { title: "My first marathon", body: "Training for 100% of the year.\n\nThen race day." },
+      interestsPhoto: photo,
+    });
+    expect(input.interestsStory?.title).toBe("My first marathon");
+    const issues = scanFields(accountTextFields(input)).map((i) => i.field);
+    expect(issues).toEqual(expect.arrayContaining(["interestsStory.body", "interestsPhoto.caption"]));
+    // A story needs a title once it has text.
+    const untitled = accountSchema.safeParse({ mobile: "", whatsapp: "", clinics: [clinic], interestsStory: { title: "", body: "Some text" } });
+    expect(untitled.success ? [] : untitled.error.issues.map((i) => i.path.join("."))).toContain("interestsStory.title");
+    // Leaving the fields out keeps what's saved; null removes the photo; outside images are refused.
+    expect(accountSchema.parse({ mobile: "", whatsapp: "", clinics: [clinic] }).interestsStory).toBeUndefined();
+    expect(accountSchema.parse({ mobile: "", whatsapp: "", clinics: [clinic], interestsPhoto: null }).interestsPhoto).toBeNull();
+    const foreign = accountSchema.safeParse({ mobile: "", whatsapp: "", clinics: [clinic], interestsPhoto: { ...photo, url: "https://evil.example/p.jpg" } });
+    expect(foreign.success).toBe(false);
+  });
+
   it("scans the appointment note and address for NMC phrases", () => {
     const input = accountSchema.parse({ mobile: "", whatsapp: "", clinics: [{ ...clinic, appointmentNote: "Best clinic in Kothrud", addressLine2: "Near guaranteed cure centre" }] });
     const issues = scanFields(accountTextFields(input));

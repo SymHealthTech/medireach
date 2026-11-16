@@ -34,7 +34,7 @@ export default async function TemplatePreviewPage({
   const switchHref = `?${new URLSearchParams({ ...(isCard ? { type: "card" } : {}), doctor: other }).toString()}`;
 
   const banner = (
-    <div className="sticky top-0 z-40 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-marigold px-4 py-2 text-sm font-semibold text-[#0e3b3c]">
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 bg-marigold px-4 py-2 text-sm font-semibold text-[#0e3b3c]">
       <span className="inline-flex items-center gap-2">
         <Eye className="size-4" /> {isCard ? "Card" : "Page"} design preview: {key} · fictional sample doctor
       </span>

@@ -5,7 +5,7 @@ import type { PublicDoctor } from "@/templates/types";
 // Literal class names so Tailwind can see them.
 const GRID_COLS: Record<number, string> = { 1: "grid-cols-1", 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4" };
 
-interface Action {
+export interface Action {
   label: string;
   /** Shorter label for the 4-up mobile bar. */
   short?: string;
@@ -15,7 +15,7 @@ interface Action {
   download?: boolean;
 }
 
-function actionsFor(d: PublicDoctor): Action[] {
+export function actionsFor(d: PublicDoctor): Action[] {
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const actions: Action[] = [];
@@ -45,7 +45,7 @@ export function ContactActions({ doctor, variant }: { doctor: PublicDoctor; vari
       aria-label="Contact"
       className={cn(
         variant === "sticky"
-          ? "fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur sm:hidden"
+          ? "fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur transition-transform duration-300 group-data-[hidden]/show:translate-y-full sm:hidden"
           : "hidden sm:block",
       )}
     >

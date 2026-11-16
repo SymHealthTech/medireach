@@ -82,6 +82,27 @@ describe("doctor editor (server)", () => {
     expect(docToForm(doc.toObject()).approval).toEqual({ doctorApprovedAt: "2026-11-15", approvedVia: "whatsapp" });
   });
 
+  it("saves and removes the Beyond medicine photo and story", async () => {
+    const f = emptyDoctorForm();
+    f.firstName = "Neha";
+    f.lastName = "Joshi";
+    const doc = new DoctorProfile({ firstName: "x", lastName: "x" });
+    await save(doc, "basics", f);
+    f.interests = ["Trekking"];
+    f.interestsPhoto = { publicId: "p", url: "https://res.cloudinary.com/x/image/upload/p.jpg", caption: "Sinhagad at sunrise" };
+    f.interestsStory = { title: "Sinhagad every Sunday", body: "It started with one climb.\n\nNow it's a habit." };
+    await save(doc, "about", f);
+
+    const back = docToForm((await DoctorProfile.findById(doc._id))!.toObject());
+    expect(back.interestsPhoto).toMatchObject({ url: f.interestsPhoto.url, caption: "Sinhagad at sunrise" });
+    expect(back.interestsStory).toEqual(f.interestsStory);
+
+    await save(doc, "about", { ...f, interestsPhoto: undefined, interestsStory: { title: "", body: "" } });
+    const cleared = (await DoctorProfile.findById(doc._id).lean())!;
+    expect(cleared.interestsPhoto).toBeUndefined();
+    expect(cleared.interestsStory).toBeUndefined();
+  });
+
   it("de-duplicates slugs and short slugs", async () => {
     const x = await ids();
     const f = emptyDoctorForm();
@@ -148,8 +169,12 @@ describe("doctor editor (server)", () => {
   it("scans every free-text field for NMC phrases", () => {
     const f = { ...emptyDoctorForm(), shortBio: "The best doctor", interests: ["Guaranteed fun"] };
     f.gallery = [{ publicId: "p", url: "https://res.cloudinary.com/x/p.jpg", caption: "100% results" }];
+    f.interestsStory = { title: "Running", body: "The best race of my life" };
+    f.interestsPhoto = { publicId: "q", url: "https://res.cloudinary.com/x/q.jpg", caption: "The best runner" };
     const issues = scanFields(complianceTextFields(f), DEFAULT_BANNED_PHRASES).map((i) => i.field);
-    expect(issues).toEqual(expect.arrayContaining(["shortBio", "interests.0", "gallery.0.caption"]));
+    expect(issues).toEqual(
+      expect.arrayContaining(["shortBio", "interests.0", "gallery.0.caption", "interestsStory.body", "interestsPhoto.caption"]),
+    );
     expect(publishBlockers(f).map((b) => b.field)).toContain("registration");
   });
 });

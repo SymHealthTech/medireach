@@ -112,6 +112,10 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
     memberships: d.memberships.map((m) => ({ name: m.name, since: m.since ?? undefined })),
     publications: d.publications.map((p) => ({ title: p.title, journal: s(p.journal), year: p.year ?? undefined, url: s(p.url) })),
     interests: [...d.interests],
+    ...(d.interestsPhoto
+      ? { interestsPhoto: { publicId: d.interestsPhoto.publicId, url: d.interestsPhoto.url, alt: d.interestsPhoto.alt, caption: s(d.interestsPhoto.caption) } }
+      : {}),
+    interestsStory: { title: s(d.interestsStory?.title), body: s(d.interestsStory?.body) },
     gallery: d.gallery.map((g) => ({ publicId: g.publicId, url: g.url, alt: g.alt, caption: g.caption ?? "" })),
     seo: {
       titleOverride: s(d.seo?.titleOverride),
@@ -247,6 +251,9 @@ export async function applySection<K extends StepKey>(
         memberships: d.memberships,
         publications: d.publications,
         interests: d.interests,
+        // undefined unsets the photo when it was removed.
+        interestsPhoto: d.interestsPhoto,
+        interestsStory: d.interestsStory.title ? d.interestsStory : undefined,
         gallery: d.gallery,
       });
       break;

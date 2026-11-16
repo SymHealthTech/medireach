@@ -81,7 +81,7 @@ export const SAMPLE_DOCTORS: SampleDoctorInput[] = [
           ]),
           { day: 0, slots: [] },
         ],
-        appointmentNote: "Walk-ins welcome. Call ahead for home visits.",
+        appointmentNote: "Walk-ins welcome.",
         fee: 500,
         showFee: true,
       },

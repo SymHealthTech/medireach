@@ -9,6 +9,7 @@ import { Degree } from "@/models/Degree";
 import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
 import { Specialty } from "@/models/Specialty";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
+import { storyParagraphs } from "@/lib/format";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { CACHE_TAGS } from "@/lib/public/tags";
 import type { DoctorCardData, PublicClinic, PublicDoctor, PublicNamed } from "@/templates/types";
@@ -259,6 +260,18 @@ export function toPublicDoctor(d: LeanDoctor, masters: Masters): PublicDoctor {
       ...(p.url ? { url: p.url } : {}),
     })),
     interests: d.interests,
+    ...(d.interestsPhoto
+      ? {
+          interestsPhoto: {
+            url: d.interestsPhoto.url,
+            alt: d.interestsPhoto.alt || `${fullName} – ${d.interestsPhoto.caption || "beyond medicine"}`,
+            ...(d.interestsPhoto.caption ? { caption: d.interestsPhoto.caption } : {}),
+          },
+        }
+      : {}),
+    ...(d.interestsStory?.title
+      ? { interestsStory: { title: d.interestsStory.title, paragraphs: storyParagraphs(d.interestsStory.body) } }
+      : {}),
     gallery,
 
     portfolioTemplateId: d.portfolioTemplateId,

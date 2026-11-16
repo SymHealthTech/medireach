@@ -44,6 +44,17 @@ export default async function AccountPage() {
       fee: c.fee ?? undefined,
       showFee: Boolean(c.showFee),
     })),
+    interestsStory: { title: d.interestsStory?.title ?? "", body: d.interestsStory?.body ?? "" },
+    ...(d.interestsPhoto
+      ? {
+          interestsPhoto: {
+            publicId: d.interestsPhoto.publicId,
+            url: d.interestsPhoto.url,
+            ...(d.interestsPhoto.alt ? { alt: d.interestsPhoto.alt } : {}),
+            caption: d.interestsPhoto.caption ?? "",
+          },
+        }
+      : {}),
   };
 
   const live = d.status === "published" && d.citySlug && d.slug;
@@ -56,7 +67,7 @@ export default async function AccountPage() {
     <main className="mx-auto max-w-3xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
       <div>
         <h1 className="font-display text-3xl font-semibold text-ink sm:text-4xl">Hello, {me.name}</h1>
-        <p className="mt-2 text-body">Keep your timings, phone numbers, address and fees up to date. Changes show on your page straight away.</p>
+        <p className="mt-2 text-body">Keep your timings, phone numbers, address, fees and Beyond medicine story up to date. Changes show on your page straight away.</p>
       </div>
 
       <section className="space-y-4 rounded-xl border border-line bg-surface p-4 shadow-soft sm:p-6">

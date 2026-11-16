@@ -98,6 +98,10 @@ export interface PublicDoctor {
   memberships: { name: string; since?: number }[];
   publications: { title: string; journal?: string; year?: number; url?: string }[];
   interests: string[];
+  /** Photo for "Beyond medicine" (hobbies). Not editable in the dashboard yet. */
+  interestsPhoto?: PublicImage;
+  /** Personal story beside that photo (achievements, hobbies), split into paragraphs. */
+  interestsStory?: { title: string; paragraphs: string[] };
   /** Gallery photos plus award photos (max 5 in total). */
   gallery: PublicImage[];
 
@@ -136,6 +140,8 @@ export interface ProfileSeoSlots {
   heading: ReactNode;
   /** The auto-generated factual intro sentence. */
   intro: ReactNode;
+  /** "Other doctors nearby" (internal links); templates place it before their footer. */
+  nearby?: ReactNode;
 }
 
 export interface PortfolioTemplateProps {

@@ -136,6 +136,10 @@ export interface DoctorProfileDoc {
   memberships: { name: string; since?: number }[];
   publications: { title: string; journal?: string; year?: number; url?: string }[];
   interests: string[];
+  /** One photo for "Beyond medicine" (hobbies). Doesn't count toward the gallery limit. */
+  interestsPhoto?: ImageRef & { caption?: string };
+  /** A personal story for "Beyond medicine" (achievements, hobbies). Plain text; blank lines split paragraphs. */
+  interestsStory?: { title: string; body?: string };
   gallery: (ImageRef & { caption: string })[];
 
   // Templates
@@ -341,6 +345,22 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
       default: [],
     },
     interests: { type: [String], default: [] },
+    interestsPhoto: {
+      type: new Schema(
+        {
+          publicId: { type: String, required: true },
+          url: { type: String, required: true },
+          alt: { type: String, trim: true },
+          caption: { type: String, trim: true },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+    interestsStory: {
+      type: new Schema({ title: { type: String, required: true, trim: true }, body: { type: String, trim: true } }, { _id: false }),
+      default: undefined,
+    },
     gallery: {
       type: [
         new Schema(

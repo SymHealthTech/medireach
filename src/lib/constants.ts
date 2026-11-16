@@ -69,6 +69,8 @@ export const GST_MODES = ["inclusive", "exclusive", "none"] as const;
 // --- Limits ---
 export const LIMITS = {
   shortBio: 160,
+  /** "Beyond medicine" story body (plain text). */
+  storyBody: 6000,
   galleryMax: 5,
   subdomainMin: 3,
   subdomainMax: 40,

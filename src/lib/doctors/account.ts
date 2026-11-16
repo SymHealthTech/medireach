@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { sectionSchemas, type ClinicForm } from "@/lib/doctors/form";
+import { sectionSchemas, type ClinicForm, type DoctorForm } from "@/lib/doctors/form";
 
 /**
  * Doctor self-edit (/account). Doctors may change ONLY: clinic timings, clinic
  * phone, address lines and pincode, maps link, fee + show/hide, appointment
- * note, and their mobile / WhatsApp. Everything else (name, registration,
+ * note, their mobile / WhatsApp, and the "Beyond medicine" photo and story. Everything else (name, registration,
  * specialties, clinic names, area/city that decide the page address…) goes
  * through a "Request a change" update request.
  *
@@ -21,7 +21,11 @@ export interface AccountForm {
   mobile: string;
   whatsapp: string;
   clinics: AccountClinic[];
+  interestsStory: DoctorForm["interestsStory"];
+  interestsPhoto?: DoctorForm["interestsPhoto"];
 }
+
+const about = sectionSchemas.about.innerType().shape;
 
 /** The fields a doctor can edit, per clinic. */
 export const ACCOUNT_CLINIC_FIELDS = {
@@ -41,6 +45,9 @@ export const accountSchema = z.object({
   mobile: sectionSchemas.contact.shape.mobile,
   whatsapp: sectionSchemas.contact.shape.whatsapp,
   clinics: z.array(sectionSchemas.clinics.shape.clinics.element.pick(ACCOUNT_CLINIC_FIELDS)).max(6),
+  // Optional so a save that leaves them out never wipes them; null removes the photo.
+  interestsStory: about.interestsStory.optional(),
+  interestsPhoto: about.interestsPhoto.nullable(),
 });
 
 export type AccountInput = z.output<typeof accountSchema>;
@@ -53,6 +60,11 @@ export function accountTextFields(input: AccountInput): Record<string, string> {
     out[`clinics.${i}.addressLine1`] = c.addressLine1;
     out[`clinics.${i}.addressLine2`] = c.addressLine2 ?? "";
   });
+  if (input.interestsStory) {
+    out["interestsStory.title"] = input.interestsStory.title ?? "";
+    out["interestsStory.body"] = input.interestsStory.body ?? "";
+  }
+  if (input.interestsPhoto) out["interestsPhoto.caption"] = input.interestsPhoto.caption ?? "";
   return out;
 }
 

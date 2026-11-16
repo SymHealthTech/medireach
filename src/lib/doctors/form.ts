@@ -107,6 +107,9 @@ export interface DoctorForm {
   memberships: { name: string; since: number | undefined }[];
   publications: { title: string; journal: string; year: number | undefined; url: string }[];
   interests: string[];
+  interestsPhoto?: ImageValue & { caption: string };
+  /** "Beyond medicine" story; both empty = none. */
+  interestsStory: { title: string; body: string };
   gallery: (ImageValue & { caption: string })[];
 
   // 7 SEO
@@ -193,6 +196,7 @@ export function emptyDoctorForm(): DoctorForm {
     memberships: [],
     publications: [],
     interests: [],
+    interestsStory: { title: "", body: "" },
     gallery: [],
     seo: { titleOverride: "", descriptionOverride: "", noindex: false },
     plan: "gp",
@@ -317,6 +321,9 @@ export function complianceTextFields(f: DoctorForm): Record<string, string> {
   f.awards.forEach((a, i) => (out[`awards.${i}.title`] = `${a.title} ${a.awardingBody}`));
   f.memberships.forEach((m, i) => (out[`memberships.${i}.name`] = m.name));
   f.publications.forEach((p, i) => (out[`publications.${i}.title`] = p.title));
+  if (f.interestsPhoto) out["interestsPhoto.caption"] = f.interestsPhoto.caption;
+  out["interestsStory.title"] = f.interestsStory.title;
+  out["interestsStory.body"] = f.interestsStory.body;
   f.interests.forEach((x, i) => (out[`interests.${i}`] = x));
   f.gallery.forEach((g, i) => (out[`gallery.${i}.caption`] = g.caption));
   return out;
@@ -359,6 +366,10 @@ const image = z.object({
   url: z.string().url().max(1000).refine((u) => u.startsWith("https://res.cloudinary.com/"), "Images must be uploaded."),
   alt: t(200).optional(),
 });
+/** "Beyond medicine" story: a title is needed once there's any text. */
+const interestsStory = z
+  .object({ title: t(150), body: t(LIMITS.storyBody) })
+  .refine((st) => !st.body || Boolean(st.title), { message: "Add a title for the story.", path: ["title"] });
 const mobile = z
   .string()
   .trim()
@@ -506,6 +517,8 @@ export const sectionSchemas = {
         .array(z.object({ title: z.string().trim().min(1).max(250), journal: t(150), year, url }))
         .max(20),
       interests: chips(12, 60),
+      interestsPhoto: image.extend({ caption: t(120) }).optional(),
+      interestsStory,
       gallery: z.array(image.extend({ caption: z.string().trim().max(120) })).max(LIMITS.galleryMax),
     })
     .refine((a) => a.gallery.length + a.awards.filter((x) => x.photo).length <= LIMITS.galleryMax, {
@@ -583,7 +596,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "contact":
       return { mobile: f.mobile, whatsapp: f.whatsapp, email: f.email, links: f.links, ownerEmail: f.ownerEmail };
     case "about":
-      return { shortBio: f.shortBio, fullBio: f.fullBio, awards: f.awards, memberships: f.memberships, publications: f.publications, interests: f.interests, gallery: f.gallery };
+      return { shortBio: f.shortBio, fullBio: f.fullBio, awards: f.awards, memberships: f.memberships, publications: f.publications, interests: f.interests, interestsPhoto: f.interestsPhoto, interestsStory: f.interestsStory, gallery: f.gallery };
     case "seo":
       return { slug: f.slug, shortSlug: f.shortSlug, subdomain: f.subdomain, seo: f.seo };
     case "business":

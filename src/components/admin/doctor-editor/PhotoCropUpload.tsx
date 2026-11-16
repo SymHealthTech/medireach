@@ -6,7 +6,7 @@ import { Camera, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { uploadImage } from "@/lib/client/upload-image";
+import { uploadImage, type UploadSigner } from "@/lib/client/upload-image";
 import type { ImageValue } from "@/lib/doctors/form";
 
 const MIN_RECOMMENDED = 1200;
@@ -173,12 +173,18 @@ export function SimpleImageUpload({
   purpose,
   label = "Add photo",
   disabled,
+  sign,
+  onError = (message) => toast.error(message),
 }: {
   value?: ImageValue;
   onChange: (v: ImageValue | undefined) => void;
-  purpose: "award" | "template-preview" | "gallery";
+  purpose: "award" | "template-preview" | "gallery" | "interests";
   label?: string;
   disabled?: boolean;
+  /** Upload signer; defaults to the admin one. */
+  sign?: UploadSigner;
+  /** Where upload errors go (pages without a toaster pass their own). */
+  onError?: (message: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -187,10 +193,10 @@ export function SimpleImageUpload({
     setBusy(true);
     try {
       const blob = await downscale(file, 2400);
-      const up = await uploadImage(blob, purpose);
+      const up = await uploadImage(blob, purpose, sign);
       onChange({ publicId: up.publicId, url: up.url });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed.");
+      onError(e instanceof Error ? e.message : "Upload failed.");
     } finally {
       setBusy(false);
     }

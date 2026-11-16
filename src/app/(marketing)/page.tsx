@@ -10,8 +10,7 @@ import { Reveal } from "@/components/marketing/Reveal";
 import { Eyebrow, FaqList, PricingCards, SectionTitle } from "@/components/marketing/Sections";
 import { WhatsAppIcon, WhatsAppLink } from "@/components/marketing/WhatsAppLink";
 import { FAQ, FINAL_CTA, HERO, HOSPITALS, HOW_IT_WORKS, NMC, PRICING, PROBLEMS, SAMPLES, WHAT_YOU_GET, WHATSAPP_TEXT } from "@/content/marketing";
-import { SAMPLE_PORTRAITS } from "@/fixtures/sample-portraits";
-import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
+import { SAMPLE_PHOTOS, SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { displayPhone, getPublicSiteData, rupees, whatsappHref } from "@/lib/public/site-data";
 import { absUrl } from "@/lib/site";
 
@@ -247,8 +246,8 @@ export default async function HomePage() {
             {HOSPITAL_SAMPLES.map((d, i) => (
               <li key={d.name} className={`rounded-2xl bg-surface p-5 shadow-soft ${i % 2 ? "sm:translate-y-6" : ""}`}>
                 <div className="flex items-center justify-between gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- inline SVG illustration */}
-                  <img src={SAMPLE_PORTRAITS.hospital[i % SAMPLE_PORTRAITS.hospital.length]} alt="" className="size-12 rounded-full object-cover ring-2 ring-surface shadow-soft" />
+                  {/* eslint-disable-next-line @next/next/no-img-element -- small static thumbnail */}
+                  <img src={SAMPLE_PHOTOS.hospital[i % SAMPLE_PHOTOS.hospital.length]} alt="" className="size-12 rounded-full object-cover ring-2 ring-surface shadow-soft" />
                   <span className="rounded-full bg-marigold/25 px-2 py-0.5 text-[11px] font-semibold text-ink">{SAMPLES.badge}</span>
                 </div>
                 <p className="mt-4 font-display text-lg font-semibold text-ink">{d.name}</p>

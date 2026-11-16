@@ -55,3 +55,11 @@ export function startOfMonthIST(monthsAgo = 0, now: Date = new Date()): Date {
 export function monthLabel(d: Date): string {
   return d.toLocaleDateString("en-IN", { month: "short", timeZone: TZ });
 }
+
+/** Plain-text story → paragraphs: blank lines split paragraphs, single line breaks become spaces. */
+export function storyParagraphs(text: string | null | undefined): string[] {
+  return (text ?? "")
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
+    .filter(Boolean);
+}

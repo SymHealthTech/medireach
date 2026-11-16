@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { GalleryEditor } from "../GalleryEditor";
 import { SimpleImageUpload } from "../PhotoCropUpload";
 import { RichTextEditor } from "../RichTextEditor";
+import { InterestsPhotoFields, InterestsStoryFields } from "../BeyondMedicineFields";
 import { AddButton, Group, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
 const INTERESTS = ["Marathon runner", "Classical music", "Cycling", "Photography", "Yoga", "Trekking", "Reading", "Cricket"];
@@ -120,10 +121,17 @@ export function AboutStep({ form: f, set, err, readOnly }: StepProps) {
         </div>
       </Group>
 
-      <Group title="Beyond medicine" description="Hobbies and interests, shown as chips.">
+      <Group title="Beyond medicine" description="Hobbies and interests, plus a photo and a personal story (achievements, events) shown side by side.">
         <Field label="Interests" htmlFor="interests" error={f.interests.map((_, i) => err(`interests.${i}`)).find(Boolean)}>
           <ChipInput disabled={readOnly} id="interests" value={f.interests} onChange={(interests) => set({ interests })} suggestions={INTERESTS} max={12} placeholder="e.g. Marathon runner" />
         </Field>
+        <InterestsPhotoFields
+          value={f.interestsPhoto}
+          disabled={readOnly}
+          error={err("interestsPhoto.caption")}
+          onChange={(interestsPhoto) => set({ interestsPhoto })}
+        />
+        <InterestsStoryFields value={f.interestsStory} disabled={readOnly} err={err} onChange={(interestsStory) => set({ interestsStory })} />
       </Group>
 
       <Group title="Gallery" description={`Up to ${LIMITS.galleryMax} photos in total, including award photos. Drag to reorder.`}>

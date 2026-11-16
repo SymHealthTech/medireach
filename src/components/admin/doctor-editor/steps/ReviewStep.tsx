@@ -66,6 +66,8 @@ function fieldLabel(path: string): string {
     memberships: "Membership",
     publications: "Publication",
     interests: "Interest",
+    interestsPhoto: "Beyond medicine photo",
+    interestsStory: "Beyond medicine story",
     gallery: "Photo caption",
   };
   return `${names[head!] ?? head}${n}${leaf && head !== "gallery" ? ` (${leaf.replace(/([A-Z])/g, " $1").toLowerCase()})` : ""}`;

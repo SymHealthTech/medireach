@@ -5,21 +5,43 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import {
   DAY_NAMES,
-  formatSlots,
+  formatTime,
   hasAnyTimings,
   isOpenAt,
   nowInIndia,
   slotsForDay,
   WEEK_ORDER,
   type DayTimings,
+  type Slot,
 } from "@/lib/timings";
+
+/** Each slot on its own, with clear space between morning and evening sessions. */
+function Slots({ slots, className }: { slots: Slot[]; className?: string }) {
+  if (slots.length === 0) return <span className={className}>Closed</span>;
+  return (
+    <span className={cn("inline-flex flex-wrap gap-x-5 gap-y-0.5", className)}>
+      {slots.map((s) => (
+        <span key={`${s.open}-${s.close}`} className="whitespace-nowrap">
+          {formatTime(s.open)} – {formatTime(s.close)}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 /**
  * Clinic timings with today's row highlighted and an Open now / Closed badge.
  * The full week is server-rendered (crawlable); "today" and "open now" are
  * computed on the client in India time, since the page itself is static.
  */
-export function ClinicHours({ timings }: { timings: DayTimings[] }) {
+export function ClinicHours({
+  timings,
+  expandable = true,
+}: {
+  timings: DayTimings[];
+  /** false = always show the full week (no "See all timings" toggle). */
+  expandable?: boolean;
+}) {
   const [now, setNow] = useState<{ day: number; minutes: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
 
@@ -51,25 +73,27 @@ export function ClinicHours({ timings }: { timings: DayTimings[] }) {
               {open ? "Open now" : "Closed now"}
             </span>
             <span className="text-sm text-body">
-              Today: {formatSlots(slotsForDay(timings, now.day))}
+              Today: <Slots slots={slotsForDay(timings, now.day)} />
             </span>
           </>
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="mt-2 inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-ink"
-      >
-        {expanded ? "Hide weekly timings" : "See all timings"}
-        <ChevronDown aria-hidden className={cn("h-4 w-4 transition", expanded && "rotate-180")} strokeWidth={1.75} />
-      </button>
+      {expandable && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="mt-2 inline-flex min-h-[44px] items-center gap-1 text-sm font-medium text-ink"
+        >
+          {expanded ? "Hide weekly timings" : "See all timings"}
+          <ChevronDown aria-hidden className={cn("h-4 w-4 transition", expanded && "rotate-180")} strokeWidth={1.75} />
+        </button>
+      )}
 
       {/* Always in the HTML for crawlers; visually collapsed until expanded.
           sr-only goes on a wrapper: a table ignores the 1px box and overflows narrow screens. */}
-      <div className={cn(!expanded && "sr-only")}>
+      <div className={cn(expandable && !expanded && "sr-only")}>
         <table className="mt-1 w-full text-sm">
           <caption className="sr-only">Weekly timings</caption>
           <tbody>
@@ -80,7 +104,9 @@ export function ClinicHours({ timings }: { timings: DayTimings[] }) {
                   <th scope="row" className="py-2 pr-4 text-left font-medium">
                     {DAY_NAMES[day]}
                   </th>
-                  <td className="py-2 text-right">{formatSlots(slotsForDay(timings, day))}</td>
+                  <td className="py-2 text-right">
+                    <Slots slots={slotsForDay(timings, day)} className="justify-end" />
+                  </td>
                 </tr>
               );
             })}

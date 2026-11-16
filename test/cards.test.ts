@@ -4,6 +4,7 @@ import { PDFDocument } from "pdf-lib";
 import { qrForUrl } from "@/lib/cards/qr";
 import { cloudinaryJpg } from "@/lib/cards/photo";
 import { renderCardPdf, renderCardPng } from "@/lib/cards/render";
+import { SAMPLE_PORTRAITS } from "@/fixtures/sample-portraits";
 import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { registry, resolveCardTemplate, resolvePortfolioTemplate } from "@/templates/registry";
 
@@ -44,7 +45,8 @@ describe("template registry", () => {
 });
 
 describe("card rendering", () => {
-  const doctor = SAMPLE_PUBLIC_DOCTORS.consultant;
+  // Satori can't fetch the relative stock photo, so use the inline illustrated portrait.
+  const doctor = { ...SAMPLE_PUBLIC_DOCTORS.consultant, photo: { url: SAMPLE_PORTRAITS.consultant, alt: "" } };
 
   it("renders the print card at 300 dpi and the phone card at 1080 × 1920", async () => {
     expect(pngSize(await renderCardPng(doctor, "print"))).toEqual({ width: 1004, height: 650 });

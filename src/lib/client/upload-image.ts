@@ -1,7 +1,11 @@
 "use client";
 
 import { signUploadAction } from "@/app/admin/(dash)/upload-actions";
-import type { UploadPurpose } from "@/lib/integrations/cloudinary";
+import type { ActionResult } from "@/lib/admin/action";
+import type { SignedUploadParams, UploadPurpose } from "@/lib/integrations/cloudinary";
+
+/** Server action that mints signed upload params (admin by default; doctors use their own). */
+export type UploadSigner = (input: { purpose: UploadPurpose }) => Promise<ActionResult<SignedUploadParams>>;
 
 export interface UploadedImage {
   publicId: string;
@@ -16,11 +20,11 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
  * Upload an image straight from the browser to Cloudinary with server-signed
  * params (the file never passes through our server).
  */
-export async function uploadImage(file: Blob, purpose: UploadPurpose): Promise<UploadedImage> {
+export async function uploadImage(file: Blob, purpose: UploadPurpose, sign: UploadSigner = signUploadAction): Promise<UploadedImage> {
   if (!file.type.startsWith("image/")) throw new Error("Please choose an image file.");
   if (file.size > MAX_UPLOAD_BYTES) throw new Error("Image is too large (max 10 MB).");
 
-  const signed = await signUploadAction({ purpose });
+  const signed = await sign({ purpose });
   if (!signed.ok) throw new Error(signed.error);
   const p = signed.data;
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import { z } from "zod";
 import { ActionError, fieldErrorsOf, type ActionResult } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hitRateLimit } from "@/lib/api/rate-limit";
@@ -9,6 +10,7 @@ import { scanFields } from "@/lib/compliance/scan";
 import { accountSchema, accountTextFields, changeRequestSchema } from "@/lib/doctors/account";
 import { publishProblems, scanDoctor } from "@/lib/doctors/server";
 import { optionalEnv } from "@/lib/env";
+import { createSignedUpload, type SignedUploadParams } from "@/lib/integrations/cloudinary";
 import { sendEmail } from "@/lib/integrations/email";
 import { revalidateDoctorPages } from "@/lib/public/revalidate";
 import { getSettings } from "@/lib/settings";
@@ -34,9 +36,11 @@ async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
-const snapshot = (d: Pick<DoctorProfileDoc, "mobile" | "whatsapp" | "clinics">) => ({
+const snapshot = (d: Pick<DoctorProfileDoc, "mobile" | "whatsapp" | "clinics" | "interestsPhoto" | "interestsStory">) => ({
   mobile: d.mobile ?? null,
   whatsapp: d.whatsapp ?? null,
+  interestsPhoto: d.interestsPhoto ?? null,
+  interestsStory: d.interestsStory ?? null,
   ...Object.fromEntries(
     d.clinics.map((c) => [
       `clinic:${String(c._id)}`,
@@ -83,6 +87,8 @@ export async function saveAccountAction(raw: unknown): Promise<ActionResult<{ sa
     const before = snapshot(doc.toObject());
     doc.mobile = input.mobile;
     doc.whatsapp = input.whatsapp;
+    if (input.interestsStory) doc.set({ interestsStory: input.interestsStory.title ? input.interestsStory : undefined });
+    if (input.interestsPhoto !== undefined) doc.set({ interestsPhoto: input.interestsPhoto ?? undefined });
     for (const c of input.clinics) {
       const clinic = doc.clinics.find((x) => String(x._id) === c.key)!;
       // Subdocument setters track each change for save().
@@ -113,6 +119,21 @@ export async function saveAccountAction(raw: unknown): Promise<ActionResult<{ sa
     }
     if (doc.status === "published") revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
     return { savedAt: new Date().toISOString() };
+  });
+}
+
+// Doctors may only upload the "Beyond medicine" photo from their account.
+const doctorUploadSchema = z.object({ purpose: z.literal("interests") });
+
+/** Signed Cloudinary upload params for the signed-in doctor. */
+export async function signDoctorUploadAction(raw: unknown): Promise<ActionResult<SignedUploadParams>> {
+  return run(async () => {
+    const me = await requireDoctor();
+    const parsed = doctorUploadSchema.safeParse(raw);
+    if (!parsed.success) throw new ActionError("This upload isn't allowed.");
+    const limit = await hitRateLimit(`doctor-upload:${me.id}`, 20, 60 * 60_000);
+    if (!limit.allowed) throw new ActionError("Too many uploads. Please try again in an hour.");
+    return createSignedUpload(parsed.data.purpose);
   });
 }
 

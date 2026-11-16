@@ -1,8 +1,8 @@
 /**
- * Illustrated portraits for the FICTIONAL sample doctors (homepage mockups,
- * sample pages, template previews). Drawn, not photographed, so nobody can
- * mistake a sample for a real doctor. Returned as base64 SVG data URIs: they
- * work in plain <img>, next/image (data: URIs skip the loader) and Satori.
+ * Illustrated portraits for the FICTIONAL sample doctors. Pages now use the
+ * stock photos in SAMPLE_PHOTOS (fixtures/sample-public.ts); these remain for
+ * card-image tests. Returned as base64 SVG data URIs: they work in plain
+ * <img>, next/image (data: URIs skip the loader) and Satori.
  */
 
 export interface PortraitStyle {

@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { saveAccountAction } from "@/app/account/actions";
+import { saveAccountAction, signDoctorUploadAction } from "@/app/account/actions";
+import { InterestsPhotoFields, InterestsStoryFields } from "@/components/admin/doctor-editor/BeyondMedicineFields";
 import { TimingEditor } from "@/components/admin/doctor-editor/TimingEditor";
 import { Field, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { Input } from "@/components/ui/input";
@@ -12,8 +13,8 @@ const card = "space-y-4 rounded-xl border border-line bg-surface p-4 shadow-soft
 const grid2 = "grid gap-4 sm:grid-cols-2";
 
 /**
- * The doctor's own editor: timings, phones, address, fees and appointment
- * note. Everything is saved together with one button; errors show beside the
+ * The doctor's own editor: timings, phones, address, fees, appointment note,
+ * and the "Beyond medicine" photo and story. Everything is saved together with one button; errors show beside the
  * field. Saving updates the live page within seconds.
  */
 export function AccountEditor({ initial }: { initial: AccountForm }) {
@@ -41,6 +42,8 @@ export function AccountEditor({ initial }: { initial: AccountForm }) {
         mobile: form.mobile,
         whatsapp: form.whatsapp,
         clinics: form.clinics.map(({ name: _n, area: _a, ...c }) => c),
+        interestsStory: form.interestsStory,
+        interestsPhoto: form.interestsPhoto ?? null,
       });
       if (res.ok) {
         setErrors({});
@@ -135,6 +138,29 @@ export function AccountEditor({ initial }: { initial: AccountForm }) {
           <p className="text-xs text-muted-foreground">To change the clinic name or area, use “Request a change” below.</p>
         </section>
       ))}
+
+      <section className={card} aria-labelledby="blog-heading">
+        <div>
+          <h2 id="blog-heading" className="font-display text-xl font-semibold text-ink">
+            Beyond medicine
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            A photo and a story about something you love or achieved outside medicine. They appear side by side on your page.
+          </p>
+        </div>
+
+        <InterestsPhotoFields
+          value={form.interestsPhoto}
+          error={err("interestsPhoto.caption")}
+          sign={signDoctorUploadAction}
+          onUploadError={(text) => setMessage({ ok: false, text })}
+          onChange={(interestsPhoto) => update({ interestsPhoto })}
+        />
+
+        <div className="border-t border-line pt-4">
+          <InterestsStoryFields value={form.interestsStory} err={err} onChange={(interestsStory) => update({ interestsStory })} />
+        </div>
+      </section>
 
       <div className="sticky bottom-0 z-10 -mx-4 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
