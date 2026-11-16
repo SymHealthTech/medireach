@@ -51,7 +51,7 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run bui
 | 4 | Dashboard features ✅ |
 | 5 | Template registry and visiting cards ✅ |
 | 6 | Homepage and marketing pages ✅ |
-| 7 | Doctor self-edit login |
+| 7 | Doctor self-edit login ✅ |
 | 8 | QA and deploy checklist |
 
 ## Marketing copy and leads
@@ -62,6 +62,22 @@ number and Founding Doctor spots come from **Settings** (cached 10 minutes,
 refreshed on save). Form leads are emailed to `LEAD_NOTIFY_EMAIL` (or
 `ADMIN_EMAIL`); WhatsApp button taps are counted as `whatsapp_click` leads
 with no personal data and are hidden from the Leads list by default.
+
+## Doctor login (self-edit)
+
+Doctors log in at `/login` with an emailed link (NextAuth Email provider,
+MongoDB adapter, 30-day session; no passwords, no SMS). Turn it on in the
+doctor editor's Contact step ("Enable self-edit login" + login email), then
+use "Send welcome / login email". Only a doctor's `ownerEmail` can log in;
+other emails get the same "check your email" screen. Links work once, expire
+in 24 hours, and are limited to 3 per email per 15 minutes. The emailed link
+opens `/login/verify`, which needs one tap, so mail scanners can't use it up.
+
+At `/account` a doctor can change only clinic timings, clinic phone, address,
+maps link, fees (and whether to show them), the appointment note and their
+mobile / WhatsApp. Changes are NMC-scanned, audit-logged and go live at once.
+Anything else goes through "Request a change", which creates an update
+request (first one free).
 
 ## Adding a new design (template slots)
 

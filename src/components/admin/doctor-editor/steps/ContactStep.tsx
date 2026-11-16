@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { Mail } from "lucide-react";
+import { toast } from "sonner";
+import { sendDoctorLoginEmailAction } from "@/app/admin/(dash)/doctors/actions";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, SwitchField } from "@/components/admin/form/fields";
 import { Group, grid2, type StepProps } from "../shared";
@@ -15,9 +19,17 @@ const LINKS: { key: keyof StepProps["form"]["links"]; label: string; placeholder
   { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/…" },
 ];
 
-export function ContactStep({ form: f, set, err, readOnly }: StepProps) {
+export function ContactStep({ form: f, set, err, readOnly, doctorId }: StepProps) {
   const sameWhatsapp = !f.whatsapp || f.whatsapp === f.mobile;
   const [selfEdit, setSelfEdit] = useState(Boolean(f.ownerEmail));
+  const [sending, startSending] = useTransition();
+  const sendLogin = () =>
+    startSending(async () => {
+      if (!doctorId) return;
+      const res = await sendDoctorLoginEmailAction({ id: doctorId });
+      if (res.ok) toast.success(`Login email sent to ${res.data.to}`);
+      else toast.error(res.error);
+    });
   return (
     <div className="space-y-5">
       <Group title="Phone and email" description="The mobile powers the Call button; WhatsApp powers the WhatsApp button.">
@@ -55,7 +67,7 @@ export function ContactStep({ form: f, set, err, readOnly }: StepProps) {
       <Group title="Doctor login" description="Lets the doctor sign in with an emailed link to update timings, phone, address and fees.">
         <SwitchField
           label="Enable self-edit login"
-          description="Needs the doctor's email. Login emails are sent from the doctor's account page (coming with doctor login)."
+          description="Needs the doctor's email. They log in at medireach.co.in/login with a link sent to that email; no password or SMS."
           checked={selfEdit}
           disabled={readOnly}
           onCheckedChange={(on) => {
@@ -67,6 +79,14 @@ export function ContactStep({ form: f, set, err, readOnly }: StepProps) {
           <Field label="Login email" htmlFor="ownerEmail" required error={err("ownerEmail")}>
             <Input id="ownerEmail" type="email" inputMode="email" value={f.ownerEmail} disabled={readOnly} onChange={(e) => set({ ownerEmail: e.target.value })} />
           </Field>
+        )}
+        {selfEdit && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button type="button" variant="outline" onClick={sendLogin} disabled={sending || !doctorId || !f.ownerEmail}>
+              <Mail /> {sending ? "Sending…" : "Send welcome / login email"}
+            </Button>
+            <p className="text-xs text-muted-foreground">Sends a one-time login link to the saved login email (valid 24 hours).</p>
+          </div>
         )}
       </Group>
     </div>

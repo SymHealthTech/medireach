@@ -15,6 +15,7 @@ import { subdomainError } from "@/lib/slug";
  *    /admin, /account, /api, /login are never served on subdomains.
  * 2. www → apex.
  * 3. /admin/** session gate (defense-in-depth; server actions re-check roles).
+ * 4. /account/** needs a doctor session cookie (the page re-verifies it).
  *
  * `app.medireach.co.in` belongs to the separate clinic-software project, so it
  * never reaches this app.
@@ -113,6 +114,10 @@ export async function middleware(req: NextRequest) {
 
   const path = req.nextUrl.pathname;
   if (path === "/admin" || path.startsWith("/admin/")) return handleAdmin(req);
+  if (path === "/account" || path.startsWith("/account/")) {
+    const hasSession = req.cookies.has("next-auth.session-token") || req.cookies.has("__Secure-next-auth.session-token");
+    if (!hasSession) return NextResponse.redirect(new URL("/login", req.url));
+  }
   return NextResponse.next();
 }
 

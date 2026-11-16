@@ -4,37 +4,19 @@ import { z } from "zod";
 import { ActionError, adminAction, auditCtx, objectId, requiredText } from "@/lib/admin/action";
 import { audit } from "@/lib/api/audit";
 import { UPDATE_REQUEST_STATUSES } from "@/lib/constants";
-import { getSettings } from "@/lib/settings";
-import { DoctorProfile } from "@/models/DoctorProfile";
+import { createUpdateRequest } from "@/lib/update-requests/create";
 import { UpdateRequest } from "@/models/UpdateRequest";
 
 const ADMINS = ["superadmin", "admin"] as const;
 
-/**
- * New update request. The doctor's first one is free (price 0, marked paid)
- * when `freeUpdateUsed` is false; the doctor is then marked as having used it.
- */
+/** New update request; the doctor's first one is free (see createUpdateRequest). */
 export const createUpdateRequestAction = adminAction(
   { schema: z.object({ doctorId: objectId, description: requiredText(2000, "Description") }), roles: ADMINS },
   async ({ doctorId, description }, admin) => {
-    // Claim the free update atomically, so two quick requests can't both be free.
-    const claimed = await DoctorProfile.findOneAndUpdate(
-      { _id: doctorId, freeUpdateUsed: { $ne: true } },
-      { $set: { freeUpdateUsed: true } },
-      { projection: { _id: 1 } },
-    ).lean();
-    if (!claimed && !(await DoctorProfile.exists({ _id: doctorId }))) throw new ActionError("Doctor not found.");
-    const free = Boolean(claimed);
-    const settings = await getSettings();
-    const req = await UpdateRequest.create({
-      doctorId,
-      description,
-      status: "new",
-      price: free ? 0 : settings.prices.update,
-      paid: free,
-    });
-    await audit(auditCtx(admin), "update_request.create", { entity: "UpdateRequest", entityId: req._id, diff: { doctorId, free } });
-    return { id: String(req._id), free };
+    const req = await createUpdateRequest(doctorId, description);
+    if (!req) throw new ActionError("Doctor not found.");
+    await audit(auditCtx(admin), "update_request.create", { entity: "UpdateRequest", entityId: req.id, diff: { doctorId, free: req.free } });
+    return { id: req.id, free: req.free };
   },
 );
 

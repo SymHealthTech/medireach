@@ -1,30 +1,22 @@
 import type { Metadata } from "next";
-import { PageIntro } from "@/components/marketing/PageIntro";
-import { WhatsAppLink } from "@/components/marketing/WhatsAppLink";
-import { getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
+import { redirect } from "next/navigation";
+import { DoctorLoginForm } from "@/components/account/DoctorLoginForm";
+import { getCurrentDoctor } from "@/lib/auth/doctor";
 
 export const metadata: Metadata = { title: { absolute: "Doctor login – MediReach" }, robots: { index: false, follow: false } };
 
-/** Placeholder until email-link login for doctors (Phase 7). */
-export default async function LoginPage() {
-  const site = await getPublicSiteData();
+const ERRORS: Record<string, string> = {
+  Verification: "That login link has expired or was already used. Request a new one below.",
+  AccessDenied: "We couldn't log you in with that link. Request a new one, or message us on WhatsApp.",
+};
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  if (await getCurrentDoctor()) redirect("/account");
+  const { error } = await searchParams;
+  const message = error ? (ERRORS[error] ?? "Something went wrong. Please request a new login link.") : undefined;
   return (
-    <main className="pb-24">
-      <PageIntro eyebrow="Doctors" title="Doctor login is coming soon">
-        <p>
-          Soon you&apos;ll be able to log in with your email to change timings, phone numbers and fees yourself. Until then, message us and
-          we&apos;ll update your page.
-        </p>
-      </PageIntro>
-      <div className="mx-auto max-w-3xl px-4 sm:px-6">
-        <WhatsAppLink
-          href={whatsappHref(site.whatsappNumber, "Hi, I'd like to update my MediReach page.")}
-          placement="login"
-          className="inline-flex min-h-12 items-center rounded-[10px] bg-ink px-6 font-semibold text-paper hover:bg-ink-700"
-        >
-          Message us on WhatsApp
-        </WhatsAppLink>
-      </div>
+    <main className="mx-auto max-w-md px-4 pb-24 pt-12 sm:pt-20">
+      <DoctorLoginForm linkError={message} />
     </main>
   );
 }
