@@ -150,7 +150,7 @@ export function PhotoCropUpload({
             className="w-full accent-[var(--ink)]"
           />
           {small && (
-            <p className="text-sm text-clay">This photo is smaller than 1200 px. It will work, but a larger one looks sharper on Google.</p>
+            <p className="text-sm text-clay-text">This photo is smaller than 1200 px. It will work, but a larger one looks sharper on Google.</p>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setSrc(null)} disabled={busy}>

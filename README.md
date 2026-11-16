@@ -37,6 +37,9 @@ MONGODB_DB=medireach_dev npm run seed:samples
 # → /pune/doctor/dr-aditi-sample-general-physician, http://sample-gp.localhost:3000
 ```
 
+Deploying (Vercel, domains, env vars, seeding, Search Console): see
+[`DEPLOY.md`](./DEPLOY.md).
+
 Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`,
 `npx tsx scripts/make-favicon.tsx` (regenerates `public/favicon.ico`).
 
@@ -52,7 +55,7 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run bui
 | 5 | Template registry and visiting cards ✅ |
 | 6 | Homepage and marketing pages ✅ |
 | 7 | Doctor self-edit login ✅ |
-| 8 | QA and deploy checklist |
+| 8 | QA and deploy checklist ✅ (see [`DEPLOY.md`](./DEPLOY.md)) |
 
 ## Marketing copy and leads
 
@@ -78,6 +81,13 @@ maps link, fees (and whether to show them), the appointment note and their
 mobile / WhatsApp. Changes are NMC-scanned, audit-logged and go live at once.
 Anything else goes through "Request a change", which creates an update
 request (first one free).
+
+## Colours and contrast
+
+Brand colours live as tokens in `src/app/globals.css`. For small text use
+`text-leaf-text` and `text-clay-text`, not `text-leaf` / `text-clay`: the
+brand green and clay are fine for icons, borders and fills but are below the
+4.5:1 WCAG AA contrast for body-size text. Both have dark-mode values.
 
 ## Adding a new design (template slots)
 

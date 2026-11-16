@@ -144,7 +144,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     <div className="space-y-8">
       {denied && (
         <div role="alert" className="flex items-start gap-3 rounded-xl border border-clay/30 bg-clay/10 p-4 text-sm">
-          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-clay" strokeWidth={1.75} />
+          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-clay-text" strokeWidth={1.75} />
           <p>That section isn&apos;t available for your role. Ask a super admin if you need access.</p>
         </div>
       )}

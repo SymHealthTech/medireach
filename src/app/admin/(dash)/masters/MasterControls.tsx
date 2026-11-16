@@ -125,7 +125,7 @@ export function DeleteMasterButton({ kind, id, name }: { kind: MasterKind; id: s
   return (
     <ConfirmButton
       trigger={
-        <Button size="icon-sm" variant="ghost" className="text-clay" aria-label={`Delete ${name}`}>
+        <Button size="icon-sm" variant="ghost" className="text-clay-text" aria-label={`Delete ${name}`}>
           <Trash2 />
         </Button>
       }

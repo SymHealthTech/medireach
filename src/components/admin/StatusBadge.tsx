@@ -5,8 +5,8 @@ import { cn } from "@/lib/cn";
 const STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
   review: { label: "In review", className: "bg-marigold/20 text-ink dark:text-marigold" },
-  published: { label: "Published", className: "bg-leaf/15 text-leaf" },
-  suspended: { label: "Suspended", className: "bg-clay/15 text-clay" },
+  published: { label: "Published", className: "bg-leaf/15 text-leaf-text" },
+  suspended: { label: "Suspended", className: "bg-clay/15 text-clay-text" },
 };
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
@@ -34,9 +34,9 @@ export function FoundingBadge({ number }: { number?: number }) {
 export function Pill({ tone = "muted", children }: { tone?: "muted" | "leaf" | "marigold" | "clay" | "ink"; children: React.ReactNode }) {
   const tones = {
     muted: "bg-muted text-muted-foreground",
-    leaf: "bg-leaf/15 text-leaf",
+    leaf: "bg-leaf/15 text-leaf-text",
     marigold: "bg-marigold/20 text-ink dark:text-marigold",
-    clay: "bg-clay/15 text-clay",
+    clay: "bg-clay/15 text-clay-text",
     ink: "bg-ink text-on-ink",
   } as const;
   return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", tones[tone])}>{children}</span>;

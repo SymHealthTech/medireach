@@ -153,7 +153,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <StatusBadge status={r.status} />
-                        {r.issues > 0 && <span className="text-xs font-semibold text-clay">{r.issues} issue{r.issues > 1 ? "s" : ""}</span>}
+                        {r.issues > 0 && <span className="text-xs font-semibold text-clay-text">{r.issues} issue{r.issues > 1 ? "s" : ""}</span>}
                       </div>
                     </td>
                     <td className="hidden px-4 py-2 uppercase text-muted-foreground lg:table-cell">{r.plan}</td>

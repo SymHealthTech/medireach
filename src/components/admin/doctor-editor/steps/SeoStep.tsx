@@ -39,7 +39,7 @@ function Availability({ state }: { state: ReturnType<typeof useAvailability> }) 
     <span
       className={cn(
         "inline-flex items-center gap-1 text-xs font-medium",
-        state.status === "ok" ? "text-leaf" : state.status === "bad" ? "text-clay" : "text-muted-foreground",
+        state.status === "ok" ? "text-leaf-text" : state.status === "bad" ? "text-clay-text" : "text-muted-foreground",
       )}
     >
       {state.status === "checking" ? <Loader2 className="size-3.5 animate-spin" /> : state.status === "ok" ? <Check className="size-3.5" /> : <X className="size-3.5" />}

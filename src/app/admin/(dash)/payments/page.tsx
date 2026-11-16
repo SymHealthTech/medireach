@@ -129,7 +129,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
               {admin.role === "superadmin" && (
                 <ConfirmButton
                   trigger={
-                    <Button variant="ghost" size="icon-sm" aria-label="Delete payment" className="text-clay">
+                    <Button variant="ghost" size="icon-sm" aria-label="Delete payment" className="text-clay-text">
                       <Trash2 />
                     </Button>
                   }

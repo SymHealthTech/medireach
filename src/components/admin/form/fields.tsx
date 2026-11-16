@@ -32,11 +32,11 @@ export function Field({
     <div className={cn("space-y-1.5", className)}>
       <Label htmlFor={htmlFor} className="text-sm font-medium">
         {label}
-        {required && <span className="text-clay"> *</span>}
+        {required && <span className="text-clay-text"> *</span>}
       </Label>
       {children}
       {error ? (
-        <p className="text-sm text-clay" role="alert">
+        <p className="text-sm text-clay-text" role="alert">
           {error}
         </p>
       ) : help ? (

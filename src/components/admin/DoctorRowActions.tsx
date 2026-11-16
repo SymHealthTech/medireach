@@ -107,7 +107,7 @@ export function DoctorRowActions({ doctor, canPublish }: { doctor: DoctorRowInfo
               </DropdownMenuItem>
             )}
             {doctor.status !== "suspended" && (
-              <DropdownMenuItem className="text-clay" onSelect={() => run(() => suspendDoctorAction({ id: doctor.id }), "Suspended — page is offline")}>
+              <DropdownMenuItem className="text-clay-text" onSelect={() => run(() => suspendDoctorAction({ id: doctor.id }), "Suspended — page is offline")}>
                 <Ban /> Suspend
               </DropdownMenuItem>
             )}

@@ -51,12 +51,12 @@ export function LeadForm({
         <label className="space-y-1">
           <span className="text-sm font-medium text-body">Your name</span>
           <input name="name" defaultValue={v.name} required autoComplete="name" className={input} aria-invalid={err.name ? true : undefined} />
-          {err.name && <span className="text-sm text-clay">{err.name}</span>}
+          {err.name && <span className="text-sm text-clay-text">{err.name}</span>}
         </label>
         <label className="space-y-1">
           <span className="text-sm font-medium text-body">Mobile number</span>
           <input name="phone" defaultValue={v.phone} required type="tel" inputMode="tel" autoComplete="tel" className={input} aria-invalid={err.phone ? true : undefined} />
-          {err.phone && <span className="text-sm text-clay">{err.phone}</span>}
+          {err.phone && <span className="text-sm text-clay-text">{err.phone}</span>}
         </label>
         {!compact && (
           <>
@@ -78,7 +78,7 @@ export function LeadForm({
         </label>
       )}
       {state.error && (
-        <p role="alert" className="text-sm text-clay">
+        <p role="alert" className="text-sm text-clay-text">
           {state.error}
         </p>
       )}

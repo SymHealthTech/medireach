@@ -252,7 +252,7 @@ export function DoctorEditor({
               </>
             )}
             {save.status === "error" && (
-              <span className="inline-flex items-center gap-1 text-clay">
+              <span className="inline-flex items-center gap-1 text-clay-text">
                 <AlertCircle className="size-3.5" /> Not saved: {save.message}
               </span>
             )}

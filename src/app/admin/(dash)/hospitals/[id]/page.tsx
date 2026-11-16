@@ -65,7 +65,7 @@ export default async function HospitalDetailPage({ params }: { params: Promise<{
             {can.publish(admin.role) && (
               <ConfirmButton
                 trigger={
-                  <Button variant="outline" className="text-clay">
+                  <Button variant="outline" className="text-clay-text">
                     <Trash2 /> Delete
                   </Button>
                 }

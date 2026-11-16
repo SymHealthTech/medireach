@@ -195,7 +195,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
               <div className="space-y-2">
                 <p className="text-sm font-medium">Timings</p>
                 <TimingEditor idPrefix={p} value={c.timings} disabled={readOnly} onChange={(timings) => setClinic(i, { timings })} />
-                {err(`${p}.timings`) && <p className="text-sm text-clay">{err(`${p}.timings`)}</p>}
+                {err(`${p}.timings`) && <p className="text-sm text-clay-text">{err(`${p}.timings`)}</p>}
               </div>
 
               <Field label="Appointment note (optional)" htmlFor={`${p}.appointmentNote`} help="e.g. “By appointment”, “Walk-ins welcome”." error={err(`${p}.appointmentNote`)}>

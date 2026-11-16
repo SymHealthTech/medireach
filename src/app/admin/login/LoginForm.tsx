@@ -38,7 +38,7 @@ export function LoginForm({ next }: { next?: string }) {
         />
       </div>
       {state.error && (
-        <p role="alert" className="text-sm text-clay">
+        <p role="alert" className="text-sm text-clay-text">
           {state.error}
         </p>
       )}

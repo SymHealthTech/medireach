@@ -31,7 +31,7 @@ export function DoctorLoginForm({ linkError }: { linkError?: string }) {
           <button type="submit" disabled={pending} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] border border-ink px-6 font-semibold text-ink hover:bg-sage disabled:opacity-60">
             {pending && <Loader2 className="size-4 animate-spin" />} Resend link
           </button>
-          {resends > 0 && !pending && <p className="text-center text-sm text-leaf">Sent again.</p>}
+          {resends > 0 && !pending && <p className="text-center text-sm text-leaf-text">Sent again.</p>}
         </form>
         <button type="button" onClick={() => setEditing(true)} className="mt-4 min-h-11 w-full text-sm font-medium text-ink underline">
           Use a different email
@@ -68,7 +68,7 @@ export function DoctorLoginForm({ linkError }: { linkError?: string }) {
           />
         </label>
         {error && (
-          <p role="alert" className="text-sm text-clay">
+          <p role="alert" className="text-sm text-clay-text">
             {error}
           </p>
         )}

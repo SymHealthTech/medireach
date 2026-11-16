@@ -47,7 +47,7 @@ export function RepeatItem({
     <div className="space-y-3 rounded-lg border border-line bg-background p-3 sm:p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-ink">{title}</p>
-        <Button type="button" variant="ghost" size="sm" onClick={onRemove} disabled={disabled} className="text-clay">
+        <Button type="button" variant="ghost" size="sm" onClick={onRemove} disabled={disabled} className="text-clay-text">
           <Trash2 /> Remove
         </Button>
       </div>

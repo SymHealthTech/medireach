@@ -94,7 +94,7 @@ export function AccountEditor({ initial }: { initial: AccountForm }) {
               .filter(([k]) => k.startsWith(`clinics.${i}.timings`))
               .slice(0, 1)
               .map(([k, v]) => (
-                <p key={k} className="text-sm text-clay" role="alert">
+                <p key={k} className="text-sm text-clay-text" role="alert">
                   {v}
                 </p>
               ))}
@@ -146,7 +146,7 @@ export function AccountEditor({ initial }: { initial: AccountForm }) {
             {pending && <Loader2 className="size-4 animate-spin" />} Save changes
           </button>
           {message && (
-            <p role={message.ok ? "status" : "alert"} className={message.ok ? "flex items-center gap-1.5 text-sm text-leaf" : "text-sm text-clay"}>
+            <p role={message.ok ? "status" : "alert"} className={message.ok ? "flex items-center gap-1.5 text-sm text-leaf-text" : "text-sm text-clay-text"}>
               {message.ok && <CheckCircle2 className="size-4" />} {message.text}
             </p>
           )}

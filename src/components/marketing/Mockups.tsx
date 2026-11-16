@@ -68,7 +68,7 @@ export function MiniProfile({ doctor: d, className }: { doctor: PublicDoctor; cl
           </div>
           <p className="mt-1 text-[9.5px] text-muted-foreground">{clinic.fullAddress}</p>
           <p className="mt-1.5 flex items-center gap-1.5 text-[9.5px]">
-            <span className="inline-flex items-center gap-1 rounded-full bg-leaf/10 px-1.5 py-0.5 font-semibold text-leaf">
+            <span className="inline-flex items-center gap-1 rounded-full bg-leaf/10 px-1.5 py-0.5 font-semibold text-leaf-text">
               <span className="size-1 rounded-full bg-leaf" /> Open now
             </span>
             Mon: {mondayHours}

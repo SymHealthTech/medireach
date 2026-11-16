@@ -44,7 +44,7 @@ export function ClinicHours({ timings }: { timings: DayTimings[] }) {
             <span
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                open ? "bg-leaf/10 text-leaf" : "bg-line text-muted-foreground",
+                open ? "bg-leaf/10 text-leaf-text" : "bg-line text-body",
               )}
             >
               <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", open ? "bg-leaf" : "bg-muted-foreground")} />

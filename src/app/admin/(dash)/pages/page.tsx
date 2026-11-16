@@ -95,13 +95,13 @@ export default async function PortfolioPagesPage({ searchParams }: { searchParam
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                   {h.missing.length === 0 && h.issues === 0 ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-leaf">
+                    <span className="inline-flex items-center gap-1 font-medium text-leaf-text">
                       <CheckCircle2 className="size-4" /> SEO looks good
                     </span>
                   ) : (
                     <>
                       <AlertTriangle className="size-4 text-marigold" />
-                      {h.issues > 0 && <span className="rounded-full bg-clay/15 px-2 py-0.5 font-semibold text-clay">{h.issues} compliance issue{h.issues > 1 ? "s" : ""}</span>}
+                      {h.issues > 0 && <span className="rounded-full bg-clay/15 px-2 py-0.5 font-semibold text-clay-text">{h.issues} compliance issue{h.issues > 1 ? "s" : ""}</span>}
                       {h.missing.map((m) => (
                         <span key={m} className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
                           Missing {m.toLowerCase()}

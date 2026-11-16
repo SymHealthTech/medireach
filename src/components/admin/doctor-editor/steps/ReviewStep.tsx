@@ -40,7 +40,7 @@ function Highlighted({ text, phrases }: { text: string; phrases: string[] }) {
   matches.forEach((m, i) => {
     parts.push(text.slice(last, m.index));
     parts.push(
-      <mark key={i} className="bg-clay/10 text-clay underline decoration-clay decoration-wavy underline-offset-4">
+      <mark key={i} className="bg-clay/10 text-clay-text underline decoration-clay decoration-wavy underline-offset-4">
         {text.slice(m.index, m.index + m.length)}
       </mark>,
     );
@@ -80,7 +80,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
     <div className="space-y-5">
       <Group title="NMC compliance" description="Superlatives, guarantees, success rates and patient counts are not allowed.">
         {issueFields.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm font-medium text-leaf">
+          <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
             <ShieldCheck className="size-5" /> No banned phrases found.
           </p>
         ) : (
@@ -104,7 +104,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
 
       <Group title="Required to publish">
         {r.blockers.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm font-medium text-leaf">
+          <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
             <CheckCircle2 className="size-5" /> Everything required is filled in.
           </p>
         ) : (
@@ -112,7 +112,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
             {r.blockers.map((b) => (
               <li key={b.message} className="flex items-center justify-between gap-3 text-sm">
                 <span className="flex items-center gap-2">
-                  <AlertTriangle className="size-4 shrink-0 text-clay" /> {b.message}
+                  <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
                 </span>
                 <Button type="button" size="sm" variant="ghost" onClick={() => r.onGoTo("", b.field)}>
                   Go

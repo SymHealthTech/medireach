@@ -91,7 +91,7 @@ export default async function SeoPage() {
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold text-ink">Published pages missing recommended fields</h2>
         {needsWork.length === 0 ? (
-          <p className="text-sm text-leaf">Every published page has a photo, short bio, map location and timings.</p>
+          <p className="text-sm text-leaf-text">Every published page has a photo, short bio, map location and timings.</p>
         ) : (
           <ul className="divide-y divide-line rounded-xl border border-line bg-card shadow-soft">
             {needsWork.map(({ d, h }) => (
@@ -100,7 +100,7 @@ export default async function SeoPage() {
                   {d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`}
                 </Link>
                 <span className="flex flex-wrap gap-1.5 text-xs">
-                  {h.issues > 0 && <span className="rounded-full bg-clay/15 px-2 py-0.5 font-semibold text-clay">{h.issues} compliance</span>}
+                  {h.issues > 0 && <span className="rounded-full bg-clay/15 px-2 py-0.5 font-semibold text-clay-text">{h.issues} compliance</span>}
                   {h.missing.map((m) => (
                     <span key={m} className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
                       {m}

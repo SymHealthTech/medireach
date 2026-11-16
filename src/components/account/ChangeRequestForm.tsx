@@ -59,7 +59,7 @@ export function ChangeRequestForm({ priceLabel }: { priceLabel: string }) {
         aria-invalid={Boolean(error)}
       />
       {error && (
-        <p role="alert" className="text-sm text-clay">
+        <p role="alert" className="text-sm text-clay-text">
           {error}
         </p>
       )}

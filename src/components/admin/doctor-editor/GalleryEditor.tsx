@@ -52,7 +52,7 @@ function SortablePhoto({
           onClick={onRemove}
           disabled={disabled}
           aria-label={`Remove photo ${index + 1}`}
-          className="absolute right-1.5 top-1.5 flex size-9 items-center justify-center rounded-md bg-paper/90 text-clay"
+          className="absolute right-1.5 top-1.5 flex size-9 items-center justify-center rounded-md bg-paper/90 text-clay-text"
         >
           <Trash2 className="size-4" />
         </button>
@@ -66,7 +66,7 @@ function SortablePhoto({
         className="mt-2 h-10"
         aria-invalid={error ? true : undefined}
       />
-      {error && <p className="mt-1 text-xs text-clay">{error}</p>}
+      {error && <p className="mt-1 text-xs text-clay-text">{error}</p>}
     </li>
   );
 }

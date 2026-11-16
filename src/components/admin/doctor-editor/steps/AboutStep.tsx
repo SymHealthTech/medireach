@@ -23,7 +23,7 @@ export function AboutStep({ form: f, set, err, readOnly }: StepProps) {
         <Field
           label="Short bio"
           htmlFor="shortBio"
-          help={<span className={cn(bioLen > LIMITS.shortBio && "text-clay")}>{bioLen}/{LIMITS.shortBio} — also used as the Google description.</span>}
+          help={<span className={cn(bioLen > LIMITS.shortBio && "text-clay-text")}>{bioLen}/{LIMITS.shortBio} — also used as the Google description.</span>}
           error={err("shortBio")}
         >
           <Textarea
@@ -128,7 +128,7 @@ export function AboutStep({ form: f, set, err, readOnly }: StepProps) {
 
       <Group title="Gallery" description={`Up to ${LIMITS.galleryMax} photos in total, including award photos. Drag to reorder.`}>
         <GalleryEditor value={f.gallery} maxPhotos={Math.max(0, galleryRoom)} disabled={readOnly} errorFor={err} onChange={(gallery) => set({ gallery })} />
-        {err("gallery") && <p className="text-sm text-clay">{err("gallery")}</p>}
+        {err("gallery") && <p className="text-sm text-clay-text">{err("gallery")}</p>}
       </Group>
     </div>
   );

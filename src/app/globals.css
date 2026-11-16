@@ -25,7 +25,9 @@
   --marigold: #e3a23b;
   --sage: #dce8e2;
   --clay: #c8664b;
+  --clay-text: #a64d35; /* clay for text (errors): 5.3:1+ on paper and white */
   --leaf: #2f8f5b;
+  --leaf-text: #1e6e45; /* leaf for small text: 5.2:1+ on paper, white and leaf tints (WCAG AA) */
   --body: #1c2526;
   --muted-foreground: #5d6b6c;
   --line: #e6e1d8;
@@ -66,6 +68,8 @@
   --body: #eaf1ef;
   --muted-foreground: #a0b2b0;
   --line: #24494a;
+  --leaf-text: #6cc493;
+  --clay-text: #e08a72;
 
   --muted: #163536;
   --secondary-foreground: #eaf1ef;
@@ -86,7 +90,9 @@
   --color-marigold: var(--marigold);
   --color-sage: var(--sage);
   --color-clay: var(--clay);
+  --color-clay-text: var(--clay-text);
   --color-leaf: var(--leaf);
+  --color-leaf-text: var(--leaf-text);
   --color-body: var(--body);
   --color-line: var(--line);
 

@@ -25,6 +25,7 @@ export default async function PricingPage() {
         </p>
       </PageIntro>
       <section className="mx-auto max-w-4xl px-4 pb-20 sm:px-6">
+        <h2 className="sr-only">Plans</h2>
         <PricingCards site={site} />
       </section>
       <section className="bg-surface px-4 py-16 sm:px-6">
