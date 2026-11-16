@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check, CreditCard, PhoneCall, SearchX, ShieldCheck } from "lucide-react";
 import { CardView } from "@/components/cards/CardView";
+import { CallbackButton } from "@/components/marketing/CallbackButton";
 import { FloatingWhatsApp } from "@/components/marketing/FloatingWhatsApp";
 import { LeadForm } from "@/components/marketing/LeadForm";
 import { BrowserMockup, PhoneMockup } from "@/components/marketing/Mockups";
@@ -9,6 +10,7 @@ import { Reveal } from "@/components/marketing/Reveal";
 import { Eyebrow, FaqList, PricingCards, SectionTitle } from "@/components/marketing/Sections";
 import { WhatsAppIcon, WhatsAppLink } from "@/components/marketing/WhatsAppLink";
 import { FAQ, FINAL_CTA, HERO, HOSPITALS, HOW_IT_WORKS, NMC, PRICING, PROBLEMS, SAMPLES, WHAT_YOU_GET, WHATSAPP_TEXT } from "@/content/marketing";
+import { SAMPLE_PORTRAITS } from "@/fixtures/sample-portraits";
 import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { displayPhone, getPublicSiteData, rupees, whatsappHref } from "@/lib/public/site-data";
 import { absUrl } from "@/lib/site";
@@ -45,7 +47,6 @@ const PROBLEM_TONES = [
   { tile: "bg-marigold/20 text-[#8a5a12]", rule: "bg-marigold" },
   { tile: "bg-lagoon/10 text-lagoon", rule: "bg-lagoon" },
 ];
-const AVATAR_TONES = ["bg-[#e0efee] text-lagoon", "bg-mint text-lagoon", "bg-[#e3edf5] text-[#2c5a7a]", "bg-sage text-ink"];
 const section = "px-4 py-[72px] sm:px-6 lg:py-[112px]";
 const primaryBtn =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper shadow-[0_8px_20px_-8px_rgba(14,59,60,.6)] transition-colors hover:bg-ink-700 active:scale-[.98]";
@@ -80,9 +81,7 @@ export default async function HomePage() {
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-body/85 lg:text-xl">{HERO.sub.replace("{price}", rupees(site.prices.gp))}</p>
             <div id="hero-cta" className="flex flex-col gap-3 sm:flex-row">
-              <WhatsAppLink href={wa} placement="hero" className={primaryBtn}>
-                <WhatsAppIcon className="size-5" /> {HERO.primaryCta}
-              </WhatsAppLink>
+              <CallbackButton label={HERO.primaryCta} className={primaryBtn} />
               <Link
                 href="/sample/gp"
                 className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-ink/20 bg-surface px-6 font-semibold text-ink transition-colors hover:border-ink active:scale-[.98]"
@@ -248,9 +247,8 @@ export default async function HomePage() {
             {HOSPITAL_SAMPLES.map((d, i) => (
               <li key={d.name} className={`rounded-2xl bg-surface p-5 shadow-soft ${i % 2 ? "sm:translate-y-6" : ""}`}>
                 <div className="flex items-center justify-between gap-2">
-                  <span className={`flex size-11 items-center justify-center rounded-full font-display text-sm font-semibold ${AVATAR_TONES[i % AVATAR_TONES.length]}`}>
-                    {d.name.split(" ")[1]![0]}S
-                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- inline SVG illustration */}
+                  <img src={SAMPLE_PORTRAITS.hospital[i % SAMPLE_PORTRAITS.hospital.length]} alt="" className="size-12 rounded-full object-cover ring-2 ring-surface shadow-soft" />
                   <span className="rounded-full bg-marigold/25 px-2 py-0.5 text-[11px] font-semibold text-ink">{SAMPLES.badge}</span>
                 </div>
                 <p className="mt-4 font-display text-lg font-semibold text-ink">{d.name}</p>

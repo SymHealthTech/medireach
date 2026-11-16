@@ -14,7 +14,7 @@ export const HERO = {
   titleAccent: "Make sure they find you.",
   /** `{price}` is replaced with the GP plan price from Settings. */
   sub: "A professional one-page website and digital visiting card. Ready in 24 hours. {price}, one time.",
-  primaryCta: "Get my page on WhatsApp",
+  primaryCta: "Request a call back",
   secondaryCta: "See a sample page",
   trust: "Built for the new NMC advertising guidelines",
 };
@@ -141,7 +141,7 @@ export const FAQ = {
     },
     {
       q: "Can I change my timings later?",
-      a: "Yes. You can log in and change timings, phone numbers, address and fees yourself. For anything else, our team makes the change for you.",
+      a: "Yes. Use the “Doctor login” link at the bottom of your page to change timings, phone numbers, address and fees yourself. For anything else, our team makes the change for you.",
     },
     {
       q: "What does “free hosting forever” mean?",
@@ -164,7 +164,7 @@ export const FAQ = {
 
 export const FINAL_CTA = {
   title: "Get your page live this week.",
-  whatsapp: "Get my page on WhatsApp",
+  whatsapp: "Message us on WhatsApp",
   /** `{phone}` from Settings. */
   call: "or call {phone}",
   formTitle: "Or leave your number and we'll call you",
@@ -185,8 +185,14 @@ export const NAV = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
   { href: "/hospitals", label: "For hospitals" },
-  { href: "/login", label: "Login" },
 ];
+
+/** The "Request a call back" dialog (header + hero). */
+export const CALLBACK = {
+  cta: "Request a call back",
+  title: "We'll call you back",
+  text: "Leave your name and number. Our team will call you within one working day and collect your details.",
+};
 
 /** Pre-filled WhatsApp messages, per placement. */
 export const WHATSAPP_TEXT = {
@@ -203,6 +209,6 @@ export function allMarketingCopy(): string[] {
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk([HERO, PROBLEMS, WHAT_YOU_GET, HOW_IT_WORKS, NMC, PRICING, HOSPITALS, SAMPLES, FAQ, FINAL_CTA, FOOTER, NAV, WHATSAPP_TEXT]);
+  walk([HERO, PROBLEMS, WHAT_YOU_GET, HOW_IT_WORKS, NMC, PRICING, HOSPITALS, SAMPLES, FAQ, FINAL_CTA, FOOTER, NAV, CALLBACK, WHATSAPP_TEXT]);
   return out;
 }

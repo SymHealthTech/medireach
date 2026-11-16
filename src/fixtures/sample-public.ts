@@ -2,6 +2,7 @@ import { absUrl, paths, subdomainUrl } from "@/lib/site";
 import { doctorShortSlugBase, doctorSlug } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
 import { SAMPLE_DOCTORS, type SampleDoctorInput } from "./sample-doctors";
+import { SAMPLE_PORTRAITS } from "./sample-portraits";
 
 /**
  * FICTIONAL sample doctors as ready-to-render PublicDoctor objects (no
@@ -40,6 +41,7 @@ function toPublic(s: SampleDoctorInput): PublicDoctor {
     firstName: s.firstName,
     lastName: s.lastName,
     fullName,
+    photo: { url: SAMPLE_PORTRAITS[s.key], alt: `Illustration of ${fullName} (sample)` },
     languages: s.languages,
     practiceSinceYear: s.practiceSinceYear,
     systemOfMedicine: "allopathy",

@@ -16,7 +16,8 @@ import type { DoctorCardData, PublicDoctor } from "@/templates/types";
 
 /**
  * The shared SEO wrapper around a portfolio template: JSON-LD, H1, intro,
- * breadcrumbs, quick facts, nearby doctors and the registration footer are
+ * breadcrumbs, quick facts, nearby doctors and the registration footer (with
+ * the doctor's own login link) are
  * rendered here, identically for every template. Used by the public profile
  * page and the admin preview.
  */
@@ -97,6 +98,11 @@ export function ProfileView({
           .{" "}
           <a href={`${d.url}/card`} className="underline underline-offset-2">
             Visiting card
+          </a>
+          .{" "}
+          {/* Absolute: /login is blocked on doctor subdomains. */}
+          <a href={absUrl("/login")} rel="nofollow" className="underline underline-offset-2">
+            Doctor login
           </a>
         </p>
       </PublicFooter>

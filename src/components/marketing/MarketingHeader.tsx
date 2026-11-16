@@ -6,13 +6,14 @@ import { Menu, X } from "lucide-react";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { NAV } from "@/content/marketing";
 import { cn } from "@/lib/cn";
-import { WhatsAppLink } from "./WhatsAppLink";
+import { CallbackButton } from "./CallbackButton";
 
 /**
- * Sticky top bar (DESIGN_BRIEF.md §3.1): wordmark, links, "Get my page".
- * Transparent at the top, solid once you scroll. Mobile: logo + CTA + menu.
+ * Sticky top bar (DESIGN_BRIEF.md §3.1): wordmark, links, "Call me back".
+ * Transparent at the top, solid once you scroll. Mobile: logo + menu, with
+ * the call-back button inside the menu.
  */
-export function MarketingHeader({ whatsappHref }: { whatsappHref: string }) {
+export function MarketingHeader() {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -41,13 +42,10 @@ export function MarketingHeader({ whatsappHref }: { whatsappHref: string }) {
             </Link>
           ))}
         </nav>
-        <WhatsAppLink
-          href={whatsappHref}
-          placement="header"
-          className="inline-flex h-10 items-center rounded-[10px] bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-700 active:scale-[.98]"
-        >
-          Get my page
-        </WhatsAppLink>
+        <CallbackButton
+          label="Call me back"
+          className="hidden h-10 items-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-700 active:scale-[.98] md:inline-flex"
+        />
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -70,6 +68,7 @@ export function MarketingHeader({ whatsappHref }: { whatsappHref: string }) {
               </li>
             ))}
           </ul>
+          <CallbackButton className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-5 font-semibold text-paper hover:bg-ink-700 active:scale-[.98]" />
         </nav>
       )}
     </header>

@@ -31,9 +31,14 @@ export function MiniProfile({ doctor: d, className }: { doctor: PublicDoctor; cl
         <span className="text-[9px] text-muted-foreground">For doctors</span>
       </div>
       <div className="space-y-2.5 px-4 pt-4 text-center">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-sage font-display text-xl font-semibold text-ink ring-2 ring-marigold ring-offset-2 ring-offset-paper">
-          {initials(d.fullName)}
-        </div>
+        {d.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- decorative miniature
+          <img src={d.photo.url} alt="" className="mx-auto size-16 rounded-full bg-sage object-cover ring-2 ring-marigold ring-offset-2 ring-offset-paper" />
+        ) : (
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-sage font-display text-xl font-semibold text-ink ring-2 ring-marigold ring-offset-2 ring-offset-paper">
+            {initials(d.fullName)}
+          </div>
+        )}
         <p className="font-display text-[19px] font-semibold leading-tight text-ink">{d.fullName}</p>
         <p className="text-[11px]">{profileSubheading(d)}</p>
         <p className="text-[10px] text-muted-foreground">{d.degreesLine}</p>
