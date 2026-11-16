@@ -1,27 +1,33 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Palette } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { TemplateKey } from "@/lib/constants";
-
-/** The five portfolio designs shown on sample pages. Flip `ready` as each one is built. */
-export const SAMPLE_DESIGNS: { key: TemplateKey; name: string; ready: boolean }[] = [
-  { key: "classic", name: "Classic", ready: true },
-  { key: "t2", name: "Clinic Modern", ready: false },
-  { key: "t3", name: "Minimal Mono", ready: false },
-  { key: "t4", name: "Warm Heritage", ready: false },
-  { key: "t5", name: "Specialist Pro", ready: false },
-];
+import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
 
 /**
  * Floating pill on sample pages: one tap switches the design (?design=…).
- * Sits above the mobile sticky contact bar.
+ * Always fixed to the screen: bottom centre on phones (above the sticky
+ * contact bar), bottom right on larger screens. Rendered into <body> through
+ * a portal, so no transformed or blurred ancestor can turn "fixed" into
+ * "scrolls with the page".
  */
 export function DesignSwitcher({ basePath, current }: { basePath: string; current: TemplateKey }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(<Switcher basePath={basePath} current={current} />, document.body);
+}
+
+function Switcher({ basePath, current }: { basePath: string; current: TemplateKey }) {
   const active = SAMPLE_DESIGNS.find((d) => d.key === current) ?? SAMPLE_DESIGNS[0]!;
   return (
     <nav
       aria-label="Sample designs"
-      className="fixed bottom-[88px] left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-ink-900/95 py-1.5 pl-3 pr-1.5 text-paper shadow-lift ring-1 ring-paper/10 backdrop-blur sm:bottom-6"
+      className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-ink-900/95 py-1.5 pl-3 pr-1.5 text-paper shadow-lift ring-2 ring-marigold/60 backdrop-blur sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0"
     >
       <Palette aria-hidden className="size-4 shrink-0 text-marigold" strokeWidth={1.75} />
       <span className="mr-1 whitespace-nowrap text-xs font-semibold sm:text-sm">

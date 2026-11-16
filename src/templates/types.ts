@@ -60,6 +60,8 @@ export interface PublicDoctor {
   /** What QR codes and cards point to: subdomain URL, else short link, else canonical. */
   shareUrl: string;
   vcfUrl: string;
+  /** Digital visiting card page; defaults to `${url}/card` (sample pages set their own). */
+  cardUrl?: string;
 
   title: string;
   firstName: string;

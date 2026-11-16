@@ -1,4 +1,4 @@
-import { absUrl, paths, subdomainUrl } from "@/lib/site";
+import { absUrl, paths } from "@/lib/site";
 import { doctorShortSlugBase, doctorSlug } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
 import { SAMPLE_DOCTORS, type SampleDoctorInput } from "./sample-doctors";
@@ -20,8 +20,9 @@ const AREA: Record<string, string> = { kothrud: "Kothrud", baner: "Baner", aundh
 
 /** Stock photos (public/) for the sample doctors. */
 export const SAMPLE_PHOTOS = {
+  // JPEG, so the downloadable card images (Satori) can use them too.
   gp: "/bg-doctor2-square.jpg",
-  consultant: "/person_6.jpg.webp",
+  consultant: "/person_6-square.jpg",
   /** The homepage hospitals band's four visiting consultants. */
   hospital: ["/person_1.jpg.webp", "/person_5.jpg.webp", "/person_6.jpg.webp", "/bg-doctor2-square.jpg"],
 };
@@ -91,8 +92,10 @@ function toPublic(s: SampleDoctorInput): PublicDoctor {
     shortSlug: doctorShortSlugBase(s.firstName, s.lastName),
     subdomain: s.subdomain,
     url: absUrl(paths.doctor("pune", slug)),
-    shareUrl: subdomainUrl(s.subdomain),
-    vcfUrl: absUrl(paths.doctorVcf("pune", slug)),
+    // Samples run without the database: their link, card and contact file live under /sample/{key}.
+    shareUrl: absUrl(`/sample/${s.key}`),
+    vcfUrl: `/sample/${s.key}/contact.vcf`,
+    cardUrl: `/sample/${s.key}/card`,
     title: "Dr.",
     firstName: s.firstName,
     lastName: s.lastName,

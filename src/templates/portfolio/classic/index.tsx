@@ -269,7 +269,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
   const years = d.practiceSinceYear ? new Date().getFullYear() - d.practiceSinceYear : undefined;
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
-  const cardHref = `${d.url}/card`;
+  const cardHref = d.cardUrl ?? `${d.url}/card`;
   const firstName = d.fullName.replace(/^Dr\.?\s+/i, "").split(/\s+/)[0];
   const services = d.services;
   const hasRecognition = d.awards.length > 0 || d.memberships.length > 0 || d.publications.length > 0;

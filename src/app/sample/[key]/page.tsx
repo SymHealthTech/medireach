@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/public/ProfileView";
-import { DesignSwitcher, SAMPLE_DESIGNS } from "@/components/public/DesignSwitcher";
+import { DesignSwitcher } from "@/components/public/DesignSwitcher";
+import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
 import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 
 /**

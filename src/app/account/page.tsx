@@ -1,4 +1,5 @@
-import { Download, ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, IdCard } from "lucide-react";
 import { AccountEditor } from "@/components/account/AccountEditor";
 import { ChangeRequestForm } from "@/components/account/ChangeRequestForm";
 import { requireDoctorPage } from "@/lib/auth/doctor";
@@ -59,7 +60,6 @@ export default async function AccountPage() {
 
   const live = d.status === "published" && d.citySlug && d.slug;
   const pagePath = live ? paths.doctor(d.citySlug!, d.slug!) : null;
-  const v = d.updatedAt ? new Date(d.updatedAt).getTime() : 0;
   const priceLabel = d.freeUpdateUsed ? `₹${settings.prices.update.toLocaleString("en-IN")} per change` : "your first change is free";
   const btn = "inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-line bg-surface px-4 text-sm font-semibold text-ink hover:border-ink/40";
 
@@ -85,12 +85,9 @@ export default async function AccountPage() {
               <a href={pagePath} target="_blank" rel="noopener" className={btn}>
                 <ExternalLink className="size-4" strokeWidth={1.75} /> View page
               </a>
-              <a href={`${pagePath}/card/print.pdf?v=${v}&download=1`} className={btn}>
-                <Download className="size-4" strokeWidth={1.75} /> Card for printing (PDF)
-              </a>
-              <a href={`${pagePath}/card/phone.png?v=${v}&download=1`} className={btn}>
-                <Download className="size-4" strokeWidth={1.75} /> Card for phone (image)
-              </a>
+              <Link href="/account/card" className={btn}>
+                <IdCard className="size-4" strokeWidth={1.75} /> Visiting card: share, download, print
+              </Link>
             </div>
           </>
         ) : (
