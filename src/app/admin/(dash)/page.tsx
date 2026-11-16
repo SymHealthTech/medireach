@@ -100,7 +100,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
     DoctorProfile.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
     DoctorProfile.countDocuments({ foundingDoctor: true }),
     getSettings(),
-    Lead.countDocuments({ status: "new" }),
+    Lead.countDocuments({ status: "new", source: { $ne: "whatsapp_click" } }),
     showMoney ? UpdateRequest.countDocuments({ status: { $ne: "done" } }) : Promise.resolve(0),
     showMoney
       ? Payment.aggregate<{ amount: number; n: number }>([{ $match: { date: { $gte: monthStart } } }, { $group: { _id: null, amount: { $sum: "$amount" }, n: { $sum: 1 } } }])

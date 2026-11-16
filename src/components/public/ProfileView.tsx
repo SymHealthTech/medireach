@@ -24,11 +24,14 @@ export function ProfileView({
   doctor: d,
   nearby,
   ready,
+  jsonLd = true,
 }: {
   doctor: PublicDoctor;
   nearby: DoctorCardData[];
   /** Ready design slots; omit to render the doctor's chosen slot regardless (previews). */
   ready?: ReadyTemplates;
+  /** Structured data for the doctor (off for sample pages). */
+  jsonLd?: boolean;
 }) {
   const Template = resolvePortfolioTemplate(d.portfolioTemplateId, ready);
   const clinic = primaryClinic(d);
@@ -45,7 +48,7 @@ export function ProfileView({
 
   return (
     <>
-      <JsonLd data={profileJsonLd(d)} />
+      {jsonLd && <JsonLd data={profileJsonLd(d)} />}
       <PublicHeader />
       <main className="mx-auto max-w-3xl space-y-5 px-4 pt-4 sm:px-6 sm:pt-6">
         <Breadcrumbs crumbs={profileBreadcrumbs(d)} />

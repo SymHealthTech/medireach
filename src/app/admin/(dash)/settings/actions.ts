@@ -8,6 +8,8 @@ import { ADMIN_ROLES, GST_MODES } from "@/lib/constants";
 import { getSettings } from "@/lib/settings";
 import { Admin } from "@/models/Admin";
 import { Setting, SETTINGS_KEY } from "@/models/Setting";
+import { revalidateTag } from "next/cache";
+import { CACHE_TAGS } from "@/lib/public/tags";
 
 const ADMINS = ["superadmin", "admin"] as const;
 const price = z.number().int().min(0).max(1_000_000);
@@ -39,6 +41,7 @@ export const saveSettingsAction = adminAction(
   async (input, admin) => {
     const before = await getSettings();
     await Setting.updateOne({ key: SETTINGS_KEY }, { $set: input, $setOnInsert: { key: SETTINGS_KEY } }, { upsert: true });
+    revalidateTag(CACHE_TAGS.settings); // marketing pages show prices and contact numbers
     await audit(auditCtx(admin), "settings.update", {
       entity: "Setting",
       diff: shallowDiff(

@@ -29,7 +29,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const status = oneOf(param(sp, "status"), LEAD_STATUSES);
   if (status) filter.status = status;
   const source = oneOf(param(sp, "source"), LEAD_SOURCES);
-  if (source) filter.source = source;
+  // WhatsApp-click beacons carry no contact details; show them only when asked for.
+  filter.source = source ?? { $ne: "whatsapp_click" };
   const re = searchRegex(param(sp, "q"));
   if (re) filter.$or = [{ name: re }, { phone: re }, { city: re }, { specialty: re }, { message: re }];
   const page = pageOf(sp);
@@ -37,8 +38,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const [total, leads, counts] = await Promise.all([
     Lead.countDocuments(filter),
     Lead.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
-    Lead.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Lead.aggregate<{ _id: string; n: number }>([{ $match: { source: { $ne: "whatsapp_click" } } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
   ]);
+  const waClicks = await Lead.countDocuments({ source: "whatsapp_click", createdAt: { $gte: new Date(Date.now() - 30 * 86400_000) } });
   const countOf = (s: string) => counts.find((c) => c._id === s)?.n ?? 0;
   const statusHref = (s?: string) => {
     const next = new URLSearchParams();
@@ -50,7 +52,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">Enquiries from the website, WhatsApp and field visits.</p>
+        <p className="text-muted-foreground">
+          Enquiries from the website and field visits. WhatsApp button taps in the last 30 days:{" "}
+          <Link href="/admin/leads?source=whatsapp_click" className="font-semibold text-ink underline">
+            {waClicks}
+          </Link>
+        </p>
         <NewLeadButton />
       </div>
 

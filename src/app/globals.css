@@ -175,3 +175,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Hero phone float (decorative; disabled by prefers-reduced-motion above) ── */
+@keyframes mr-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.float-gentle { animation: mr-float 6s ease-in-out infinite; }

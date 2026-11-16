@@ -11,8 +11,8 @@ import { absUrl, paths } from "@/lib/site";
 
 export const SITEMAP_CHUNK_SIZE = 5000;
 
-/** Marketing pages that exist. Phase 6 adds /pricing, /hospitals, /terms, /privacy, /contact. */
-export const MARKETING_PATHS = ["/"];
+/** Marketing pages (sample pages and /login are noindex, so not listed). */
+export const MARKETING_PATHS = ["/", "/pricing", "/hospitals", "/contact", "/terms", "/privacy"];
 
 export async function allSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   const [profiles, hubs] = await Promise.all([getPublishedRoutes(), nonEmptyHubs()]);

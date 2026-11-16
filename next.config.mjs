@@ -7,6 +7,7 @@ const nextConfig = {
     "/[city]/doctor/[slug]/card/[file]": ["./src/assets/fonts/**"],
     "/[city]/doctor/[slug]/opengraph-image": ["./src/assets/fonts/**"],
     "/admin/cards/[id]/[file]": ["./src/assets/fonts/**"],
+    "/opengraph-image": ["./src/assets/fonts/**"],
   },
   images: {
     loader: "custom",

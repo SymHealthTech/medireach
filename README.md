@@ -50,9 +50,18 @@ Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run bui
 | 3 | Admin auth and dashboard shell ✅ |
 | 4 | Dashboard features ✅ |
 | 5 | Template registry and visiting cards ✅ |
-| 6 | Homepage and marketing pages |
+| 6 | Homepage and marketing pages ✅ |
 | 7 | Doctor self-edit login |
 | 8 | QA and deploy checklist |
+
+## Marketing copy and leads
+
+All homepage and marketing text lives in `src/content/marketing.ts`; a test
+scans it against the NMC banned-phrase list. Prices, GST mode, the WhatsApp
+number and Founding Doctor spots come from **Settings** (cached 10 minutes,
+refreshed on save). Form leads are emailed to `LEAD_NOTIFY_EMAIL` (or
+`ADMIN_EMAIL`); WhatsApp button taps are counted as `whatsapp_click` leads
+with no personal data and are hidden from the Leads list by default.
 
 ## Adding a new design (template slots)
 

@@ -67,23 +67,26 @@ export function ClinicHours({ timings }: { timings: DayTimings[] }) {
         <ChevronDown aria-hidden className={cn("h-4 w-4 transition", expanded && "rotate-180")} strokeWidth={1.75} />
       </button>
 
-      {/* Always in the HTML for crawlers; visually collapsed until expanded. */}
-      <table className={cn("mt-1 w-full text-sm", !expanded && "sr-only")}>
-        <caption className="sr-only">Weekly timings</caption>
-        <tbody>
-          {WEEK_ORDER.map((day) => {
-            const isToday = now?.day === day;
-            return (
-              <tr key={day} className={cn("border-t border-line first:border-0", isToday && "font-semibold text-ink")}>
-                <th scope="row" className="py-2 pr-4 text-left font-medium">
-                  {DAY_NAMES[day]}
-                </th>
-                <td className="py-2 text-right">{formatSlots(slotsForDay(timings, day))}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {/* Always in the HTML for crawlers; visually collapsed until expanded.
+          sr-only goes on a wrapper: a table ignores the 1px box and overflows narrow screens. */}
+      <div className={cn(!expanded && "sr-only")}>
+        <table className="mt-1 w-full text-sm">
+          <caption className="sr-only">Weekly timings</caption>
+          <tbody>
+            {WEEK_ORDER.map((day) => {
+              const isToday = now?.day === day;
+              return (
+                <tr key={day} className={cn("border-t border-line first:border-0", isToday && "font-semibold text-ink")}>
+                  <th scope="row" className="py-2 pr-4 text-left font-medium">
+                    {DAY_NAMES[day]}
+                  </th>
+                  <td className="py-2 text-right">{formatSlots(slotsForDay(timings, day))}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
