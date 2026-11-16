@@ -1,3 +1,5 @@
+import { absUrl } from "@/lib/site";
+
 /**
  * Branded doctor login email (magic link). Pure: builds subject, HTML and a
  * plain-text fallback. Inline styles and tables only, so it renders in Gmail,
@@ -7,9 +9,9 @@
 
 const INK = "#0E3B3C";
 const PAPER = "#FBF8F3";
-const MARIGOLD = "#E3A23B";
 const MUTED = "#5D6B6C";
 const LINE = "#E4E0D8";
+const ICON_URL = absUrl("/icon-192.png");
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -35,7 +37,7 @@ export function loginEmail({ name, url, welcome = false }: { name: string; url: 
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid ${LINE};border-radius:14px;">
 <tr><td style="padding:28px 32px 0 32px;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:bold;color:${INK};">
-MediReach<span style="color:${MARIGOLD};">.</span>
+<img src="${ICON_URL}" width="32" height="32" alt="" style="vertical-align:middle;border:0;margin-right:8px;">MediReach
 </td></tr>
 <tr><td style="padding:24px 32px 0 32px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:16px;line-height:24px;color:#1F2A2B;">
 <p style="margin:0 0 12px 0;">Hello ${n},</p>

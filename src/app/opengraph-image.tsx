@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { cardFonts } from "@/lib/cards/render";
 
@@ -13,12 +15,14 @@ const MARIGOLD = "#E3A23B";
 const SAGE = "#DCE8E2";
 
 export default async function OgImage() {
+  const icon = `data:image/png;base64,${(await readFile(join(process.cwd(), "public", "icon-192.png"))).toString("base64")}`;
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: INK, padding: "72px 80px", fontFamily: "Jakarta" }}>
-        <div style={{ display: "flex", alignItems: "flex-end", fontSize: 44, fontWeight: 600, color: PAPER, fontFamily: "Fraunces" }}>
+        <div style={{ display: "flex", alignItems: "center", fontSize: 44, fontWeight: 600, color: PAPER, fontFamily: "Fraunces" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse needs a plain img */}
+          <img src={icon} width={60} height={60} alt="" style={{ marginRight: 16 }} />
           MediReach
-          <div style={{ width: 12, height: 12, borderRadius: 999, background: MARIGOLD, marginLeft: 5, marginBottom: 12 }} />
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 76, fontWeight: 600, color: PAPER, lineHeight: 1.1, fontFamily: "Fraunces", maxWidth: 960 }}>

@@ -60,7 +60,8 @@ async function handleSubdomain(req: NextRequest, sub: string) {
     return rewriteTo(req, NOT_FOUND_PATH);
   }
   // Let crawlers read robots/sitemaps and Next's own assets.
-  if (path === "/robots.txt" || path.startsWith("/sitemap") || path.startsWith("/_next/")) {
+  // Static icons from public/ (logo, apple-icon) load directly instead of bouncing to the apex.
+  if (path === "/robots.txt" || path.startsWith("/sitemap") || path.startsWith("/_next/") || /^\/[\w-]+\.(png|ico)$/.test(path)) {
     return NextResponse.next();
   }
 

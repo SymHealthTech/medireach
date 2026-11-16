@@ -1,32 +1,30 @@
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 
+/** The site icon (teal speech bubble with a pulse line), served from public/. */
+export const BRAND_ICON_SRC = "/icon-192.png";
+
 /**
- * MediReach wordmark (DESIGN_BRIEF.md §3.1): "MediReach" in Fraunces with a
- * small marigold dot. `tone="light"` is for ink backgrounds (public footer,
- * dashboard sidebar) and stays light in dark mode too.
+ * MediReach logo: the icon followed by "MediReach" in Fraunces. `tone="light"`
+ * is for ink backgrounds (public footer, dashboard sidebar) and stays light in
+ * dark mode too. The icon scales with the text size (1.3em).
  */
 export function LogoWordmark({ className, tone = "ink" }: { className?: string; tone?: "ink" | "light" }) {
   return (
     <span
       className={cn(
-        "inline-flex items-baseline font-display text-[22px] font-semibold leading-none tracking-tight",
+        "inline-flex items-center gap-2 font-display text-[22px] font-semibold leading-none tracking-tight",
         tone === "ink" ? "text-ink" : "text-[#fbf8f3]",
         className,
       )}
     >
+      <Image src={BRAND_ICON_SRC} alt="" width={192} height={192} priority className="size-[1.3em] shrink-0" />
       MediReach
-      <span aria-hidden className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-marigold" />
     </span>
   );
 }
 
-/** Square mark for small spaces — the same bold "M" + dot as the site icon. */
+/** Square mark for small spaces: the site icon on its own. */
 export function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 100" role="img" aria-label="MediReach" className={cn("size-9 shrink-0", className)}>
-      <rect width="100" height="100" rx="22" fill="#0E3B3C" />
-      <path d="M20 76V24h14l16 24 16-24h14v52H67V47L50 71 33 47v29z" fill="#FBF8F3" />
-      <circle cx="83" cy="83" r="8" fill="#E3A23B" />
-    </svg>
-  );
+  return <Image src={BRAND_ICON_SRC} alt="MediReach" width={192} height={192} className={cn("size-9 shrink-0", className)} />;
 }

@@ -126,7 +126,7 @@ export function AdminShell({
         >
           <div className={cn("flex h-16 items-center px-[18px]", !collapsed && "lg:px-6")}>
             <Link href="/admin" aria-label="MediReach dashboard" className="flex items-center">
-              <LogoMark className={cn("ring-1 ring-white/15 rounded-[8px]", !collapsed && "lg:hidden")} />
+              <LogoMark className={cn(!collapsed && "lg:hidden")} />
               <LogoWordmark tone="light" className={cn("hidden", !collapsed && "lg:inline-flex")} />
             </Link>
           </div>

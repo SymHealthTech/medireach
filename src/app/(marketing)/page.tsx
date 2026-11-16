@@ -18,8 +18,8 @@ import { absUrl } from "@/lib/site";
  * prices and Founding spots coming from the database (cached; refreshed when
  * Settings or a Founding flag change).
  *
- * Section backgrounds alternate warm and cool washes (paper hero → sand →
- * white → mint → ink → sand → sage → paper → mint → ink panel) so no two
+ * Section backgrounds alternate light washes (paper hero → mist → white →
+ * mint → ink → white → sage → paper → mint → ink panel) so no two
  * neighbours share a colour.
  */
 
@@ -41,11 +41,11 @@ export const metadata: Metadata = {
 const PROBLEM_ICONS = { search: SearchX, phone: PhoneCall, card: CreditCard } as const;
 // One accent per problem card: icon tile tint + top rule.
 const PROBLEM_TONES = [
-  { tile: "bg-coral/15 text-clay-text", rule: "bg-coral" },
+  { tile: "bg-leaf/15 text-leaf-text", rule: "bg-leaf" },
   { tile: "bg-marigold/20 text-[#8a5a12]", rule: "bg-marigold" },
   { tile: "bg-lagoon/10 text-lagoon", rule: "bg-lagoon" },
 ];
-const AVATAR_TONES = ["bg-marigold-soft text-[#8a5a12]", "bg-mint text-lagoon", "bg-[#f9e1d6] text-clay-text", "bg-sage text-ink"];
+const AVATAR_TONES = ["bg-[#e0efee] text-lagoon", "bg-mint text-lagoon", "bg-[#e3edf5] text-[#2c5a7a]", "bg-sage text-ink"];
 const section = "px-4 py-[72px] sm:px-6 lg:py-[112px]";
 const primaryBtn =
   "inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper shadow-[0_8px_20px_-8px_rgba(14,59,60,.6)] transition-colors hover:bg-ink-700 active:scale-[.98]";
@@ -76,7 +76,7 @@ export default async function HomePage() {
               {HERO.eyebrow}
             </span>
             <h1 id="hero-title" className="text-balance font-display text-[38px] font-semibold leading-[1.08] tracking-[-0.02em] text-ink sm:text-5xl lg:text-[56px] xl:text-[60px]">
-              {titleLead} <em className="mr-underline font-medium text-lagoon [box-decoration-break:clone]">{HERO.titleAccent}</em>
+              {titleLead} <em className="font-medium text-lagoon">{HERO.titleAccent}</em>
             </h1>
             <p className="max-w-xl text-lg leading-relaxed text-body/85 lg:text-xl">{HERO.sub.replace("{price}", rupees(site.prices.gp))}</p>
             <div id="hero-cta" className="flex flex-col gap-3 sm:flex-row">
@@ -122,7 +122,7 @@ export default async function HomePage() {
       </section>
 
       {/* 3. The problem */}
-      <Reveal as="section" className={`${section} bg-sand`}>
+      <Reveal as="section" className={`${section} bg-mist`}>
         <div className="mx-auto max-w-content">
           <Eyebrow>{PROBLEMS.eyebrow}</Eyebrow>
           <SectionTitle>{PROBLEMS.title}</SectionTitle>
@@ -226,7 +226,7 @@ export default async function HomePage() {
       </section>
 
       {/* 7. Pricing */}
-      <Reveal as="section" className={`${section} bg-gradient-to-b from-sand to-paper`}>
+      <Reveal as="section" className={`${section} bg-surface`}>
         <div id="pricing" className="mx-auto max-w-4xl scroll-mt-20">
           <SectionTitle className="mb-10 text-center">{PRICING.title}</SectionTitle>
           <PricingCards site={site} />

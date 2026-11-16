@@ -333,7 +333,7 @@ export function siteJsonLd() {
         "@id": `${SITE_URL}/#organization`,
         name: SITE_NAME,
         url: `${SITE_URL}/`,
-        logo: absUrl("/icon"),
+        logo: absUrl("/icon-512.png"),
         parentOrganization: { "@type": "Organization", name: "Sym HealthTech" },
         contactPoint: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
           ? {

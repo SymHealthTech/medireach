@@ -1,4 +1,5 @@
 import { MapPin, MessageCircle, Phone, UserPlus } from "lucide-react";
+import { BRAND_ICON_SRC } from "@/components/brand/Logo";
 import { introSentence, profileSubheading } from "@/lib/seo/profile";
 import { formatSlots, slotsForDay } from "@/lib/timings";
 import { cn } from "@/lib/cn";
@@ -22,8 +23,10 @@ export function MiniProfile({ doctor: d, className }: { doctor: PublicDoctor; cl
   return (
     <div className={cn("bg-paper text-left text-[11px] leading-snug text-body", className)}>
       <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
-        <span className="font-display text-[13px] font-semibold text-ink">
-          MediReach<span className="ml-0.5 inline-block size-1 rounded-full bg-marigold align-middle" />
+        <span className="inline-flex items-center gap-1 font-display text-[13px] font-semibold text-ink">
+          {/* eslint-disable-next-line @next/next/no-img-element -- decorative miniature */}
+          <img src={BRAND_ICON_SRC} alt="" className="size-4" />
+          MediReach
         </span>
         <span className="text-[9px] text-muted-foreground">For doctors</span>
       </div>

@@ -40,8 +40,8 @@ MONGODB_DB=medireach_dev npm run seed:samples
 Deploying (Vercel, domains, env vars, seeding, Search Console): see
 [`DEPLOY.md`](./DEPLOY.md).
 
-Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`,
-`npx tsx scripts/make-favicon.tsx` (regenerates `public/favicon.ico`).
+Other scripts: `npm run typecheck`, `npm run lint`, `npm run test`, `npm run build`.
+Site icons are static files in `public/` (`favicon.ico`, `icon-192.png`, `icon-512.png`, `apple-icon.png`).
 
 ## Build phases
 
