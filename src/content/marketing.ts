@@ -10,6 +10,8 @@
 export const HERO = {
   eyebrow: "For doctors in Pune",
   title: "Your patients search your name. Make sure they find you.",
+  /** The tail of `title` the hero sets in the accent style. */
+  titleAccent: "Make sure they find you.",
   /** `{price}` is replaced with the GP plan price from Settings. */
   sub: "A professional one-page website and digital visiting card. Ready in 24 hours. {price}, one time.",
   primaryCta: "Get my page on WhatsApp",
@@ -18,6 +20,7 @@ export const HERO = {
 };
 
 export const PROBLEMS = {
+  eyebrow: "Sound familiar?",
   title: "The problem",
   items: [
     { icon: "search", text: "Google search shows nothing, or someone else's listing." },
@@ -79,6 +82,7 @@ export const PRICING = {
     {
       key: "consultant" as const,
       name: "Consultant",
+      tag: "For specialists",
       audience: "For specialists who visit more than one hospital",
       features: [
         "Everything in GP",

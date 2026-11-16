@@ -23,7 +23,7 @@ export async function getSettings(): Promise<SiteSettings> {
   return {
     prices: {
       gp: s?.prices?.gp ?? 1999,
-      consultant: s?.prices?.consultant ?? 1999,
+      consultant: s?.prices?.consultant ?? 2999,
       update: s?.prices?.update ?? DEFAULT_UPDATE_PRICE,
     },
     foundingTotal: s?.foundingTotal ?? FOUNDING_TOTAL_DEFAULT,

@@ -32,6 +32,14 @@
   --muted-foreground: #5d6b6c;
   --line: #e6e1d8;
 
+  /* Marketing accents (homepage + marketing pages, light-only) */
+  --ink-900: #072627; /* deepest ink, for dark panels */
+  --lagoon: #1b6b66; /* mid teal for accent type on light backgrounds (6.1:1 on paper) */
+  --mint: #e8f2ec; /* pale cool wash */
+  --sand: #f5ead9; /* warm wash, contrasts with the paper hero */
+  --marigold-soft: #fbedd3;
+  --coral: #d9734f; /* decorative only (icon tiles), never text */
+
   /* shadcn semantic */
   --background: var(--paper);
   --foreground: var(--body);
@@ -95,6 +103,12 @@
   --color-leaf-text: var(--leaf-text);
   --color-body: var(--body);
   --color-line: var(--line);
+  --color-ink-900: var(--ink-900);
+  --color-lagoon: var(--lagoon);
+  --color-mint: var(--mint);
+  --color-sand: var(--sand);
+  --color-marigold-soft: var(--marigold-soft);
+  --color-coral: var(--coral);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -130,6 +144,7 @@
   --radius-2xl: 16px;
 
   --shadow-soft: 0 1px 2px rgba(14, 59, 60, 0.06), 0 8px 24px rgba(14, 59, 60, 0.06);
+  --shadow-lift: 0 2px 4px rgba(14, 59, 60, 0.06), 0 18px 40px -12px rgba(14, 59, 60, 0.22);
 
   --container-content: 1160px;
   --container-dashboard: 1280px;
@@ -188,3 +203,32 @@
   50% { transform: translateY(-8px); }
 }
 .float-gentle { animation: mr-float 6s ease-in-out infinite; }
+
+/* ── Marketing decoration ── */
+/* Hero wash: warm marigold glow top-right, cool mint bottom-left, on paper. */
+.mr-hero-bg {
+  background:
+    radial-gradient(60% 55% at 88% 8%, rgb(227 162 59 / 0.22), transparent 70%),
+    radial-gradient(50% 60% at 0% 100%, rgb(47 143 91 / 0.12), transparent 70%),
+    linear-gradient(180deg, #fdfaf5 0%, var(--paper) 100%);
+}
+/* Ink panels: soft lagoon + marigold glows so large dark areas don't read flat. */
+.mr-ink-bg {
+  background:
+    radial-gradient(55% 70% at 100% 0%, rgb(227 162 59 / 0.16), transparent 70%),
+    radial-gradient(60% 80% at 0% 100%, rgb(47 143 91 / 0.22), transparent 70%),
+    var(--ink);
+}
+/* Faint dot grid, used under mockups and on the pricing wash. */
+.mr-dots {
+  background-image: radial-gradient(rgb(14 59 60 / 0.12) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+/* Hand-drawn marigold underline behind an accent word. */
+.mr-underline {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12' preserveAspectRatio='none'%3E%3Cpath d='M2 9c40-6 110-8 196-3' fill='none' stroke='%23E3A23B' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 100% 0.32em;
+  background-position: 0 96%;
+  padding-bottom: 0.08em;
+}

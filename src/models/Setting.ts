@@ -30,7 +30,7 @@ const settingSchema = new Schema<SettingDoc>(
     key: { type: String, required: true, unique: true, default: SETTINGS_KEY },
     prices: {
       gp: { type: Number, default: 1999, min: 0 },
-      consultant: { type: Number, default: 1999, min: 0 },
+      consultant: { type: Number, default: 2999, min: 0 },
       update: { type: Number, default: DEFAULT_UPDATE_PRICE, min: 0 },
     },
     foundingTotal: { type: Number, default: FOUNDING_TOTAL_DEFAULT, min: 0 },
