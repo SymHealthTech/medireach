@@ -19,7 +19,7 @@ yearly renewal from year 2; prices always come from **Settings**.
 - Deploying and the v2 upgrade: [`DEPLOY.md`](./DEPLOY.md)
 
 > The previous clinic software is preserved at tag `clinic-v1` and branch
-> `clinic-software` (future `app.medireach.co.in`). It uses the `medireach`
+> `clinic-software` (deployed separately at `clinicapp.medireach.co.in`). It uses the `medireach`
 > database; this app uses `medireach_portfolio` (see `MONGODB_DB`).
 
 ## Stack

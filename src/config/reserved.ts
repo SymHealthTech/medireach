@@ -70,6 +70,10 @@ export const RESERVED_CITY_SUBPATHS = [
 export const RESERVED_SUBDOMAINS = [
   "www",
   "app",
+  // The clinic software runs at clinicapp.medireach.co.in (a separate Vercel project).
+  "clinicapp",
+  "clinic",
+  "clinics",
   "admin",
   "api",
   "mail",
