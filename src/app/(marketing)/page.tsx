@@ -1,320 +1,390 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Check, CreditCard, PhoneCall, SearchX, ShieldCheck } from "lucide-react";
-import { CardView } from "@/components/cards/CardView";
-import { CallbackButton } from "@/components/marketing/CallbackButton";
+import { ArrowRight, Building2, Check, Hospital, ShieldCheck, UserRound } from "lucide-react";
 import { FloatingWhatsApp } from "@/components/marketing/FloatingWhatsApp";
 import { LeadForm } from "@/components/marketing/LeadForm";
-import { BrowserMockup, PhoneMockup } from "@/components/marketing/Mockups";
+import { MiniProfile } from "@/components/marketing/Mockups";
 import { Reveal } from "@/components/marketing/Reveal";
 import { Eyebrow, FaqList, PricingCards, SectionTitle } from "@/components/marketing/Sections";
 import { WhatsAppIcon, WhatsAppLink } from "@/components/marketing/WhatsAppLink";
-import { FAQ, FINAL_CTA, HERO, HOSPITALS, HOW_IT_WORKS, NMC, PRICING, PROBLEMS, SAMPLES, WHAT_YOU_GET, WHATSAPP_TEXT } from "@/content/marketing";
-import { SAMPLE_PHOTOS, SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
+import { CardSpotlight } from "@/components/home/CardSpotlight";
+import { DesignShowcase } from "@/components/home/DesignShowcase";
+import { DrawLine, DrawUnderline } from "@/components/home/Draw";
+import { HeroAudience } from "@/components/home/HeroAudience";
+import { MiniSitePhone, toMiniSite } from "@/components/home/MiniSite";
+import { MotionRoot } from "@/components/home/MotionRoot";
+import { SearchDemo } from "@/components/home/SearchDemo";
+import { CardBack, CardFront, ChatShare, GalleryItem, HeroStage, MultiDoctorDiagram, SpecialtyMarquee } from "@/components/home/Sections";
+import {
+  CARD_SPOTLIGHT,
+  FAQ,
+  FINAL_CTA,
+  FOUND,
+  GALLERY,
+  HERO,
+  HOME_DESIGNS,
+  HOW_IT_WORKS,
+  MULTI_DOCTOR,
+  NMC,
+  PRICING,
+  PRODUCTS_COPY,
+  WHATSAPP_TEXT,
+  type Audience,
+} from "@/content/marketing";
+import { SAMPLE_SITES } from "@/fixtures/sample-sites";
+import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { displayPhone, getPublicSiteData, rupees, whatsappHref } from "@/lib/public/site-data";
-import { absUrl } from "@/lib/site";
+import { absUrl, ROOT_HOSTNAME } from "@/lib/site";
+import { CARD_SIZE } from "@/templates/types";
+import { SPECIALTY_THEMES } from "@/themes/specialty";
 
 /**
- * Homepage (DESIGN_BRIEF.md §3), sections in the brief's order. Static, with
- * prices and Founding spots coming from the database (cached; refreshed when
- * Settings or a Founding flag change).
+ * Homepage (DESIGN_BRIEF.md §4.1–4.15), sections in the brief's order.
+ * Static (ISR), with prices and Founding spots from the database (cached;
+ * refreshed when Settings or a Founding flag change).
  *
- * Section backgrounds alternate light washes (paper hero → mist → white →
- * mint → ink → white → sage → paper → mint → ink panel) so no two
- * neighbours share a colour.
+ * Motion (§3): the H1 renders immediately; client islands (audience switcher,
+ * search demo, design picker, 3D card, line draw, count-up) hydrate on their
+ * own, and `motion`'s animation features load after hydration.
  */
 
 export const revalidate = 600;
 
 export const metadata: Metadata = {
-  title: { absolute: "MediReach – Websites and digital visiting cards for doctors in Pune" },
+  title: { absolute: "MediReach – Websites for doctors, clinics and small hospitals in Pune" },
   description:
-    "A professional one-page website and digital visiting card for doctors. Found on Google by your name, ready in 24 hours, built for the NMC advertising guidelines.",
+    "Portfolio websites for doctors, clinic websites designed for your specialty, and websites for hospitals up to 10 beds. Every plan includes a digital visiting card. Built for the NMC advertising guidelines.",
   alternates: { canonical: absUrl("/") },
   openGraph: {
     type: "website",
     url: absUrl("/"),
-    title: "MediReach – Websites and digital visiting cards for doctors",
-    description: "Your patients search your name. Make sure they find you.",
+    title: "MediReach – Websites for doctors, clinics and small hospitals",
+    description: "Patients search for you on Google. Make sure they find you.",
   },
 };
 
-const PROBLEM_ICONS = { search: SearchX, phone: PhoneCall, card: CreditCard } as const;
-// One accent per problem card: icon tile tint + top rule.
-const PROBLEM_TONES = [
-  { tile: "bg-leaf/15 text-leaf-text", rule: "bg-leaf" },
-  { tile: "bg-marigold/20 text-[#8a5a12]", rule: "bg-marigold" },
-  { tile: "bg-lagoon/10 text-lagoon", rule: "bg-lagoon" },
-];
-const section = "px-4 py-[72px] sm:px-6 lg:py-[112px]";
-const primaryBtn =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper shadow-[0_8px_20px_-8px_rgba(14,59,60,.6)] transition-colors hover:bg-ink-700 active:scale-[.98]";
-const arrow = "size-4 transition-transform group-hover:translate-x-0.5";
-
-// Fictional consultants for the hospitals band (clearly labelled "Sample").
-const HOSPITAL_SAMPLES = [
-  { name: "Dr. A. Sample", role: "Cardiologist", days: "Mon · Wed · Fri" },
-  { name: "Dr. B. Sample", role: "Orthopaedic Surgeon", days: "Tue · Thu" },
-  { name: "Dr. C. Sample", role: "Paediatrician", days: "Mon – Sat" },
-  { name: "Dr. D. Sample", role: "Dermatologist", days: "Wed · Sat" },
-];
+const section = "px-4 py-20 sm:px-6 lg:py-32";
+const PRODUCT_ICONS = { doctor: UserRound, clinic: Building2, hospital: Hospital } as const;
 
 export default async function HomePage() {
   const site = await getPublicSiteData();
   const wa = whatsappHref(site.whatsappNumber, WHATSAPP_TEXT.default);
   const gp = SAMPLE_PUBLIC_DOCTORS.gp;
   const titleLead = HERO.title.replace(HERO.titleAccent, "").trim();
+  const price = (setup: number, renewal: number) => HERO.price.replace("{setup}", rupees(setup)).replace("{renewal}", rupees(renewal));
+  const p = site.prices;
+
+  const heroPrices: Record<Audience, string> = {
+    doctor: price(p.doctorSetup, p.renewalDoctor),
+    clinic: price(p.clinicSetup, p.renewalClinic),
+    hospital: price(p.hospitalSetup, p.renewalHospital),
+  };
+  const designSites = SPECIALTY_THEMES.map((t) => toMiniSite(SAMPLE_SITES[t.key]));
+  const miniOf = (key: string) => designSites.find((s) => s.themeKey === key)!;
+  const finalLead = FINAL_CTA.title.split(FINAL_CTA.titleAccent);
 
   return (
-    <main>
-      {/* 2. Hero — pulled up under the transparent sticky header so the wash runs to the top. */}
-      <section aria-labelledby="hero-title" className="mr-hero-bg relative -mt-16 overflow-hidden px-4 pb-[72px] pt-26 sm:px-6 lg:pb-[112px] lg:pt-32">
-        <div className="mx-auto grid max-w-content items-center gap-14 lg:grid-cols-[1.1fr_1fr]">
-          <div className="space-y-7">
-            <span className="inline-flex items-center gap-2 rounded-full border border-marigold/50 bg-surface/80 px-3.5 py-1.5 text-sm font-semibold text-ink shadow-soft">
-              <span aria-hidden className="size-2 rounded-full bg-marigold" />
-              {HERO.eyebrow}
-            </span>
-            <h1 id="hero-title" className="text-balance font-display text-[38px] font-semibold leading-[1.08] tracking-[-0.02em] text-ink sm:text-5xl lg:text-[56px] xl:text-[60px]">
-              {titleLead} <em className="font-medium text-lagoon">{HERO.titleAccent}</em>
-            </h1>
-            <p className="max-w-xl text-lg leading-relaxed text-body/85 lg:text-xl">{HERO.sub.replace("{price}", rupees(site.prices.gp))}</p>
-            <div id="hero-cta" className="flex flex-col gap-3 sm:flex-row">
-              <CallbackButton label={HERO.primaryCta} className={primaryBtn} />
-              <Link
-                href="/sample/gp"
-                className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-ink/20 bg-surface px-6 font-semibold text-ink transition-colors hover:border-ink active:scale-[.98]"
-              >
-                {HERO.secondaryCta}
-                <ArrowRight className={arrow} strokeWidth={2} />
-              </Link>
-            </div>
-            <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
-              <ShieldCheck className="size-4" strokeWidth={2} /> {HERO.trust}
-            </p>
-          </div>
+    <MotionRoot>
+      <main>
+        {/* 4.2 Hero — pulled up under the transparent sticky header. */}
+        <section aria-labelledby="hero-title" className="mr-hero-bg relative -mt-16 overflow-hidden px-4 pb-20 pt-24 sm:px-6 lg:pb-28 lg:pt-32">
+          {/* Targets for the top bar's Doctors / Clinics / Hospitals links. */}
+          <span id="doctor" className="absolute top-0" />
+          <span id="clinic" className="absolute top-0" />
+          <span id="hospital" className="absolute top-0" />
+          <HeroAudience
+            heading={
+              <>
+                <span className="mr-enter inline-flex items-center gap-2 rounded-full bg-sage px-3.5 py-1.5 text-sm font-semibold text-ink">
+                  <span aria-hidden className="size-2 shrink-0 rounded-full bg-marigold" />
+                  {HERO.eyebrow}
+                </span>
+                <h1 id="hero-title" className="text-balance font-display text-[38px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink sm:text-5xl lg:text-[60px] xl:text-[64px]">
+                  {titleLead} <em className="font-medium text-lagoon">{HERO.titleAccent}</em>
+                </h1>
+              </>
+            }
+            prices={heroPrices}
+            card={<CardFront doctor={gp} />}
+            waHref={wa}
+            stages={{
+              doctor: <HeroStage audience="doctor" doctor={gp} hostname={ROOT_HOSTNAME} />,
+              clinic: <HeroStage audience="clinic" doctor={gp} site={miniOf("general-opd")} hostname={ROOT_HOSTNAME} />,
+              hospital: <HeroStage audience="hospital" doctor={gp} site={miniOf("small-hospital")} hostname={ROOT_HOSTNAME} />,
+            }}
+          />
+        </section>
 
-          <div className="relative mx-auto flex w-full max-w-[460px] justify-center py-6">
-            <svg aria-hidden viewBox="0 0 400 400" className="absolute inset-0 m-auto h-full w-full">
-              <defs>
-                <linearGradient id="hero-blob" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="#d7e8de" />
-                  <stop offset="100%" stopColor="#a9cfc0" />
-                </linearGradient>
-              </defs>
-              <path
-                fill="url(#hero-blob)"
-                d="M318 72c38 34 58 88 50 140-8 51-44 100-92 125-48 26-108 28-160 6S20 274 14 214C8 153 38 89 88 56c50-34 120-44 170-30 22 6 42 22 60 46Z"
+        {/* 4.3 Specialty marquee */}
+        <SpecialtyMarquee themes={SPECIALTY_THEMES} />
+
+        {/* 4.4 Get found on Google */}
+        <Reveal as="section" aria-labelledby="found-title" className={`${section} bg-surface`}>
+          <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">
+            <div>
+              <SectionTitle id="found-title">
+                <span data-reveal-item className="block">
+                  {FOUND.title}
+                </span>
+              </SectionTitle>
+              <ol className="mt-8 space-y-5">
+                {FOUND.points.map((pt, i) => (
+                  <li key={pt.title} data-reveal-item className="flex gap-4">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink font-display text-lg font-semibold text-marigold">{i + 1}</span>
+                    <span>
+                      <span className="block text-lg font-semibold text-ink">{pt.title}</span>
+                      <span className="text-body/85">{pt.text}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p data-reveal-item className="mt-8 text-sm text-muted-foreground">
+                {FOUND.note}
+              </p>
+            </div>
+            <div data-reveal-item className="flex justify-center lg:justify-end">
+              <SearchDemo />
+            </div>
+          </div>
+        </Reveal>
+
+        {/* 4.5 Three products */}
+        <Reveal as="section" aria-labelledby="products-title" className={`${section} bg-mint`}>
+          <div id="products" className="mx-auto max-w-content scroll-mt-20">
+            <div className="text-center">
+              <Eyebrow>{PRODUCTS_COPY.eyebrow}</Eyebrow>
+              <SectionTitle id="products-title">{PRODUCTS_COPY.title}</SectionTitle>
+            </div>
+            <div className="relative mt-12">
+              <p className="relative z-10 mx-auto -mb-5 w-fit rounded-full bg-marigold px-5 py-2 text-center text-sm font-semibold text-[#0e3b3c] shadow-soft lg:-mb-5 lg:w-full lg:rounded-xl">
+                {PRODUCTS_COPY.ribbon}
+              </p>
+              <ul className="grid gap-6 lg:grid-cols-3">
+                {PRODUCTS_COPY.items.map((item) => {
+                  const Icon = PRODUCT_ICONS[item.key];
+                  return (
+                    <li key={item.key} data-reveal-item className="mr-lift flex flex-col rounded-2xl border border-line bg-surface p-7 pt-10 shadow-soft">
+                      <span className="flex size-12 items-center justify-center rounded-xl bg-sage text-ink">
+                        <Icon className="size-6" strokeWidth={1.75} />
+                      </span>
+                      <h3 className="mt-5 font-display text-[24px] font-semibold text-ink">{item.name}</h3>
+                      <p className="mt-1 text-body/85">{item.purpose}</p>
+                      <ul className="mt-5 flex-1 space-y-2.5">
+                        {item.inclusions.map((f) => (
+                          <li key={f} className="flex gap-2.5 text-body">
+                            <Check className="mt-1 size-4 shrink-0 text-leaf" strokeWidth={2.5} />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-6 border-t border-line pt-5">
+                        <p className="flex items-baseline gap-2">
+                          <span className="font-display text-[34px] font-semibold leading-none text-ink">{rupees(p[item.setup])}</span>
+                          <span className="text-sm text-muted-foreground">{PRODUCTS_COPY.setupLabel}</span>
+                        </p>
+                        <p className="mt-1 text-sm text-body">{PRODUCTS_COPY.renewal.replace("{renewal}", rupees(p[item.renewal]))}</p>
+                        <Link href={item.href} className="group mt-4 inline-flex items-center gap-1.5 font-semibold text-lagoon hover:text-ink">
+                          {PRODUCTS_COPY.seeSample}
+                          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+                          <span className="sr-only">: {item.name}</span>
+                        </Link>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* 4.6 Designs made for your specialty */}
+        <Reveal as="section" aria-labelledby="designs-title" className={`${section} bg-paper`}>
+          <div id="designs" className="mx-auto max-w-content scroll-mt-20">
+            <div className="mb-10 text-center">
+              <SectionTitle id="designs-title">{HOME_DESIGNS.title}</SectionTitle>
+              <p className="mx-auto mt-3 max-w-xl text-lg text-body/85">{HOME_DESIGNS.text}</p>
+            </div>
+            <DesignShowcase sites={designSites} />
+          </div>
+        </Reveal>
+
+        {/* 4.7 Digital visiting card spotlight */}
+        <Reveal as="section" aria-labelledby="card-title" className={`${section} bg-surface`}>
+          <div id="visiting-card" className="mx-auto grid max-w-content scroll-mt-20 items-center gap-14 lg:grid-cols-2">
+            <div data-reveal-item className="relative mx-auto w-full max-w-[480px] pb-[190px]">
+              <CardSpotlight
+                ratio={CARD_SIZE.print.width / CARD_SIZE.print.height}
+                front={<CardFront doctor={gp} fallbackScale={0.46} />}
+                back={<CardBack doctor={gp} />}
               />
-              <circle cx="342" cy="66" r="24" fill="#E3A23B" opacity=".9" />
-              <circle cx="36" cy="322" r="9" fill="#0E3B3C" opacity=".85" />
-            </svg>
-            <div className="float-gentle relative">
-              <PhoneMockup doctor={gp} />
+              <p className="mt-3 text-center text-xs text-muted-foreground">{CARD_SPOTLIGHT.flipHint}</p>
+              <div className="absolute bottom-0 right-0 sm:-right-8">
+                <ChatShare doctor={gp} url={gp.shareUrl.replace(/^https?:\/\//, "")} />
+              </div>
             </div>
-            <div className="absolute -bottom-2 left-0 w-[230px] -rotate-6 sm:left-2 sm:w-[260px]">
-              <CardView doctor={gp} variant="print" className="shadow-[0_18px_40px_-10px_rgba(14,59,60,.35)]" />
+            <div>
+              <Eyebrow>{CARD_SPOTLIGHT.eyebrow}</Eyebrow>
+              <SectionTitle id="card-title">{CARD_SPOTLIGHT.title}</SectionTitle>
+              <ul className="mt-8 space-y-4">
+                {CARD_SPOTLIGHT.points.map((pt) => (
+                  <li key={pt} data-reveal-item className="flex gap-3 text-lg text-body">
+                    <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-ink">
+                      <Check className="size-3.5 text-marigold" strokeWidth={3} />
+                    </span>
+                    {pt}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        </div>
-      </section>
+        </Reveal>
 
-      {/* 3. The problem */}
-      <Reveal as="section" className={`${section} bg-mist`}>
-        <div className="mx-auto max-w-content">
-          <Eyebrow>{PROBLEMS.eyebrow}</Eyebrow>
-          <SectionTitle>{PROBLEMS.title}</SectionTitle>
-          <ul className="mt-10 grid gap-5 md:grid-cols-3">
-            {PROBLEMS.items.map((p, i) => {
-              const Icon = PROBLEM_ICONS[p.icon];
-              const tone = PROBLEM_TONES[i % PROBLEM_TONES.length]!;
-              return (
-                <li
-                  key={p.text}
-                  className="relative overflow-hidden rounded-2xl bg-surface p-7 shadow-soft transition-[translate,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lift"
-                >
-                  <span aria-hidden className={`absolute inset-x-0 top-0 h-1 ${tone.rule}`} />
-                  <div className="flex items-start justify-between">
-                    <span className={`flex size-12 items-center justify-center rounded-xl ${tone.tile}`}>
-                      <Icon className="size-6" strokeWidth={1.75} />
-                    </span>
-                    <span aria-hidden className="font-display text-4xl font-semibold text-ink/10">
-                      0{i + 1}
-                    </span>
-                  </div>
-                  <p className="mt-5 text-lg font-medium leading-snug text-ink">{p.text}</p>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </Reveal>
-
-      {/* 4. What you get */}
-      <Reveal as="section" className={`${section} bg-surface`}>
-        <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">
-          <div>
-            <SectionTitle>{WHAT_YOU_GET.title}</SectionTitle>
-            <ul className="mt-8 grid gap-4">
-              {WHAT_YOU_GET.items.map((item) => (
-                <li key={item} className="flex gap-3 text-lg text-body">
-                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-ink">
-                    <Check className="size-3.5 text-marigold" strokeWidth={3} />
+        {/* 4.8 How it works */}
+        <Reveal as="section" aria-labelledby="how-title" className={`${section} bg-mint`}>
+          <div id="how-it-works" className="mx-auto max-w-content scroll-mt-20">
+            <SectionTitle id="how-title" className="text-center">
+              {HOW_IT_WORKS.title}
+            </SectionTitle>
+            <ol className="relative mt-14 grid gap-8 md:grid-cols-3 md:gap-6">
+              <DrawLine vertical className="absolute bottom-8 left-[27px] top-8 w-[2px] md:hidden" />
+              <DrawLine className="absolute left-[16.6%] right-[16.6%] top-7 hidden h-[2px] md:block" />
+              {HOW_IT_WORKS.steps.map((s, i) => (
+                <li key={s.title} data-reveal-item className="relative flex gap-5 md:flex-col md:items-center md:text-center">
+                  <span className="relative z-10 flex size-14 shrink-0 items-center justify-center rounded-full bg-ink font-display text-2xl font-semibold text-marigold shadow-lift ring-8 ring-mint">
+                    {i + 1}
                   </span>
-                  {item}
+                  <div className="pt-2 md:pt-0">
+                    <h3 className="font-display text-[22px] font-semibold text-ink">{s.title}</h3>
+                    <p className="mt-2 text-body/85">{s.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </Reveal>
+
+        {/* 4.9 Built for the new NMC rules */}
+        <section aria-labelledby="nmc-title" className={`${section} mr-ink-bg text-paper`}>
+          <Reveal className="mx-auto max-w-content">
+            <span data-reveal-item className="flex size-14 items-center justify-center rounded-2xl bg-marigold/15 ring-1 ring-marigold/40">
+              <ShieldCheck className="size-8 text-marigold" strokeWidth={1.5} />
+            </span>
+            <SectionTitle id="nmc-title" light className="mt-5 max-w-3xl">
+              {NMC.title}
+            </SectionTitle>
+            <ul className="mt-10 grid gap-5 md:grid-cols-3">
+              {NMC.points.map((pt) => (
+                <li key={pt.title} data-reveal-item className="rounded-2xl border border-paper/15 bg-paper/[.04] p-6">
+                  <h3 className="flex items-start gap-2.5 text-lg font-semibold">
+                    <span aria-hidden className="mt-2.5 size-2 shrink-0 rounded-full bg-marigold" />
+                    {pt.title}
+                  </h3>
+                  <p className="mt-2 text-paper/75">{pt.text}</p>
                 </li>
               ))}
             </ul>
-          </div>
-          <div className="relative flex justify-center">
-            <div aria-hidden className="mr-dots absolute -inset-6 rounded-3xl bg-mint [mask-image:radial-gradient(closest-side,black_60%,transparent)]" />
-            <div className="relative">
-              <BrowserMockup doctor={gp} url={WHAT_YOU_GET.urlExample} />
-            </div>
-          </div>
-        </div>
-      </Reveal>
+            <p className="mt-10 text-sm text-paper/65">{NMC.note}</p>
+          </Reveal>
+        </section>
 
-      {/* 5. How it works */}
-      <Reveal as="section" className={`${section} bg-mint`}>
-        <div id="how-it-works" className="mx-auto max-w-content scroll-mt-20">
-          <SectionTitle className="text-center">{HOW_IT_WORKS.title}</SectionTitle>
-          <ol className="relative mt-12 grid gap-6 md:grid-cols-3">
-            <span
-              aria-hidden
-              className="absolute bottom-10 left-[51px] top-10 border-l-2 border-dashed border-lagoon/30 md:inset-x-[16%] md:bottom-auto md:left-[16%] md:top-7 md:border-l-0 md:border-t-2"
-            />
-            {HOW_IT_WORKS.steps.map((s, i) => (
-              <li key={s.title} className="relative flex gap-5 rounded-2xl bg-surface/70 p-6 md:flex-col md:items-center md:bg-transparent md:p-0 md:text-center">
-                <span className="relative z-10 flex size-14 shrink-0 items-center justify-center rounded-full bg-ink font-display text-2xl font-semibold text-marigold shadow-lift ring-8 ring-mint">
-                  {i + 1}
-                </span>
-                <div>
-                  <h3 className="font-display text-[22px] font-semibold text-ink">{s.title}</h3>
-                  <p className="mt-2 text-body/85">{s.text}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </Reveal>
-
-      {/* 6. NMC */}
-      <section aria-labelledby="nmc-title" className={`${section} mr-ink-bg text-paper`}>
-        <Reveal className="mx-auto max-w-content">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-marigold/15 ring-1 ring-marigold/40">
-            <ShieldCheck className="size-8 text-marigold" strokeWidth={1.5} />
-          </span>
-          <SectionTitle id="nmc-title" light className="mt-5">
-            {NMC.title}
-          </SectionTitle>
-          <ul className="mt-10 grid gap-5 md:grid-cols-3">
-            {NMC.points.map((p) => (
-              <li key={p.title} className="rounded-2xl border border-paper/15 bg-paper/[.04] p-6">
-                <h3 className="flex items-center gap-2.5 text-lg font-semibold">
-                  <span aria-hidden className="size-2 shrink-0 rounded-full bg-marigold" />
-                  {p.title}
-                </h3>
-                <p className="mt-2 text-paper/75">{p.text}</p>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-10 text-sm text-paper/60">{NMC.note}</p>
+        {/* 4.10 Pricing */}
+        <Reveal as="section" aria-labelledby="pricing-title" className={`${section} bg-surface`}>
+          <div id="pricing" className="mx-auto max-w-content scroll-mt-20">
+            <SectionTitle id="pricing-title" className="mb-10 text-center">
+              {PRICING.title}
+            </SectionTitle>
+            <PricingCards site={site} />
+          </div>
         </Reveal>
-      </section>
 
-      {/* 7. Pricing */}
-      <Reveal as="section" className={`${section} bg-surface`}>
-        <div id="pricing" className="mx-auto max-w-4xl scroll-mt-20">
-          <SectionTitle className="mb-10 text-center">{PRICING.title}</SectionTitle>
-          <PricingCards site={site} />
-        </div>
-      </Reveal>
-
-      {/* 8. For hospitals */}
-      <Reveal as="section" className={`${section} bg-sage`}>
-        <div className="mx-auto grid max-w-content items-center gap-10 lg:grid-cols-2">
-          <div className="space-y-5">
-            <SectionTitle>{HOSPITALS.title}</SectionTitle>
-            <p className="text-lg text-body/85">{HOSPITALS.text}</p>
-            <Link href="/hospitals" className={`group ${primaryBtn}`}>
-              {HOSPITALS.cta}
-              <ArrowRight className={arrow} strokeWidth={2} />
-            </Link>
-          </div>
-          <ul aria-label="Sample consultant pages" className="grid grid-cols-2 gap-4 sm:pb-6">
-            {HOSPITAL_SAMPLES.map((d, i) => (
-              <li key={d.name} className={`rounded-2xl bg-surface p-5 shadow-soft ${i % 2 ? "sm:translate-y-6" : ""}`}>
-                <div className="flex items-center justify-between gap-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- small static thumbnail */}
-                  <img src={SAMPLE_PHOTOS.hospital[i % SAMPLE_PHOTOS.hospital.length]} alt="" className="size-12 rounded-full object-cover ring-2 ring-surface shadow-soft" />
-                  <span className="rounded-full bg-marigold/25 px-2 py-0.5 text-[11px] font-semibold text-ink">{SAMPLES.badge}</span>
-                </div>
-                <p className="mt-4 font-display text-lg font-semibold text-ink">{d.name}</p>
-                <p className="text-sm text-body">{d.role}</p>
-                <p className="mt-3 border-t border-line pt-3 text-xs font-semibold text-lagoon">{d.days}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </Reveal>
-
-      {/* 9. Sample pages */}
-      <Reveal as="section" className={section}>
-        <div className="mx-auto max-w-content text-center">
-          <SectionTitle>{SAMPLES.title}</SectionTitle>
-          <p className="mt-3 text-body/80">{SAMPLES.text}</p>
-          <div className="mt-12 flex flex-wrap justify-center gap-12">
-            {SAMPLES.items.map((s) => (
-              <div key={s.key} className="flex flex-col items-center gap-4">
-                <PhoneMockup doctor={SAMPLE_PUBLIC_DOCTORS[s.key]} badge={SAMPLES.badge} />
-                <p className="font-medium text-body">{s.label}</p>
-                <Link href={s.href} className="group inline-flex items-center gap-1.5 font-semibold text-lagoon hover:text-ink">
-                  {SAMPLES.open}
-                  <ArrowRight className={arrow} strokeWidth={2} />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
-      {/* 10. FAQ */}
-      <Reveal as="section" className={`${section} bg-mint`}>
-        <div className="mx-auto max-w-3xl">
-          <SectionTitle className="mb-8 text-center">{FAQ.title}</SectionTitle>
-          <FaqList />
-        </div>
-      </Reveal>
-
-      {/* 11. Final CTA */}
-      <Reveal as="section" className={section}>
-        <div className="mr-ink-bg mx-auto grid max-w-content items-center gap-10 overflow-hidden rounded-3xl px-6 py-12 text-paper shadow-lift sm:px-12 lg:grid-cols-[1.1fr_1fr] lg:py-16">
-          <div className="text-center lg:text-left">
-            <p className="font-display text-[34px] font-semibold leading-[1.1] tracking-[-0.015em] lg:text-5xl">{FINAL_CTA.title}</p>
-            <div className="mt-8 flex flex-col items-center gap-4 lg:items-start">
+        {/* 4.11 For multi-doctor clinics and hospitals */}
+        <Reveal as="section" aria-labelledby="multi-title" className={`${section} bg-sage`}>
+          <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">
+            <div className="space-y-5">
+              <SectionTitle id="multi-title">{MULTI_DOCTOR.title}</SectionTitle>
+              <p className="text-lg text-body/85">{MULTI_DOCTOR.text}</p>
               <WhatsAppLink
-                href={wa}
-                placement="final_cta"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-marigold px-6 font-semibold text-[#0e3b3c] transition-colors hover:bg-[#ebb456] active:scale-[.98]"
+                href={whatsappHref(site.whatsappNumber, WHATSAPP_TEXT.hospital)}
+                placement="multi_doctor"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper transition-colors hover:bg-ink-700 active:scale-[.98]"
               >
-                <WhatsAppIcon className="size-5" /> {FINAL_CTA.whatsapp}
+                <WhatsAppIcon className="size-5" /> {MULTI_DOCTOR.cta}
               </WhatsAppLink>
-              {site.contactPhone && (
-                <a href={`tel:+${site.contactPhone}`} className="text-paper/80 underline-offset-4 hover:underline">
-                  {FINAL_CTA.call.replace("{phone}", displayPhone(site.contactPhone))}
-                </a>
-              )}
+            </div>
+            <div data-reveal-item>
+              <MultiDoctorDiagram />
             </div>
           </div>
-          <div className="rounded-2xl bg-surface p-6 text-left text-body shadow-lift">
-            <p className="mb-4 font-semibold text-ink">{FINAL_CTA.formTitle}</p>
-            <LeadForm source="homepage_form" compact />
-          </div>
-        </div>
-      </Reveal>
+        </Reveal>
 
-      <FloatingWhatsApp href={wa} watchId="hero-cta" />
-    </main>
+        {/* 4.12 Sample sites gallery */}
+        <Reveal as="section" aria-labelledby="gallery-title" className={`${section} bg-paper`}>
+          <div className="mx-auto max-w-content">
+            <div className="text-center">
+              <SectionTitle id="gallery-title">{GALLERY.title}</SectionTitle>
+              <p className="mt-3 text-body/80">{GALLERY.text}</p>
+            </div>
+            <ul className="-mx-4 mt-12 flex snap-x snap-mandatory gap-8 overflow-x-auto px-4 pb-6 pt-4 sm:-mx-6 sm:px-6">
+              {GALLERY.doctors.map((d) => (
+                <GalleryItem key={d.key} label={d.label} href={d.href} open={GALLERY.open} badge={GALLERY.badge}>
+                  <MiniProfile doctor={SAMPLE_PUBLIC_DOCTORS[d.key]} />
+                </GalleryItem>
+              ))}
+              {GALLERY.sites.map((key) => {
+                const s = miniOf(key);
+                return (
+                  <GalleryItem key={key} label={s.themeName} href={s.href} open={GALLERY.open} badge={GALLERY.badge}>
+                    <MiniSitePhone site={s} />
+                  </GalleryItem>
+                );
+              })}
+            </ul>
+          </div>
+        </Reveal>
+
+        {/* 4.13 FAQ */}
+        <Reveal as="section" aria-labelledby="faq-title" className={`${section} bg-mint`}>
+          <div className="mx-auto max-w-3xl">
+            <SectionTitle id="faq-title" className="mb-8 text-center">
+              {FAQ.title}
+            </SectionTitle>
+            <FaqList />
+          </div>
+        </Reveal>
+
+        {/* 4.14 Final CTA */}
+        <Reveal as="section" aria-labelledby="final-title" className={section}>
+          <div className="mr-ink-bg mx-auto grid max-w-content items-center gap-10 overflow-hidden rounded-3xl px-6 py-12 text-paper shadow-lift sm:px-12 lg:grid-cols-[1.1fr_1fr] lg:py-16">
+            <div className="text-center lg:text-left">
+              <h2 id="final-title" className="font-display text-[34px] font-semibold leading-[1.15] tracking-[-0.015em] lg:text-5xl">
+                {finalLead[0]}
+                <DrawUnderline>{FINAL_CTA.titleAccent}</DrawUnderline>
+                {finalLead[1]}
+              </h2>
+              <div className="mt-8 flex flex-col items-center gap-4 lg:items-start">
+                <WhatsAppLink
+                  href={wa}
+                  placement="final_cta"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-marigold px-6 font-semibold text-[#0e3b3c] transition-colors hover:bg-[#ebb456] active:scale-[.98]"
+                >
+                  <WhatsAppIcon className="size-5" /> {FINAL_CTA.whatsapp}
+                </WhatsAppLink>
+                {site.contactPhone && (
+                  <a href={`tel:+${site.contactPhone}`} className="text-paper/80 underline-offset-4 hover:underline">
+                    {FINAL_CTA.call.replace("{phone}", displayPhone(site.contactPhone))}
+                  </a>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-surface p-6 text-left text-body shadow-lift">
+              <p className="mb-4 font-semibold text-ink">{FINAL_CTA.formTitle}</p>
+              <LeadForm source="homepage_form" compact />
+            </div>
+          </div>
+        </Reveal>
+
+        <FloatingWhatsApp href={wa} watchId="hero-cta" />
+      </main>
+    </MotionRoot>
   );
 }

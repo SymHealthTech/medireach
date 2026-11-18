@@ -24,6 +24,7 @@ import { getSettings } from "@/lib/settings";
 import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Lead } from "@/models/Lead";
+import { syncEstablishmentDoctors } from "@/lib/establishments/links";
 
 const id = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.");
 const stepKeys = STEPS.map((s) => s.key) as [StepKey, ...StepKey[]];
@@ -103,7 +104,10 @@ export const saveDoctorSectionAction = adminAction(
       await Lead.updateOne({ _id: leadId }, { $set: { status: "won" } });
     }
     if (doc.status === "published") revalidateDoctorPages(oldRoute, { citySlug: doc.citySlug, slug: doc.slug });
-    if (step === "business" && before.foundingDoctor !== after.foundingDoctor) revalidateTag(CACHE_TAGS.founding);
+    if (step === "business" && before.founding !== after.founding) revalidateTag(CACHE_TAGS.founding);
+    if (step === "business" || step === "clinics") {
+      await syncEstablishmentDoctors(doc._id, before.establishmentIds, after.establishmentIds);
+    }
 
     return { id: String(doc._id), form: after, savedAt: new Date().toISOString() };
   },
@@ -193,8 +197,15 @@ export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, a
     shortSlug: _ss,
     subdomain: _sd,
     ownerEmail: _oe,
+    // A copy is a new draft, not a paying customer: no founding or renewal data.
+    founding: _f,
     foundingDoctor: _fd,
     foundingNumber: _fn,
+    hostingFreeUntil: _hf,
+    setupPaidAt: _sp,
+    renewalPrice: _rp,
+    renewalDueDate: _rd,
+    renewalStatus: _rs,
     publishedAt: _pa,
     createdAt: _ca,
     updatedAt: _ua,
@@ -209,6 +220,7 @@ export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, a
     clinics: src.clinics.map(({ _id: _cid, ...c }) => ({ ...c, _id: new Types.ObjectId() })),
   });
   await copy.save();
+  await syncEstablishmentDoctors(copy._id, [], copy.establishmentIds.map(String));
   await audit(auditCtx(admin), "doctor.duplicate", { entity: "DoctorProfile", entityId: copy._id, diff: { from: doctorId } });
   return { id: String(copy._id) };
 });

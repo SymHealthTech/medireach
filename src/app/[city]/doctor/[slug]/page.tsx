@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { LAPSED_METADATA, LapsedNotice } from "@/components/public/LapsedNotice";
 import { ProfileView } from "@/components/public/ProfileView";
 import { getCityDoctorCards, getPublishedDoctor, getPublishedRoutes } from "@/lib/public/data";
 import { getReadyTemplates } from "@/lib/public/templates";
@@ -12,7 +13,8 @@ import type { PublicDoctor } from "@/templates/types";
  *
  * Static: published profiles are pre-rendered at build and any new one is
  * rendered on first request, then cached until `revalidateDoctorPages()` runs
- * on publish / edit / unpublish. Unpublished or unknown → 404.
+ * on publish / edit / unpublish. Unpublished or unknown → 404. Lapsed (renewal
+ * unpaid after the grace period) → "temporarily unavailable" notice, noindex.
  *
  * This file is the shared SEO wrapper: metadata, JSON-LD, H1, intro,
  * breadcrumbs, quick facts and nearby doctors are rendered here, identically
@@ -42,6 +44,7 @@ async function load(params: Promise<Params>): Promise<PublicDoctor | null> {
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const d = await load(params);
   if (!d) return {};
+  if (d.lapsed) return LAPSED_METADATA;
   const title = profileTitle(d);
   const description = profileDescription(d);
   return {
@@ -57,6 +60,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function DoctorProfilePage({ params }: { params: Promise<Params> }) {
   const d = await load(params);
   if (!d) notFound();
+  if (d.lapsed) return <LapsedNotice />;
 
   const clinic = primaryClinic(d);
   const nearby =

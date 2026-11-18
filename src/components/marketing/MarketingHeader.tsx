@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { LogoWordmark } from "@/components/brand/Logo";
-import { NAV } from "@/content/marketing";
+import { GET_STARTED, NAV } from "@/content/marketing";
 import { cn } from "@/lib/cn";
 import { CallbackButton } from "./CallbackButton";
 
 /**
- * Sticky top bar (DESIGN_BRIEF.md §3.1): wordmark, links, "Call me back".
- * Transparent at the top, solid once you scroll. Mobile: logo + menu, with
- * the call-back button inside the menu.
+ * Sticky top bar (DESIGN_BRIEF.md §4.1): wordmark, links, "Get started"
+ * (opens the call-back dialog). Transparent at the top, solid paper with a
+ * hairline once you scroll. Mobile: logo + "Get started" + menu.
  */
 export function MarketingHeader() {
   const [solid, setSolid] = useState(false);
@@ -35,7 +35,7 @@ export function MarketingHeader() {
         <Link href="/" aria-label="MediReach home" className="mr-auto">
           <LogoWordmark />
         </Link>
-        <nav aria-label="Main" className="hidden items-center gap-7 text-sm font-medium text-body md:flex">
+        <nav aria-label="Main" className="hidden items-center gap-6 text-sm font-medium text-body lg:flex">
           {NAV.map((n) => (
             <Link key={n.href} href={n.href} className="hover:text-ink">
               {n.label}
@@ -43,8 +43,9 @@ export function MarketingHeader() {
           ))}
         </nav>
         <CallbackButton
-          label="Call me back"
-          className="hidden h-10 items-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-700 active:scale-[.98] md:inline-flex"
+          label={GET_STARTED}
+          icon={false}
+          className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-700 active:scale-[.98]"
         />
         <button
           type="button"
@@ -52,13 +53,13 @@ export function MarketingHeader() {
           aria-expanded={open}
           aria-controls="mobile-menu"
           aria-label={open ? "Close menu" : "Open menu"}
-          className="flex size-10 items-center justify-center rounded-[10px] text-ink md:hidden"
+          className="flex size-10 items-center justify-center rounded-[10px] text-ink lg:hidden"
         >
           {open ? <X className="size-6" strokeWidth={1.75} /> : <Menu className="size-6" strokeWidth={1.75} />}
         </button>
       </div>
       {open && (
-        <nav id="mobile-menu" aria-label="Main" className="border-t border-line bg-paper px-4 pb-4 md:hidden">
+        <nav id="mobile-menu" aria-label="Main" className="border-t border-line bg-paper px-4 pb-4 lg:hidden">
           <ul>
             {NAV.map((n) => (
               <li key={n.href}>
@@ -68,7 +69,6 @@ export function MarketingHeader() {
               </li>
             ))}
           </ul>
-          <CallbackButton className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-5 font-semibold text-paper hover:bg-ink-700 active:scale-[.98]" />
         </nav>
       )}
     </header>

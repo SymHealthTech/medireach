@@ -34,4 +34,22 @@ export const paths = {
   doctor: (city: string, slug: string) => `/${city}/doctor/${slug}`,
   doctorVcf: (city: string, slug: string) => `/${city}/doctor/${slug}/contact.vcf`,
   short: (shortSlug: string) => `/${shortSlug}`,
+  clinic: (city: string, slug: string) => `/${city}/clinic/${slug}`,
+  hospital: (city: string, slug: string) => `/${city}/hospital/${slug}`,
+  clinicCategory: (city: string, category: string) => `/${city}/clinics/${category}`,
+  clinicCategoryArea: (city: string, category: string, area: string) => `/${city}/clinics/${category}/${area}`,
+  hospitals: (city: string) => `/${city}/hospitals`,
+  hospitalsArea: (city: string, area: string) => `/${city}/hospitals/${area}`,
 };
+
+/** Any public site: a doctor portfolio, a clinic site or a hospital site. */
+export interface SiteRoute {
+  kind: "doctor" | "clinic" | "hospital";
+  citySlug: string;
+  slug: string;
+}
+
+/** Canonical folder path of a site, e.g. /pune/clinic/shree-skin-clinic-baner. */
+export function sitePath(r: SiteRoute): string {
+  return r.kind === "doctor" ? paths.doctor(r.citySlug, r.slug) : r.kind === "clinic" ? paths.clinic(r.citySlug, r.slug) : paths.hospital(r.citySlug, r.slug);
+}

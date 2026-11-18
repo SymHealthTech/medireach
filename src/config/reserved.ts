@@ -12,7 +12,16 @@ export const RESERVED_SLUGS = [
   "logout",
   "account",
   "pricing",
+  "designs",
+  "for-clinics",
+  "for-hospitals",
+  "doctor",
+  "doctors",
+  "clinic",
+  "clinics",
+  "hospital",
   "hospitals",
+  "area",
   "terms",
   "privacy",
   "contact",
@@ -43,9 +52,20 @@ export const RESERVED_SLUGS = [
 /**
  * Second-level segments under `/[city]/…` that are fixed routes, so a
  * specialty slug may never take them (`/[city]/[specialty]` vs
- * `/[city]/area/…` and `/[city]/doctor/…`).
+ * `/[city]/area/…`, `/[city]/doctor/…`, `/[city]/clinic/…`,
+ * `/[city]/clinics/…`, `/[city]/hospital/…`, `/[city]/hospitals/…`).
  */
-export const RESERVED_CITY_SUBPATHS = ["area", "doctor", "doctors", "specialty", "specialties"] as const;
+export const RESERVED_CITY_SUBPATHS = [
+  "area",
+  "doctor",
+  "doctors",
+  "clinic",
+  "clinics",
+  "hospital",
+  "hospitals",
+  "specialty",
+  "specialties",
+] as const;
 
 export const RESERVED_SUBDOMAINS = [
   "www",

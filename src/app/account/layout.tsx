@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/account/LogoutButton";
 import { LogoWordmark } from "@/components/brand/Logo";
 
-export const metadata: Metadata = { title: { absolute: "My page – MediReach" }, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { absolute: "My account – MediReach" }, robots: { index: false, follow: false } };
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return (

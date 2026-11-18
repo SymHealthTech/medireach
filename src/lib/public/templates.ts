@@ -13,8 +13,11 @@ export const getReadyTemplates = unstable_cache(
     return {
       portfolio: slots.filter((s) => s.type === "portfolio").map((s) => s.key),
       card: slots.filter((s) => s.type === "card").map((s) => s.key),
+      clinic: slots.filter((s) => s.type === "clinic").map((s) => s.key),
+      hospital: slots.filter((s) => s.type === "hospital").map((s) => s.key),
     };
   },
-  ["public-ready-templates"],
+  // v2: now also carries clinic/hospital slots.
+  ["public-ready-templates-v2"],
   { tags: [CACHE_TAGS.templates], revalidate: 86400 },
 );

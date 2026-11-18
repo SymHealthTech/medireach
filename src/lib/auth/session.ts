@@ -18,6 +18,7 @@ export const SESSION_TTL_SECONDS: Record<Role, number> = {
   admin: 12 * 60 * 60,
   sales: 12 * 60 * 60,
   doctor: 30 * 24 * 60 * 60,
+  owner: 30 * 24 * 60 * 60,
 };
 
 export interface SessionClaims {

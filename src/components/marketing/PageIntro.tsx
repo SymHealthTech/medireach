@@ -3,7 +3,7 @@ export function PageIntro({ eyebrow, title, children }: { eyebrow?: string; titl
   return (
     <header className="mx-auto max-w-3xl space-y-4 px-4 pb-10 pt-12 sm:px-6 lg:pt-16">
       {eyebrow && <span className="inline-flex rounded-full bg-sage px-3 py-1 text-sm font-medium text-ink">{eyebrow}</span>}
-      <h1 className="font-display text-[36px] font-semibold leading-[1.15] text-ink lg:text-5xl">{title}</h1>
+      <h1 className="text-balance font-display text-[36px] font-semibold leading-[1.15] text-ink lg:text-5xl">{title}</h1>
       {children && <div className="text-lg text-body">{children}</div>}
     </header>
   );

@@ -5,7 +5,8 @@ import { Area } from "@/models/Area";
 import { City } from "@/models/City";
 import { Council } from "@/models/Council";
 import { Degree } from "@/models/Degree";
-import { Hospital } from "@/models/Hospital";
+import type { EstablishmentKind } from "@/lib/constants";
+import { Establishment } from "@/models/Establishment";
 import { Specialty } from "@/models/Specialty";
 import { TemplateSlot } from "@/models/TemplateSlot";
 
@@ -16,20 +17,33 @@ export interface EditorOptions {
   specialties: { id: string; name: string; slug: string; plural: string }[];
   degrees: { id: string; name: string }[];
   councils: { id: string; name: string; state?: string }[];
-  hospitals: { id: string; name: string; cityId: string; areaId?: string; address?: string; phone?: string }[];
+  /** Clinics and hospitals with a MediReach site (for linking doctors). */
+  establishments: {
+    id: string;
+    name: string;
+    kind: EstablishmentKind;
+    cityId?: string;
+    areaId?: string;
+    address?: string;
+    address2?: string;
+    pincode?: string;
+    phone?: string;
+  }[];
+  /** Renewal prices from Settings (the Business step pre-fills from these). */
+  prices: { renewalDoctor: number; foundingRenewal: number };
   templates: { type: "portfolio" | "card"; key: string; name: string; status: string; previewUrl?: string }[];
   bannedPhrases: string[];
 }
 
 export async function getEditorOptions(): Promise<EditorOptions> {
   await connectToDatabase();
-  const [cities, areas, specialties, degrees, councils, hospitals, templates, settings] = await Promise.all([
+  const [cities, areas, specialties, degrees, councils, establishments, templates, settings] = await Promise.all([
     City.find().sort({ name: 1 }).lean(),
     Area.find().sort({ name: 1 }).lean(),
     Specialty.find().sort({ name: 1 }).lean(),
     Degree.find().sort({ name: 1 }).lean(),
     Council.find().sort({ name: 1 }).lean(),
-    Hospital.find().sort({ name: 1 }).lean(),
+    Establishment.find().sort({ name: 1 }).select({ name: 1, kind: 1, address: 1, "contact.phones": 1 }).lean(),
     TemplateSlot.find().sort({ type: 1, key: 1 }).lean(),
     getSettings(),
   ]);
@@ -39,16 +53,21 @@ export async function getEditorOptions(): Promise<EditorOptions> {
     specialties: specialties.map((s) => ({ id: String(s._id), name: s.name, slug: s.slug, plural: s.plural })),
     degrees: degrees.map((d) => ({ id: String(d._id), name: d.name })),
     councils: councils.map((c) => ({ id: String(c._id), name: c.name, ...(c.state ? { state: c.state } : {}) })),
-    hospitals: hospitals.map((h) => ({
-      id: String(h._id),
-      name: h.name,
-      cityId: String(h.cityId),
-      ...(h.areaId ? { areaId: String(h.areaId) } : {}),
-      ...(h.address ? { address: h.address } : {}),
-      ...(h.phone ? { phone: h.phone } : {}),
+    establishments: establishments.map((e) => ({
+      id: String(e._id),
+      name: e.name,
+      kind: e.kind,
+      ...(e.address?.cityId ? { cityId: String(e.address.cityId) } : {}),
+      ...(e.address?.areaId ? { areaId: String(e.address.areaId) } : {}),
+      ...(e.address?.line1 ? { address: e.address.line1 } : {}),
+      ...(e.address?.line2 ? { address2: e.address.line2 } : {}),
+      ...(e.address?.pincode ? { pincode: e.address.pincode } : {}),
+      ...(e.contact?.phones?.[0] ? { phone: e.contact.phones[0] } : {}),
     })),
-    templates: templates.map((t) => ({
-      type: t.type,
+    prices: { renewalDoctor: settings.prices.renewalDoctor, foundingRenewal: settings.prices.foundingRenewal },
+    // Doctors only pick portfolio and card designs (clinic/hospital slots belong to establishments).
+    templates: templates.flatMap((t) => (t.type === "portfolio" || t.type === "card" ? [t] : [])).map((t) => ({
+      type: t.type as "portfolio" | "card",
       key: t.key,
       name: t.name,
       status: t.status,

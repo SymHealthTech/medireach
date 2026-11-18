@@ -1,20 +1,21 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
 import {
+  SITE_TEMPLATE_TYPES,
   TEMPLATE_KEYS,
   TEMPLATE_STATUSES,
-  TEMPLATE_TYPES,
+  type SiteTemplateType,
   type TemplateKey,
   type TemplateStatus,
-  type TemplateType,
 } from "@/lib/constants";
 
 /**
- * One of the 5 portfolio / 5 card design slots. Only `ready` slots are
- * selectable on a doctor; the renderer falls back to classic otherwise.
+ * One of the 5 design slots per type (doctor portfolio, clinic site, hospital
+ * site, visiting card). Only `ready` slots are selectable; the renderer falls
+ * back to classic otherwise.
  */
 export interface TemplateSlotDoc {
   _id: Types.ObjectId;
-  type: TemplateType;
+  type: SiteTemplateType;
   key: TemplateKey;
   name: string;
   status: TemplateStatus;
@@ -26,7 +27,7 @@ export interface TemplateSlotDoc {
 
 const templateSlotSchema = new Schema<TemplateSlotDoc>(
   {
-    type: { type: String, enum: TEMPLATE_TYPES, required: true },
+    type: { type: String, enum: SITE_TEMPLATE_TYPES, required: true },
     key: { type: String, enum: TEMPLATE_KEYS, required: true },
     name: { type: String, required: true, trim: true },
     status: { type: String, enum: TEMPLATE_STATUSES, default: "coming_soon" },

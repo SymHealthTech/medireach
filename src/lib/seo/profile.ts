@@ -254,11 +254,14 @@ function geoCoordinates(c: PublicClinic) {
 const tel = (digits?: string) => (digits ? `+${digits}` : undefined);
 
 /** Drop undefined / empty-array values so the JSON-LD stays clean. */
-function compact<T extends Record<string, unknown>>(obj: T): T {
+export function compact<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(
     Object.entries(obj).filter(([, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0)),
   ) as T;
 }
+
+/** Stable JSON-LD node id of a clinic/hospital site; doctor pages reuse it so the two graphs connect. */
+export const siteNodeId = (url: string) => `${url}#organization`;
 
 export function profileJsonLd(d: PublicDoctor) {
   const clinic = primaryClinic(d);
@@ -266,9 +269,10 @@ export function profileJsonLd(d: PublicDoctor) {
   const clinicNodes = d.clinics.map((c) =>
     compact({
       "@type": "MedicalClinic",
-      "@id": `${d.url}#clinic-${c.id}`,
+      // A clinic with its own MediReach site is the same node as on that site.
+      "@id": c.site ? siteNodeId(c.site.url) : `${d.url}#clinic-${c.id}`,
       name: c.name,
-      url: d.url,
+      url: c.site?.url ?? d.url,
       address: postalAddress(c),
       geo: geoCoordinates(c),
       telephone: tel(c.phone ?? d.phone),
@@ -367,4 +371,14 @@ export function itemListJsonLd(name: string, doctors: DoctorCardData[]) {
 /** Serialise JSON-LD safely for a <script> tag (no "</script>" breakouts). */
 export function jsonLdString(data: unknown): string {
   return JSON.stringify(data).replace(/</g, "\\u003c");
+}
+
+/** ItemList for clinic/hospital hubs (neutral alphabetical order, as rendered). */
+export function siteItemListJsonLd(name: string, sites: { url: string; name: string }[]) {
+  return {
+    "@type": "ItemList",
+    name,
+    numberOfItems: sites.length,
+    itemListElement: sites.map((s, i) => ({ "@type": "ListItem", position: i + 1, url: s.url, name: s.name })),
+  };
 }

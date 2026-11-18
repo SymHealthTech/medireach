@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CreditCard, ShieldAlert, UserPlus, Users } from "lucide-react";
+import { Building2, CreditCard, Hospital, ShieldAlert, UserPlus, UserRound, Users } from "lucide-react";
 import { MonthlyBars, type MonthPoint } from "@/components/admin/MonthlyBars";
 import { can, requireAdminPage } from "@/lib/auth/admin";
 import { connectToDatabase } from "@/lib/db";
@@ -9,9 +9,12 @@ import { getSettings } from "@/lib/settings";
 import { nowInIndia } from "@/lib/timings";
 import { AuditLog } from "@/models/AuditLog";
 import { DoctorProfile } from "@/models/DoctorProfile";
+import { countFoundingCustomers } from "@/lib/founding";
 import { Lead } from "@/models/Lead";
 import { Payment } from "@/models/Payment";
 import { UpdateRequest } from "@/models/UpdateRequest";
+import { Establishment } from "@/models/Establishment";
+import { RENEWAL_DUE_SOON_DAYS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -37,12 +40,20 @@ function describe(action: string): string {
     "payment.record": "recorded a payment",
     "update_request.create": "logged an update request",
     "update_request.status": "moved an update request",
-    "hospital.create": "added a hospital",
+    "clinic.create": "created a clinic draft",
+    "hospital.create": "created a hospital draft",
+    "clinic.publish": "published a clinic site",
+    "hospital.publish": "published a hospital site",
+    "clinic.republish": "republished a clinic site",
+    "hospital.republish": "republished a hospital site",
+    "clinic.unpublish": "unpublished a clinic site",
+    "hospital.unpublish": "unpublished a hospital site",
     "settings.update": "changed settings",
     "admin.login": "logged in",
   };
   if (map[action]) return map[action];
   if (action.startsWith("doctor.update.")) return `edited a doctor (${action.split(".")[2]})`;
+  if (/^(clinic|hospital).update./.test(action)) return `edited a ${action.split(".")[0]} (${action.split(".")[2]})`;
   if (action.startsWith("master.")) return "edited master lists";
   return action.replace(/[._]/g, " ");
 }
@@ -62,6 +73,23 @@ function StatCard({ label, value, hint, href }: { label: string; value: string |
     </Link>
   ) : (
     <div className={cls}>{body}</div>
+  );
+}
+
+/** One product: total, with published / drafts / in review underneath. */
+function ProductCard({ label, icon: Icon, counts, href }: { label: string; icon: typeof Users; counts: Record<string, number>; href: string }) {
+  const total = Object.values(counts).reduce((a, n) => a + n, 0);
+  return (
+    <Link href={href} className="block rounded-xl border border-line bg-card p-4 shadow-soft transition hover:border-ink/30">
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="size-4" strokeWidth={1.75} /> {label}
+      </p>
+      <p className="mt-1 font-display text-3xl font-semibold leading-none text-ink">{total}</p>
+      <p className="mt-2 text-xs text-muted-foreground">
+        {counts.published ?? 0} published · {counts.draft ?? 0} drafts · {counts.review ?? 0} in review
+        {counts.suspended ? ` · ${counts.suspended} suspended` : ""}
+      </p>
+    </Link>
   );
 }
 
@@ -96,9 +124,23 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const monthStart = startOfMonthIST(0);
   const sixMonthsAgo = startOfMonthIST(5);
 
-  const [statusCounts, foundingUsed, settings, newLeads, openRequests, monthSales, monthly, published, activity] = await Promise.all([
+  const now = new Date();
+  const soon = new Date(now.getTime() + RENEWAL_DUE_SOON_DAYS * 86_400_000);
+  const notLapsed = { renewalStatus: { $ne: "lapsed" } };
+  const renewalCount = async (filter: Record<string, unknown>) =>
+    (await DoctorProfile.countDocuments(filter)) + (await Establishment.countDocuments(filter));
+
+  const [statusCounts, siteCounts, renewals, foundingUsed, settings, newLeads, openRequests, monthSales, monthly, published, activity] = await Promise.all([
     DoctorProfile.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
-    DoctorProfile.countDocuments({ foundingDoctor: true }),
+    Establishment.aggregate<{ _id: { kind: string; status: string }; n: number }>([{ $group: { _id: { kind: "$kind", status: "$status" }, n: { $sum: 1 } } }]),
+    showMoney
+      ? Promise.all([
+          renewalCount({ ...notLapsed, renewalDueDate: { $gte: now, $lte: soon } }),
+          renewalCount({ ...notLapsed, renewalDueDate: { $lt: now } }),
+          renewalCount({ renewalStatus: "lapsed" }),
+        ])
+      : Promise.resolve([0, 0, 0] as const),
+    countFoundingCustomers(),
     getSettings(),
     Lead.countDocuments({ status: "new", source: { $ne: "whatsapp_click" } }),
     showMoney ? UpdateRequest.countDocuments({ status: { $ne: "done" } }) : Promise.resolve(0),
@@ -122,7 +164,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   ]);
 
   const count = (s: string) => statusCounts.find((c) => c._id === s)?.n ?? 0;
-  const total = statusCounts.reduce((a, c) => a + c.n, 0);
+  const doctorCounts = Object.fromEntries(statusCounts.map((c) => [c._id, c.n]));
+  const siteCountsOf = (kind: string) => Object.fromEntries(siteCounts.filter((c) => c._id.kind === kind).map((c) => [c._id.status, c.n]));
+  const [dueSoon, overdue, lapsed] = renewals;
   const months = Array.from({ length: 6 }, (_, i) => {
     const start = startOfMonthIST(5 - i);
     return { key: new Date(start.getTime() + 5.5 * 3600_000).toISOString().slice(0, 7), label: monthLabel(new Date(start.getTime() + 6 * 3600_000)) };
@@ -136,6 +180,8 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
   const actions = [
     { href: "/admin/doctors/new", label: "New doctor", icon: UserPlus, show: true },
+    { href: "/admin/establishments/new?kind=clinic", label: "New clinic", icon: Building2, show: true },
+    { href: "/admin/establishments/new?kind=hospital", label: "New hospital", icon: Hospital, show: true },
     { href: "/admin/leads", label: "New lead", icon: Users, show: true },
     { href: "/admin/payments", label: "Record payment", icon: CreditCard, show: showMoney },
   ].filter((a) => a.show);
@@ -156,27 +202,38 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <p className="mt-1 text-muted-foreground">Here&apos;s where things stand today.</p>
       </section>
 
+      <section aria-label="Products" className="grid gap-3 sm:grid-cols-3">
+        <ProductCard label="Doctors" icon={UserRound} counts={doctorCounts} href="/admin/doctors" />
+        <ProductCard label="Clinics" icon={Building2} counts={siteCountsOf("clinic")} href="/admin/establishments?kind=clinic" />
+        <ProductCard label="Hospitals" icon={Hospital} counts={siteCountsOf("hospital")} href="/admin/establishments?kind=hospital" />
+      </section>
+
+      {showMoney && (
+        <section aria-label="Renewals" className="grid grid-cols-3 gap-3">
+          <StatCard label="Due in 30 days" value={dueSoon} href="/admin/payments/renewals?status=due" />
+          <StatCard label="Overdue" value={overdue} hint="Past due, still live" href="/admin/payments/renewals?status=overdue" />
+          <StatCard label="Lapsed" value={lapsed} href="/admin/payments/renewals?status=lapsed" />
+        </section>
+      )}
+
       <section aria-label="Key numbers" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Doctors" value={total} hint={`${count("published")} published · ${count("draft")} drafts`} href="/admin/doctors" />
-        <StatCard label="In review" value={count("review")} hint="Waiting for an admin to publish" href="/admin/doctors?status=review" />
         <StatCard label="New leads" value={newLeads} href="/admin/leads?status=new" />
         {showMoney ? (
           <StatCard label="This month's sales" value={formatINR(monthSales[0]?.amount ?? 0)} hint={`${monthSales[0]?.n ?? 0} payment${monthSales[0]?.n === 1 ? "" : "s"}`} href="/admin/payments" />
         ) : (
           <StatCard label="Published" value={count("published")} href="/admin/pages" />
         )}
-        <div className="col-span-2">
+        {showMoney && <StatCard label="Open update requests" value={openRequests} href="/admin/update-requests" />}
+        <div className="col-span-2 lg:col-span-1">
           <FoundingCard left={Math.max(0, settings.foundingTotal - foundingUsed)} total={settings.foundingTotal} />
         </div>
-        {showMoney && <StatCard label="Open update requests" value={openRequests} href="/admin/update-requests" />}
-        {count("suspended") > 0 && <StatCard label="Suspended" value={count("suspended")} href="/admin/doctors?status=suspended" />}
       </section>
 
       <section aria-labelledby="quick-actions" className="space-y-3">
         <h2 id="quick-actions" className="text-sm font-semibold text-muted-foreground">
           Quick actions
         </h2>
-        <ul className="grid gap-3 sm:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {actions.map(({ href, label, icon: Icon }) => (
             <li key={label}>
               <Link

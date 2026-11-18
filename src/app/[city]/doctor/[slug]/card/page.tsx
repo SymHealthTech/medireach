@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CardPageFooter, CardPageHeader, PatientCardView } from "@/components/cards/DigitalCardPage";
-import { getPublishedDoctor } from "@/lib/public/data";
+import { getLiveDoctor } from "@/lib/public/data";
 import { SLUG_RE } from "@/lib/slug";
 import { absUrl, paths } from "@/lib/site";
 
@@ -21,7 +21,7 @@ type Params = { city: string; slug: string };
 
 async function load(params: Promise<Params>) {
   const { city, slug } = await params;
-  return SLUG_RE.test(city) && SLUG_RE.test(slug) ? getPublishedDoctor(city, slug) : null;
+  return SLUG_RE.test(city) && SLUG_RE.test(slug) ? getLiveDoctor(city, slug) : null;
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {

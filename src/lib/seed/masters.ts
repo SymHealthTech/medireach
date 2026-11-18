@@ -8,15 +8,18 @@ import { Specialty } from "@/models/Specialty";
 import { TemplateSlot } from "@/models/TemplateSlot";
 import { AuditLog } from "@/models/AuditLog";
 import { DoctorProfile } from "@/models/DoctorProfile";
-import { Hospital } from "@/models/Hospital";
 import { Lead } from "@/models/Lead";
 import { Payment } from "@/models/Payment";
 import { UpdateRequest } from "@/models/UpdateRequest";
-import { TEMPLATE_KEYS, TEMPLATE_TYPES } from "@/lib/constants";
+import { ClinicCategory } from "@/models/ClinicCategory";
+import { Counter } from "@/models/Counter";
+import { Establishment } from "@/models/Establishment";
+import { SITE_TEMPLATE_TYPES, TEMPLATE_KEYS } from "@/lib/constants";
 import { masterSlugError, slugify, type MasterSlugKind } from "@/lib/slug";
 import {
   PUNE_AREAS,
   SEED_CITIES,
+  SEED_CLINIC_CATEGORIES,
   SEED_COUNCILS,
   SEED_DEGREES,
   SEED_SPECIALTIES,
@@ -35,6 +38,7 @@ export interface SeedCounts {
   specialties: number;
   degrees: number;
   councils: number;
+  clinicCategories: number;
   templateSlots: number;
   settings: number;
 }
@@ -74,8 +78,8 @@ export async function seedMasters(): Promise<SeedCounts> {
   // run against a fresh database); unique constraints must exist before upserts.
   await Promise.all(
     [
-      City, Area, Specialty, Degree, Council, TemplateSlot, Setting,
-      DoctorProfile, Hospital, Payment, UpdateRequest, Lead, AuditLog,
+      City, Area, Specialty, Degree, Council, ClinicCategory, TemplateSlot, Setting, Counter,
+      DoctorProfile, Establishment, Payment, UpdateRequest, Lead, AuditLog,
     ].map((m) => (m as Model<unknown>).syncIndexes()),
   );
 
@@ -134,7 +138,14 @@ export async function seedMasters(): Promise<SeedCounts> {
     councils.map((c) => ({ filter: { slug: c.slug }, doc: c })),
   );
 
-  const slots = TEMPLATE_TYPES.flatMap((type) =>
+  const categories = SEED_CLINIC_CATEGORIES.map((c) => ({ ...c, slug: checkSlug(null, c.slug, c.name) }));
+  assertUnique(categories.map((c) => c.slug), "clinic category");
+  const insertedCategories = await upsertMany(
+    ClinicCategory,
+    categories.map((c) => ({ filter: { slug: c.slug }, doc: c })),
+  );
+
+  const slots = SITE_TEMPLATE_TYPES.flatMap((type) =>
     TEMPLATE_KEYS.map((key, i) => ({
       type,
       key,
@@ -160,6 +171,7 @@ export async function seedMasters(): Promise<SeedCounts> {
     specialties: insertedSpecialties,
     degrees: insertedDegrees,
     councils: insertedCouncils,
+    clinicCategories: insertedCategories,
     templateSlots: insertedSlots,
     settings: settingsRes.upsertedCount,
   };

@@ -22,7 +22,7 @@ export function FoundingBadge({ number }: { number?: number }) {
   return (
     <span
       className="inline-flex items-center gap-1 rounded-full bg-marigold px-2 py-0.5 text-xs font-semibold text-[#0e3b3c]"
-      title="Founding Doctor"
+      title="Founding customer"
     >
       <Star className="size-3 fill-current" />
       {number ? `#${number}` : "Founding"}

@@ -40,7 +40,7 @@ const schema = z.object({
   city: optional(60),
   specialty: optional(80),
   message: optional(1000),
-  source: z.enum(["homepage_form", "pricing", "hospitals"]),
+  source: z.enum(["homepage_form", "pricing", "clinics", "hospitals"]),
   // Honeypot: real people never see or fill this.
   website: z.string().max(0).optional(),
 });

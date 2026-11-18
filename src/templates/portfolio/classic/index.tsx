@@ -206,10 +206,24 @@ function ClinicCard({ clinic }: { clinic: PublicClinic }) {
             <Building2 aria-hidden className="size-5" strokeWidth={1.75} />
           </span>
           <div>
-            <h3 className="font-display text-xl font-semibold text-ink">{clinic.name}</h3>
+            <h3 className="font-display text-xl font-semibold text-ink">
+              {clinic.site ? (
+                <a href={clinic.site.url} className="underline-offset-4 hover:underline">
+                  {clinic.name}
+                </a>
+              ) : (
+                clinic.name
+              )}
+            </h3>
             <p className="text-sm text-muted-foreground">
               {clinic.area.name}, {clinic.city.name}
             </p>
+            {clinic.site && (
+              <a href={clinic.site.url} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-lagoon hover:text-ink">
+                Practises at {clinic.site.name}: visit website
+                <ArrowUpRight aria-hidden className="size-3.5" strokeWidth={2} />
+              </a>
+            )}
           </div>
         </div>
         <span className="rounded-full bg-sage px-3 py-1 text-xs font-semibold text-ink">{CLINIC_TYPE_LABEL[clinic.type]}</span>

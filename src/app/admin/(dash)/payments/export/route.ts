@@ -5,7 +5,7 @@ import { paymentFilter } from "@/lib/admin/payments";
 import { audit } from "@/lib/api/audit";
 import { toDateInput } from "@/lib/format";
 import { DoctorProfile } from "@/models/DoctorProfile";
-import { Hospital } from "@/models/Hospital";
+import { Establishment } from "@/models/Establishment";
 import { Payment } from "@/models/Payment";
 
 /** CSV export of payments (same filters as the list). Admins only. */
@@ -25,20 +25,20 @@ export async function GET(req: Request) {
   const sp = Object.fromEntries(new URL(req.url).searchParams) as SearchParams;
   const { filter } = paymentFilter(sp);
   const payments = await Payment.find(filter).sort({ date: -1 }).limit(20000).lean();
-  const [doctors, hospitals] = await Promise.all([
+  const [doctors, establishments] = await Promise.all([
     DoctorProfile.find({ _id: { $in: payments.map((p) => p.doctorId).filter(Boolean) } }).select({ title: 1, firstName: 1, lastName: 1 }).lean(),
-    Hospital.find({ _id: { $in: payments.map((p) => p.hospitalId).filter(Boolean) } }).select({ name: 1 }).lean(),
+    Establishment.find({ _id: { $in: payments.map((p) => p.establishmentId ?? p.hospitalId).filter(Boolean) } }).select({ name: 1 }).lean(),
   ]);
   const dn = new Map(doctors.map((d) => [String(d._id), `${d.title || "Dr."} ${d.firstName} ${d.lastName}`]));
-  const hn = new Map(hospitals.map((h) => [String(h._id), h.name]));
+  const en = new Map(establishments.map((e) => [String(e._id), e.name]));
 
-  const header = ["Date", "Invoice no.", "Doctor", "Hospital", "Purpose", "Mode", "Amount (INR)", "GST included", "Notes"];
+  const header = ["Date", "Invoice no.", "Doctor", "Clinic / hospital", "Purpose", "Mode", "Amount (INR)", "GST included", "Notes"];
   const lines = payments.map((p) =>
     [
       toDateInput(p.date),
       p.invoiceNo,
       p.doctorId ? dn.get(String(p.doctorId)) : "",
-      p.hospitalId ? hn.get(String(p.hospitalId)) : "",
+      p.establishmentId ?? p.hospitalId ? en.get(String(p.establishmentId ?? p.hospitalId)) : "",
       PAYMENT_PURPOSE_LABEL[p.purpose],
       PAYMENT_MODE_LABEL[p.mode],
       p.amount,

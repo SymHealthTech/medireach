@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { DoctorLoginForm } from "@/components/account/DoctorLoginForm";
-import { getCurrentDoctor } from "@/lib/auth/doctor";
+import { getCurrentAccount } from "@/lib/auth/doctor";
 
-export const metadata: Metadata = { title: { absolute: "Doctor login – MediReach" }, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { absolute: "Log in – MediReach" }, robots: { index: false, follow: false } };
 
 const ERRORS: Record<string, string> = {
   Verification: "That login link has expired or was already used. Request a new one below.",
@@ -11,7 +11,7 @@ const ERRORS: Record<string, string> = {
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  if (await getCurrentDoctor()) redirect("/account");
+  if (await getCurrentAccount()) redirect("/account");
   const { error } = await searchParams;
   const message = error ? (ERRORS[error] ?? "Something went wrong. Please request a new login link.") : undefined;
   return (

@@ -10,6 +10,8 @@ import { DoctorProfile } from "@/models/DoctorProfile";
 import { Setting } from "@/models/Setting";
 import { Specialty } from "@/models/Specialty";
 import { TemplateSlot } from "@/models/TemplateSlot";
+import { ClinicCategory } from "@/models/ClinicCategory";
+import { isThemeKey } from "@/themes/specialty";
 import { PUNE_AREAS } from "@/data/masters";
 
 let mongod: MongoMemoryServer;
@@ -32,7 +34,8 @@ describe("seedMasters", () => {
     expect(first.specialties).toBeGreaterThanOrEqual(40);
     expect(first.degrees).toBeGreaterThanOrEqual(30);
     expect(first.councils).toBeGreaterThanOrEqual(30);
-    expect(first.templateSlots).toBe(10);
+    expect(first.clinicCategories).toBe(15);
+    expect(first.templateSlots).toBe(20);
     expect(first.settings).toBe(1);
 
     const second = await seedMasters();
@@ -53,7 +56,7 @@ describe("seedMasters", () => {
   });
 
   it("creates classic as the only ready + default slot per type", async () => {
-    for (const type of ["portfolio", "card"] as const) {
+    for (const type of ["portfolio", "clinic", "hospital", "card"] as const) {
       const slots = await TemplateSlot.find({ type }).sort({ key: 1 }).lean();
       expect(slots.map((s) => s.key)).toEqual(["classic", "t2", "t3", "t4", "t5"]);
       expect(slots.filter((s) => s.isDefault).map((s) => s.key)).toEqual(["classic"]);
@@ -63,7 +66,19 @@ describe("seedMasters", () => {
 
   it("creates the settings singleton with defaults", async () => {
     const s = await Setting.findOne().lean();
-    expect(s).toMatchObject({ foundingTotal: 100, gstMode: "inclusive", prices: { update: 299 } });
+    expect(s).toMatchObject({
+      foundingTotal: 100,
+      gstMode: "inclusive",
+      renewalGraceDays: 30,
+      prices: { updatePrice: 299, doctorSetup: 1999, clinicSetup: 2999, hospitalSetup: 4999, renewalHospital: 1499, foundingRenewal: 499 },
+    });
+  });
+
+  it("gives every clinic category a real theme, and one hospital category", async () => {
+    const cats = await ClinicCategory.find().lean();
+    for (const c of cats) expect(isThemeKey(c.defaultThemeKey), c.slug).toBe(true);
+    expect(cats.filter((c) => c.kind === "hospital").map((c) => c.slug)).toEqual(["small-hospital"]);
+    expect(cats.find((c) => c.slug === "skin")).toMatchObject({ name: "Skin Clinic", plural: "Skin Clinics", defaultThemeKey: "skin" });
   });
 });
 

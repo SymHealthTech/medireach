@@ -47,6 +47,8 @@ export interface PublicClinic {
   appointmentNote?: string;
   /** Only present when the doctor chose to show it. */
   fee?: number;
+  /** The clinic/hospital's own MediReach site, when it has a published one ("Practises at"). */
+  site?: { name: string; url: string };
 }
 
 export interface PublicDoctor {
@@ -110,6 +112,8 @@ export interface PublicDoctor {
   portfolioTemplateId: string;
   cardTemplateId: string;
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
+  /** Renewal not paid after the grace period: the page shows a "temporarily unavailable" notice instead. */
+  lapsed?: boolean;
 
   updatedAt: string; // ISO
   publishedAt?: string;
@@ -189,5 +193,136 @@ export interface CardTemplateProps {
   /** Photo URL safe for both renderers (JPEG); undefined when there's no photo. */
   photoUrl?: string;
   /** Show the dev-only "not designed yet" banner (placeholder slots). */
+  devBanner?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Clinic and hospital sites
+// ---------------------------------------------------------------------------
+
+/** A doctor listed on a clinic/hospital site. `url` only when they have a published portfolio. */
+export interface PublicSiteDoctor {
+  /** DoctorProfile id when linked to a published portfolio. */
+  id?: string;
+  name: string;
+  qualifications?: string;
+  specialty?: string;
+  role?: string;
+  url?: string;
+  photo?: PublicImage;
+}
+
+/**
+ * PublicEstablishment — the sanitised, serialisable view of a clinic or small
+ * hospital that public pages and templates render. No business, contact-person,
+ * owner or compliance fields; master ids resolved to names + slugs. Only
+ * doctors with a published portfolio are linked (others appear by name only).
+ */
+export interface PublicEstablishment {
+  id: string;
+  kind: "clinic" | "hospital";
+  citySlug: string;
+  slug: string;
+  url: string;
+  shareUrl: string;
+  /** Visiting-card page; absent for sample sites. */
+  cardUrl?: string;
+  name: string;
+  category?: PublicNamed & { plural: string };
+  themeKey: string;
+  logo?: PublicImage;
+  coverPhoto?: PublicImage;
+  tagline?: string;
+  shortDescription?: string;
+  aboutHtml?: string;
+  registration?: { authority?: string; number?: string };
+
+  address: {
+    line1: string;
+    line2?: string;
+    area: PublicNamed;
+    city: PublicNamed;
+    state: string;
+    pincode: string;
+    landmark?: string;
+    parkingNote?: string;
+    fullAddress: string;
+  };
+  directionsUrl: string;
+  mapEmbedUrl: string;
+  geo?: { lat: number; lng: number };
+  /** Digits with country code. */
+  phones: string[];
+  whatsapp?: string;
+  email?: string;
+  emergencyPhone?: string;
+
+  is24x7: boolean;
+  timings: PublicDayTimings[];
+  appointmentNote?: string;
+  visitingHours?: string;
+
+  services: { name: string; description?: string; group?: string }[];
+  facilities: { name: string; description?: string }[];
+  equipment: { name: string; description?: string }[];
+  doctors: PublicSiteDoctor[];
+  departments: { name: string; description?: string; doctors: PublicSiteDoctor[] }[];
+  beds?: { total: number; types: { type: string; count: number }[] };
+  insurance?: { cashless: boolean; providers: string[] };
+  languages: string[];
+  gallery: PublicImage[];
+  links: Partial<Record<"googleBusiness" | "practo" | "instagram" | "facebook" | "youtube" | "website", string>>;
+
+  siteTemplateId: string;
+  cardTemplateId: string;
+  seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
+  /** Renewal not paid after the grace period: the page shows a "temporarily unavailable" notice instead. */
+  lapsed?: boolean;
+  updatedAt: string;
+  publishedAt?: string;
+}
+
+/** SEO markup from the shared wrapper; templates only place it. */
+export interface SiteSeoSlots {
+  /** <h1> name + "{Category} · {Area}, {City}". */
+  heading: ReactNode;
+  /** "{Name} is a {category} in {Area}, {City}, with {n} doctors." */
+  intro: ReactNode;
+  /** Visible breadcrumb trail. */
+  breadcrumbs: ReactNode;
+  /** Quick facts Q&A block. */
+  quickFacts: ReactNode;
+}
+
+export interface SiteTemplateProps {
+  site: PublicEstablishment;
+  seo: SiteSeoSlots;
+}
+
+/** Small card for clinics/hospitals on hubs (neutral alphabetical order). */
+export interface SiteCardData {
+  id: string;
+  kind: "clinic" | "hospital";
+  url: string;
+  name: string;
+  sortName: string;
+  logo?: PublicImage;
+  /** Theme primary colour, for the initials tile when there's no logo. */
+  color: string;
+  category?: PublicNamed & { plural: string };
+  area: PublicNamed;
+  is24x7: boolean;
+  doctorCount: number;
+  updatedAt: string;
+}
+
+/** Props for clinic/hospital visiting cards (same renderer rules as CardTemplateProps). */
+export interface SiteCardTemplateProps {
+  site: PublicEstablishment;
+  variant: CardVariant;
+  qr: CardQr;
+  fonts: { display: string; body: string };
+  /** Logo URL safe for both renderers (JPEG); undefined when there's no logo. */
+  logoUrl?: string;
   devBanner?: string;
 }

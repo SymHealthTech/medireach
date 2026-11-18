@@ -7,7 +7,7 @@ import { safeAdminNext } from "@/lib/auth/redirect";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSessionToken, verifySessionToken } from "@/lib/auth/session";
 import { seedSuperadmin } from "@/lib/seed/admin";
-import { activeNavItem, navForRole, NAV_ITEMS, rolesFor } from "@/components/admin/nav";
+import { activeNavItem, MOBILE_TABS, navForRole, NAV_ITEMS, NEW_ITEMS, rolesFor } from "@/components/admin/nav";
 import { Admin } from "@/models/Admin";
 
 let mongod: MongoMemoryServer;
@@ -89,7 +89,7 @@ describe("sessions and roles", () => {
 
   it("hides admin-only sections from sales", () => {
     const sales = navForRole("sales").map((n) => n.label);
-    expect(sales).toEqual(["Overview", "Doctors", "Portfolio pages", "Visiting cards", "Hospitals", "Leads"]);
+    expect(sales).toEqual(["Overview", "Doctors", "Clinics & hospitals", "Sites", "Visiting cards", "Leads"]);
     expect(navForRole("superadmin")).toHaveLength(NAV_ITEMS.length);
     expect(rolesFor("/admin/payments")).not.toContain("sales");
   });
@@ -98,5 +98,26 @@ describe("sessions and roles", () => {
     expect(activeNavItem("/admin")?.label).toBe("Overview");
     expect(activeNavItem("/admin/doctors/new")?.label).toBe("Doctors");
     expect(activeNavItem("/admin/update-requests")?.label).toBe("Update requests");
+    expect(activeNavItem("/admin/establishments/new")?.label).toBe("Clinics & hospitals");
+    expect(activeNavItem("/admin/payments/renewals")?.label).toBe("Payments & renewals");
+  });
+
+  it("follows the spec's menu order, mobile tabs and New choices", () => {
+    expect(NAV_ITEMS.map((n) => n.label)).toEqual([
+      "Overview",
+      "Doctors",
+      "Clinics & hospitals",
+      "Sites",
+      "Visiting cards",
+      "Designs & themes",
+      "Payments & renewals",
+      "Update requests",
+      "Leads",
+      "Master lists",
+      "SEO",
+      "Settings",
+    ]);
+    expect(MOBILE_TABS.map((h) => NAV_ITEMS.find((n) => n.href === h)!.short ?? NAV_ITEMS.find((n) => n.href === h)!.label)).toEqual(["Overview", "Doctors", "Clinics"]);
+    expect(NEW_ITEMS.map((n) => n.label)).toEqual(["Doctor", "Clinic", "Hospital"]);
   });
 });

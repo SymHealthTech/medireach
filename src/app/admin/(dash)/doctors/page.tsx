@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { rolesFor } from "@/components/admin/nav";
 import { can, requireAdminPage } from "@/lib/auth/admin";
 import { isObjectId, oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchParams } from "@/lib/admin/list";
-import { DOCTOR_SOURCES, DOCTOR_STATUSES, PLANS } from "@/lib/constants";
+import { DOCTOR_PLANS, DOCTOR_SOURCES, DOCTOR_STATUSES } from "@/lib/constants";
+import { DOCTOR_PLAN_LABEL } from "@/lib/admin/labels";
 import { getEditorOptions } from "@/lib/doctors/options";
 import { timeAgo } from "@/lib/format";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
@@ -28,12 +29,12 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
   const filter: FilterQuery<DoctorProfileDoc> = {};
   const status = oneOf(param(sp, "status"), DOCTOR_STATUSES);
   if (status) filter.status = status;
-  const plan = oneOf(param(sp, "plan"), PLANS);
+  const plan = oneOf(param(sp, "plan"), DOCTOR_PLANS);
   if (plan) filter.plan = plan;
   const source = oneOf(param(sp, "source"), DOCTOR_SOURCES);
   if (source) filter.source = source;
   const founding = oneOf(param(sp, "founding"), ["yes", "no"] as const);
-  if (founding) filter.foundingDoctor = founding === "yes";
+  if (founding) filter.founding = founding === "yes" ? true : { $ne: true };
   const city = param(sp, "city");
   if (isObjectId(city)) filter["clinics.cityId"] = city;
   const area = param(sp, "area");
@@ -55,7 +56,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
       .sort(SORTS[sortKey])
       .skip((page - 1) * PAGE_SIZE)
       .limit(PAGE_SIZE)
-      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, photo: 1, primarySpecialtyId: 1, clinics: { $slice: 1 }, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, foundingDoctor: 1, foundingNumber: 1, updatedAt: 1, plan: 1, "compliance.issues": 1 })
+      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, photo: 1, primarySpecialtyId: 1, clinics: { $slice: 1 }, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, founding: 1, foundingNumber: 1, updatedAt: 1, plan: 1, "compliance.issues": 1 })
       .lean(),
   ]);
 
@@ -70,7 +71,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
       status: d.status,
       photo: d.photo?.url,
       meta: [specName.get(String(d.primarySpecialtyId)), areaName.get(String(d.clinics[0]?.areaId))].filter(Boolean).join(" · "),
-      founding: d.foundingDoctor ? (d.foundingNumber ?? 0) : null,
+      founding: d.founding ? (d.foundingNumber ?? 0) : null,
       issues: d.compliance?.issues?.length ?? 0,
       updatedAt: d.updatedAt,
       plan: d.plan,
@@ -100,7 +101,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
           { name: "specialty", label: "Specialty", options: options.specialties.map((s) => ({ value: s.id, label: s.name })) },
           { name: "city", label: "City", options: options.cities.map((c) => ({ value: c.id, label: c.name })) },
           { name: "area", label: "Area", options: options.areas.filter((a) => a.cityId === cityId).map((a) => ({ value: a.id, label: a.name })) },
-          { name: "plan", label: "Plan", options: [{ value: "gp", label: "GP" }, { value: "consultant", label: "Consultant" }, { value: "hospital", label: "Hospital" }] },
+          { name: "plan", label: "Plan", options: DOCTOR_PLANS.map((p) => ({ value: p, label: DOCTOR_PLAN_LABEL[p] })) },
           { name: "founding", label: "Founding", options: [{ value: "yes", label: "Founding only" }, { value: "no", label: "Not founding" }] },
           { name: "source", label: "Source", options: DOCTOR_SOURCES.map((s) => ({ value: s, label: s[0]!.toUpperCase() + s.slice(1) })) },
         ]}
@@ -124,7 +125,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
           {/* Desktop table */}
           <div className="hidden overflow-hidden rounded-xl border border-line bg-card shadow-soft md:block">
             <table className="w-full text-sm">
-              <thead className="sticky top-16 z-10 bg-muted text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">Doctor</th>
                   <th className="px-4 py-3">Status</th>
@@ -156,7 +157,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                         {r.issues > 0 && <span className="text-xs font-semibold text-clay-text">{r.issues} issue{r.issues > 1 ? "s" : ""}</span>}
                       </div>
                     </td>
-                    <td className="hidden px-4 py-2 uppercase text-muted-foreground lg:table-cell">{r.plan}</td>
+                    <td className="hidden px-4 py-2 text-muted-foreground lg:table-cell">{r.plan === "doctor_addon" ? "Add-on" : "Doctor"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{timeAgo(r.updatedAt)}</td>
                     <td className="px-2 py-2">
                       <DoctorRowActions doctor={r} canPublish={canPublish} />

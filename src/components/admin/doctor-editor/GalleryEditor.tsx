@@ -81,12 +81,15 @@ export function GalleryEditor({
   maxPhotos,
   disabled,
   errorFor,
+  note,
 }: {
   value: Item[];
   onChange: (v: Item[]) => void;
   maxPhotos: number;
   disabled?: boolean;
   errorFor: (path: string) => string | undefined;
+  /** Replaces the default (doctor) guidance under the photos. */
+  note?: string;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -155,8 +158,10 @@ export function GalleryEditor({
         </SortableContext>
       </DndContext>
       <p className="text-xs text-muted-foreground">
-        {value.length} of {maxPhotos} photos (award photos count toward the 5). Clinic, team, certificates and events only — never patients or
-        before/after pictures.
+        {value.length} of {maxPhotos} photos
+        {note
+          ? `. ${note}`
+          : " (award photos count toward the 5). Clinic, team, certificates and events only — never patients or before/after pictures."}
       </p>
       <input
         ref={input}

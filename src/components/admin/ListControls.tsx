@@ -54,8 +54,8 @@ export function ListToolbar({
   }, [q]);
 
   return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-      {search && <label className="relative flex-1">
+    <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+      {search && <label className="relative flex-1 lg:min-w-64">
         <span className="sr-only">Search</span>
         {pending ? (
           <Loader2 className="absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -70,7 +70,7 @@ export function ListToolbar({
         />
       </label>}
       {(filters.length > 0 || sorts) && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:overflow-visible lg:px-0 lg:pb-0">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
           {filters.map((f) => (
             <select
               key={f.name}

@@ -30,7 +30,7 @@ const LINE = "#E6E1D8";
 const INK_GRADIENT = `linear-gradient(160deg, ${INK_LIGHT} 0%, ${INK} 55%, ${INK_DEEP} 100%)`;
 
 // Lucide-style 24px icon paths (stroke only).
-const ICONS = {
+export const ICONS = {
   phone:
     "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z",
   pin: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0zM15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
@@ -38,7 +38,7 @@ const ICONS = {
   globe: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
 } as const;
 
-function Icon({ name, size, color }: { name: keyof typeof ICONS; size: number; color: string }) {
+export function Icon({ name, size, color }: { name: keyof typeof ICONS; size: number; color: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <path d={ICONS[name]} />
@@ -46,12 +46,12 @@ function Icon({ name, size, color }: { name: keyof typeof ICONS; size: number; c
   );
 }
 
-function QrBlock({ qr, px, radius = 16 }: { qr: CardQr; px: number; radius?: number }) {
+export function QrBlock({ qr, px, radius = 16, color = INK }: { qr: CardQr; px: number; radius?: number; color?: string }) {
   const quiet = 2.5;
   return (
     <div style={{ display: "flex", background: "#FFFFFF", padding: Math.round((px / (qr.size + quiet * 2)) * quiet), borderRadius: radius }}>
       <svg width={px} height={px} viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges">
-        <path d={qr.path} fill={INK} />
+        <path d={qr.path} fill={color} />
       </svg>
     </div>
   );
@@ -62,7 +62,7 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? "") + (parts.at(-1)?.[0] ?? "")).toUpperCase();
 }
 
-const shortUrl = (url: string) => url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
+export const shortUrl = (url: string) => url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
 
 /** Shrink long names so they fit. */
 const nameSize = (name: string, base: number) => (name.length > 26 ? Math.round(base * 0.76) : name.length > 20 ? Math.round(base * 0.88) : base);

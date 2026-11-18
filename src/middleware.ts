@@ -2,14 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 import { RESERVED_SUBDOMAINS } from "@/config/reserved";
 import { ADMIN_ROLES } from "@/lib/constants";
-import { ROOT_HOSTNAME, SITE_URL, paths } from "@/lib/site";
+import { ROOT_HOSTNAME, SITE_URL, sitePath, type SiteRoute } from "@/lib/site";
 import { subdomainError } from "@/lib/slug";
 
 /**
  * Edge middleware.
  *
- * 1. Doctor subdomains (amit.medireach.co.in, amit.localhost:3000 in dev):
- *    REWRITE (not redirect) to the canonical /[city]/doctor/[slug] page, so the
+ * 1. Site subdomains (amit.medireach.co.in, shreeskin.medireach.co.in,
+ *    amit.localhost:3000 in dev): doctors and clinics/hospitals share one
+ *    namespace. REWRITE (not redirect) to the canonical /[city]/doctor/[slug],
+ *    /[city]/clinic/[slug] or /[city]/hospital/[slug] page, so the
  *    address bar keeps the subdomain while the page's canonical / JSON-LD /
  *    links all point at the apex folder URL. Unknown or unpublished → 404.
  *    /admin, /account, /api, /login are never served on subdomains.
@@ -26,16 +28,18 @@ const BLOCKED_ON_SUBDOMAIN = ["/admin", "/account", "/api", "/login", "/go"];
 
 // Per-instance lookup cache; the API route is also CDN-cached.
 const LOOKUP_TTL_MS = 60_000;
-const lookupCache = new Map<string, { at: number; route: { citySlug: string; slug: string } | null }>();
+const lookupCache = new Map<string, { at: number; route: SiteRoute | null }>();
 
-async function lookupSubdomain(sub: string): Promise<{ citySlug: string; slug: string } | null> {
+async function lookupSubdomain(sub: string): Promise<SiteRoute | null> {
   const hit = lookupCache.get(sub);
   if (hit && Date.now() - hit.at < LOOKUP_TTL_MS) return hit.route;
   const res = await fetch(`${SITE_URL}/api/public/subdomain/${encodeURIComponent(sub)}`, {
     headers: { accept: "application/json" },
   });
   if (res.status !== 200 && res.status !== 404) throw new Error(`subdomain lookup failed: ${res.status}`);
-  const route = res.status === 200 ? ((await res.json()) as { citySlug: string; slug: string }) : null;
+  const body = res.status === 200 ? ((await res.json()) as Partial<SiteRoute>) : null;
+  // A response without `kind` (CDN-cached during a deploy) is a doctor route.
+  const route = body?.citySlug && body.slug ? { kind: body.kind ?? "doctor", citySlug: body.citySlug, slug: body.slug } : null;
   lookupCache.set(sub, { at: Date.now(), route });
   return route;
 }
@@ -69,7 +73,7 @@ async function handleSubdomain(req: NextRequest, sub: string) {
     return rewriteTo(req, NOT_FOUND_PATH);
   }
 
-  let route: { citySlug: string; slug: string } | null;
+  let route: SiteRoute | null;
   try {
     route = await lookupSubdomain(sub);
   } catch (err) {
@@ -78,9 +82,10 @@ async function handleSubdomain(req: NextRequest, sub: string) {
   }
   if (!route) return rewriteTo(req, NOT_FOUND_PATH);
 
-  const profile = paths.doctor(route.citySlug, route.slug);
+  const profile = sitePath(route);
   if (path === "/") return rewriteTo(req, profile);
-  if (path === "/contact.vcf") return rewriteTo(req, `${profile}/contact.vcf`);
+  // The contact file is doctor-only; every site has a card page.
+  if (route.kind === "doctor" && path === "/contact.vcf") return rewriteTo(req, `${profile}/contact.vcf`);
   if (path === "/card") return rewriteTo(req, `${profile}/card`);
   if (path === "/opengraph-image" || path.startsWith("/opengraph-image")) {
     return rewriteTo(req, `${profile}${path}`);

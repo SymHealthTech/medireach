@@ -3,6 +3,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { FAQ, PRICING, WHATSAPP_TEXT } from "@/content/marketing";
 import { gstNote, rupees, whatsappHref, type PublicSiteData } from "@/lib/public/site-data";
 import { cn } from "@/lib/cn";
+import { CountUp } from "@/components/home/Draw";
 import { WhatsAppLink } from "./WhatsAppLink";
 
 /** Shared marketing building blocks (homepage + /pricing). */
@@ -34,8 +35,12 @@ export function Eyebrow({ children, light, className }: { children: React.ReactN
   );
 }
 
-/** "First 100 doctors get free hosting forever. 63 spots left" with a slim progress bar. */
+/** "First 100 customers: renewal at ₹499/year for life … 63 spots left" with a slim progress bar. */
 export function FoundingBanner({ site }: { site: PublicSiteData }) {
+  const text = PRICING.founding
+    .replace("{total}", String(site.foundingTotal))
+    .replace("{founding}", rupees(site.prices.foundingRenewal))
+    .replace("{foundingHospital}", rupees(site.prices.foundingRenewalHospital));
   const used = site.foundingTotal - site.foundingLeft;
   const pct = site.foundingTotal ? Math.round((used / site.foundingTotal) * 100) : 0;
   return (
@@ -46,18 +51,27 @@ export function FoundingBanner({ site }: { site: PublicSiteData }) {
             <Star className="size-6 fill-current" strokeWidth={1.75} />
           </span>
           <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-marigold">Founding Doctor</p>
-            <p className="mt-0.5 font-medium text-[#fbf8f3]/90">{PRICING.founding.replace("{total}", String(site.foundingTotal))}</p>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-marigold">{PRICING.foundingLabel}</p>
+            <p className="mt-0.5 font-medium text-[#fbf8f3]/90">{text}</p>
           </div>
         </div>
         <p className="shrink-0 font-display text-3xl font-semibold text-marigold sm:text-right">
-          {PRICING.foundingLeft.replace("{n}", String(site.foundingLeft))}
+          {(() => {
+            const [before, after] = PRICING.foundingLeft.split("{n}");
+            return (
+              <>
+                {before}
+                <CountUp value={site.foundingLeft} />
+                {after}
+              </>
+            );
+          })()}
         </p>
       </div>
       <div
         className="mt-5 h-2.5 overflow-hidden rounded-full bg-[#fbf8f3]/15"
         role="progressbar"
-        aria-label="Founding Doctor spots taken"
+        aria-label="Founding spots taken"
         aria-valuemin={0}
         aria-valuemax={site.foundingTotal}
         aria-valuenow={used}
@@ -73,9 +87,10 @@ export function PricingCards({ site }: { site: PublicSiteData }) {
   return (
     <div className="space-y-6">
       <FoundingBanner site={site} />
-      <div className="grid items-stretch gap-6 md:grid-cols-2">
+      <p className="mx-auto w-fit rounded-full bg-marigold px-4 py-1.5 text-center text-sm font-semibold text-[#0e3b3c]">{PRICING.ribbon}</p>
+      <div className="grid items-stretch gap-6 lg:grid-cols-3">
         {PRICING.plans.map((plan) => {
-          const featured = "tag" in plan;
+          const featured = "featured" in plan && plan.featured;
           return (
             <article
               key={plan.key}
@@ -84,19 +99,24 @@ export function PricingCards({ site }: { site: PublicSiteData }) {
                 featured ? "mr-ink-bg text-[#fbf8f3] shadow-lift" : "border border-line bg-surface shadow-soft",
               )}
             >
-              {featured && (
-                <span className="absolute right-6 top-6 rounded-full bg-marigold px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0e3b3c]">
+              {"tag" in plan && (
+                <span className="mb-3 w-fit rounded-full bg-marigold px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0e3b3c]">
                   {plan.tag}
                 </span>
               )}
               <h3 className={cn("font-display text-[26px] font-semibold", featured ? "text-[#fbf8f3]" : "text-ink")}>{plan.name}</h3>
               <p className={cn("mt-1 text-sm", featured ? "text-[#fbf8f3]/75" : "text-muted-foreground")}>{plan.audience}</p>
-              <p className={cn("mt-6 flex items-baseline gap-2 border-b pb-6", featured ? "border-[#fbf8f3]/15" : "border-line")}>
-                <span className={cn("font-display text-[52px] font-semibold leading-none tracking-tight", featured ? "text-marigold" : "text-ink")}>
-                  {rupees(site.prices[plan.key])}
-                </span>
-                <span className={cn("text-sm", featured ? "text-[#fbf8f3]/70" : "text-muted-foreground")}>one time</span>
-              </p>
+              <div className={cn("mt-6 border-b pb-6", featured ? "border-[#fbf8f3]/15" : "border-line")}>
+                <p className="flex items-baseline gap-2">
+                  <span className={cn("font-display text-[48px] font-semibold leading-none tracking-tight", featured ? "text-marigold" : "text-ink")}>
+                    {rupees(site.prices[plan.setup])}
+                  </span>
+                  <span className={cn("text-sm", featured ? "text-[#fbf8f3]/70" : "text-muted-foreground")}>{PRICING.setupLabel}</span>
+                </p>
+                <p className={cn("mt-2 text-sm font-medium", featured ? "text-[#fbf8f3]/85" : "text-body")}>
+                  {PRICING.renewalLine.replace("{renewal}", rupees(site.prices[plan.renewal]))}
+                </p>
+              </div>
               <ul className="mt-6 flex-1 space-y-3.5">
                 {plan.features.map((f) => (
                   <li key={f} className={cn("flex gap-3", featured ? "text-[#fbf8f3]/90" : "text-body")}>
@@ -127,7 +147,10 @@ export function PricingCards({ site }: { site: PublicSiteData }) {
         })}
       </div>
       <p className="text-center text-sm text-muted-foreground">
-        {PRICING.notes.replace("{update}", rupees(site.prices.update)).replace("{gst}", gstNote(site.gstMode))}
+        {PRICING.notes
+          .replace("{addon}", rupees(site.prices.doctorAddon))
+          .replace("{update}", rupees(site.prices.updatePrice))
+          .replace("{gst}", gstNote(site.gstMode))}
       </p>
     </div>
   );

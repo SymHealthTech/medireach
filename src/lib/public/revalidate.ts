@@ -1,7 +1,7 @@
 import "server-only";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/public/tags";
-import { paths } from "@/lib/site";
+import { paths, sitePath } from "@/lib/site";
 
 /**
  * On-demand revalidation. Call after publishing, editing, unpublishing or
@@ -14,6 +14,20 @@ export function revalidateDoctorPages(...routes: { citySlug?: string; slug?: str
   for (const r of routes) {
     if (r.citySlug && r.slug) revalidatePath(paths.doctor(r.citySlug, r.slug));
   }
+}
+
+/** Same for clinic and hospital sites (doctor pages link to them, so they share the refresh). */
+export function revalidateEstablishmentPages(...routes: { kind: "clinic" | "hospital"; citySlug?: string; slug?: string }[]): void {
+  revalidateTag(CACHE_TAGS.establishments);
+  for (const r of routes) {
+    if (r.citySlug && r.slug) revalidatePath(sitePath({ kind: r.kind, citySlug: r.citySlug, slug: r.slug }));
+  }
+}
+
+/** Refresh whichever site a renewal change touched. */
+export function revalidateSiteRoute(route: { kind: "doctor" | "clinic" | "hospital"; citySlug?: string; slug?: string }): void {
+  if (route.kind === "doctor") revalidateDoctorPages(route);
+  else revalidateEstablishmentPages({ ...route, kind: route.kind });
 }
 
 export function revalidateMasters(): void {

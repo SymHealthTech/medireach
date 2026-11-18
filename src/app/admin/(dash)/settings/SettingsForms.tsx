@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { FormDialog } from "@/components/admin/FormDialog";
 import { Pill } from "@/components/admin/StatusBadge";
-import { ADMIN_ROLES, GST_MODES, type AdminRole } from "@/lib/constants";
+import { ADMIN_ROLES, GST_MODES, type AdminRole, type PriceKey } from "@/lib/constants";
 import {
   createAdminUserAction,
   resetAdminPasswordAction,
@@ -22,9 +22,40 @@ import {
 const GST_LABEL = { inclusive: "Prices include GST", exclusive: "Prices exclude GST (GST added)", none: "No GST" } as const;
 const ROLE_LABEL: Record<AdminRole, string> = { superadmin: "Super admin", admin: "Admin", sales: "Sales" };
 
+/** Price fields, grouped as on the pricing page. Every key in PRICE_KEYS appears once. */
+const PRICE_GROUPS: { title: string; help?: string; fields: { key: PriceKey; label: string }[] }[] = [
+  {
+    title: "Setup (one time)",
+    fields: [
+      { key: "doctorSetup", label: "Doctor portfolio" },
+      { key: "clinicSetup", label: "Clinic website" },
+      { key: "hospitalSetup", label: "Small hospital website" },
+      { key: "doctorAddon", label: "Add-on: each clinic/hospital doctor" },
+    ],
+  },
+  {
+    title: "Yearly renewal (from year 2)",
+    fields: [
+      { key: "renewalDoctor", label: "Doctor portfolio (incl. add-ons)" },
+      { key: "renewalClinic", label: "Clinic website" },
+      { key: "renewalHospital", label: "Small hospital website" },
+    ],
+  },
+  {
+    title: "Founding offer (lifetime renewal)",
+    help: "Applied when a site is marked Founding. Changing it here doesn't change sites already marked.",
+    fields: [
+      { key: "foundingRenewal", label: "Doctors and clinics" },
+      { key: "foundingRenewalHospital", label: "Hospitals" },
+    ],
+  },
+  { title: "Other", fields: [{ key: "updatePrice", label: "Done-for-you update" }] },
+];
+
 export interface GeneralSettings {
-  prices: { gp: number; consultant: number; update: number };
+  prices: Record<PriceKey, number>;
   foundingTotal: number;
+  renewalGraceDays: number;
   contactPhone: string;
   whatsappNumber: string;
   gstMode: (typeof GST_MODES)[number];
@@ -55,20 +86,35 @@ export function GeneralSettingsForm({ initial, foundingUsed }: { initial: Genera
         });
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="GP plan (₹)" htmlFor="s-gp" error={errors["prices.gp"]}>
-          <NumberInput id="s-gp" value={v.prices.gp} onChange={(n) => setPrice("gp", n)} />
-        </Field>
-        <Field label="Consultant plan (₹)" htmlFor="s-cons" error={errors["prices.consultant"]}>
-          <NumberInput id="s-cons" value={v.prices.consultant} onChange={(n) => setPrice("consultant", n)} />
-        </Field>
-        <Field label="Done-for-you update (₹)" htmlFor="s-upd" error={errors["prices.update"]}>
-          <NumberInput id="s-upd" value={v.prices.update} onChange={(n) => setPrice("update", n)} />
-        </Field>
-      </div>
+      {PRICE_GROUPS.map((g) => (
+        <fieldset key={g.title} className="space-y-3">
+          <legend className="text-sm font-semibold text-ink">{g.title}</legend>
+          {g.help && <p className="text-xs text-muted-foreground">{g.help}</p>}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {g.fields.map((f) => (
+              <Field key={f.key} label={`${f.label} (₹)`} htmlFor={`s-${f.key}`} error={errors[`prices.${f.key}`]}>
+                <NumberInput id={`s-${f.key}`} value={v.prices[f.key]} onChange={(n) => setPrice(f.key, n)} />
+              </Field>
+            ))}
+          </div>
+        </fieldset>
+      ))}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Founding Doctor spots" htmlFor="s-founding" help={`${foundingUsed} taken · ${Math.max(0, v.foundingTotal - foundingUsed)} left`} error={errors.foundingTotal}>
+        <Field
+          label="Founding spots"
+          htmlFor="s-founding"
+          help={`Across doctors, clinics and hospitals: ${foundingUsed} taken · ${Math.max(0, v.foundingTotal - foundingUsed)} left`}
+          error={errors.foundingTotal}
+        >
           <NumberInput id="s-founding" value={v.foundingTotal} onChange={(n) => setV((x) => ({ ...x, foundingTotal: n ?? 0 }))} />
+        </Field>
+        <Field
+          label="Renewal grace period (days)"
+          htmlFor="s-grace"
+          help="After the due date, a site stays live this long before it lapses."
+          error={errors.renewalGraceDays}
+        >
+          <NumberInput id="s-grace" value={v.renewalGraceDays} onChange={(n) => setV((x) => ({ ...x, renewalGraceDays: n ?? 0 }))} />
         </Field>
         <Field label="GST" htmlFor="s-gst">
           <NativeSelect id="s-gst" value={v.gstMode} onChange={(e) => setV((x) => ({ ...x, gstMode: e.target.value as GeneralSettings["gstMode"] }))}>

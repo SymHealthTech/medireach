@@ -8,7 +8,8 @@ import { Council } from "@/models/Council";
 import { Degree } from "@/models/Degree";
 import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
 import { Specialty } from "@/models/Specialty";
-import { absUrl, paths, subdomainUrl } from "@/lib/site";
+import { Establishment } from "@/models/Establishment";
+import { absUrl, paths, sitePath, subdomainUrl, type SiteRoute } from "@/lib/site";
 import { storyParagraphs } from "@/lib/format";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { CACHE_TAGS } from "@/lib/public/tags";
@@ -71,7 +72,7 @@ function indexById<T extends { id: string }>(rows: T[]): Map<string, T> {
   return new Map(rows.map((r) => [r.id, r]));
 }
 
-interface MasterIndex {
+export interface MasterIndex {
   cities: Map<string, CityMaster>;
   areas: Map<string, AreaMaster>;
   specialties: Map<string, SpecialtyMaster>;
@@ -79,7 +80,7 @@ interface MasterIndex {
   councils: Map<string, { id: string; name: string }>;
 }
 
-function indexMasters(m: Masters): MasterIndex {
+export function indexMasters(m: Masters): MasterIndex {
   return {
     cities: indexById(m.cities),
     areas: indexById(m.areas),
@@ -134,7 +135,10 @@ function directionsUrl(c: { mapsUrl?: string; geo?: { lat: number; lng: number }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
-function clinicsOf(d: LeanDoctor, mi: MasterIndex): PublicClinic[] {
+/** Published clinic/hospital sites by id, for "Practises at" links on doctor pages. */
+export type SiteLinks = Map<string, { name: string; url: string }>;
+
+function clinicsOf(d: LeanDoctor, mi: MasterIndex, sites?: SiteLinks): PublicClinic[] {
   return d.clinics.flatMap((c) => {
     const area = mi.areas.get(idStr(c.areaId));
     const city = mi.cities.get(idStr(c.cityId));
@@ -159,19 +163,20 @@ function clinicsOf(d: LeanDoctor, mi: MasterIndex): PublicClinic[] {
       timings: c.timings.map((t) => ({ day: t.day, slots: t.slots.map((s) => ({ open: s.open, close: s.close })) })),
       ...(c.appointmentNote ? { appointmentNote: c.appointmentNote } : {}),
       ...(c.showFee && typeof c.fee === "number" ? { fee: c.fee } : {}),
+      ...(c.establishmentId && sites?.get(idStr(c.establishmentId)) ? { site: sites.get(idStr(c.establishmentId))! } : {}),
     };
     return [clinic];
   });
 }
 
-export function toPublicDoctor(d: LeanDoctor, masters: Masters): PublicDoctor {
+export function toPublicDoctor(d: LeanDoctor, masters: Masters, sites?: SiteLinks): PublicDoctor {
   const mi = indexMasters(masters);
   const fullName = fullNameOf(d);
   const citySlug = d.citySlug!;
   const slug = d.slug!;
   const url = absUrl(paths.doctor(citySlug, slug));
   const primarySpecialty = specialtyOf(d.primarySpecialtyId, mi);
-  const clinics = clinicsOf(d, mi);
+  const clinics = clinicsOf(d, mi, sites);
   const primaryClinic = clinics[0];
 
   const photoAlt = [
@@ -281,13 +286,14 @@ export function toPublicDoctor(d: LeanDoctor, masters: Masters): PublicDoctor {
       ...(d.seo?.descriptionOverride ? { descriptionOverride: d.seo.descriptionOverride } : {}),
       noindex: Boolean(d.seo?.noindex),
     },
+    ...(d.renewalStatus === "lapsed" ? { lapsed: true } : {}),
 
     updatedAt: new Date(d.updatedAt).toISOString(),
     ...(d.publishedAt ? { publishedAt: new Date(d.publishedAt).toISOString() } : {}),
   };
 }
 
-function toCard(d: LeanDoctor, mi: MasterIndex): DoctorCardData {
+export function toCard(d: LeanDoctor, mi: MasterIndex): DoctorCardData {
   const primarySpecialty = specialtyOf(d.primarySpecialtyId, mi);
   const firstClinic = d.clinics[0];
   const area = firstClinic ? mi.areas.get(idStr(firstClinic.areaId)) : undefined;
@@ -310,11 +316,15 @@ function toCard(d: LeanDoctor, mi: MasterIndex): DoctorCardData {
   };
 }
 
-const PUBLISHED_ROUTABLE = {
+/** Published with an address. A lapsed site still matches (its page shows the "temporarily unavailable" notice). */
+export const PUBLISHED_ROUTABLE = {
   status: "published",
   slug: { $type: "string" },
   citySlug: { $type: "string" },
 } as const;
+
+/** Published and not lapsed: everything that lists or links to sites (hubs, sitemaps, cross-links, cards). */
+export const PUBLISHED_LIVE = { ...PUBLISHED_ROUTABLE, renewalStatus: { $ne: "lapsed" } } as const;
 
 // ---------------------------------------------------------------------------
 // Queries
@@ -327,18 +337,34 @@ export const getPublishedDoctor = unstable_cache(
       DoctorProfile.findOne({ ...PUBLISHED_ROUTABLE, citySlug, slug }).lean<LeanDoctor>(),
       getMasters(),
     ]);
-    return doc ? toPublicDoctor(doc, masters) : null;
+    if (!doc) return null;
+    return toPublicDoctor(doc, masters, await siteLinksFor(doc.clinics.map((c) => c.establishmentId)));
   },
-  ["public-doctor"],
-  { tags: [CACHE_TAGS.doctors], revalidate: DAY },
+  // v2: carries `lapsed`.
+  ["public-doctor-v2"],
+  { tags: [CACHE_TAGS.doctors, CACHE_TAGS.establishments], revalidate: DAY },
 );
+
+/** The doctor's page, or null if it's not published or lapsed (cards, contact file, preview image). */
+export async function getLiveDoctor(citySlug: string, slug: string): Promise<PublicDoctor | null> {
+  const d = await getPublishedDoctor(citySlug, slug);
+  return d && !d.lapsed ? d : null;
+}
+
+/** Published clinic/hospital sites among these ids (unpublished or lapsed ones get no link). */
+export async function siteLinksFor(ids: (Types.ObjectId | string | undefined | null)[]): Promise<SiteLinks> {
+  const wanted = [...new Set(ids.map(idStr).filter(Boolean))];
+  if (!wanted.length) return new Map();
+  const sites = await Establishment.find({ _id: { $in: wanted }, ...PUBLISHED_LIVE }).select({ kind: 1, name: 1, citySlug: 1, slug: 1 }).lean();
+  return new Map(sites.map((e) => [String(e._id), { name: e.name, url: absUrl(sitePath({ kind: e.kind, citySlug: e.citySlug!, slug: e.slug! })) }]));
+}
 
 /** All published doctors in a city as cards, in neutral alphabetical order. */
 export const getCityDoctorCards = unstable_cache(
   async (citySlug: string): Promise<DoctorCardData[]> => {
     await connectToDatabase();
     const [docs, masters] = await Promise.all([
-      DoctorProfile.find({ ...PUBLISHED_ROUTABLE, citySlug }).lean<LeanDoctor[]>(),
+      DoctorProfile.find({ ...PUBLISHED_LIVE, citySlug }).lean<LeanDoctor[]>(),
       getMasters(),
     ]);
     const mi = indexMasters(masters);
@@ -353,16 +379,23 @@ export interface DoctorRoute {
   slug: string;
 }
 
+/**
+ * Subdomain → published site. Doctors and clinics/hospitals share one
+ * subdomain namespace (enforced on save by lib/url-keys.ts).
+ */
 export const getRouteBySubdomain = unstable_cache(
-  async (subdomain: string): Promise<DoctorRoute | null> => {
+  async (subdomain: string): Promise<SiteRoute | null> => {
     await connectToDatabase();
     const d = await DoctorProfile.findOne({ ...PUBLISHED_ROUTABLE, subdomain })
       .select({ citySlug: 1, slug: 1 })
       .lean<Pick<LeanDoctor, "citySlug" | "slug">>();
-    return d ? { citySlug: d.citySlug!, slug: d.slug! } : null;
+    if (d) return { kind: "doctor", citySlug: d.citySlug!, slug: d.slug! };
+    const e = await Establishment.findOne({ ...PUBLISHED_ROUTABLE, subdomain }).select({ kind: 1, citySlug: 1, slug: 1 }).lean();
+    return e ? { kind: e.kind, citySlug: e.citySlug!, slug: e.slug! } : null;
   },
-  ["public-route-subdomain"],
-  { tags: [CACHE_TAGS.doctors], revalidate: DAY },
+  // v2: the value now carries `kind` (older cached entries don't).
+  ["public-route-subdomain-v2"],
+  { tags: [CACHE_TAGS.doctors, CACHE_TAGS.establishments], revalidate: DAY },
 );
 
 export const getRouteByShortSlug = unstable_cache(
@@ -381,7 +414,7 @@ export const getRouteByShortSlug = unstable_cache(
 export const getPublishedRoutes = unstable_cache(
   async (): Promise<(DoctorRoute & { updatedAt: string; noindex: boolean })[]> => {
     await connectToDatabase();
-    const docs = await DoctorProfile.find(PUBLISHED_ROUTABLE)
+    const docs = await DoctorProfile.find(PUBLISHED_LIVE)
       .select({ citySlug: 1, slug: 1, updatedAt: 1, "seo.noindex": 1 })
       .sort({ citySlug: 1, slug: 1 })
       .lean<Pick<LeanDoctor, "citySlug" | "slug" | "updatedAt" | "seo">[]>();

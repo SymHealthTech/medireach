@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { uploadImage, type UploadSigner } from "@/lib/client/upload-image";
 import type { ImageValue } from "@/lib/doctors/form";
+import type { UploadPurpose } from "@/lib/integrations/cloudinary";
 
 const MIN_RECOMMENDED = 1200;
 const MAX_OUTPUT = 1600;
@@ -39,10 +40,13 @@ export function PhotoCropUpload({
   value,
   onChange,
   disabled,
+  purpose = "doctor-photo",
 }: {
   value?: ImageValue;
   onChange: (v: ImageValue | undefined) => void;
   disabled?: boolean;
+  /** Cloudinary folder; clinic logos use "logo". */
+  purpose?: UploadPurpose;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [src, setSrc] = useState<string | null>(null);
@@ -71,7 +75,7 @@ export function PhotoCropUpload({
     setBusy(true);
     try {
       const blob = await cropToBlob(src, area);
-      const up = await uploadImage(blob, "doctor-photo");
+      const up = await uploadImage(blob, purpose);
       onChange({ publicId: up.publicId, url: up.url });
       setSrc(null);
       toast.success("Photo uploaded");

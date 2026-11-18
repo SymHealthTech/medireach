@@ -1,5 +1,5 @@
 import { CARD_FILES, cardFileResponse, type CardFile } from "@/lib/cards/render";
-import { getPublishedDoctor } from "@/lib/public/data";
+import { getLiveDoctor } from "@/lib/public/data";
 import { getReadyTemplates } from "@/lib/public/templates";
 import { SLUG_RE } from "@/lib/slug";
 
@@ -11,7 +11,7 @@ import { SLUG_RE } from "@/lib/slug";
 export async function GET(req: Request, { params }: { params: Promise<{ city: string; slug: string; file: string }> }) {
   const { city, slug, file } = await params;
   if (!(file in CARD_FILES) || !SLUG_RE.test(city) || !SLUG_RE.test(slug)) return new Response("Not found", { status: 404 });
-  const doctor = await getPublishedDoctor(city, slug);
+  const doctor = await getLiveDoctor(city, slug);
   if (!doctor) return new Response("Not found", { status: 404 });
   const download = new URL(req.url).searchParams.get("download") === "1";
   return cardFileResponse(doctor, file as CardFile, {

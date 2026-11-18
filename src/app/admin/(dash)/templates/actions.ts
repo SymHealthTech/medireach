@@ -3,13 +3,13 @@
 import { z } from "zod";
 import { ActionError, adminAction, auditCtx, requiredText } from "@/lib/admin/action";
 import { audit } from "@/lib/api/audit";
-import { TEMPLATE_KEYS, TEMPLATE_STATUSES, TEMPLATE_TYPES } from "@/lib/constants";
+import { SITE_TEMPLATE_TYPES, TEMPLATE_KEYS, TEMPLATE_STATUSES } from "@/lib/constants";
 import { TemplateSlot } from "@/models/TemplateSlot";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/public/tags";
 
 const ADMINS = ["superadmin", "admin"] as const;
-const slotKey = z.object({ type: z.enum(TEMPLATE_TYPES), key: z.enum(TEMPLATE_KEYS) });
+const slotKey = z.object({ type: z.enum(SITE_TEMPLATE_TYPES), key: z.enum(TEMPLATE_KEYS) });
 
 // Module-level so its callback isn't mistaken for a server action.
 const cloudinaryUrl = z.string().url().refine((u) => u.startsWith("https://res.cloudinary.com/"), "Upload the image first.");

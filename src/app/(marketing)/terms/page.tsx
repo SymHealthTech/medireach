@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageIntro, Prose } from "@/components/marketing/PageIntro";
 import { getPublicSiteData, gstNote, rupees } from "@/lib/public/site-data";
 import { absUrl } from "@/lib/site";
@@ -7,11 +8,11 @@ export const revalidate = 600;
 
 export const metadata: Metadata = {
   title: { absolute: "Terms of service – MediReach" },
-  description: "The terms for MediReach doctor pages and visiting cards: hosting, Founding Doctor hosting, domains, updates, content and GST.",
+  description: "The terms for MediReach doctor, clinic and hospital websites and visiting cards: setup, yearly renewal, founding offer, domains, updates, content and GST.",
   alternates: { canonical: absUrl("/terms") },
 };
 
-const UPDATED = "16 November 2026";
+const UPDATED = "18 November 2026";
 
 export default async function TermsPage() {
   const site = await getPublicSiteData();
@@ -19,48 +20,82 @@ export default async function TermsPage() {
   return (
     <main>
       <PageIntro eyebrow="Terms" title="Terms of service">
-        <p>Last updated {UPDATED}. Plain-language terms for doctors and hospitals using MediReach.</p>
+        <p>Last updated {UPDATED}. Plain-language terms for doctors, clinics and hospitals using MediReach.</p>
       </PageIntro>
       <Prose>
         <section>
           <h2>1. Who we are</h2>
           <p>
-            MediReach is a service of Sym HealthTech, Pune, Maharashtra. We build and host one-page websites and digital visiting cards for
-            doctors. “You” means the doctor or hospital who orders a page.
+            MediReach is a service of Sym HealthTech, Pune, Maharashtra. We build and host websites and digital visiting cards for doctors,
+            clinics and small hospitals (up to 10 beds). “You” means the doctor, clinic or hospital who orders a site.
           </p>
         </section>
 
         <section>
           <h2>2. What you get</h2>
           <ul>
-            <li>A one-page website on medireach.co.in, with your own short link and website address.</li>
-            <li>A digital visiting card with a QR code, in print and phone versions.</li>
-            <li>Listing on the city, area and specialty pages that match your practice, in alphabetical order.</li>
+            <li>
+              A website on medireach.co.in with its own address (for example yourclinic.medireach.co.in): a one-page portfolio for a doctor, or a
+              clinic or hospital website in a design made for your specialty.
+            </li>
+            <li>A digital visiting card with a QR code, in print and phone versions, with every plan.</li>
+            <li>Listing on the city, area, specialty and category pages that match your practice, in alphabetical order.</li>
           </ul>
-          <p>We send you a preview, and your page goes live only after you approve it.</p>
-        </section>
-
-        <section>
-          <h2>3. Price and hosting term</h2>
           <p>
-            The setup price is paid once (currently {rupees(site.prices.gp)} for GP and {rupees(site.prices.consultant)} for Consultant pages).
-            It covers building your page and card, and hosting for the period stated on your invoice. If hosting is not free for life (see
-            Founding Doctors), we remind you before it ends and renewal is at the rate shown on our pricing page at that time. If you choose not
-            to renew, we take your page offline.
+            Specialty designs are shared: other clinics of your specialty may use the same design style, with their own name, logo, colours,
+            photos and details. We send you a preview, and your site goes live only after you approve it.
           </p>
         </section>
 
         <section>
-          <h2>4. Founding Doctors: free hosting forever</h2>
+          <h2>3. Setup and yearly renewal</h2>
           <p>
-            The first {site.foundingTotal} doctors who join as Founding Doctors pay no hosting fee for their page and card on medireach.co.in for
-            as long as MediReach runs the service. This covers hosting only. It does not cover own domains, paid updates or new designs, it
-            belongs to the individual doctor, and it cannot be transferred. It ends if a page is removed for breaking these terms.
+            You pay a setup price once, and a yearly renewal from the second year. Current prices are on our{" "}
+            <Link href="/pricing">pricing page</Link>:
+          </p>
+          <ul>
+            <li>
+              Doctor portfolio: {rupees(site.prices.doctorSetup)} setup, then {rupees(site.prices.renewalDoctor)} a year.
+            </li>
+            <li>
+              Clinic website: {rupees(site.prices.clinicSetup)} setup, then {rupees(site.prices.renewalClinic)} a year.
+            </li>
+            <li>
+              Small hospital website (up to 10 beds): {rupees(site.prices.hospitalSetup)} setup, then {rupees(site.prices.renewalHospital)} a
+              year.
+            </li>
+            <li>
+              Portfolio for each doctor of a clinic or hospital: {rupees(site.prices.doctorAddon)} setup, then{" "}
+              {rupees(site.prices.renewalDoctor)} a year each.
+            </li>
+          </ul>
+          <p>
+            The renewal is due one year after your setup payment, and every year after that. It covers hosting on medireach.co.in, security
+            and the changes you make yourself after logging in. It does not cover own domains or done-for-you updates. We remind you before the
+            renewal is due.
           </p>
         </section>
 
         <section>
-          <h2>5. Own domain</h2>
+          <h2>4. Founding offer</h2>
+          <p>
+            The first {site.foundingTotal} customers across all products pay the normal setup price and then a lower renewal for life:{" "}
+            {rupees(site.prices.foundingRenewal)} a year for a doctor portfolio or clinic website, and{" "}
+            {rupees(site.prices.foundingRenewalHospital)} a year for a hospital website. It applies to the site it was given for, cannot be
+            transferred, and ends if the site lapses or is removed for breaking these terms.
+          </p>
+        </section>
+
+        <section>
+          <h2>5. If a renewal is not paid</h2>
+          <p>
+            Your site stays live for {site.renewalGraceDays} days after the renewal date. After that it is not deleted: it shows a short
+            “temporarily unavailable” notice with our contact details and is hidden from search engines. Paying the renewal restores it at once.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. Own domain</h2>
           <p>
             If you want your own domain (for example drname.in), we buy and connect it for you and charge only what the domain costs, including
             yearly renewals. The domain is registered for you.
@@ -68,15 +103,15 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>6. Updates</h2>
+          <h2>7. Updates</h2>
           <p>
             You can change your clinic timings, phone numbers, address and fees yourself after logging in. For other changes, our team updates
-            your page for {rupees(site.prices.update)} per request. Your first done-for-you update is free.
+            your page for {rupees(site.prices.updatePrice)} per request. Your first done-for-you update is free.
           </p>
         </section>
 
         <section>
-          <h2>7. Your content and the NMC guidelines</h2>
+          <h2>8. Your content and the NMC guidelines</h2>
           <ul>
             <li>You own the text and photos you give us. You let us show them on your page, card and our listing pages while your page is live.</li>
             <li>
@@ -92,22 +127,22 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>8. GST and payment</h2>
+          <h2>9. GST and payment</h2>
           <p>
             {gstNote(site.gstMode)}. We issue an invoice for every payment. Payment is by UPI, bank transfer, card or cash, recorded by our team.
           </p>
         </section>
 
         <section>
-          <h2>9. Removing your page</h2>
+          <h2>10. Removing your page</h2>
           <p>
-            You can ask us to take your page offline at any time by writing to {email}. We remove it from our site within 7 days and ask search
-            engines to drop it. We may suspend a page that breaks these terms or the law.
+            You can ask us to take your site offline at any time by writing to {email}. We remove it within 7 days and ask search engines to
+            drop it. We may suspend a site that breaks these terms or the law.
           </p>
         </section>
 
         <section>
-          <h2>10. Liability</h2>
+          <h2>11. Liability</h2>
           <p>
             We work to keep pages online and accurate, but we can&apos;t promise uninterrupted service or any position in search results. Our
             total liability for any claim is limited to the amount you paid us in the 12 months before the claim.
@@ -115,7 +150,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>11. Law and changes</h2>
+          <h2>12. Law and changes</h2>
           <p>
             These terms are governed by Indian law, and the courts of Pune have jurisdiction. If we change these terms, we update this page and
             tell existing customers about important changes.
@@ -123,7 +158,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>12. Contact</h2>
+          <h2>13. Contact</h2>
           <p>
             Questions about these terms: <a className="font-semibold text-ink underline" href={`mailto:${email}`}>{email}</a>.
           </p>

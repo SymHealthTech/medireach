@@ -35,7 +35,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
       {f.clinics.map((c, i) => {
         const p = `clinics.${i}`;
         const areas = options.areas.filter((a) => a.cityId === c.cityId);
-        const hospitals = options.hospitals.filter((h) => h.cityId === c.cityId);
+        const sites = options.establishments.filter((e) => !e.cityId || e.cityId === c.cityId);
         return (
           <Group key={c.key} title={i === 0 ? "Primary clinic" : `Clinic ${i + 1}`}>
             <RepeatItem title={c.name || "New clinic"} disabled={readOnly} onRemove={() => set((f) => ({ clinics: removeAt(f.clinics, i) }))}>
@@ -62,31 +62,38 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
                     <option value="other">Other</option>
                   </NativeSelect>
                 </Field>
-                {c.type === "hospital_visiting" && (
-                  <Field label="Hospital" htmlFor={`${p}.hospitalId`} help="Choosing one fills in the name and address.">
+                {sites.length > 0 && (
+                  <Field
+                    label="Clinic / hospital site"
+                    htmlFor={`${p}.establishmentId`}
+                    error={err(`${p}.establishmentId`)}
+                    help="If it has a MediReach site, link it: the page shows “Practises at” and the two link to each other."
+                  >
                     <NativeSelect
-                      id={`${p}.hospitalId`}
-                      value={c.hospitalId}
+                      id={`${p}.establishmentId`}
+                      value={c.establishmentId}
                       disabled={readOnly}
                       onChange={(e) => {
-                        const h = options.hospitals.find((x) => x.id === e.target.value);
+                        const site = options.establishments.find((x) => x.id === e.target.value);
                         setClinic(i, {
-                          hospitalId: e.target.value,
-                          ...(h
+                          establishmentId: e.target.value,
+                          ...(site
                             ? {
-                                name: c.name || h.name,
-                                addressLine1: c.addressLine1 || h.address || "",
-                                areaId: c.areaId || h.areaId || "",
-                                phone: c.phone || h.phone || "",
+                                name: c.name || site.name,
+                                addressLine1: c.addressLine1 || site.address || "",
+                                addressLine2: c.addressLine2 || site.address2 || "",
+                                areaId: c.areaId || site.areaId || "",
+                                pincode: c.pincode || site.pincode || "",
+                                phone: c.phone || site.phone || "",
                               }
                             : {}),
                         });
                       }}
                     >
                       <option value="">Not linked</option>
-                      {hospitals.map((h) => (
-                        <option key={h.id} value={h.id}>
-                          {h.name}
+                      {sites.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.kind === "hospital" ? "hospital" : "clinic"})
                         </option>
                       ))}
                     </NativeSelect>

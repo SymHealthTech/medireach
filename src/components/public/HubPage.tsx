@@ -1,39 +1,69 @@
 import { DoctorCardGrid } from "@/components/public/DoctorCard";
 import { PublicFooter, PublicHeader } from "@/components/public/PublicShell";
+import { SiteCardGrid } from "@/components/public/SiteCard";
 import { Breadcrumbs } from "@/components/seo/Breadcrumbs";
 import { JsonLd } from "@/components/seo/JsonLd";
 import type { HubLink } from "@/lib/public/hubs";
-import { breadcrumbJsonLd, itemListJsonLd, type Crumb } from "@/lib/seo/profile";
+import { breadcrumbJsonLd, itemListJsonLd, siteItemListJsonLd, type Crumb } from "@/lib/seo/profile";
 import { absUrl } from "@/lib/site";
-import type { DoctorCardData } from "@/templates/types";
+import type { DoctorCardData, SiteCardData } from "@/templates/types";
 
 export interface HubLinkGroup {
   title: string;
   links: HubLink[];
 }
 
-/** Shared layout for every hub page (city / specialty / area / specialty+area). */
+/** A list of clinics/hospitals on a hub, with its own heading. */
+export interface HubSiteList {
+  title: string;
+  sites: SiteCardData[];
+}
+
+/**
+ * Shared layout for every hub page: doctor hubs (city / specialty / area /
+ * specialty+area) and clinic/hospital hubs. Lists are alphabetical only.
+ */
 export function HubPage({
   title,
   intro,
   crumbs,
   doctors,
+  doctorsTitle,
+  siteLists = [],
+  emptyText = "No doctors are listed here yet.",
+  emptyCta = "Are you a doctor? Get your page on MediReach",
   linkGroups,
 }: {
   title: string;
   intro: string;
   crumbs: Crumb[];
-  /** Omit on the city hub, which links to specialties and areas instead of listing everyone. */
+  /** Omit on hubs that don't list doctors (city hub, clinic/hospital hubs). */
   doctors?: DoctorCardData[];
+  /** Heading above the doctors when the hub also lists clinics/hospitals. */
+  doctorsTitle?: string;
+  /** Clinic/hospital lists (empty ones are hidden). */
+  siteLists?: HubSiteList[];
+  /** Shown when nothing at all is listed. */
+  emptyText?: string;
+  emptyCta?: string;
   linkGroups: HubLinkGroup[];
 }) {
   const groups = linkGroups.filter((g) => g.links.length > 0);
+  const lists = siteLists.filter((l) => l.sites.length > 0);
+  const hasDoctors = Boolean(doctors?.length);
+  const listsSomething = doctors !== undefined || siteLists.length > 0;
+  const empty = listsSomething && !hasDoctors && lists.length === 0;
+
   return (
     <>
       <JsonLd
         data={{
           "@context": "https://schema.org",
-          "@graph": [...(doctors ? [itemListJsonLd(title, doctors)] : []), breadcrumbJsonLd(crumbs)],
+          "@graph": [
+            ...(hasDoctors ? [itemListJsonLd(doctorsTitle ?? title, doctors!)] : []),
+            ...lists.map((l) => siteItemListJsonLd(l.title, l.sites)),
+            breadcrumbJsonLd(crumbs),
+          ],
         }}
       />
       <PublicHeader />
@@ -44,16 +74,27 @@ export function HubPage({
           <p className="max-w-2xl text-body">{intro}</p>
         </header>
 
-        {!doctors ? null : doctors.length > 0 ? (
-          <section aria-label="Doctors">
-            <DoctorCardGrid doctors={doctors} />
-            <p className="mt-3 text-sm text-muted-foreground">Listed alphabetically by name.</p>
+        {hasDoctors && (
+          <section aria-label={doctorsTitle ?? "Doctors"} className="space-y-3">
+            {doctorsTitle && <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">{doctorsTitle}</h2>}
+            <DoctorCardGrid doctors={doctors!} />
+            <p className="text-sm text-muted-foreground">Listed alphabetically by name.</p>
           </section>
-        ) : (
+        )}
+
+        {lists.map((l) => (
+          <section key={l.title} aria-label={l.title} className="space-y-3">
+            {(hasDoctors || lists.length > 1 || siteLists.length > 1) && <h2 className="font-display text-xl font-semibold text-ink sm:text-2xl">{l.title}</h2>}
+            <SiteCardGrid sites={l.sites} />
+            <p className="text-sm text-muted-foreground">Listed alphabetically by name.</p>
+          </section>
+        ))}
+
+        {empty && (
           <section className="rounded-xl border border-dashed border-line bg-surface p-8 text-center">
-            <p className="text-body">No doctors are listed here yet.</p>
+            <p className="text-body">{emptyText}</p>
             <a href={absUrl("/")} className="mt-3 inline-block font-semibold text-ink underline underline-offset-2">
-              Are you a doctor? Get your page on MediReach
+              {emptyCta}
             </a>
           </section>
         )}

@@ -21,6 +21,7 @@ import {
   activeNavItem,
   MOBILE_TABS,
   NEW_DOCTOR_HREF,
+  NEW_ITEMS,
   navForRole,
   ROLE_LABEL,
   type NavItem,
@@ -46,7 +47,7 @@ import type { AdminRole } from "@/lib/constants";
  * Dashboard shell (DESIGN_BRIEF.md §4):
  *  - ≥1024px: ink sidebar, 248px, collapsible to 72px icons
  *  - 768–1023px: collapsed 72px icon sidebar
- *  - <768px: top bar + bottom tab bar (Overview, Doctors, +, Leads, More)
+ *  - <768px: top bar + bottom tab bar (Overview, Doctors, +, Clinics, More)
  * Light by default; dark mode is a per-user cookie, applied to this wrapper
  * (SSR, no flash) and to <html> while mounted so portals (menus, dialogs,
  * toasts) match.
@@ -85,16 +86,21 @@ export function AdminShell({
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [searchOpen, setSearchOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     return () => document.documentElement.classList.remove("dark");
   }, [dark]);
 
-  useEffect(() => setMoreOpen(false), [pathname]);
+  useEffect(() => {
+    setMoreOpen(false);
+    setNewOpen(false);
+  }, [pathname]);
 
   const active = activeNavItem(pathname, nav);
-  const title = pathname === NEW_DOCTOR_HREF ? "New doctor" : (active?.label ?? "Dashboard");
+  const title =
+    pathname === NEW_DOCTOR_HREF ? "New doctor" : pathname === "/admin/establishments/new" ? "New clinic or hospital" : (active?.label ?? "Dashboard");
 
   function toggleTheme() {
     setDark((d) => {
@@ -200,11 +206,23 @@ export function AdminShell({
                 <Search className="size-5" strokeWidth={1.75} />
               </Button>
 
-              <Button asChild className="hidden md:inline-flex">
-                <Link href={NEW_DOCTOR_HREF}>
-                  <Plus /> New doctor
-                </Link>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="hidden md:inline-flex">
+                    <Plus /> New
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {NEW_ITEMS.map((n) => (
+                    <DropdownMenuItem key={n.href} asChild>
+                      <Link href={n.href} className="flex flex-col items-start gap-0">
+                        <span className="font-semibold">New {n.label.toLowerCase()}</span>
+                        <span className="text-xs text-muted-foreground">{n.description}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -256,13 +274,14 @@ export function AdminShell({
               <TabLink key={t.href} item={t} active={active?.href === t.href} />
             ))}
             <li className="flex justify-center">
-              <Link
-                href={NEW_DOCTOR_HREF}
-                aria-label="New doctor"
+              <button
+                type="button"
+                onClick={() => setNewOpen(true)}
+                aria-label="New doctor, clinic or hospital"
                 className="-mt-7 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft ring-4 ring-background active:scale-[.98]"
               >
                 <Plus className="size-6" strokeWidth={2} />
-              </Link>
+              </button>
             </li>
             {tabs.slice(2).map((t) => (
               <TabLink key={t.href} item={t} active={active?.href === t.href} />
@@ -282,6 +301,25 @@ export function AdminShell({
             </li>
           </ul>
         </nav>
+
+        <Sheet open={newOpen} onOpenChange={setNewOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle className="font-display text-xl">Create new</SheetTitle>
+              <SheetDescription className="sr-only">Start a doctor, clinic or hospital</SheetDescription>
+            </SheetHeader>
+            <ul className="grid gap-1 px-4 pb-6">
+              {NEW_ITEMS.map((n) => (
+                <li key={n.href}>
+                  <Link href={n.href} className="flex min-h-14 flex-col justify-center rounded-lg px-3 hover:bg-accent">
+                    <span className="font-semibold text-ink">New {n.label.toLowerCase()}</span>
+                    <span className="text-xs text-muted-foreground">{n.description}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </SheetContent>
+        </Sheet>
 
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetContent side="bottom" className="max-h-[85dvh] rounded-t-2xl">
@@ -335,7 +373,7 @@ function TabLink({ item, active }: { item: NavItem; active: boolean }) {
         )}
       >
         <item.icon className="size-5" strokeWidth={active ? 2.25 : 1.75} />
-        {item.label}
+        {item.short ?? item.label}
       </Link>
     </li>
   );

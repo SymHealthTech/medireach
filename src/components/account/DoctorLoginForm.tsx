@@ -10,7 +10,7 @@ const input =
 const primary =
   "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper hover:bg-ink-700 active:scale-[.98] disabled:opacity-60";
 
-/** Email-only doctor login: one field, then a "Check your email" screen with resend. */
+/** Email-only login for doctors and clinic/hospital owners: one field, then a "Check your email" screen with resend. */
 export function DoctorLoginForm({ linkError }: { linkError?: string }) {
   const [state, action, pending] = useActionState<LoginLinkState, FormData>(requestLoginLinkAction, {});
   const [editing, setEditing] = useState(false);
@@ -43,7 +43,8 @@ export function DoctorLoginForm({ linkError }: { linkError?: string }) {
   const error = state.error ?? (state.sent ? undefined : linkError);
   return (
     <div className="rounded-xl border border-line bg-surface p-6 shadow-soft sm:p-8">
-      <h1 className="font-display text-3xl font-semibold text-ink">Doctor login</h1>
+      <h1 className="font-display text-3xl font-semibold text-ink">Log in to MediReach</h1>
+      <p className="mt-1 text-sm font-medium text-muted-foreground">For doctors, clinics and hospitals</p>
       <p className="mt-3 text-body">Enter the email you gave MediReach. We&apos;ll email you a link to log in. No password needed.</p>
       <form
         action={(fd) => {
@@ -81,7 +82,7 @@ export function DoctorLoginForm({ linkError }: { linkError?: string }) {
         <Link href="/contact" className="font-medium text-ink underline">
           Contact us
         </Link>{" "}
-        and we&apos;ll turn it on for your page.
+        and we&apos;ll turn it on for your site.
       </p>
     </div>
   );

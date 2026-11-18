@@ -9,17 +9,18 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { pageOf, PAGE_SIZE, type SearchParams } from "@/lib/admin/list";
 import { PAYMENT_MODE_LABEL, PAYMENT_PURPOSE_LABEL } from "@/lib/admin/labels";
 import { paymentFilter } from "@/lib/admin/payments";
-import { PAYMENT_MODES, PAYMENT_PURPOSES } from "@/lib/constants";
+import { PAYMENT_MODES, PAYMENT_PURPOSES_V2 } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
 import { formatDate, formatINR, monthLabel, startOfMonthIST } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
 import { DoctorProfile } from "@/models/DoctorProfile";
-import { Hospital } from "@/models/Hospital";
+import { Establishment } from "@/models/Establishment";
 import { Payment } from "@/models/Payment";
 import { deletePaymentAction } from "./actions";
 import { PaymentDialog } from "./PaymentDialog";
+import { PaymentsTabs } from "./PaymentsTabs";
 
-export const metadata: Metadata = { title: "Payments" };
+export const metadata: Metadata = { title: "Payments & renewals" };
 
 const GST_NOTE = { inclusive: "Prices include GST", exclusive: "Prices exclude GST", none: "GST not applicable" } as const;
 
@@ -31,7 +32,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
   const page = pageOf(sp);
   const sixMonthsAgo = startOfMonthIST(5);
 
-  const [settings, total, payments, sum, monthly, doctors, hospitals] = await Promise.all([
+  const [settings, total, payments, sum, monthly, doctors, establishments] = await Promise.all([
     getSettings(),
     Payment.countDocuments(filter),
     Payment.find(filter).sort({ date: -1, createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
@@ -41,11 +42,11 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       { $group: { _id: { $dateToString: { format: "%Y-%m", date: "$date", timezone: "Asia/Kolkata" } }, amount: { $sum: "$amount" }, n: { $sum: 1 } } },
     ]),
     DoctorProfile.find().select({ title: 1, firstName: 1, lastName: 1, displayName: 1 }).sort({ firstName: 1 }).lean(),
-    Hospital.find().select({ name: 1 }).sort({ name: 1 }).lean(),
+    Establishment.find().select({ name: 1, kind: 1 }).sort({ name: 1 }).lean(),
   ]);
 
   const doctorName = new Map(doctors.map((d) => [String(d._id), d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`]));
-  const hospitalName = new Map(hospitals.map((h) => [String(h._id), h.name]));
+  const establishmentName = new Map(establishments.map((e) => [String(e._id), e.name]));
   const months = Array.from({ length: 6 }, (_, i) => {
     const start = startOfMonthIST(5 - i);
     const key = new Date(start.getTime() + 5.5 * 3600_000).toISOString().slice(0, 7);
@@ -56,6 +57,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-5">
+      <PaymentsTabs active="payments" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-muted-foreground">{GST_NOTE[settings.gstMode]} (change in Settings).</p>
         <div className="flex flex-wrap gap-2">
@@ -66,7 +68,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
           </Button>
           <PaymentDialog
             doctors={doctors.map((d) => ({ id: String(d._id), name: doctorName.get(String(d._id))! }))}
-            hospitals={hospitals.map((h) => ({ id: String(h._id), name: h.name }))}
+            establishments={establishments.map((e) => ({ id: String(e._id), name: e.name, kind: e.kind }))}
+            defaultEstablishmentId={typeof sp.establishment === "string" ? sp.establishment : undefined}
             defaultDoctorId={typeof sp.doctor === "string" ? sp.doctor : undefined}
             gstIncludedDefault={settings.gstMode !== "exclusive"}
           />
@@ -97,8 +100,9 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
         filters={[
           { name: "month", label: "Month", options: months.map((m) => ({ value: m.key, label: m.label })).reverse() },
           { name: "mode", label: "Mode", options: PAYMENT_MODES.map((m) => ({ value: m, label: PAYMENT_MODE_LABEL[m] })) },
-          { name: "purpose", label: "Purpose", options: PAYMENT_PURPOSES.map((m) => ({ value: m, label: PAYMENT_PURPOSE_LABEL[m] })) },
+          { name: "purpose", label: "Purpose", options: PAYMENT_PURPOSES_V2.map((m) => ({ value: m, label: PAYMENT_PURPOSE_LABEL[m] })) },
           { name: "doctor", label: "Doctor", options: doctors.map((d) => ({ value: String(d._id), label: doctorName.get(String(d._id))! })) },
+          { name: "establishment", label: "Clinic / hospital", options: establishments.map((e) => ({ value: String(e._id), label: e.name })) },
         ]}
       />
 
@@ -116,7 +120,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             <li key={String(p._id)} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold text-ink">
-                  {p.doctorId ? doctorName.get(String(p.doctorId)) : hospitalName.get(String(p.hospitalId)) ?? "—"}
+                  {p.doctorId ? doctorName.get(String(p.doctorId)) : (establishmentName.get(String(p.establishmentId ?? p.hospitalId)) ?? "—")}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {[formatDate(p.date), PAYMENT_PURPOSE_LABEL[p.purpose], PAYMENT_MODE_LABEL[p.mode], p.invoiceNo].filter(Boolean).join(" · ")}

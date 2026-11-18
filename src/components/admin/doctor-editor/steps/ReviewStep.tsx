@@ -33,7 +33,7 @@ const APPROVAL_LABEL: Record<(typeof APPROVAL_CHANNELS)[number], string> = {
 };
 
 /** Field text with each banned phrase underlined in clay (wavy). */
-function Highlighted({ text, phrases }: { text: string; phrases: string[] }) {
+export function Highlighted({ text, phrases }: { text: string; phrases: string[] }) {
   const matches = scanText(text, phrases);
   const parts: React.ReactNode[] = [];
   let last = 0;

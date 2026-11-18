@@ -5,30 +5,37 @@ import { CreditCard } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
-import { FoundingBadge } from "@/components/admin/StatusBadge";
-import { DOCTOR_SOURCES, DOMAIN_STATUSES, PLANS } from "@/lib/constants";
+import { FoundingBadge, Pill } from "@/components/admin/StatusBadge";
+import { DOCTOR_PLAN_LABEL, RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
+import { DOCTOR_PLANS, DOCTOR_SOURCES, DOMAIN_STATUSES } from "@/lib/constants";
 import { Group, grid2, type StepProps } from "../shared";
 
-const PLAN_LABEL: Record<(typeof PLANS)[number], string> = { gp: "GP", consultant: "Consultant", hospital: "Hospital" };
 const SOURCE_LABEL: Record<(typeof DOCTOR_SOURCES)[number], string> = {
   field: "Field visit",
   referral: "Referral",
-  hospital: "Hospital",
+  hospital: "Clinic / hospital",
   inbound: "Inbound (website / WhatsApp)",
 };
 
+const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
 export function BusinessStep({ form: f, set, err, options, readOnly, role, doctorId }: StepProps) {
   const isAdmin = role !== "sales";
+  const linked = new Set(f.establishmentIds);
+  const clinicLinked = new Set(f.clinics.map((c) => c.establishmentId).filter(Boolean));
+  const listPrice = (founding: boolean) => (founding ? options.prices.foundingRenewal : options.prices.renewalDoctor);
+
   return (
     <div className="space-y-5">
-      <Group title="Plan and source" description="Internal — never shown on the public page.">
+      <Group title="Plan and source" description="Internal. Never shown on the public page.">
         <div className={grid2}>
-          <Field label="Plan" htmlFor="plan">
+          <Field label="Plan" htmlFor="plan" help="Add-on: bought with a clinic or hospital website, at the add-on setup price.">
             <NativeSelect id="plan" value={f.plan} disabled={readOnly} onChange={(e) => set({ plan: e.target.value as typeof f.plan })}>
-              {PLANS.map((p) => (
+              {DOCTOR_PLANS.map((p) => (
                 <option key={p} value={p}>
-                  {PLAN_LABEL[p]}
+                  {DOCTOR_PLAN_LABEL[p]}
                 </option>
               ))}
             </NativeSelect>
@@ -46,38 +53,61 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
           <Field label="Sales executive" htmlFor="salesExecutive">
             <Input id="salesExecutive" value={f.salesExecutive} disabled={readOnly} onChange={(e) => set({ salesExecutive: e.target.value })} />
           </Field>
-          <Field label="Hospital account" htmlFor="hospitalAccountId" help="For hospital bulk deals.">
-            <NativeSelect id="hospitalAccountId" value={f.hospitalAccountId} disabled={readOnly} onChange={(e) => set({ hospitalAccountId: e.target.value })}>
-              <option value="">None</option>
-              {options.hospitals.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
         </div>
       </Group>
 
-      <Group title="Founding Doctor and hosting" description={isAdmin ? undefined : "Only an admin can change these."}>
-        <SwitchField
-          label="Founding Doctor"
-          description="First 100 doctors: free hosting forever. A number is assigned automatically."
-          checked={f.foundingDoctor}
-          disabled={readOnly || !isAdmin}
-          onCheckedChange={(foundingDoctor) => set({ foundingDoctor })}
-        />
-        {f.foundingDoctor && f.foundingNumber && <FoundingBadge number={f.foundingNumber} />}
-        {!f.foundingDoctor && (
-          <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
-            <SwitchField label="Free hosting forever" checked={f.hostingForever} disabled={readOnly || !isAdmin} onCheckedChange={(hostingForever) => set({ hostingForever })} />
-            {!f.hostingForever && (
-              <Field label="Free hosting until" htmlFor="hostingFreeUntil" error={err("hostingFreeUntil")}>
-                <Input id="hostingFreeUntil" type="date" value={f.hostingFreeUntil} disabled={readOnly || !isAdmin} onChange={(e) => set({ hostingFreeUntil: e.target.value })} />
-              </Field>
-            )}
-          </div>
+      <Group title="Clinics and hospitals" description="Sites on MediReach this doctor belongs to. Clinics linked in the Clinics step are included automatically.">
+        {options.establishments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No clinic or hospital sites yet.</p>
+        ) : (
+          <ul className="grid max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
+            {options.establishments.map((e) => (
+              <li key={e.id}>
+                <label className="flex min-h-10 items-center gap-2 rounded-md px-2 text-sm hover:bg-accent">
+                  <Checkbox
+                    checked={linked.has(e.id) || clinicLinked.has(e.id)}
+                    disabled={readOnly || clinicLinked.has(e.id)}
+                    onCheckedChange={(on) =>
+                      set((f) => ({ establishmentIds: on ? [...f.establishmentIds, e.id] : f.establishmentIds.filter((x) => x !== e.id) }))
+                    }
+                  />
+                  {e.name}
+                  <span className="text-xs text-muted-foreground">{e.kind === "hospital" ? "Hospital" : "Clinic"}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
         )}
+        {err("establishmentIds") && <p className="text-sm text-clay-text">{err("establishmentIds")}</p>}
+      </Group>
+
+      <Group title="Founding customer and renewal" description={isAdmin ? "Setup is paid once; the renewal is yearly from year 2." : "Only an admin can change these."}>
+        <SwitchField
+          label="Founding customer"
+          description={`First 100 customers: renewal at ${rupees(options.prices.foundingRenewal)}/year for life. A number is assigned automatically.`}
+          checked={f.founding}
+          disabled={readOnly || !isAdmin}
+          onCheckedChange={(founding) => set({ founding, renewalPrice: listPrice(founding) })}
+        />
+        {f.founding && f.foundingNumber && <FoundingBadge number={f.foundingNumber} />}
+        <div className={grid2}>
+          <Field label="Setup paid on" htmlFor="setupPaidAt" error={err("setupPaidAt")} help="Usually set by recording the setup payment.">
+            <Input id="setupPaidAt" type="date" value={f.setupPaidAt} disabled={readOnly || !isAdmin} onChange={(e) => set({ setupPaidAt: e.target.value })} />
+          </Field>
+          <Field label="Renewal price per year (₹)" htmlFor="renewalPrice" help={`Leave empty for ${rupees(listPrice(f.founding))} from Settings.`}>
+            <NumberInput id="renewalPrice" value={f.renewalPrice} disabled={readOnly || !isAdmin} onChange={(renewalPrice) => set({ renewalPrice })} />
+          </Field>
+          <Field label="Renewal due on" htmlFor="renewalDueDate" error={err("renewalDueDate")} help="Leave empty for one year after the setup date.">
+            <Input id="renewalDueDate" type="date" value={f.renewalDueDate} disabled={readOnly || !isAdmin} onChange={(e) => set({ renewalDueDate: e.target.value })} />
+          </Field>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Renewal status</p>
+            <div className="flex min-h-11 items-center">
+              <Pill tone={RENEWAL_STATUS_TONE[f.renewalStatus]}>{RENEWAL_STATUS_LABEL[f.renewalStatus]}</Pill>
+            </div>
+            <p className="text-xs text-muted-foreground">Worked out from the due date when you save.</p>
+          </div>
+        </div>
         <SwitchField
           label="Free update already used"
           description="The first done-for-you update is free."

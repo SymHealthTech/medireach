@@ -25,6 +25,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   roles: readonly AdminRole[];
+  /** Shorter label for the mobile tab bar. */
+  short?: string;
 }
 
 const ALL: readonly AdminRole[] = ["superadmin", "admin", "sales"];
@@ -33,11 +35,11 @@ const ADMINS: readonly AdminRole[] = ["superadmin", "admin"];
 export const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, roles: ALL },
   { href: "/admin/doctors", label: "Doctors", icon: UserRound, roles: ALL },
-  { href: "/admin/pages", label: "Portfolio pages", icon: Globe, roles: ALL },
+  { href: "/admin/establishments", label: "Clinics & hospitals", short: "Clinics", icon: Building2, roles: ALL },
+  { href: "/admin/pages", label: "Sites", icon: Globe, roles: ALL },
   { href: "/admin/cards", label: "Visiting cards", icon: IdCard, roles: ALL },
-  { href: "/admin/templates", label: "Design templates", icon: Palette, roles: ADMINS },
-  { href: "/admin/hospitals", label: "Hospitals", icon: Building2, roles: ALL },
-  { href: "/admin/payments", label: "Payments", icon: CreditCard, roles: ADMINS },
+  { href: "/admin/templates", label: "Designs & themes", icon: Palette, roles: ADMINS },
+  { href: "/admin/payments", label: "Payments & renewals", icon: CreditCard, roles: ADMINS },
   { href: "/admin/update-requests", label: "Update requests", icon: Wrench, roles: ADMINS },
   { href: "/admin/leads", label: "Leads", icon: Users, roles: ALL },
   { href: "/admin/masters", label: "Master lists", icon: ListTree, roles: ADMINS },
@@ -45,10 +47,17 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/settings", label: "Settings", icon: Settings, roles: ADMINS },
 ];
 
-/** Bottom tab bar on mobile: Overview, Doctors, [+ New doctor], Leads, More. */
-export const MOBILE_TABS = ["/admin", "/admin/doctors", "/admin/leads"] as const;
+/** Bottom tab bar on mobile: Overview, Doctors, [+ New], Clinics, More (DESIGN_BRIEF.md §6). */
+export const MOBILE_TABS = ["/admin", "/admin/doctors", "/admin/establishments"] as const;
 
 export const NEW_DOCTOR_HREF = "/admin/doctors/new";
+
+/** Choices behind the "+ New" button (top bar and mobile). */
+export const NEW_ITEMS = [
+  { href: NEW_DOCTOR_HREF, label: "Doctor", description: "Portfolio page and visiting card" },
+  { href: "/admin/establishments/new?kind=clinic", label: "Clinic", description: "Clinic website and card" },
+  { href: "/admin/establishments/new?kind=hospital", label: "Hospital", description: "Small hospital website and card" },
+] as const;
 
 export function navForRole(role: AdminRole): NavItem[] {
   return NAV_ITEMS.filter((i) => i.roles.includes(role));

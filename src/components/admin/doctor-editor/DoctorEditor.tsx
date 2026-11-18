@@ -239,7 +239,7 @@ export function DoctorEditor({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h2 className="min-w-0 truncate font-display text-2xl font-semibold text-ink">{name && name !== "Dr." ? name : "New doctor"}</h2>
           <StatusBadge status={form.status} />
-          {form.foundingDoctor && form.foundingNumber && <FoundingBadge number={form.foundingNumber} />}
+          {form.founding && form.foundingNumber && <FoundingBadge number={form.foundingNumber} />}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
             {save.status === "saving" && (
               <>
@@ -248,7 +248,8 @@ export function DoctorEditor({
             )}
             {save.status === "saved" && (
               <>
-                <Cloud className="size-3.5" /> Saved {timeAgo(save.at)}
+                <Cloud className="size-3.5" /> {/* Relative time differs between server render and hydration. */}
+                <span suppressHydrationWarning>Saved {timeAgo(save.at)}</span>
               </>
             )}
             {save.status === "error" && (

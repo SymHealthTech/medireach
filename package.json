@@ -12,7 +12,9 @@
     "test:watch": "vitest",
     "seed:masters": "node --env-file-if-exists=.env.local --import tsx scripts/seed-masters.ts",
     "seed:samples": "node --env-file-if-exists=.env.local --import tsx scripts/seed-samples.ts",
-    "seed:admin": "node --env-file-if-exists=.env.local --import tsx scripts/seed-admin.ts"
+    "seed:admin": "node --env-file-if-exists=.env.local --import tsx scripts/seed-admin.ts",
+    "migrate:v2": "node --env-file-if-exists=.env.local --import tsx scripts/migrate-v2.ts",
+    "renewals": "node --env-file-if-exists=.env.local --require ./scripts/no-server-only.cjs --import tsx scripts/renewals.ts"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.11.3",
@@ -27,6 +29,7 @@
     "jose": "^5.9.6",
     "lucide-react": "^1.73.0",
     "mongoose": "^8.8.3",
+    "motion": "^14.14.0",
     "next": "^15.3.4",
     "next-auth": "^4.24.15",
     "nodemailer": "^7.0.13",

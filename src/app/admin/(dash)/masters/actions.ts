@@ -10,7 +10,7 @@ import { City } from "@/models/City";
 import { Council } from "@/models/Council";
 import { Degree } from "@/models/Degree";
 import { DoctorProfile } from "@/models/DoctorProfile";
-import { Hospital } from "@/models/Hospital";
+import { Establishment } from "@/models/Establishment";
 import { Specialty } from "@/models/Specialty";
 
 const ADMINS = ["superadmin", "admin"] as const;
@@ -121,9 +121,9 @@ export const deleteMasterAction = adminAction(
     const inUse = async (): Promise<number> => {
       switch (kind) {
         case "city":
-          return (await Area.countDocuments({ cityId: id })) + (await DoctorProfile.countDocuments({ "clinics.cityId": id })) + (await Hospital.countDocuments({ cityId: id }));
+          return (await Area.countDocuments({ cityId: id })) + (await DoctorProfile.countDocuments({ "clinics.cityId": id })) + (await Establishment.countDocuments({ "address.cityId": id }));
         case "area":
-          return (await DoctorProfile.countDocuments({ "clinics.areaId": id })) + (await Hospital.countDocuments({ areaId: id }));
+          return (await DoctorProfile.countDocuments({ "clinics.areaId": id })) + (await Establishment.countDocuments({ "address.areaId": id }));
         case "specialty":
           return DoctorProfile.countDocuments({ $or: [{ primarySpecialtyId: id }, { secondarySpecialtyIds: id }] });
         case "degree":

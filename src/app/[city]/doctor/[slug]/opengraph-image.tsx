@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { cloudinaryJpg } from "@/lib/cards/photo";
 import { cardFonts } from "@/lib/cards/render";
-import { getPublishedDoctor } from "@/lib/public/data";
+import { getLiveDoctor } from "@/lib/public/data";
 import { primaryClinic } from "@/lib/seo/profile";
 import { SLUG_RE } from "@/lib/slug";
 
@@ -29,7 +29,7 @@ function initials(name: string): string {
 
 export default async function OgImage({ params }: { params: Promise<{ city: string; slug: string }> }) {
   const { city, slug } = await params;
-  const d = SLUG_RE.test(city) && SLUG_RE.test(slug) ? await getPublishedDoctor(city, slug) : null;
+  const d = SLUG_RE.test(city) && SLUG_RE.test(slug) ? await getLiveDoctor(city, slug) : null;
 
   const name = d?.fullName ?? "MediReach";
   const clinic = d ? primaryClinic(d) : undefined;

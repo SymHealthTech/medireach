@@ -22,7 +22,7 @@ export async function createUpdateRequest(doctorId: string, description: string)
     doctorId,
     description,
     status: "new",
-    price: free ? 0 : settings.prices.update,
+    price: free ? 0 : settings.prices.updatePrice,
     paid: free,
   });
   return { id: String(req._id), free, price: req.price };

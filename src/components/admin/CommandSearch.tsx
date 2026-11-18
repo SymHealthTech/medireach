@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Loader2, UserRound, Users } from "lucide-react";
+import { Building2, Hospital, Loader2, UserRound, Users } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -16,12 +16,13 @@ import type { NavItem } from "@/components/admin/nav";
 
 const GROUPS: { type: SearchResult["type"]; heading: string; icon: typeof UserRound }[] = [
   { type: "doctor", heading: "Doctors", icon: UserRound },
+  { type: "clinic", heading: "Clinics", icon: Building2 },
+  { type: "hospital", heading: "Hospitals", icon: Hospital },
   { type: "lead", heading: "Leads", icon: Users },
-  { type: "hospital", heading: "Hospitals", icon: Building2 },
 ];
 
 /**
- * ⌘K / Ctrl+K command palette: searches doctors, leads and hospitals on the
+ * ⌘K / Ctrl+K command palette: searches doctors, clinics/hospitals and leads on the
  * server (debounced) and lists dashboard sections for quick navigation.
  */
 export function CommandSearch({
@@ -80,10 +81,10 @@ export function CommandSearch({
       open={open}
       onOpenChange={onOpenChange}
       title="Search"
-      description="Search doctors, leads and hospitals"
+      description="Search doctors, clinics, hospitals and leads"
       shouldFilter={false}
     >
-      <CommandInput placeholder="Search doctors, leads, hospitals…" value={query} onValueChange={setQuery} />
+      <CommandInput placeholder="Search doctors, clinics, hospitals, leads…" value={query} onValueChange={setQuery} />
       <CommandList>
         {pending && (
           <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">

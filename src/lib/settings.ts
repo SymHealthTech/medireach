@@ -1,13 +1,14 @@
 import "server-only";
 import { DEFAULT_BANNED_PHRASES } from "@/config/banned-phrases";
 import { connectToDatabase } from "@/lib/db";
-import { DEFAULT_UPDATE_PRICE, FOUNDING_TOTAL_DEFAULT } from "@/lib/constants";
+import { DEFAULT_PRICES, DEFAULT_RENEWAL_GRACE_DAYS, FOUNDING_TOTAL_DEFAULT, PRICE_KEYS, type PriceKey } from "@/lib/constants";
 import { DEFAULT_WHATSAPP_SHARE_TEMPLATE, Setting, SETTINGS_KEY } from "@/models/Setting";
 
 /** Site settings as a plain object, with defaults filled in. */
 export interface SiteSettings {
-  prices: { gp: number; consultant: number; update: number };
+  prices: Record<PriceKey, number>;
   foundingTotal: number;
+  renewalGraceDays: number;
   contactPhone?: string;
   whatsappNumber?: string;
   gstMode: "inclusive" | "exclusive" | "none";
@@ -17,16 +18,18 @@ export interface SiteSettings {
   bannedPhrasesOverridden: boolean;
 }
 
+/** Before migrate:v2 runs, a saved v1 GP price / update price stand in for the v2 doctor setup / update price. */
+const LEGACY_PRICE_KEY: Partial<Record<PriceKey, string>> = { doctorSetup: "gp", updatePrice: "update" };
+
 export async function getSettings(): Promise<SiteSettings> {
   await connectToDatabase();
   const s = await Setting.findOne({ key: SETTINGS_KEY }).lean();
+  const stored = (s?.prices ?? {}) as Partial<Record<string, number>>;
+  const price = (k: PriceKey) => stored[k] ?? (LEGACY_PRICE_KEY[k] ? stored[LEGACY_PRICE_KEY[k]] : undefined) ?? DEFAULT_PRICES[k];
   return {
-    prices: {
-      gp: s?.prices?.gp ?? 1999,
-      consultant: s?.prices?.consultant ?? 2999,
-      update: s?.prices?.update ?? DEFAULT_UPDATE_PRICE,
-    },
+    prices: Object.fromEntries(PRICE_KEYS.map((k) => [k, price(k)])) as Record<PriceKey, number>,
     foundingTotal: s?.foundingTotal ?? FOUNDING_TOTAL_DEFAULT,
+    renewalGraceDays: s?.renewalGraceDays ?? DEFAULT_RENEWAL_GRACE_DAYS,
     ...(s?.contactPhone ? { contactPhone: s.contactPhone } : {}),
     ...(s?.whatsappNumber ? { whatsappNumber: s.whatsappNumber } : {}),
     gstMode: s?.gstMode ?? "inclusive",

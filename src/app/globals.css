@@ -196,7 +196,7 @@
 /* ── Hero phone float (decorative; disabled by prefers-reduced-motion above) ── */
 @keyframes mr-float {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  50% { transform: translateY(-6px); }
 }
 .float-gentle { animation: mr-float 6s ease-in-out infinite; }
 
@@ -219,4 +219,57 @@
 .mr-dots {
   background-image: radial-gradient(rgb(14 59 60 / 0.12) 1px, transparent 1px);
   background-size: 18px 18px;
+}
+
+/* ── Homepage motion (DESIGN_BRIEF.md §3). Transform + opacity only. ── */
+
+/* Section reveal: see components/marketing/Reveal.tsx. */
+[data-reveal="hidden"]:not(:has([data-reveal-item])),
+[data-reveal="hidden"] [data-reveal-item] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+[data-reveal="shown"]:not(:has([data-reveal-item])),
+[data-reveal="shown"] [data-reveal-item] {
+  transition: opacity 450ms ease-out, transform 450ms ease-out;
+  transition-delay: calc(var(--reveal-i, 0) * 70ms);
+}
+
+/* Hero entrance (never on the H1, the LCP element). */
+@keyframes mr-enter {
+  from { opacity: 0.001; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.mr-enter { animation: mr-enter 450ms ease-out both; animation-delay: var(--d, 0ms); }
+
+/* Search box caret. */
+@keyframes mr-blink { 50% { opacity: 0; } }
+.mr-caret { animation: mr-blink 1s steps(1) infinite; }
+
+/* Specialty marquee: 40 s per loop, pauses on hover / touch / focus. */
+@keyframes mr-marquee { to { transform: translateX(-50%); } }
+.mr-marquee { animation: mr-marquee 40s linear infinite; }
+.mr-marquee-wrap:hover .mr-marquee,
+.mr-marquee-wrap:active .mr-marquee,
+.mr-marquee-wrap:focus-within .mr-marquee { animation-play-state: paused; }
+
+/* QR scan line: a thin marigold line sweeping over a QR code. */
+@keyframes mr-scan {
+  0% { transform: translateY(0); opacity: 0; }
+  10%, 90% { opacity: 1; }
+  100% { transform: translateY(100%); opacity: 0; }
+}
+.mr-scan { animation: mr-scan 2.4s ease-in-out infinite; }
+
+/* Loops inside an off-screen LoopGuard are paused. */
+[data-offscreen] *, [data-offscreen] { animation-play-state: paused !important; }
+
+/* Hover lift for homepage cards: 4 px, shadow deepens, 180 ms. */
+.mr-lift { transition: transform 180ms ease-out, box-shadow 180ms ease-out; }
+.mr-lift:hover { transform: translateY(-4px); box-shadow: 0 1px 2px rgb(14 59 60 / 0.06), 0 20px 44px rgb(14 59 60 / 0.14); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mr-enter, .mr-caret, .mr-marquee, .mr-scan, .float-gentle { animation: none !important; }
+  .mr-scan { opacity: 0; }
+  .mr-lift:hover { transform: none; }
 }

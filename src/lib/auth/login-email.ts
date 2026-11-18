@@ -1,7 +1,7 @@
 import { absUrl } from "@/lib/site";
 
 /**
- * Branded doctor login email (magic link). Pure: builds subject, HTML and a
+ * Branded login email for doctors and clinic/hospital owners (magic link). Pure: builds subject, HTML and a
  * plain-text fallback. Inline styles and tables only, so it renders in Gmail,
  * Outlook and phone mail apps; the wordmark is text, so it shows even when
  * images are blocked.
@@ -24,7 +24,7 @@ export interface LoginEmail {
 export function loginEmail({ name, url, welcome = false }: { name: string; url: string; welcome?: boolean }): LoginEmail {
   const subject = welcome ? "Manage your MediReach page" : "Your MediReach login link";
   const intro = welcome
-    ? "Your MediReach page is set up for self-editing. Log in to update your clinic timings, phone numbers, address and fees whenever they change."
+    ? "Your MediReach site is set up for self-editing. Log in to update your timings, phone numbers and address whenever they change."
     : "Here is your link to log in to MediReach.";
   const n = esc(name);
   const u = esc(url);

@@ -2,15 +2,17 @@ import { z } from "zod";
 import {
   APPROVAL_CHANNELS,
   CLINIC_TYPES,
+  DOCTOR_PLANS,
   DOCTOR_SOURCES,
   DOMAIN_STATUSES,
   GENDERS,
   LIMITS,
-  PLANS,
   PRACTITIONER_TYPES,
   SYSTEMS_OF_MEDICINE,
   TEMPLATE_KEYS,
+  type DoctorPlan,
   type DoctorStatus,
+  type RenewalStatus,
 } from "@/lib/constants";
 import { htmlToText } from "@/lib/compliance/scan";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
@@ -54,7 +56,8 @@ export interface ClinicForm {
   appointmentNote: string;
   fee: number | undefined;
   showFee: boolean;
-  hospitalId: string;
+  /** Clinic/hospital with a MediReach site ("" = not linked). */
+  establishmentId: string;
 }
 
 export interface DoctorForm {
@@ -116,14 +119,17 @@ export interface DoctorForm {
   seo: { titleOverride: string; descriptionOverride: string; noindex: boolean };
 
   // 8 Business
-  plan: (typeof PLANS)[number];
-  foundingDoctor: boolean;
-  foundingNumber: number | undefined;
-  hostingForever: boolean;
-  hostingFreeUntil: string; // yyyy-mm-dd
+  plan: DoctorPlan;
+  founding: boolean;
+  foundingNumber: number | undefined; // assigned by the server
+  setupPaidAt: string; // yyyy-mm-dd
+  renewalPrice: number | undefined; // empty = from Settings (normal or founding)
+  renewalDueDate: string; // yyyy-mm-dd; empty = setup date + 1 year
+  renewalStatus: RenewalStatus; // computed by the server, shown read-only
   freeUpdateUsed: boolean;
   ownDomain: { name: string; status: (typeof DOMAIN_STATUSES)[number]; cost: number | undefined; renewalDate: string };
-  hospitalAccountId: string;
+  /** Clinics/hospitals this doctor belongs to (clinic links are added automatically). */
+  establishmentIds: string[];
   salesExecutive: string;
   source: "" | (typeof DOCTOR_SOURCES)[number];
   internalNotes: string;
@@ -157,7 +163,7 @@ export function emptyClinic(cityId = "", key = randomKey()): ClinicForm {
     appointmentNote: "",
     fee: undefined,
     showFee: false,
-    hospitalId: "",
+    establishmentId: "",
   };
 }
 
@@ -199,14 +205,16 @@ export function emptyDoctorForm(): DoctorForm {
     interestsStory: { title: "", body: "" },
     gallery: [],
     seo: { titleOverride: "", descriptionOverride: "", noindex: false },
-    plan: "gp",
-    foundingDoctor: false,
+    plan: "doctor",
+    founding: false,
     foundingNumber: undefined,
-    hostingForever: false,
-    hostingFreeUntil: "",
+    setupPaidAt: "",
+    renewalPrice: undefined,
+    renewalDueDate: "",
+    renewalStatus: "active",
     freeUpdateUsed: false,
     ownDomain: { name: "", status: "requested", cost: undefined, renewalDate: "" },
-    hospitalAccountId: "",
+    establishmentIds: [],
     salesExecutive: "",
     source: "",
     internalNotes: "",
@@ -344,7 +352,7 @@ export function stepForField(path: string): StepKey {
 // Server-side section schemas
 // ---------------------------------------------------------------------------
 
-const t = (max: number) =>
+export const t = (max: number) =>
   z
     .string()
     .trim()
@@ -357,11 +365,11 @@ const year = z
   .max(new Date().getFullYear() + 1)
   .optional();
 const oid = z.string().regex(/^[a-f0-9]{24}$/i, "Choose an option.");
-const optOid = z
+export const optOid = z
   .string()
   .refine((s) => s === "" || /^[a-f0-9]{24}$/i.test(s), "Choose an option.")
   .transform((s) => s || undefined);
-const image = z.object({
+export const image = z.object({
   publicId: z.string().min(1).max(300),
   url: z.string().url().max(1000).refine((u) => u.startsWith("https://res.cloudinary.com/"), "Images must be uploaded."),
   alt: t(200).optional(),
@@ -370,34 +378,34 @@ const image = z.object({
 const interestsStory = z
   .object({ title: t(150), body: t(LIMITS.storyBody) })
   .refine((st) => !st.body || Boolean(st.title), { message: "Add a title for the story.", path: ["title"] });
-const mobile = z
+export const mobile = z
   .string()
   .trim()
   .transform((s) => s.replace(/[\s-]/g, "").replace(/^(\+?91)(?=\d{10}$)/, ""))
   .refine((s) => s === "" || /^[6-9]\d{9}$/.test(s), "Enter a 10-digit mobile number.")
   .transform((s) => s || undefined);
-const phone = z
+export const phone = z
   .string()
   .trim()
   .transform((s) => s.replace(/[\s-()]/g, ""))
   .refine((s) => s === "" || /^\+?\d{8,13}$/.test(s), "Enter a valid phone number.")
   .transform((s) => s || undefined);
-const url = z
+export const url = z
   .string()
   .trim()
   .max(500)
   .refine((s) => s === "" || /^https?:\/\/\S+$/i.test(s), "Enter a full link starting with https://")
   .transform((s) => s || undefined);
-const email = z
+export const email = z
   .string()
   .trim()
   .toLowerCase()
   .max(254)
   .refine((s) => s === "" || z.string().email().safeParse(s).success, "Enter a valid email address.")
   .transform((s) => s || undefined);
-const chips = (max: number, len = 60) => z.array(z.string().trim().min(1).max(len)).max(max);
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const dateStr = z
+export const chips = (max: number, len = 60) => z.array(z.string().trim().min(1).max(len)).max(max);
+export const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const dateStr = z
   .string()
   .refine((s) => s === "" || /^\d{4}-\d{2}-\d{2}$/.test(s), "Enter a valid date.")
   .transform((s) => (s ? new Date(`${s}T00:00:00+05:30`) : undefined));
@@ -478,7 +486,7 @@ export const sectionSchemas = {
           appointmentNote: t(200),
           fee: z.number().int().min(0).max(100000).optional(),
           showFee: z.boolean(),
-          hospitalId: optOid,
+          establishmentId: optOid,
         }),
       )
       .max(6),
@@ -550,10 +558,11 @@ export const sectionSchemas = {
     seo: z.object({ titleOverride: t(70), descriptionOverride: t(160), noindex: z.boolean() }),
   }),
   business: z.object({
-    plan: z.enum(PLANS),
-    foundingDoctor: z.boolean(),
-    hostingForever: z.boolean(),
-    hostingFreeUntil: dateStr,
+    plan: z.enum(DOCTOR_PLANS),
+    founding: z.boolean(),
+    setupPaidAt: dateStr,
+    renewalPrice: z.number().int().min(0).max(100000).optional(),
+    renewalDueDate: dateStr,
     freeUpdateUsed: z.boolean(),
     ownDomain: z.object({
       name: z
@@ -565,7 +574,7 @@ export const sectionSchemas = {
       cost: z.number().min(0).max(100000).optional(),
       renewalDate: dateStr,
     }),
-    hospitalAccountId: optOid,
+    establishmentIds: z.array(z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.")).max(20),
     salesExecutive: t(80),
     source: z.enum(["", ...DOCTOR_SOURCES]).transform((s) => s || undefined),
     internalNotes: t(2000),
@@ -600,7 +609,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "seo":
       return { slug: f.slug, shortSlug: f.shortSlug, subdomain: f.subdomain, seo: f.seo };
     case "business":
-      return { plan: f.plan, foundingDoctor: f.foundingDoctor, hostingForever: f.hostingForever, hostingFreeUntil: f.hostingFreeUntil, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, hospitalAccountId: f.hospitalAccountId, salesExecutive: f.salesExecutive, source: f.source, internalNotes: f.internalNotes };
+      return { plan: f.plan, founding: f.founding, setupPaidAt: f.setupPaidAt, renewalPrice: f.renewalPrice, renewalDueDate: f.renewalDueDate, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, establishmentIds: f.establishmentIds, salesExecutive: f.salesExecutive, source: f.source, internalNotes: f.internalNotes };
     case "templates":
       return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId };
     case "review":

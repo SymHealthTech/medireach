@@ -8,7 +8,7 @@ import { Field, NativeSelect } from "@/components/admin/form/fields";
 import { FormDialog, useActionRunner } from "@/components/admin/FormDialog";
 import { Pill } from "@/components/admin/StatusBadge";
 import { SimpleImageUpload } from "@/components/admin/doctor-editor/PhotoCropUpload";
-import { TEMPLATE_STATUSES, type TemplateKey, type TemplateStatus, type TemplateType } from "@/lib/constants";
+import { TEMPLATE_STATUSES, type SiteTemplateType, type TemplateKey, type TemplateStatus } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 import { setDefaultTemplateAction, updateTemplateSlotAction } from "./actions";
 
@@ -16,13 +16,14 @@ const STATUS_LABEL: Record<TemplateStatus, string> = { coming_soon: "Coming soon
 const STATUS_TONE = { coming_soon: "muted", in_design: "marigold", ready: "leaf" } as const;
 
 export interface SlotView {
-  type: TemplateType;
+  type: SiteTemplateType;
   key: TemplateKey;
   name: string;
   status: TemplateStatus;
   isDefault: boolean;
   preview?: { publicId: string; url: string };
-  doctorsUsing: number;
+  /** e.g. "3 doctors", "1 clinic". */
+  usage: string;
   previewHref?: string;
 }
 
@@ -62,7 +63,7 @@ export function TemplateSlotCard({ slot }: { slot: SlotView }) {
           <Pill tone={STATUS_TONE[slot.status]}>{STATUS_LABEL[slot.status]}</Pill>
         </div>
         <p className="text-xs text-muted-foreground">
-          {slot.key === "classic" ? "Slot 1" : `Slot ${slot.key.slice(1)}`} · {slot.doctorsUsing} doctor{slot.doctorsUsing === 1 ? "" : "s"}
+          {slot.key === "classic" ? "Slot 1" : `Slot ${slot.key.slice(1)}`} · {slot.usage}
         </p>
         <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
           {slot.previewHref && (

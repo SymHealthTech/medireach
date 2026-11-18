@@ -6,7 +6,8 @@ import { PDFDocument } from "pdf-lib";
 import { cloudinaryJpg } from "@/lib/cards/photo";
 import { qrForUrl } from "@/lib/cards/qr";
 import { resolveCardTemplate, type ReadyTemplates } from "@/templates/registry";
-import { CARD_SIZE, type CardTemplateProps, type CardVariant, type PublicDoctor } from "@/templates/types";
+import ClassicSiteCard from "@/templates/card/classic/site";
+import { CARD_SIZE, type CardTemplateProps, type CardVariant, type PublicDoctor, type PublicEstablishment, type SiteCardTemplateProps } from "@/templates/types";
 
 /**
  * Server-side card rendering: the same card template used on the card page is
@@ -67,17 +68,7 @@ const MM_TO_PT = 72 / 25.4;
 
 /** Print-ready PDF: one page, exactly 85 × 55 mm, the 300 dpi card filling it. */
 export async function renderCardPdf(doctor: PublicDoctor, ready?: ReadyTemplates): Promise<Uint8Array> {
-  const png = await renderCardPng(doctor, "print", ready);
-  const pdf = await PDFDocument.create();
-  pdf.setTitle(`${doctor.fullName} – visiting card`);
-  pdf.setCreator("MediReach");
-  pdf.setProducer("MediReach");
-  const image = await pdf.embedPng(png);
-  const width = 85 * MM_TO_PT;
-  const height = 55 * MM_TO_PT;
-  const page = pdf.addPage([width, height]);
-  page.drawImage(image, { x: 0, y: 0, width, height });
-  return pdf.save();
+  return pdfFromPrintPng(await renderCardPng(doctor, "print", ready), `${doctor.fullName} – visiting card`);
 }
 
 export const CARD_FILES = {
@@ -97,6 +88,70 @@ export async function cardFileResponse(
   const { type } = CARD_FILES[file];
   const body = file === "print.pdf" ? await renderCardPdf(doctor, opts.ready) : await renderCardPng(doctor, CARD_FILES[file].variant, opts.ready);
   const name = `${doctor.shortSlug ?? doctor.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
+  return new Response(body as BodyInit, {
+    headers: {
+      "Content-Type": type,
+      "Cache-Control": opts.cacheControl,
+      "X-Robots-Tag": "noindex",
+      ...(opts.download ? { "Content-Disposition": `attachment; filename="${name}"` } : {}),
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Clinic and hospital cards
+// ---------------------------------------------------------------------------
+
+/**
+ * Card designs for clinics/hospitals. Only Classic exists; the other card
+ * slots (t2–t5) are doctor-card placeholders, so every site renders Classic
+ * until a site version of a slot is designed.
+ */
+export function resolveSiteCardTemplate(_key: string) {
+  return ClassicSiteCard;
+}
+
+/** Props for a site card in either renderer. The QR opens the subdomain, else the site page. */
+export function siteCardProps(site: PublicEstablishment, variant: CardVariant, renderer: "html" | "image"): SiteCardTemplateProps {
+  return {
+    site,
+    variant,
+    qr: qrForUrl(site.shareUrl),
+    fonts: renderer === "image" ? IMAGE_FONTS : HTML_FONTS,
+    ...(site.logo ? { logoUrl: cloudinaryJpg(site.logo.url, 600) } : {}),
+  };
+}
+
+export async function renderSiteCardPng(site: PublicEstablishment, variant: CardVariant): Promise<ArrayBuffer> {
+  const Card = resolveSiteCardTemplate(site.cardTemplateId);
+  const { width, height } = CARD_SIZE[variant];
+  const res = new ImageResponse(<Card {...siteCardProps(site, variant, "image")} />, { width, height, fonts: await cardFonts() });
+  return res.arrayBuffer();
+}
+
+async function pdfFromPrintPng(png: ArrayBuffer, title: string): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  pdf.setTitle(title);
+  pdf.setCreator("MediReach");
+  pdf.setProducer("MediReach");
+  const image = await pdf.embedPng(png);
+  const width = 85 * MM_TO_PT;
+  const height = 55 * MM_TO_PT;
+  const page = pdf.addPage([width, height]);
+  page.drawImage(image, { x: 0, y: 0, width, height });
+  return pdf.save();
+}
+
+/** Download response for one clinic/hospital card file. */
+export async function siteCardFileResponse(
+  site: PublicEstablishment,
+  file: CardFile,
+  opts: { cacheControl: string; download: boolean },
+): Promise<Response> {
+  const { type, variant } = CARD_FILES[file];
+  const png = await renderSiteCardPng(site, variant);
+  const body = file === "print.pdf" ? await pdfFromPrintPng(png, `${site.name} – visiting card`) : png;
+  const name = `${site.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
   return new Response(body as BodyInit, {
     headers: {
       "Content-Type": type,

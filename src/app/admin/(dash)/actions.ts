@@ -2,15 +2,15 @@
 
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { Hospital } from "@/models/Hospital";
+import { Establishment } from "@/models/Establishment";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Lead } from "@/models/Lead";
 
-/** Global ⌘K search across doctors, leads and hospitals. Staff only. */
+/** Global ⌘K search across doctors, clinics/hospitals and leads. Staff only. */
 
 export interface SearchResult {
   id: string;
-  type: "doctor" | "lead" | "hospital";
+  type: "doctor" | "clinic" | "hospital" | "lead";
   title: string;
   subtitle?: string;
   href: string;
@@ -30,13 +30,15 @@ export async function searchAction(raw: string): Promise<SearchResult[]> {
   const digits = q.replace(/\D/g, "");
   const phoneRe = digits.length >= 4 ? new RegExp(escapeRegExp(digits)) : null;
 
-  const [doctors, leads, hospitals] = await Promise.all([
+  const [doctors, leads, establishments] = await Promise.all([
     DoctorProfile.find({
       $or: [
         { firstName: re },
         { lastName: re },
         { displayName: re },
         { slug: re },
+        { shortSlug: re },
+        { subdomain: re },
         ...(phoneRe ? [{ mobile: phoneRe }, { whatsapp: phoneRe }] : []),
       ],
     })
@@ -49,7 +51,13 @@ export async function searchAction(raw: string): Promise<SearchResult[]> {
       .sort({ createdAt: -1 })
       .limit(5)
       .lean(),
-    Hospital.find({ name: re }).select({ name: 1 }).sort({ name: 1 }).limit(5).lean(),
+    Establishment.find({
+      $or: [{ name: re }, { slug: re }, { shortSlug: re }, { subdomain: re }, ...(phoneRe ? [{ "contact.phones": phoneRe }, { "contact.emergencyPhone": phoneRe }] : [])],
+    })
+      .select({ name: 1, kind: 1, status: 1 })
+      .sort({ name: 1 })
+      .limit(8)
+      .lean(),
   ]);
 
   return [
@@ -58,7 +66,7 @@ export async function searchAction(raw: string): Promise<SearchResult[]> {
       type: "doctor" as const,
       title: d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`,
       subtitle: d.status,
-      href: `/admin/doctors?q=${encodeURIComponent(q)}`,
+      href: `/admin/doctors/${d._id}`,
     })),
     ...leads.map((l) => ({
       id: String(l._id),
@@ -67,11 +75,12 @@ export async function searchAction(raw: string): Promise<SearchResult[]> {
       subtitle: `${l.phone} · ${l.status}`,
       href: `/admin/leads?q=${encodeURIComponent(q)}`,
     })),
-    ...hospitals.map((h) => ({
-      id: String(h._id),
-      type: "hospital" as const,
-      title: h.name,
-      href: `/admin/hospitals?q=${encodeURIComponent(q)}`,
+    ...establishments.map((e) => ({
+      id: String(e._id),
+      type: e.kind,
+      title: e.name,
+      subtitle: e.status,
+      href: `/admin/establishments/${e._id}`,
     })),
   ];
 }

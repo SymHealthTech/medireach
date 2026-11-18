@@ -5,21 +5,24 @@ import { z } from "zod";
 import { ActionError, fieldErrorsOf, type ActionResult } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hitRateLimit } from "@/lib/api/rate-limit";
-import { DoctorAuthError, doctorActor, requireDoctor } from "@/lib/auth/doctor";
+import { DoctorAuthError, doctorActor, ownerActor, requireAccount, requireDoctor } from "@/lib/auth/doctor";
 import { scanFields } from "@/lib/compliance/scan";
 import { accountSchema, accountTextFields, changeRequestSchema } from "@/lib/doctors/account";
 import { publishProblems, scanDoctor } from "@/lib/doctors/server";
 import { optionalEnv } from "@/lib/env";
 import { createSignedUpload, type SignedUploadParams } from "@/lib/integrations/cloudinary";
 import { sendEmail } from "@/lib/integrations/email";
-import { revalidateDoctorPages } from "@/lib/public/revalidate";
+import { revalidateDoctorPages, revalidateEstablishmentPages } from "@/lib/public/revalidate";
 import { getSettings } from "@/lib/settings";
 import { absUrl } from "@/lib/site";
 import { createUpdateRequest } from "@/lib/update-requests/create";
+import { ownerSiteSchema, ownerSiteTextFields } from "@/lib/establishments/owner";
+import { publishProblems as siteProblems, scanEstablishment } from "@/lib/establishments/server";
 import type { DoctorProfileDoc } from "@/models/DoctorProfile";
+import type { EstablishmentDoc } from "@/models/Establishment";
 
 /**
- * Doctor self-edit actions. The doctor is re-read from the database on every
+ * Self-edit actions for doctors and clinic/hospital owners. The account is re-read from the database on every
  * call; input is validated with the same schemas as the dashboard editor; free
  * text runs the NMC scan; every change is audit-logged and refreshes the live
  * page straight away.
@@ -172,3 +175,78 @@ export async function requestChangeAction(raw: unknown): Promise<ActionResult<{ 
 }
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+// ---------------------------------------------------------------------------
+// Clinic / hospital owners
+// ---------------------------------------------------------------------------
+
+const siteSnapshot = (s: EstablishmentDoc) => ({
+  address: { line1: s.address?.line1 ?? null, line2: s.address?.line2 ?? null, pincode: s.address?.pincode ?? null, landmark: s.address?.landmark ?? null, parkingNote: s.address?.parkingNote ?? null },
+  mapsUrl: s.mapsUrl ?? null,
+  phones: s.contact?.phones ?? [],
+  whatsapp: s.contact?.whatsapp ?? null,
+  emergencyPhone: s.contact?.emergencyPhone ?? null,
+  is24x7: s.is24x7,
+  timings: s.timings,
+  appointmentNote: s.appointmentNote ?? null,
+  visitingHours: s.visitingHours ?? null,
+});
+
+/** Save what a clinic/hospital owner may change (lib/establishments/owner.ts). */
+export async function saveSiteAccountAction(raw: unknown): Promise<ActionResult<{ savedAt: string }>> {
+  return run(async () => {
+    const me = await requireAccount();
+    const parsed = ownerSiteSchema.safeParse(raw);
+    if (!parsed.success) {
+      const fieldErrors = fieldErrorsOf(parsed.error);
+      throw new ActionError(Object.values(fieldErrors)[0] ?? "Please check the form.", fieldErrors);
+    }
+    const input = parsed.data;
+    // Only sites owned by this login email; re-read on every call.
+    const doc = me.sites.find((s) => String(s._id) === input.id);
+    if (!doc) throw new ActionError("You can't edit that site. Please reload the page.");
+
+    const settings = await getSettings();
+    const textIssues = scanFields(ownerSiteTextFields(input), settings.bannedPhrases);
+    if (textIssues.length > 0) {
+      const fieldErrors = Object.fromEntries(textIssues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
+      throw new ActionError("Some wording isn't allowed on clinic and hospital sites. Please change the highlighted text.", fieldErrors);
+    }
+
+    const before = siteSnapshot(doc.toObject());
+    // Problems the site already had (e.g. a missing approval record) are the team's to fix;
+    // only a change that adds a new one is refused.
+    const problemsBefore = doc.status === "published" ? siteProblems(doc, scanEstablishment(doc, settings.bannedPhrases)) : [];
+    doc.set({
+      "address.line1": input.address.line1,
+      "address.line2": input.address.line2,
+      "address.pincode": input.address.pincode,
+      "address.landmark": input.address.landmark,
+      "address.parkingNote": input.address.parkingNote,
+      mapsUrl: input.mapsUrl,
+      "contact.phones": input.phones.filter((p): p is string => Boolean(p)),
+      "contact.whatsapp": input.whatsapp,
+      "contact.emergencyPhone": input.emergencyPhone,
+      is24x7: input.is24x7,
+      timings: input.timings.filter((t) => t.slots.length > 0),
+      appointmentNote: input.appointmentNote,
+      // Visiting hours are a hospital field; clinics never set them here.
+      ...(doc.kind === "hospital" ? { visitingHours: input.visitingHours } : {}),
+    });
+
+    const issues = scanEstablishment(doc, settings.bannedPhrases);
+    if (doc.status === "published" && siteProblems(doc, issues).some((p) => !problemsBefore.includes(p))) {
+      throw new ActionError("This change can't go live as it is. Please message us and our team will help.");
+    }
+    doc.compliance.issues = issues;
+    doc.compliance.lastScanAt = new Date();
+    await doc.save();
+
+    const diff = shallowDiff(before, siteSnapshot(doc.toObject()));
+    if (Object.keys(diff).length > 0) {
+      await audit(ownerActor(me, String(doc._id)), `${doc.kind}.self_edit`, { entity: "Establishment", entityId: doc._id, diff });
+    }
+    if (doc.status === "published") revalidateEstablishmentPages({ kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
+    return { savedAt: new Date().toISOString() };
+  });
+}

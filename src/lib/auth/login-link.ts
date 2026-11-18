@@ -7,9 +7,12 @@ import { sendEmail } from "@/lib/integrations/email";
 import { absUrl } from "@/lib/site";
 import { loginEmail } from "@/lib/auth/login-email";
 import { DoctorProfile } from "@/models/DoctorProfile";
+import { Establishment } from "@/models/Establishment";
 
 /**
- * Doctor magic-link login (email only; no SMS anywhere). NextAuth's Email
+ * Magic-link login for doctors and clinic/hospital owners (email only; no SMS
+ * anywhere). An email may log in if it is a doctor's `ownerEmail` or the
+ * `ownerEmail` of one or more clinic/hospital sites. NextAuth's Email
  * provider verifies links and issues the session (see doctor-auth.ts); this
  * module issues the links so /login and the dashboard's "Send login email"
  * share one path with our own rate limits and branded email.
@@ -68,6 +71,24 @@ export async function loginDoctorFor(email: string) {
     .lean();
 }
 
+/**
+ * Who may log in with this email: a doctor, the owner of one or more
+ * clinic/hospital sites, or both. Null = not registered.
+ */
+export async function loginOwnerFor(email: string): Promise<{ name: string; doctorId?: string; siteIds: string[] } | null> {
+  const e = normalizeEmail(email);
+  const [doctor, sites] = await Promise.all([
+    loginDoctorFor(e),
+    Establishment.find({ ownerEmail: e }).select({ name: 1 }).sort({ name: 1 }).lean(),
+  ]);
+  if (!doctor && sites.length === 0) return null;
+  return {
+    name: doctor ? doctorGreetingName(doctor) : sites[0]!.name,
+    ...(doctor ? { doctorId: String(doctor._id) } : {}),
+    siteIds: sites.map((s) => String(s._id)),
+  };
+}
+
 export function doctorGreetingName(d: { title?: string; firstName: string; lastName: string; displayName?: string }): string {
   return d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`.trim();
 }
@@ -97,16 +118,17 @@ export async function loginTokenValid(token: string, email: string): Promise<boo
 }
 
 /**
- * Send a login link to a registered doctor. Unknown emails are a silent no-op
- * (callers always show the same neutral message). Returns the link that was
- * emailed, or null when nothing was sent.
+ * Send a login link to a registered doctor or site owner. Unknown emails are a
+ * silent no-op (callers always show the same neutral message). Returns the
+ * link that was emailed, or null when nothing was sent.
  */
 export async function sendLoginLink(email: string, opts: { welcome?: boolean } = {}): Promise<{ url: string } | null> {
-  const doctor = await loginDoctorFor(email);
-  if (!doctor?.ownerEmail) return null;
-  const token = await createLoginToken(doctor.ownerEmail);
-  const url = verifyPageUrl(token, doctor.ownerEmail);
-  const msg = loginEmail({ name: doctorGreetingName(doctor), url, welcome: opts.welcome });
-  const sent = await sendEmail({ to: doctor.ownerEmail, ...msg });
+  const owner = await loginOwnerFor(email);
+  if (!owner) return null;
+  const to = normalizeEmail(email);
+  const token = await createLoginToken(to);
+  const url = verifyPageUrl(token, to);
+  const msg = loginEmail({ name: owner.name, url, welcome: opts.welcome });
+  const sent = await sendEmail({ to, ...msg });
   return sent.ok ? { url } : null;
 }

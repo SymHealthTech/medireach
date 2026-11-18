@@ -1,36 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { FormDialog } from "@/components/admin/FormDialog";
 import { PAYMENT_MODE_LABEL, PAYMENT_PURPOSE_LABEL } from "@/lib/admin/labels";
-import { PAYMENT_MODES, PAYMENT_PURPOSES } from "@/lib/constants";
+import { PAYMENT_MODES, PAYMENT_PURPOSES_V2, type PaymentPurpose } from "@/lib/constants";
 import { toDateInput } from "@/lib/format";
 import { recordPaymentAction } from "./actions";
 
+type TargetKind = "doctor" | "establishment";
+
+const PURPOSE_HELP: Partial<Record<PaymentPurpose, string>> = {
+  setup: "Starts the renewal: due one year after this date.",
+  doctor_addon: "Setup for a clinic/hospital doctor's portfolio. Starts that doctor's renewal.",
+  renewal: "Moves the renewal date on by one year and brings a lapsed site back.",
+};
+
+/**
+ * Record a payment for a doctor or a clinic/hospital. With `fixed`, the
+ * target is preset (e.g. "Record renewal" on the Renewals list) and the
+ * pickers are hidden.
+ */
 export function PaymentDialog({
-  doctors,
-  hospitals,
+  doctors = [],
+  establishments = [],
+  fixed,
+  defaults,
   defaultDoctorId,
+  defaultEstablishmentId,
   gstIncludedDefault,
+  trigger,
 }: {
-  doctors: { id: string; name: string }[];
-  hospitals: { id: string; name: string }[];
+  doctors?: { id: string; name: string }[];
+  establishments?: { id: string; name: string; kind: "clinic" | "hospital" }[];
+  fixed?: { kind: TargetKind; id: string; name: string };
+  defaults?: { purpose?: PaymentPurpose; amount?: number };
   defaultDoctorId?: string;
+  defaultEstablishmentId?: string;
   gstIncludedDefault: boolean;
+  trigger?: ReactNode;
 }) {
   const blank = () => ({
-    doctorId: defaultDoctorId ?? "",
-    hospitalId: "",
-    amount: undefined as number | undefined,
+    kind: (fixed?.kind ?? (defaultEstablishmentId ? "establishment" : "doctor")) as TargetKind,
+    doctorId: fixed?.kind === "doctor" ? fixed.id : (defaultDoctorId ?? ""),
+    establishmentId: fixed?.kind === "establishment" ? fixed.id : (defaultEstablishmentId ?? ""),
+    amount: defaults?.amount,
     gstIncluded: gstIncludedDefault,
     mode: "upi" as (typeof PAYMENT_MODES)[number],
     date: toDateInput(new Date()),
-    purpose: "setup" as (typeof PAYMENT_PURPOSES)[number],
+    purpose: defaults?.purpose ?? ("setup" as PaymentPurpose),
     invoiceNo: "",
     notes: "",
   });
@@ -40,35 +63,74 @@ export function PaymentDialog({
   return (
     <FormDialog
       trigger={
-        <Button>
-          <Plus /> Record payment
-        </Button>
+        trigger ?? (
+          <Button>
+            <Plus /> Record payment
+          </Button>
+        )
       }
-      title="Record payment"
+      title={fixed ? `Record payment: ${fixed.name}` : "Record payment"}
       submitLabel="Record"
       successMessage="Payment recorded"
-      onSubmit={() => recordPaymentAction({ ...v, amount: v.amount ?? 0 })}
-      onSuccess={() => setV(blank())}
+      onSubmit={() =>
+        recordPaymentAction({
+          doctorId: v.kind === "doctor" ? v.doctorId : "",
+          establishmentId: v.kind === "establishment" ? v.establishmentId : "",
+          amount: v.amount ?? 0,
+          gstIncluded: v.gstIncluded,
+          mode: v.mode,
+          date: v.date,
+          purpose: v.purpose,
+          invoiceNo: v.invoiceNo,
+          notes: v.notes,
+        })
+      }
+      onSuccess={(res) => {
+        if (res.renewalDue) toast.success(`${res.restored ? "Site is live again. " : ""}Renewal now due on ${res.renewalDue}.`);
+        setV(blank());
+      }}
     >
       {(errors) => (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Doctor" htmlFor="p-doctor" error={errors.doctorId}>
-              <NativeSelect id="p-doctor" value={v.doctorId} onChange={(e) => set({ doctorId: e.target.value })}>
-                <option value="">—</option>
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="or Hospital" htmlFor="p-hospital">
-              <NativeSelect id="p-hospital" value={v.hospitalId} onChange={(e) => set({ hospitalId: e.target.value })}>
-                <option value="">—</option>
-                {hospitals.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
+            {!fixed && (
+              <>
+                <Field label="For" htmlFor="p-kind">
+                  <NativeSelect id="p-kind" value={v.kind} onChange={(e) => set({ kind: e.target.value as TargetKind })}>
+                    <option value="doctor">Doctor</option>
+                    <option value="establishment">Clinic or hospital</option>
+                  </NativeSelect>
+                </Field>
+                {v.kind === "doctor" ? (
+                  <Field label="Doctor" htmlFor="p-doctor" required error={errors.doctorId}>
+                    <NativeSelect id="p-doctor" value={v.doctorId} onChange={(e) => set({ doctorId: e.target.value })}>
+                      <option value="">Choose…</option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                ) : (
+                  <Field label="Clinic or hospital" htmlFor="p-est" required error={errors.doctorId}>
+                    <NativeSelect id="p-est" value={v.establishmentId} onChange={(e) => set({ establishmentId: e.target.value })}>
+                      <option value="">Choose…</option>
+                      {establishments.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.name} ({e.kind})
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                )}
+              </>
+            )}
+            <Field label="Purpose" htmlFor="p-purpose" help={PURPOSE_HELP[v.purpose]}>
+              <NativeSelect id="p-purpose" value={v.purpose} onChange={(e) => set({ purpose: e.target.value as PaymentPurpose })}>
+                {PAYMENT_PURPOSES_V2.map((m) => (
+                  <option key={m} value={m}>
+                    {PAYMENT_PURPOSE_LABEL[m]}
                   </option>
                 ))}
               </NativeSelect>
@@ -84,15 +146,6 @@ export function PaymentDialog({
                 {PAYMENT_MODES.map((m) => (
                   <option key={m} value={m}>
                     {PAYMENT_MODE_LABEL[m]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="Purpose" htmlFor="p-purpose">
-              <NativeSelect id="p-purpose" value={v.purpose} onChange={(e) => set({ purpose: e.target.value as typeof v.purpose })}>
-                {PAYMENT_PURPOSES.map((m) => (
-                  <option key={m} value={m}>
-                    {PAYMENT_PURPOSE_LABEL[m]}
                   </option>
                 ))}
               </NativeSelect>

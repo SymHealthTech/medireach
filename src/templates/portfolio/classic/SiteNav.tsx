@@ -23,7 +23,8 @@ export function SiteNav({
   name: string;
   tagline?: string;
   links: NavLink[];
-  cardHref: string;
+  /** "Visiting card" button target; omitted = no button. */
+  cardHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [solid, setSolid] = useState(false);
@@ -58,6 +59,7 @@ export function SiteNav({
           ))}
         </nav>
 
+        {cardHref && (
         <div className="hidden items-center gap-2 lg:flex">
           <a
             href={cardHref}
@@ -67,6 +69,7 @@ export function SiteNav({
             Visiting card
           </a>
         </div>
+        )}
 
         <button
           type="button"
@@ -95,6 +98,7 @@ export function SiteNav({
               </li>
             ))}
           </ul>
+          {cardHref && (
           <a
             href={cardHref}
             className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-ink px-5 font-semibold text-paper"
@@ -102,6 +106,7 @@ export function SiteNav({
             <IdCard aria-hidden className="size-5" strokeWidth={1.75} />
             Digital visiting card
           </a>
+          )}
         </nav>
       )}
     </header>

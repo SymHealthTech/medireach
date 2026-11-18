@@ -5,6 +5,7 @@
  *
  * Slugs are derived with `slugify()` unless given explicitly.
  */
+import type { ThemeIconKey, ThemeKey } from "@/themes/specialty";
 
 export const SEED_CITIES = [{ name: "Pune", state: "Maharashtra" }] as const;
 
@@ -239,5 +240,38 @@ export const SEED_COUNCILS: readonly { name: string; state?: string; slug?: stri
  */
 export const SEED_TEMPLATE_SLOTS = {
   portfolio: ["Classic", "Clinic Modern", "Minimal Mono", "Warm Heritage", "Specialist Pro"],
+  clinic: ["Classic", "Bold Photo", "Calm Minimal", "Heritage", "Multi-doctor Grid"],
+  // DESIGN_BRIEF.md §11: hospital slots 2–5 are reserved without names yet.
+  hospital: ["Classic", "Hospital Design 2", "Hospital Design 3", "Hospital Design 4", "Hospital Design 5"],
   card: ["Classic", "Ink Bold", "Minimal", "Heritage", "Photo Card"],
 } as const;
+
+/**
+ * Clinic categories (MEDIREACH_BUILD_PROMPT.md Phase 1 seeds). `name` is the
+ * singular used in titles, `plural` in hub headings; `slug` is the
+ * /[city]/clinics/[category] segment and matches the theme key where one exists.
+ */
+export const SEED_CLINIC_CATEGORIES: readonly {
+  name: string;
+  plural: string;
+  slug: string;
+  kind: "clinic" | "hospital";
+  defaultThemeKey: ThemeKey;
+  icon: ThemeIconKey;
+}[] = [
+  { name: "General Clinic", plural: "General Clinics", slug: "general-opd", kind: "clinic", defaultThemeKey: "general-opd", icon: "stethoscope" },
+  { name: "Skin Clinic", plural: "Skin Clinics", slug: "skin", kind: "clinic", defaultThemeKey: "skin", icon: "sparkles" },
+  { name: "Dental Clinic", plural: "Dental Clinics", slug: "dental", kind: "clinic", defaultThemeKey: "dental", icon: "smile" },
+  { name: "Eye Clinic", plural: "Eye Clinics", slug: "eye", kind: "clinic", defaultThemeKey: "eye", icon: "eye" },
+  { name: "ENT Clinic", plural: "ENT Clinics", slug: "ent", kind: "clinic", defaultThemeKey: "ent", icon: "ear" },
+  { name: "Cardiology Clinic", plural: "Cardiology Clinics", slug: "cardiology", kind: "clinic", defaultThemeKey: "cardiology", icon: "heart-pulse" },
+  { name: "Ayurveda Clinic", plural: "Ayurveda Clinics", slug: "ayurveda", kind: "clinic", defaultThemeKey: "ayurveda", icon: "leaf" },
+  { name: "Homeopathy Clinic", plural: "Homeopathy Clinics", slug: "homeopathy", kind: "clinic", defaultThemeKey: "homeopathy", icon: "droplets" },
+  { name: "Physiotherapy Clinic", plural: "Physiotherapy Clinics", slug: "physiotherapy", kind: "clinic", defaultThemeKey: "physiotherapy", icon: "activity" },
+  { name: "Children's Clinic", plural: "Children's Clinics", slug: "paediatrics", kind: "clinic", defaultThemeKey: "paediatrics", icon: "baby" },
+  { name: "Gynaecology Clinic", plural: "Gynaecology Clinics", slug: "gynaecology", kind: "clinic", defaultThemeKey: "gynaecology", icon: "flower-2" },
+  { name: "Orthopaedic Clinic", plural: "Orthopaedic Clinics", slug: "orthopaedics", kind: "clinic", defaultThemeKey: "orthopaedics", icon: "bone" },
+  { name: "Multispecialty Clinic", plural: "Multispecialty Clinics", slug: "multispecialty", kind: "clinic", defaultThemeKey: "general-opd", icon: "stethoscope" },
+  { name: "Diagnostic Centre", plural: "Diagnostic Centres", slug: "diagnostic-centre", kind: "clinic", defaultThemeKey: "general-opd", icon: "activity" },
+  { name: "Hospital", plural: "Hospitals", slug: "small-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "hospital" },
+];

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ActionError, adminAction, auditCtx, objectId, requiredText } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hashPassword } from "@/lib/auth/password";
-import { ADMIN_ROLES, GST_MODES } from "@/lib/constants";
+import { ADMIN_ROLES, GST_MODES, PRICE_KEYS, type PriceKey } from "@/lib/constants";
 import { getSettings } from "@/lib/settings";
 import { Admin } from "@/models/Admin";
 import { Setting, SETTINGS_KEY } from "@/models/Setting";
@@ -23,8 +23,9 @@ const digits = z
 // Schemas live at module level: Next treats inline callbacks inside an
 // exported action's arguments as server actions.
 const settingsSchema = z.object({
-  prices: z.object({ gp: price, consultant: price, update: price }),
+  prices: z.object(Object.fromEntries(PRICE_KEYS.map((k) => [k, price])) as Record<PriceKey, typeof price>),
   foundingTotal: z.number().int().min(0).max(10_000),
+  renewalGraceDays: z.number().int().min(0).max(365),
   contactPhone: digits,
   whatsappNumber: digits,
   gstMode: z.enum(GST_MODES),
@@ -40,12 +41,15 @@ export const saveSettingsAction = adminAction(
   { schema: settingsSchema, roles: ADMINS },
   async (input, admin) => {
     const before = await getSettings();
-    await Setting.updateOne({ key: SETTINGS_KEY }, { $set: input, $setOnInsert: { key: SETTINGS_KEY } }, { upsert: true });
+    // Dotted price paths: replacing the whole `prices` object would wipe keys this form doesn't send.
+    const { prices, ...rest } = input;
+    const priceSet = Object.fromEntries(Object.entries(prices).map(([k, v]) => [`prices.${k}`, v]));
+    await Setting.updateOne({ key: SETTINGS_KEY }, { $set: { ...rest, ...priceSet }, $setOnInsert: { key: SETTINGS_KEY } }, { upsert: true });
     revalidateTag(CACHE_TAGS.settings); // marketing pages show prices and contact numbers
     await audit(auditCtx(admin), "settings.update", {
       entity: "Setting",
       diff: shallowDiff(
-        { prices: before.prices, foundingTotal: before.foundingTotal, contactPhone: before.contactPhone, whatsappNumber: before.whatsappNumber, gstMode: before.gstMode, whatsappShareTemplate: before.whatsappShareTemplate },
+        { prices: before.prices, foundingTotal: before.foundingTotal, renewalGraceDays: before.renewalGraceDays, contactPhone: before.contactPhone, whatsappNumber: before.whatsappNumber, gstMode: before.gstMode, whatsappShareTemplate: before.whatsappShareTemplate },
         input,
       ),
     });

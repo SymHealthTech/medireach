@@ -19,7 +19,7 @@ export function LeadForm({
   submitLabel = "Request a call back",
   className,
 }: {
-  source: "homepage_form" | "pricing" | "hospitals";
+  source: "homepage_form" | "pricing" | "clinics" | "hospitals";
   compact?: boolean;
   submitLabel?: string;
   className?: string;

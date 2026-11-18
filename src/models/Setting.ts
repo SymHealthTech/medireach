@@ -1,5 +1,12 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
-import { DEFAULT_UPDATE_PRICE, FOUNDING_TOTAL_DEFAULT, GST_MODES } from "@/lib/constants";
+import {
+  DEFAULT_PRICES,
+  DEFAULT_RENEWAL_GRACE_DAYS,
+  FOUNDING_TOTAL_DEFAULT,
+  GST_MODES,
+  PRICE_KEYS,
+  type PriceKey,
+} from "@/lib/constants";
 
 /**
  * Site-wide settings singleton (one document, `key: "global"`). Pricing shown
@@ -13,8 +20,11 @@ export const DEFAULT_WHATSAPP_SHARE_TEMPLATE =
 export interface SettingDoc {
   _id: Types.ObjectId;
   key: typeof SETTINGS_KEY;
-  prices: { gp: number; consultant: number; update: number };
+  /** All prices (₹). Older documents may still hold v1 gp/consultant/update until migrate:v2 --drop-legacy. */
+  prices: Record<PriceKey, number>;
   foundingTotal: number;
+  /** Days after the renewal due date before a site lapses. */
+  renewalGraceDays: number;
   contactPhone?: string;
   whatsappNumber?: string;
   gstMode: (typeof GST_MODES)[number];
@@ -28,12 +38,9 @@ export interface SettingDoc {
 const settingSchema = new Schema<SettingDoc>(
   {
     key: { type: String, required: true, unique: true, default: SETTINGS_KEY },
-    prices: {
-      gp: { type: Number, default: 1999, min: 0 },
-      consultant: { type: Number, default: 2999, min: 0 },
-      update: { type: Number, default: DEFAULT_UPDATE_PRICE, min: 0 },
-    },
+    prices: Object.fromEntries(PRICE_KEYS.map((k) => [k, { type: Number, default: DEFAULT_PRICES[k], min: 0 }])),
     foundingTotal: { type: Number, default: FOUNDING_TOTAL_DEFAULT, min: 0 },
+    renewalGraceDays: { type: Number, default: DEFAULT_RENEWAL_GRACE_DAYS, min: 0, max: 365 },
     contactPhone: { type: String, trim: true },
     whatsappNumber: { type: String, trim: true },
     gstMode: { type: String, enum: GST_MODES, default: "inclusive" },

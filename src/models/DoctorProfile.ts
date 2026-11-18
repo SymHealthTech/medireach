@@ -5,19 +5,43 @@ import {
   DEFAULT_TEMPLATE_KEY,
   DOCTOR_SOURCES,
   DOCTOR_STATUSES,
+  DOCTOR_PLANS,
   DOMAIN_STATUSES,
   GENDERS,
   LIMITS,
   PLANS,
   PRACTITIONER_TYPES,
+  RENEWAL_STATUSES,
   SYSTEMS_OF_MEDICINE,
   TEMPLATE_KEYS,
+  type DoctorPlan,
   type DoctorStatus,
   type Plan,
+  type RenewalStatus,
   type SystemOfMedicine,
   type TemplateKey,
 } from "@/lib/constants";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
+import {
+  complianceIssueSchema,
+  currentYear,
+  dayTimingsSchema,
+  galleryItemSchema,
+  geoSchema,
+  hasString,
+  imageSchema,
+  type DayTimings,
+  type GalleryItem,
+  type ImageRef,
+} from "@/models/shared";
+
+export type { DayTimings, ImageRef, TimeSlot } from "@/models/shared";
+
+/**
+ * The app only writes DOCTOR_PLANS. v1 values stay valid so documents not yet
+ * migrated can still be saved; they go with migrate:v2 --drop-legacy (step 7).
+ */
+const PLAN_VALUES = [...DOCTOR_PLANS, ...PLANS] as const;
 
 /**
  * DoctorProfile — one doctor's portfolio page + visiting card.
@@ -30,24 +54,6 @@ import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
  * action, not by `required` here. URL keys are optional on drafts and covered
  * by partial unique indexes.
  */
-
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-export interface ImageRef {
-  publicId: string;
-  url: string;
-  alt?: string;
-}
-
-export interface TimeSlot {
-  open: string; // "HH:mm"
-  close: string; // "HH:mm"
-}
-
-export interface DayTimings {
-  day: number; // 0 = Sunday … 6 = Saturday
-  slots: TimeSlot[];
-}
 
 export interface ClinicEntry {
   _id: Types.ObjectId;
@@ -66,7 +72,10 @@ export interface ClinicEntry {
   appointmentNote?: string;
   fee?: number;
   showFee: boolean;
+  /** @deprecated v1 link to Hospital; replaced by establishmentId (removed in step 3). */
   hospitalId?: Types.ObjectId;
+  /** Link to the clinic/hospital's MediReach site, if it has one. */
+  establishmentId?: Types.ObjectId;
 }
 
 export interface DoctorProfileDoc {
@@ -140,7 +149,7 @@ export interface DoctorProfileDoc {
   interestsPhoto?: ImageRef & { caption?: string };
   /** A personal story for "Beyond medicine" (achievements, hobbies). Plain text; blank lines split paragraphs. */
   interestsStory?: { title: string; body?: string };
-  gallery: (ImageRef & { caption: string })[];
+  gallery: GalleryItem[];
 
   // Templates
   portfolioTemplateId: TemplateKey;
@@ -149,10 +158,21 @@ export interface DoctorProfileDoc {
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
 
   // Business (never exposed publicly)
-  plan: Plan;
-  foundingDoctor: boolean;
+  plan: DoctorPlan | Plan;
+  /** Founding customer: lifetime discounted renewal. Number comes from the shared counter (lib/founding.ts). */
+  founding: boolean;
   foundingNumber?: number;
-  hostingFreeUntil?: Date | null; // null = forever (founding)
+  /** @deprecated v1; replaced by `founding` (removed in step 3). */
+  foundingDoctor: boolean;
+  /** @deprecated v1 "free hosting until" (null = forever); replaced by the renewal fields (removed in step 3). */
+  hostingFreeUntil?: Date | null;
+  setupPaidAt?: Date;
+  /** Yearly renewal from year 2 (normal or founding price from Settings at the time it was set). */
+  renewalPrice?: number;
+  renewalDueDate?: Date;
+  renewalStatus: RenewalStatus;
+  /** Reminder emails already sent, as "<due date YYYY-MM-DD>:<days before>" (lib/renewals-job.ts). */
+  renewalRemindersSent: string[];
   freeUpdateUsed: boolean;
   ownDomain?: {
     name: string;
@@ -160,7 +180,10 @@ export interface DoctorProfileDoc {
     cost?: number;
     renewalDate?: Date;
   };
+  /** @deprecated v1; replaced by establishmentIds (removed in step 3). */
   hospitalAccountId?: Types.ObjectId;
+  /** Clinics/hospitals this doctor belongs to (two-way with Establishment.doctors). */
+  establishmentIds: Types.ObjectId[];
   salesExecutive?: string;
   source?: (typeof DOCTOR_SOURCES)[number];
   internalNotes?: string;
@@ -179,33 +202,7 @@ export interface DoctorProfileDoc {
   publishedAt?: Date;
 }
 
-const currentYear = () => new Date().getFullYear();
 const yearField = { type: Number, min: 1900, validate: { validator: (y: number) => y <= currentYear() + 1, message: "Year is in the future." } };
-
-const imageSchema = new Schema<ImageRef>(
-  {
-    publicId: { type: String, required: true },
-    url: { type: String, required: true },
-    alt: { type: String, trim: true },
-  },
-  { _id: false },
-);
-
-const slotSchema = new Schema<TimeSlot>(
-  {
-    open: { type: String, required: true, match: HHMM },
-    close: { type: String, required: true, match: HHMM },
-  },
-  { _id: false },
-);
-
-const dayTimingsSchema = new Schema<DayTimings>(
-  {
-    day: { type: Number, required: true, min: 0, max: 6 },
-    slots: { type: [slotSchema], default: [] },
-  },
-  { _id: false },
-);
 
 const clinicSchema = new Schema<ClinicEntry>({
   name: { type: String, required: true, trim: true },
@@ -217,19 +214,14 @@ const clinicSchema = new Schema<ClinicEntry>({
   state: { type: String, required: true, trim: true },
   pincode: { type: String, required: true, match: /^\d{6}$/ },
   mapsUrl: { type: String, trim: true },
-  geo: {
-    type: new Schema(
-      { lat: { type: Number, min: -90, max: 90 }, lng: { type: Number, min: -180, max: 180 } },
-      { _id: false },
-    ),
-    default: undefined,
-  },
+  geo: { type: geoSchema, default: undefined },
   phone: { type: String, trim: true },
   timings: { type: [dayTimingsSchema], default: [] },
   appointmentNote: { type: String, trim: true },
   fee: { type: Number, min: 0 },
   showFee: { type: Boolean, default: false },
-  hospitalId: { type: Schema.Types.ObjectId, ref: "Hospital" },
+  hospitalId: { type: Schema.Types.ObjectId, ref: "Establishment" },
+  establishmentId: { type: Schema.Types.ObjectId, ref: "Establishment" },
 });
 
 const doctorProfileSchema = new Schema<DoctorProfileDoc>(
@@ -361,20 +353,7 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
       type: new Schema({ title: { type: String, required: true, trim: true }, body: { type: String, trim: true } }, { _id: false }),
       default: undefined,
     },
-    gallery: {
-      type: [
-        new Schema(
-          {
-            publicId: { type: String, required: true },
-            url: { type: String, required: true },
-            caption: { type: String, default: "", trim: true },
-            alt: { type: String, trim: true },
-          },
-          { _id: false },
-        ),
-      ],
-      default: [],
-    },
+    gallery: { type: [galleryItemSchema], default: [] },
 
     portfolioTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
     cardTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
@@ -385,10 +364,16 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
       noindex: { type: Boolean, default: false },
     },
 
-    plan: { type: String, enum: PLANS, default: "gp" },
-    foundingDoctor: { type: Boolean, default: false },
+    plan: { type: String, enum: PLAN_VALUES, default: "doctor" },
+    founding: { type: Boolean, default: false },
     foundingNumber: { type: Number, min: 1 },
+    foundingDoctor: { type: Boolean, default: false },
     hostingFreeUntil: { type: Date, default: undefined },
+    setupPaidAt: { type: Date },
+    renewalPrice: { type: Number, min: 0 },
+    renewalDueDate: { type: Date },
+    renewalStatus: { type: String, enum: RENEWAL_STATUSES, default: "active" },
+    renewalRemindersSent: { type: [String], default: [] },
     freeUpdateUsed: { type: Boolean, default: false },
     ownDomain: {
       type: new Schema(
@@ -402,17 +387,15 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
       ),
       default: undefined,
     },
-    hospitalAccountId: { type: Schema.Types.ObjectId, ref: "Hospital" },
+    hospitalAccountId: { type: Schema.Types.ObjectId, ref: "Establishment" },
+    establishmentIds: { type: [{ type: Schema.Types.ObjectId, ref: "Establishment" }], default: [] },
     salesExecutive: { type: String, trim: true },
     source: { type: String, enum: DOCTOR_SOURCES },
     internalNotes: { type: String },
 
     compliance: {
       lastScanAt: { type: Date },
-      issues: {
-        type: [new Schema({ field: String, phrase: String }, { _id: false })],
-        default: [],
-      },
+      issues: { type: [complianceIssueSchema], default: [] },
       doctorApprovedAt: { type: Date },
       approvedVia: { type: String, enum: APPROVAL_CHANNELS },
     },
@@ -440,8 +423,6 @@ doctorProfileSchema.pre("validate", function (next) {
 });
 
 // --- Indexes ---
-const hasString = (field: string) => ({ partialFilterExpression: { [field]: { $type: "string" } } });
-
 doctorProfileSchema.index({ citySlug: 1, slug: 1 }, { unique: true, ...hasString("slug") });
 doctorProfileSchema.index({ shortSlug: 1 }, { unique: true, ...hasString("shortSlug") });
 doctorProfileSchema.index({ subdomain: 1 }, { unique: true, ...hasString("subdomain") });
@@ -454,6 +435,8 @@ doctorProfileSchema.index({ status: 1 });
 doctorProfileSchema.index({ primarySpecialtyId: 1 });
 doctorProfileSchema.index({ "clinics.areaId": 1 });
 doctorProfileSchema.index({ hospitalAccountId: 1 });
+doctorProfileSchema.index({ establishmentIds: 1 });
+doctorProfileSchema.index({ renewalDueDate: 1 });
 doctorProfileSchema.index(
   { firstName: "text", middleName: "text", lastName: "text", displayName: "text" },
   { name: "doctor_name_text" },

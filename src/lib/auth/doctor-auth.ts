@@ -8,9 +8,8 @@ import { audit } from "@/lib/api/audit";
 import {
   LOGIN_LINK_TTL_SECONDS,
   authSecret,
-  doctorGreetingName,
   hitLoginLinkLimit,
-  loginDoctorFor,
+  loginOwnerFor,
   normalizeEmail,
   sendLoginLink,
 } from "@/lib/auth/login-link";
@@ -19,12 +18,12 @@ import { env } from "@/lib/env";
 import { SITE_URL } from "@/lib/site";
 
 /**
- * NextAuth (v4) for doctors only: Email provider (magic link via Resend), the
+ * NextAuth (v4) for doctors and clinic/hospital owners: Email provider (magic link via Resend), the
  * MongoDB adapter for verification tokens, and a 30-day JWT session in
  * NextAuth's own cookie. Admins keep their separate password login
  * (lib/auth/session.ts), so the two never share a cookie.
  *
- * Only emails that match a doctor's `ownerEmail` can log in. Requests for any
+ * Only emails that match a doctor's or a site's `ownerEmail` can log in. Requests for any
  * other email look identical to the caller (no account enumeration).
  */
 
@@ -63,7 +62,7 @@ export function authOptions(): NextAuthOptions {
     callbacks: {
       async signIn({ user, email }) {
         if (email?.verificationRequest) return true; // eligibility is checked when sending
-        return Boolean(user.email && (await loginDoctorFor(user.email)));
+        return Boolean(user.email && (await loginOwnerFor(user.email)));
       },
       async redirect({ url, baseUrl }) {
         if (url.startsWith("/")) return `${baseUrl}${url}`;
@@ -77,12 +76,13 @@ export function authOptions(): NextAuthOptions {
     },
     events: {
       async signIn({ user }) {
-        const doctor = user.email ? await loginDoctorFor(user.email) : null;
-        if (!doctor) return;
-        await audit({ userId: String(doctor._id), role: "doctor", name: doctorGreetingName(doctor) }, "doctor.login", {
-          entity: "DoctorProfile",
-          entityId: doctor._id,
-        });
+        const owner = user.email ? await loginOwnerFor(user.email) : null;
+        if (!owner) return;
+        if (owner.doctorId) {
+          await audit({ userId: owner.doctorId, role: "doctor", name: owner.name }, "doctor.login", { entity: "DoctorProfile", entityId: owner.doctorId });
+        } else {
+          await audit({ userId: owner.siteIds[0]!, role: "owner", name: owner.name }, "owner.login", { entity: "Establishment", entityId: owner.siteIds[0]! });
+        }
       },
     },
   };

@@ -46,9 +46,9 @@ export default async function UpdateRequestsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">Done-for-you updates: {formatINR(settings.prices.update)} each; the first one per doctor is free.</p>
+        <p className="text-muted-foreground">Done-for-you updates: {formatINR(settings.prices.updatePrice)} each; the first one per doctor is free.</p>
         <NewUpdateRequestButton
-          defaultPrice={settings.prices.update}
+          defaultPrice={settings.prices.updatePrice}
           doctors={doctors.map((d) => ({ id: String(d._id), name: name.get(String(d._id))!, freeAvailable: !d.freeUpdateUsed }))}
         />
       </div>

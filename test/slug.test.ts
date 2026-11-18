@@ -41,6 +41,16 @@ describe("slug helpers", () => {
     expect(masterSlugError("area", "kothrud")).toBeNull();
   });
 
+  it("reserves the clinic, hospital and design routes", () => {
+    for (const city of ["designs", "for-clinics", "for-hospitals", "clinic", "clinics", "hospital", "hospitals", "doctor", "area", "pricing"]) {
+      expect(masterSlugError("city", city), city).not.toBeNull();
+    }
+    for (const specialty of ["clinic", "clinics", "hospital", "hospitals", "doctor", "area"]) {
+      expect(masterSlugError("specialty", specialty), specialty).not.toBeNull();
+    }
+    expect(masterSlugError("specialty", "dermatologist")).toBeNull();
+  });
+
   it("validates subdomains", () => {
     expect(subdomainError("amit")).toBeNull();
     expect(subdomainError("amit-shah")).toBeNull();

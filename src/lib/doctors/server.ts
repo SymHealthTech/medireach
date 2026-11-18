@@ -5,6 +5,11 @@ import { can, type CurrentAdmin } from "@/lib/auth/admin";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { doctorSlug, shortSlugCandidates, slugify, subdomainError } from "@/lib/slug";
 import { toDateInput } from "@/lib/format";
+import { nextFoundingNumber } from "@/lib/founding";
+import { computeRenewalStatus, firstRenewalDue } from "@/lib/renewals";
+import { getSettings } from "@/lib/settings";
+import { Establishment } from "@/models/Establishment";
+import { sharedUrlKeyTaken } from "@/lib/url-keys";
 import { ActionError } from "@/lib/admin/action";
 import {
   ALL_DAYS,
@@ -27,6 +32,24 @@ import type { z } from "zod";
 export type DoctorDocument = HydratedDocument<DoctorProfileDoc>;
 
 const s = (v: unknown) => (v === undefined || v === null ? "" : String(v));
+const uniq = (ids: string[]) => [...new Set(ids)];
+const toOids = (ids: string[]) => ids.map((x) => new Types.ObjectId(x));
+
+/** Establishment links, including v1 hospital links on doctors not yet migrated (same ids after migrate:v2). */
+function linkedEstablishmentIds(d: DoctorProfileDoc): string[] {
+  return uniq([
+    ...(d.establishmentIds ?? []).map(String),
+    ...(d.hospitalAccountId ? [String(d.hospitalAccountId)] : []),
+    ...d.clinics.flatMap((c) => (c.establishmentId ? [String(c.establishmentId)] : c.hospitalId ? [String(c.hospitalId)] : [])),
+  ]);
+}
+
+async function assertEstablishmentsExist(ids: string[], field: string): Promise<void> {
+  const wanted = uniq(ids);
+  if (!wanted.length) return;
+  const found = await Establishment.countDocuments({ _id: { $in: toOids(wanted) } });
+  if (found !== wanted.length) throw new ActionError("A linked clinic or hospital no longer exists. Pick it again.", { [field]: "Not found." });
+}
 
 export function docToForm(d: DoctorProfileDoc): DoctorForm {
   return {
@@ -86,7 +109,8 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
       appointmentNote: s(c.appointmentNote),
       fee: c.fee ?? undefined,
       showFee: Boolean(c.showFee),
-      hospitalId: s(c.hospitalId),
+      // `hospitalId` covers doctors not yet migrated (migrate:v2 keeps the same id).
+      establishmentId: s(c.establishmentId ?? c.hospitalId),
     })),
     mobile: s(d.mobile),
     whatsapp: s(d.whatsapp),
@@ -122,11 +146,14 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
       descriptionOverride: s(d.seo?.descriptionOverride),
       noindex: Boolean(d.seo?.noindex),
     },
-    plan: d.plan,
-    foundingDoctor: d.foundingDoctor,
+    // Old v1 values (not migrated yet) read as their v2 equivalents; saving the Business step writes v2.
+    plan: d.plan === "hospital" || d.plan === "doctor_addon" ? "doctor_addon" : "doctor",
+    founding: Boolean(d.founding || d.foundingDoctor),
     foundingNumber: d.foundingNumber ?? undefined,
-    hostingForever: d.hostingFreeUntil === null,
-    hostingFreeUntil: d.hostingFreeUntil ? toDateInput(d.hostingFreeUntil) : "",
+    setupPaidAt: d.setupPaidAt ? toDateInput(d.setupPaidAt) : "",
+    renewalPrice: d.renewalPrice ?? undefined,
+    renewalDueDate: d.renewalDueDate ? toDateInput(d.renewalDueDate) : "",
+    renewalStatus: d.renewalStatus ?? "active",
     freeUpdateUsed: d.freeUpdateUsed,
     ownDomain: {
       name: s(d.ownDomain?.name),
@@ -134,7 +161,7 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
       cost: d.ownDomain?.cost ?? undefined,
       renewalDate: d.ownDomain?.renewalDate ? toDateInput(d.ownDomain.renewalDate) : "",
     },
-    hospitalAccountId: s(d.hospitalAccountId),
+    establishmentIds: linkedEstablishmentIds(d),
     salesExecutive: s(d.salesExecutive),
     source: d.source ?? "",
     internalNotes: s(d.internalNotes),
@@ -232,9 +259,14 @@ export async function applySection<K extends StepKey>(
           appointmentNote: c.appointmentNote,
           fee: c.fee,
           showFee: c.showFee,
-          hospitalId: c.type === "hospital_visiting" ? toOid(c.hospitalId) : undefined,
+          establishmentId: toOid(c.establishmentId),
+          hospitalId: undefined, // v1 link, replaced by establishmentId
         })),
       });
+      // A clinic linked to an establishment also links the doctor to it.
+      const clinicLinks = d.clinics.map((c) => c.establishmentId).filter((x): x is string => Boolean(x));
+      await assertEstablishmentsExist(clinicLinks, "clinics");
+      doc.establishmentIds = toOids(uniq([...doc.establishmentIds.map(String), ...clinicLinks]));
       break;
     }
     case "contact": {
@@ -270,29 +302,37 @@ export async function applySection<K extends StepKey>(
     }
     case "business": {
       const d = input as SectionData<"business">;
+      // Clinic links can't be dropped here; unlink the clinic in the Clinics step instead.
+      const clinicLinks = doc.clinics.map((c) => c.establishmentId).filter(Boolean).map(String);
+      const links = uniq([...d.establishmentIds, ...clinicLinks]);
+      await assertEstablishmentsExist(d.establishmentIds, "establishmentIds");
       doc.set({
         plan: d.plan,
         freeUpdateUsed: d.freeUpdateUsed,
-        hospitalAccountId: toOid(d.hospitalAccountId),
+        establishmentIds: toOids(links),
+        hospitalAccountId: undefined, // v1 link, replaced by establishmentIds
         salesExecutive: d.salesExecutive,
         source: d.source,
         internalNotes: d.internalNotes,
       });
       if (can.publish(admin.role)) {
-        if (d.foundingDoctor && !doc.foundingNumber) {
-          const last = await DoctorProfile.findOne({ foundingNumber: { $type: "number" } })
-            .sort({ foundingNumber: -1 })
-            .select({ foundingNumber: 1 })
-            .lean();
-          doc.foundingNumber = (last?.foundingNumber ?? 0) + 1;
-        }
-        if (!d.foundingDoctor) doc.foundingNumber = undefined;
-        doc.foundingDoctor = d.foundingDoctor;
-        doc.hostingFreeUntil = d.foundingDoctor || d.hostingForever ? null : d.hostingFreeUntil;
+        if (d.founding && !doc.foundingNumber) doc.foundingNumber = await nextFoundingNumber();
+        if (!d.founding) doc.foundingNumber = undefined;
+        doc.founding = d.founding;
+        doc.foundingDoctor = d.founding; // keep the v1 flag in step until migrate:v2 --drop-legacy
+        doc.hostingFreeUntil = undefined;
+
+        // Empty price = the list price from Settings (the form pre-fills it when founding is toggled).
+        const { prices } = await getSettings();
+        doc.renewalPrice = d.renewalPrice ?? (d.founding ? prices.foundingRenewal : prices.renewalDoctor);
+        doc.setupPaidAt = d.setupPaidAt;
+        doc.renewalDueDate = d.renewalDueDate ?? (d.setupPaidAt ? firstRenewalDue(d.setupPaidAt) : undefined);
         doc.ownDomain = d.ownDomain.name
           ? { name: d.ownDomain.name, status: d.ownDomain.status, cost: d.ownDomain.cost, renewalDate: d.ownDomain.renewalDate }
           : undefined;
       }
+      // A lapsed site stays lapsed until a renewal is recorded (renewals job / payments).
+      if (doc.renewalStatus !== "lapsed") doc.renewalStatus = computeRenewalStatus(doc.renewalDueDate);
       break;
     }
     case "templates": {
@@ -315,19 +355,23 @@ export async function applySection<K extends StepKey>(
   }
 }
 
-/** Throw a field error if any URL key is used by another doctor. */
+/**
+ * Throw a field error if a URL key is taken. The page slug is per city among
+ * doctors; short links and website addresses (subdomains) are shared with
+ * clinics and hospitals.
+ */
 export async function assertUrlKeysFree(
   doc: DoctorDocument,
   keys: { slug?: string; shortSlug?: string; subdomain?: string },
 ): Promise<void> {
-  const others = { _id: { $ne: doc._id } };
-  if (keys.slug && doc.citySlug && (await DoctorProfile.exists({ ...others, citySlug: doc.citySlug, slug: keys.slug }))) {
+  const owner = { kind: "doctor" as const, id: doc._id };
+  if (keys.slug && doc.citySlug && (await DoctorProfile.exists({ _id: { $ne: doc._id }, citySlug: doc.citySlug, slug: keys.slug }))) {
     throw new ActionError("That page address is already taken in this city.", { slug: "Already taken." });
   }
-  if (keys.shortSlug && (await DoctorProfile.exists({ ...others, shortSlug: keys.shortSlug }))) {
+  if (keys.shortSlug && (await sharedUrlKeyTaken("shortSlug", keys.shortSlug, owner))) {
     throw new ActionError("That short link is already taken.", { shortSlug: "Already taken." });
   }
-  if (keys.subdomain && (await DoctorProfile.exists({ ...others, subdomain: keys.subdomain }))) {
+  if (keys.subdomain && (await sharedUrlKeyTaken("subdomain", keys.subdomain, owner))) {
     throw new ActionError("That website address is already taken.", { subdomain: "Already taken." });
   }
 }
@@ -338,9 +382,9 @@ export async function urlKeyAvailable(
   value: string,
   opts: { excludeId?: string; citySlug?: string },
 ): Promise<boolean> {
-  const filter: Record<string, unknown> = { [kind]: value };
+  if (kind !== "slug") return !(await sharedUrlKeyTaken(kind, value, { kind: "doctor", ...(opts.excludeId ? { id: opts.excludeId } : {}) }));
+  const filter: Record<string, unknown> = { slug: value, citySlug: opts.citySlug ?? "pune" };
   if (opts.excludeId) filter._id = { $ne: new Types.ObjectId(opts.excludeId) };
-  if (kind === "slug") filter.citySlug = opts.citySlug ?? "pune";
   return !(await DoctorProfile.exists(filter));
 }
 
@@ -372,7 +416,7 @@ export async function ensureUrlKeys(doc: DoctorDocument): Promise<void> {
   if (!doc.shortSlug && doc.firstName && doc.lastName && clinic) {
     const areaSlug = (await Area.findById(clinic.areaId).select({ slug: 1 }).lean())?.slug;
     for (const candidate of shortSlugCandidates(doc.firstName, doc.lastName, areaSlug)) {
-      if (!(await DoctorProfile.exists({ _id: { $ne: doc._id }, shortSlug: candidate }))) {
+      if (!(await sharedUrlKeyTaken("shortSlug", candidate, { kind: "doctor", id: doc._id }))) {
         doc.shortSlug = candidate;
         break;
       }

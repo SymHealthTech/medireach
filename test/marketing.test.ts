@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { allMarketingCopy } from "@/content/marketing";
+import { allMarketingCopy, FOOTER, NAV } from "@/content/marketing";
+import { LEAD_SOURCE_LABEL } from "@/lib/admin/labels";
+import { LEAD_SOURCES } from "@/lib/constants";
 import { scanText } from "@/lib/compliance/scan";
 import { RESERVED_SLUGS } from "@/config/reserved";
 import { MARKETING_PATHS } from "@/lib/public/sitemap";
@@ -23,5 +25,24 @@ describe("marketing copy", () => {
 describe("marketing routes", () => {
   it("reserves every marketing and sample path as a city slug", () => {
     for (const p of [...MARKETING_PATHS.filter((x) => x !== "/"), "/login", "/sample"]) expect(RESERVED_SLUGS).toContain(p.slice(1));
+  });
+
+  it("lists the product pages and moves /hospitals to /for-hospitals for good", async () => {
+    expect(MARKETING_PATHS).toEqual(expect.arrayContaining(["/pricing", "/for-clinics", "/for-hospitals", "/designs", "/terms"]));
+    expect(MARKETING_PATHS).not.toContain("/hospitals");
+    const config = (await import("../next.config.mjs")).default;
+    const redirects = await config.redirects!();
+    expect(redirects).toContainEqual({ source: "/hospitals", destination: "/for-hospitals", statusCode: 301 });
+  });
+
+  it("points the top bar and footer at the product pages", () => {
+    expect(NAV.map((n) => n.href)).toEqual(["/#doctor", "/for-clinics", "/for-hospitals", "/designs", "/pricing", "/login"]);
+    const footerLinks = FOOTER.columns.flatMap((c) => c.links.map((l) => l.href));
+    expect(footerLinks).toEqual(expect.arrayContaining(["/for-clinics", "/for-hospitals", "/pricing", "/terms", "/privacy"]));
+  });
+
+  it("accepts and labels leads from the clinics page", () => {
+    expect(LEAD_SOURCES).toContain("clinics");
+    for (const s of LEAD_SOURCES) expect(LEAD_SOURCE_LABEL[s]).toBeTruthy();
   });
 });

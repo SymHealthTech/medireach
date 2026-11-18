@@ -14,7 +14,9 @@ import { City } from "@/models/City";
 import { Council } from "@/models/Council";
 import { Degree } from "@/models/Degree";
 import { DoctorProfile } from "@/models/DoctorProfile";
+import { Establishment } from "@/models/Establishment";
 import { Specialty } from "@/models/Specialty";
+import { syncEstablishmentDoctors } from "@/lib/establishments/links";
 import type { CurrentAdmin } from "@/lib/auth/admin";
 
 let mongod: MongoMemoryServer;
@@ -131,22 +133,88 @@ describe("doctor editor (server)", () => {
     await expect(save(doc, "clinics", f)).rejects.toThrow(/area doesn't belong/);
   });
 
-  it("assigns founding numbers in order, only for admins", async () => {
+  it("assigns founding numbers in order and the founding renewal price, only for admins", async () => {
     const f = emptyDoctorForm();
     f.firstName = "Ravi";
     f.lastName = "Kulkarni";
-    f.foundingDoctor = true;
+    f.founding = true;
     const a = new DoctorProfile({ firstName: "Ravi", lastName: "Kulkarni" });
     await save(a, "business", f);
     const b = new DoctorProfile({ firstName: "Sita", lastName: "Patil" });
     await save(b, "business", f);
     expect([a.foundingNumber, b.foundingNumber]).toEqual([1, 2]);
-    expect(a.hostingFreeUntil).toBeNull(); // founding = free forever
+    expect(a).toMatchObject({ founding: true, renewalPrice: 499, renewalStatus: "active" });
 
     const c = new DoctorProfile({ firstName: "Om", lastName: "Rao" });
     await save(c, "business", f, sales);
-    expect(c.foundingDoctor).toBe(false);
+    expect(c.founding).toBe(false);
     expect(c.foundingNumber).toBeUndefined();
+    expect(c.renewalPrice).toBeUndefined();
+  });
+
+  it("sets the renewal due date one year after setup and works out the status", async () => {
+    const f = emptyDoctorForm();
+    f.setupPaidAt = "2026-11-10";
+    const doc = new DoctorProfile({ firstName: "Asha", lastName: "Deshmukh" });
+    await save(doc, "business", f);
+    expect(doc).toMatchObject({ plan: "doctor", founding: false, renewalPrice: 999, renewalStatus: "active" });
+    expect(docToForm(doc.toObject()).renewalDueDate).toBe("2027-11-10");
+
+    // An explicit due date and price win; a date in the past is overdue.
+    f.renewalDueDate = "2026-01-05";
+    f.renewalPrice = 799;
+    await save(doc, "business", f);
+    expect(doc).toMatchObject({ renewalPrice: 799, renewalStatus: "overdue" });
+
+    // A lapsed site stays lapsed until a renewal is recorded.
+    doc.renewalStatus = "lapsed";
+    await save(doc, "business", f);
+    expect(doc.renewalStatus).toBe("lapsed");
+  });
+
+  it("links clinics and establishments, and keeps both sides in step", async () => {
+    const x = await ids();
+    const clinic = await Establishment.create({ kind: "clinic", plan: "clinic", name: "Shree Clinic" });
+    const hospital = await Establishment.create({ kind: "hospital", plan: "hospital", name: "Sai Hospital" });
+    const f = emptyDoctorForm();
+    f.clinics = [{ ...emptyClinic(x.pune), name: "Shree Clinic", addressLine1: "A", areaId: x.kothrud, pincode: "411038", establishmentId: String(clinic._id) }];
+    const doc = new DoctorProfile({ firstName: "Kiran", lastName: "Joshi" });
+    await save(doc, "clinics", f);
+    expect(doc.establishmentIds.map(String)).toEqual([String(clinic._id)]);
+    expect(String(doc.clinics[0]!.establishmentId)).toBe(String(clinic._id));
+
+    // Business step adds the hospital; the clinic link can't be dropped there.
+    f.establishmentIds = [String(hospital._id)];
+    await save(doc, "business", f);
+    expect(doc.establishmentIds.map(String).sort()).toEqual([String(clinic._id), String(hospital._id)].sort());
+
+    await syncEstablishmentDoctors(doc._id, [], doc.establishmentIds.map(String));
+    await syncEstablishmentDoctors(doc._id, [], doc.establishmentIds.map(String)); // idempotent
+    expect((await Establishment.findById(hospital._id).lean())!.doctors.map((d) => String(d.doctorProfileId))).toEqual([String(doc._id)]);
+
+    f.establishmentIds = [];
+    await save(doc, "business", f);
+    await syncEstablishmentDoctors(doc._id, [String(clinic._id), String(hospital._id)], doc.establishmentIds.map(String));
+    expect((await Establishment.findById(hospital._id).lean())!.doctors).toEqual([]);
+    expect((await Establishment.findById(clinic._id).lean())!.doctors).toHaveLength(1);
+
+    // Linking to a site that doesn't exist is refused.
+    f.establishmentIds = ["507f1f77bcf86cd799439099"];
+    await expect(save(doc, "business", f)).rejects.toThrow(/no longer exists/);
+  });
+
+  it("reads a not-yet-migrated v1 doctor as v2, and saving writes v2", async () => {
+    const hospitalId = (await Establishment.create({ kind: "hospital", plan: "hospital", name: "Old Hospital" }))._id;
+    const doc = new DoctorProfile({ firstName: "Old", lastName: "Record", plan: "hospital", foundingDoctor: true, foundingNumber: 50, hostingFreeUntil: null, hospitalAccountId: hospitalId });
+    await doc.save();
+    const f = docToForm(doc.toObject());
+    expect(f).toMatchObject({ plan: "doctor_addon", founding: true, establishmentIds: [String(hospitalId)] });
+
+    await save(doc, "business", f);
+    expect(doc).toMatchObject({ plan: "doctor_addon", founding: true, foundingNumber: 50, renewalPrice: 499 });
+    expect(doc.hospitalAccountId).toBeUndefined();
+    expect(doc.hostingFreeUntil).toBeUndefined();
+    expect(doc.establishmentIds.map(String)).toEqual([String(hospitalId)]);
   });
 
   it("validates step input (registration year, award fields, gallery limit)", () => {
