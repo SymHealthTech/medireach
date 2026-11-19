@@ -44,13 +44,13 @@ export default async function DesignSamplePage({ params }: { params: Promise<Par
 
   return (
     <>
-      <div className="relative z-[60] bg-marigold px-4 py-2 text-sm text-[#0e3b3c]">
+      <div className="relative z-[60] bg-marigold px-4 py-2 text-sm text-white">
         <div className="mx-auto flex max-w-content flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <Link href="/designs" className="inline-flex items-center gap-1.5 font-semibold hover:underline">
             <ArrowLeft aria-hidden className="size-4" /> {DESIGNS.backToAll}
           </Link>
           <span className="font-medium">{DESIGNS.sampleBar.replace("{theme}", theme.name)}</span>
-          <WhatsAppLink href={wa} placement={`design_${themeKey}`} className="rounded-full bg-[#0e3b3c] px-3 py-1 font-semibold text-[#fbf8f3]">
+          <WhatsAppLink href={wa} placement={`design_${themeKey}`} className="rounded-full bg-[#0a3f3f] px-3 py-1 font-semibold text-[#f7f9fa]">
             {DESIGNS.cta}
           </WhatsAppLink>
         </div>

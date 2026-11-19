@@ -1,4 +1,4 @@
-import { absUrl, paths, SITE_NAME, SITE_URL } from "@/lib/site";
+import { absUrl, MEDIREACH_PHONE, paths, SITE_NAME, SITE_URL } from "@/lib/site";
 import { formatSlots, openingHoursSpecification, slotsForDay, WEEK_ORDER, DAY_NAMES, hasAnyTimings } from "@/lib/timings";
 import type { DoctorCardData, PublicClinic, PublicDoctor } from "@/templates/types";
 
@@ -339,15 +339,13 @@ export function siteJsonLd() {
         url: `${SITE_URL}/`,
         logo: absUrl("/icon-512.png"),
         parentOrganization: { "@type": "Organization", name: "Sym HealthTech" },
-        contactPoint: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
-          ? {
-              "@type": "ContactPoint",
-              telephone: `+${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER}`,
-              contactType: "customer support",
-              areaServed: "IN",
-              availableLanguage: ["en", "hi", "mr"],
-            }
-          : undefined,
+        contactPoint: {
+          "@type": "ContactPoint",
+          telephone: `+${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || MEDIREACH_PHONE}`,
+          contactType: "customer support",
+          areaServed: "IN",
+          availableLanguage: ["en", "hi", "mr"],
+        },
       }),
     ],
   };

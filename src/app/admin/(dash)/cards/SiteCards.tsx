@@ -53,7 +53,7 @@ export async function SiteCards({ sp }: { sp: SearchParams }) {
     docs.map(async (d) => {
       const site = await loadSiteForCard(String(d._id));
       const qrSvg = site
-        ? await QRCode.toString(site.shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0E3B3C", light: "#FFFFFF" } })
+        ? await QRCode.toString(site.shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0A3F3F", light: "#FFFFFF" } })
         : undefined;
       return {
         id: String(d._id),
@@ -109,7 +109,7 @@ export async function SiteCards({ sp }: { sp: SearchParams }) {
                   {c.qrSvg && <CardTools qrSvg={c.qrSvg} fileBase={c.site.slug} shareUrl={c.site.shareUrl} message={c.message} />}
                 </>
               )}
-              {c.status !== "published" && <p className="text-xs text-marigold">Not published yet. The QR link won&apos;t open until it is.</p>}
+              {c.status !== "published" && <p className="text-xs text-amber-700 dark:text-amber-400">Not published yet. The QR link won&apos;t open until it is.</p>}
             </li>
           ))}
         </ul>

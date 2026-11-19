@@ -436,7 +436,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
                           )}
                         </p>
                         {q.year && (
-                          <span className="rounded-full bg-marigold/15 px-3 py-1 text-xs font-semibold text-[#8a5b12]">{q.year}</span>
+                          <span className="rounded-full bg-marigold/15 px-3 py-1 text-xs font-semibold text-[#155e93]">{q.year}</span>
                         )}
                       </div>
                       <p className="mt-1.5 text-body/80">{q.institute}</p>
@@ -584,7 +584,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
                 <ul className="grid gap-4 sm:grid-cols-2">
                   {d.interests.map((interest) => (
                     <li key={interest} className="flex items-center gap-4 rounded-2xl bg-surface p-5 shadow-soft ring-1 ring-ink/5">
-                      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-marigold/15 text-[#9a6616]">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-marigold/15 text-[#155e93]">
                         <HeartHandshake aria-hidden className="size-5" strokeWidth={1.75} />
                       </span>
                       <span className="font-display text-lg font-semibold text-ink">{interest}</span>
@@ -680,7 +680,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
               <div className="relative flex flex-wrap gap-3">
                 <a
                   href={`tel:+${phone}`}
-                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-marigold px-5 font-semibold text-ink transition hover:brightness-105"
+                  className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-marigold px-5 font-semibold text-white transition hover:brightness-105"
                 >
                   <Phone aria-hidden className="size-[18px]" strokeWidth={1.9} />
                   Call {formatPhone(phone)}

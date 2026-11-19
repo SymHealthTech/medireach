@@ -9,16 +9,26 @@ import type { PublicDoctor } from "@/templates/types";
 /**
  * The live digital visiting card (HTML): photo, name, one-tap Call /
  * WhatsApp / Directions / Save contact, clinic, timings and a QR code to the
- * doctor's website. Shown to patients and in the doctor's card tools.
+ * doctor's website. Shown to patients and in the doctor's card tools, and as
+ * a preview on the homepage (`nameAs="p"`, `priority={false}`).
  */
 export function DigitalCard({
   doctor: d,
   websiteUrl,
   className,
+  nameAs: Name = "h1",
+  priority = true,
+  compact = false,
 }: {
   doctor: PublicDoctor;
   websiteUrl: string;
   className?: string;
+  /** The name's element: "h1" on the card page, "p" where the page has its own h1. */
+  nameAs?: "h1" | "h2" | "p";
+  /** Preload the photo (the card page's LCP); off for below-the-fold previews. */
+  priority?: boolean;
+  /** Shorter version for the homepage: smaller photo and QR, tighter spacing, clinic name + area only. */
+  compact?: boolean;
 }) {
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
@@ -38,31 +48,32 @@ export function DigitalCard({
     <article
       aria-label={`${d.fullName} – digital visiting card`}
       className={cn(
-        "mx-auto w-full max-w-[420px] overflow-hidden rounded-[32px] bg-surface shadow-lift ring-1 ring-ink/5",
+        "mx-auto w-full max-w-[420px] overflow-hidden bg-surface shadow-lift ring-1 ring-ink/5",
+        compact ? "rounded-[28px]" : "rounded-[32px]",
         className,
       )}
     >
-      <div className="mr-ink-bg relative overflow-hidden px-6 pb-20 pt-8 text-center text-paper">
+      <div className={cn("mr-ink-bg relative overflow-hidden px-6 text-center text-paper", compact ? "pb-16 pt-6" : "pb-20 pt-8")}>
         <span aria-hidden className="absolute -right-16 -top-16 size-56 rounded-full border border-paper/10" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-marigold">Digital visiting card</p>
-        <div className="mx-auto mt-6 size-[132px] rounded-full bg-marigold p-[5px]">
+        <div className={cn("mx-auto rounded-full bg-marigold p-[5px]", compact ? "mt-4 size-[96px] p-1" : "mt-6 size-[132px]")}>
           <div className="relative size-full overflow-hidden rounded-full bg-sage">
             {d.photo ? (
-              <Image src={d.photo.url} alt={d.photo.alt} fill priority sizes="132px" className="object-cover" />
+              <Image src={d.photo.url} alt={d.photo.alt} fill priority={priority} sizes={compact ? "96px" : "132px"} className="object-cover" />
             ) : (
-              <span aria-hidden className="flex size-full items-center justify-center font-display text-4xl font-semibold text-ink">
+              <span aria-hidden className={cn("flex size-full items-center justify-center font-display font-semibold text-ink", compact ? "text-3xl" : "text-4xl")}>
                 {d.firstName[0]}
                 {d.lastName[0]}
               </span>
             )}
           </div>
         </div>
-        <h1 className="mt-5 font-display text-[28px] font-semibold leading-tight">{d.fullName}</h1>
+        <Name className={cn("font-display font-semibold leading-tight", compact ? "mt-3 text-[24px]" : "mt-5 text-[28px]")}>{d.fullName}</Name>
         {d.primarySpecialty && <p className="mt-1.5 font-semibold text-marigold">{d.primarySpecialty.name}</p>}
         {d.degreesLine && <p className="mt-1 text-sm text-paper/75">{d.degreesLine}</p>}
       </div>
 
-      <nav aria-label="Contact" className="relative -mt-11 px-5">
+      <nav aria-label="Contact" className={cn("relative px-5", compact ? "-mt-10 px-4" : "-mt-11")}>
         <ul className="grid grid-cols-4 gap-1 rounded-2xl bg-surface p-2 shadow-lift ring-1 ring-ink/5">
           {actions.map(({ label, href, icon: Icon, external, ...a }) => (
             <li key={label}>
@@ -70,7 +81,10 @@ export function DigitalCard({
                 href={href}
                 {...(external ? { target: "_blank", rel: "noopener" } : {})}
                 {...("download" in a && a.download ? { download: "" } : {})}
-                className="flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold text-ink transition hover:bg-mint active:scale-[.97]"
+                className={cn(
+                  "flex flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold text-ink transition hover:bg-mint active:scale-[.97]",
+                  compact ? "min-h-[54px]" : "min-h-[64px]",
+                )}
               >
                 <span className={label === "WhatsApp" ? "text-leaf-text" : "text-lagoon"}>
                   <Icon className="size-5" strokeWidth={1.9} />
@@ -82,7 +96,7 @@ export function DigitalCard({
         </ul>
       </nav>
 
-      <ul className="space-y-4 px-6 pb-6 pt-6 text-sm">
+      <ul className={cn("px-6 text-sm", compact ? "space-y-2.5 py-4" : "space-y-4 pb-6 pt-6")}>
         {phone && (
           <li className="flex items-start gap-3">
             <Phone aria-hidden className="mt-0.5 size-4 shrink-0 text-lagoon" strokeWidth={1.9} />
@@ -96,7 +110,7 @@ export function DigitalCard({
             <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-lagoon" strokeWidth={1.9} />
             <span>
               <span className="block font-semibold text-ink">{clinic.name}</span>
-              <span className="text-body/80">{clinic.fullAddress}</span>
+              <span className="text-body/80">{compact ? `${clinic.area.name}, ${clinic.city.name}` : clinic.fullAddress}</span>
             </span>
           </li>
         )}
@@ -114,15 +128,15 @@ export function DigitalCard({
         </li>
       </ul>
 
-      <div className="flex items-center gap-4 border-t border-line bg-paper px-6 py-5">
+      <div className={cn("flex items-center gap-4 border-t border-line bg-paper px-6", compact ? "py-3.5" : "py-5")}>
         <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-line">
-          <svg width={96} height={96} viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges" role="img" aria-label={`QR code for ${d.shareUrl}`}>
-            <path d={qr.path} fill="#0E3B3C" />
+          <svg width={compact ? 64 : 96} height={compact ? 64 : 96} viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges" role="img" aria-label={`QR code for ${d.shareUrl}`}>
+            <path d={qr.path} fill="#0A3F3F" />
           </svg>
         </div>
         <p className="text-sm text-body/80">
-          <span className="block font-display text-lg font-semibold text-ink">Scan with any phone</span>
-          Opens the website with timings, directions and contact.
+          <span className={cn("block font-display font-semibold text-ink", compact ? "text-base" : "text-lg")}>Scan with any phone</span>
+          {compact ? "Opens the website." : "Opens the website with timings, directions and contact."}
         </p>
       </div>
     </article>

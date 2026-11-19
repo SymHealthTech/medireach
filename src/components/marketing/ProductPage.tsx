@@ -52,7 +52,7 @@ export function ProductHero({
             <WhatsAppLink
               href={waHref}
               placement={waPlacement}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper shadow-[0_8px_20px_-8px_rgba(14,59,60,.6)] transition-colors hover:bg-ink-700 active:scale-[.98]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper shadow-[0_8px_20px_-8px_rgba(10,63,63,.6)] transition-colors hover:bg-ink-700 active:scale-[.98]"
             >
               <WhatsAppIcon className="size-5" /> {primaryCta}
             </WhatsAppLink>
@@ -127,8 +127,7 @@ export function LeadPanel({ title, source }: { title: string; source: "pricing" 
   return (
     <section className="px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-soft sm:p-8">
-        <SectionTitle className="mb-6 !text-2xl">{title}</SectionTitle>
-        <LeadForm source={source} submitLabel="Request a call back" />
+        <LeadForm source={source} submitLabel="Request a call back" title={<SectionTitle className="mb-6 !text-2xl">{title}</SectionTitle>} />
       </div>
     </section>
   );

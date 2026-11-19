@@ -20,8 +20,8 @@ function initials(name: string): string {
   return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase() || "M";
 }
 
-const PAPER = "#FBF8F3";
-const MUTED = "#5D6B6C";
+const PAPER = "#F7F9FA";
+const MUTED = "#5B6573";
 
 export async function renderSiteOgImage(kind: "clinic" | "hospital", city: string, slug: string) {
   const s = SLUG_RE.test(city) && SLUG_RE.test(slug) ? await getLiveEstablishment(kind, city, slug) : null;
@@ -42,7 +42,7 @@ export async function renderSiteOgImage(kind: "clinic" | "hospital", city: strin
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: nameSize, fontWeight: 600, color: primary, lineHeight: 1.1, fontFamily: "Fraunces" }}>{name}</div>
-            <div style={{ fontSize: 38, fontWeight: 600, color: "#1C2526", marginTop: 20 }}>{what}</div>
+            <div style={{ fontSize: 38, fontWeight: 600, color: "#1F2933", marginTop: 20 }}>{what}</div>
             {place && <div style={{ fontSize: 32, color: MUTED, marginTop: 10 }}>{place}</div>}
           </div>
           <div style={{ display: "flex", fontSize: 24, color: MUTED }}>

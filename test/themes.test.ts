@@ -27,7 +27,7 @@ function contrast(a: string, b: string): number {
 
 // DESIGN_BRIEF.md §5 table, in order.
 const BRIEF = [
-  ["General OPD", "#0E3B3C", "#E3A23B", "#DCE8E2"],
+  ["General OPD", "#0A3F3F", "#F2994A", "#E0F2F1"],
   ["Skin & Hair", "#5B3A4A", "#D9A38B", "#F4E6E0"],
   ["Dental", "#1F4E6B", "#7FC8D6", "#E3F2F5"],
   ["Eye", "#203A5C", "#6BA6D6", "#E4EEF7"],
@@ -39,7 +39,7 @@ const BRIEF = [
   ["Paediatrics", "#2B4C7E", "#F2B84B", "#EAF0FA"],
   ["Gynaecology", "#5C2E55", "#E39AB1", "#F6E8EF"],
   ["Orthopaedics", "#2C3E50", "#E3A23B", "#E8ECEF"],
-  ["Small hospital", "#0E3B3C", "#C8664B", "#E6EFEC"],
+  ["Small hospital", "#0E5655", "#C8664B", "#E0F0EF"],
 ];
 
 describe("specialty themes", () => {

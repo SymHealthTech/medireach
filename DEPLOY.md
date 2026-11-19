@@ -58,7 +58,7 @@ clinic can be given it. A domain added to a specific project
 | `LEAD_NOTIFY_EMAIL` | optional | Where website leads and doctors' change requests go. |
 | `RENEWAL_NOTIFY_EMAIL` | optional | The team's daily renewals digest. Falls back to `LEAD_NOTIFY_EMAIL`, then `ADMIN_EMAIL`. |
 | `CRON_SECRET` | yes | Any long random string. Vercel sends it to `/api/cron/renewals` (see `vercel.json`); without it the route refuses to run and no renewal reminders go out. |
-| `NEXT_PUBLIC_WHATSAPP_NUMBER` | yes | International format without `+`, e.g. `9198XXXXXXXX`. Used until a number is saved in Settings. (The spec calls this `WHATSAPP_NUMBER`.) |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | yes | International format without `+`: `919890626581`. Used until a number is saved in Settings (the code falls back to the same number). (The spec calls this `WHATSAPP_NUMBER`.) |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | yes | Shown on Contact, Terms and Privacy. |
 | `GOOGLE_SITE_VERIFICATION` | optional | Only for the HTML-tag method in Search Console (see §5). |
 

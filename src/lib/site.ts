@@ -6,6 +6,16 @@
 
 export const SITE_NAME = "MediReach";
 
+/**
+ * MediReach's own WhatsApp and call number (digits with country code), used
+ * when Admin → Settings has none. Settings (then NEXT_PUBLIC_WHATSAPP_NUMBER
+ * for WhatsApp) override it.
+ */
+export const MEDIREACH_PHONE = "919890626581";
+
+/** The production domain, for homepage previews that should never show a dev URL. */
+export const PRODUCTION_HOSTNAME = "medireach.co.in";
+
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 const site = new URL(SITE_URL);

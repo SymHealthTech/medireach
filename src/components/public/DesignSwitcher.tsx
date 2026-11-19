@@ -40,7 +40,7 @@ function Switcher({ basePath, current }: { basePath: string; current: TemplateKe
           const label = `${i + 1}`;
           const cls = cn(
             "flex size-8 items-center justify-center rounded-full text-sm font-semibold transition",
-            isActive ? "bg-marigold text-ink" : d.ready ? "bg-paper/10 hover:bg-paper/20" : "cursor-not-allowed text-paper/35",
+            isActive ? "bg-marigold text-white" : d.ready ? "bg-paper/10 hover:bg-paper/20" : "cursor-not-allowed text-paper/35",
           );
           return (
             <li key={d.key}>

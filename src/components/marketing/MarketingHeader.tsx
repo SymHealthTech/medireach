@@ -28,7 +28,7 @@ export function MarketingHeader() {
     <header
       className={cn(
         "sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-200",
-        solid || open ? "border-b border-line bg-paper/95 shadow-[0_1px_2px_rgba(14,59,60,.06)] backdrop-blur" : "border-b border-transparent",
+        solid || open ? "border-b border-line bg-paper/95 shadow-[0_1px_2px_rgba(10,63,63,.06)] backdrop-blur" : "border-b border-transparent",
       )}
     >
       <div className="mx-auto flex h-16 max-w-content items-center gap-4 px-4 sm:px-6">
@@ -45,7 +45,7 @@ export function MarketingHeader() {
         <CallbackButton
           label={GET_STARTED}
           icon={false}
-          className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-700 active:scale-[.98]"
+          className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-marigold px-4 text-sm font-semibold text-white hover:bg-marigold-700 active:scale-[.98]"
         />
         <button
           type="button"

@@ -4,7 +4,7 @@ import { LeadForm } from "@/components/marketing/LeadForm";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { WhatsAppIcon, WhatsAppLink } from "@/components/marketing/WhatsAppLink";
 import { WHATSAPP_TEXT } from "@/content/marketing";
-import { displayPhone, getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
+import { getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
 import { absUrl } from "@/lib/site";
 
 export const revalidate = 600;
@@ -28,13 +28,13 @@ export default async function ContactPage() {
         <ul className="space-y-3">
           <li>
             <WhatsAppLink href={whatsappHref(site.whatsappNumber, WHATSAPP_TEXT.default)} placement="contact" className={row}>
-              <WhatsAppIcon className="size-5 text-[#1f8f4e]" /> WhatsApp {displayPhone(site.whatsappNumber)}
+              <WhatsAppIcon className="size-5 text-[#1f8f4e]" /> WhatsApp us
             </WhatsAppLink>
           </li>
           {site.contactPhone && (
             <li>
               <a href={`tel:+${site.contactPhone}`} className={row}>
-                <Phone className="size-5 text-ink" strokeWidth={1.75} /> Call {displayPhone(site.contactPhone)}
+                <Phone className="size-5 text-ink" strokeWidth={1.75} /> Call us
               </a>
             </li>
           )}
@@ -48,8 +48,7 @@ export default async function ContactPage() {
           </li>
         </ul>
         <div className="rounded-xl border border-line bg-surface p-6 shadow-soft sm:p-8">
-          <h2 className="mb-6 font-display text-2xl font-semibold text-ink">Leave your number</h2>
-          <LeadForm source="homepage_form" />
+          <LeadForm source="homepage_form" title={<h2 className="mb-6 font-display text-2xl font-semibold text-ink">Leave your number</h2>} />
         </div>
       </section>
     </main>

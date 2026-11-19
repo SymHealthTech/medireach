@@ -123,7 +123,7 @@ export function DrawUnderline({ children }: { children: React.ReactNode }) {
         <path
           d="M2 8 C 50 2, 120 2, 198 7"
           fill="none"
-          stroke="var(--color-marigold, #E3A23B)"
+          stroke="var(--color-marigold, #F2994A)"
           strokeWidth="4"
           strokeLinecap="round"
           pathLength={1}

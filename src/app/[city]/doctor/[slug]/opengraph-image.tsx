@@ -16,11 +16,11 @@ export const contentType = "image/png";
 export const alt = "Doctor profile on MediReach";
 export const revalidate = 86400;
 
-const INK = "#0E3B3C";
-const PAPER = "#FBF8F3";
-const MARIGOLD = "#E3A23B";
-const SAGE = "#DCE8E2";
-const MUTED = "#5D6B6C";
+const INK = "#0A3F3F";
+const PAPER = "#F7F9FA";
+const MARIGOLD = "#F2994A";
+const SAGE = "#E0F2F1";
+const MUTED = "#5B6573";
 
 function initials(name: string): string {
   const parts = name.replace(/^Dr\.?\s+/i, "").split(/\s+/).filter(Boolean);

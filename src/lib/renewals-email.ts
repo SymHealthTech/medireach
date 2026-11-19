@@ -41,12 +41,12 @@ function contactLines(c: MediReachContact): string[] {
 function layout(paragraphs: string[], c: MediReachContact): string {
   const body = paragraphs.map((p) => `<p style="margin:0 0 14px">${p}</p>`).join("");
   const contact = contactLines(c).map(esc).join("<br>");
-  return `<!doctype html><html><body style="margin:0;background:#FBF8F3;font-family:Arial,Helvetica,sans-serif;color:#1C2526">
+  return `<!doctype html><html><body style="margin:0;background:#F7F9FA;font-family:Arial,Helvetica,sans-serif;color:#1F2933">
 <div style="max-width:560px;margin:0 auto;padding:28px 20px">
-<p style="margin:0 0 20px;font-family:Georgia,serif;font-size:22px;font-weight:bold;color:#0E3B3C">MediReach<span style="color:#E3A23B">.</span></p>
-<div style="background:#ffffff;border:1px solid #E6E1D8;border-radius:12px;padding:22px;font-size:15px;line-height:1.55">${body}
-<p style="margin:18px 0 0;font-size:14px;color:#5D6B6C">${contact}</p></div>
-<p style="margin:16px 0 0;font-size:12px;color:#5D6B6C">MediReach, a Sym HealthTech product, Pune.</p>
+<p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:22px;font-weight:bold;color:#0E7C7B">Medi<span style="color:#F2994A">Reach</span></p>
+<div style="background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;padding:22px;font-size:15px;line-height:1.55">${body}
+<p style="margin:18px 0 0;font-size:14px;color:#5B6573">${contact}</p></div>
+<p style="margin:16px 0 0;font-size:12px;color:#5B6573">MediReach, a Sym HealthTech product, Pune.</p>
 </div></body></html>`;
 }
 
@@ -123,7 +123,7 @@ export function adminDigestEmail(d: { reminders: DigestItem[]; lapsed: DigestIte
     ...sections.filter(([, rows]) => rows.length).map(([h, rows]) => `${h}\n${rows.map((r) => `- ${r}`).join("\n")}`),
     `Payments & renewals: ${d.adminUrl}`,
   ].join("\n\n");
-  const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#1C2526;font-size:14px;line-height:1.5">
+  const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#1F2933;font-size:14px;line-height:1.5">
 <p><strong>Renewals today:</strong> ${esc(parts.join(", ") || "nothing to do")}.</p>
 ${sections
   .filter(([, rows]) => rows.length)

@@ -162,7 +162,7 @@ export default async function SitesPage({ searchParams }: { searchParams: Promis
                     </span>
                   ) : (
                     <>
-                      <AlertTriangle className="size-4 text-marigold" />
+                      <AlertTriangle className="size-4 text-amber-500" />
                       {r.health.issues > 0 && (
                         <span className="rounded-full bg-clay/15 px-2 py-0.5 font-semibold text-clay-text">
                           {r.health.issues} compliance issue{r.health.issues > 1 ? "s" : ""}

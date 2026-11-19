@@ -73,7 +73,7 @@ export function LaptopFrame({
     >
       <div className="rounded-t-[14px] border-[7px] border-b-0 border-ink bg-ink">
         <div className="overflow-hidden rounded-t-[7px] bg-white">
-          <div className="flex items-center gap-1.5 border-b border-line bg-[#f4f1ea] px-2 py-1.5">
+          <div className="flex items-center gap-1.5 border-b border-line bg-[#f1f3f5] px-2 py-1.5">
             <span className="size-1.5 rounded-full bg-clay/60" />
             <span className="size-1.5 rounded-full bg-marigold/70" />
             <span className="size-1.5 rounded-full bg-leaf/60" />
@@ -88,8 +88,8 @@ export function LaptopFrame({
           </FitBox>
         </div>
       </div>
-      <div className="relative mx-[-6%] h-3 rounded-b-xl bg-gradient-to-b from-[#1b4f50] to-ink shadow-soft">
-        <span className="absolute left-1/2 top-0 h-1.5 w-16 -translate-x-1/2 rounded-b-md bg-[#0a2e2f]" />
+      <div className="relative mx-[-6%] h-3 rounded-b-xl bg-gradient-to-b from-[#0e5655] to-ink shadow-soft">
+        <span className="absolute left-1/2 top-0 h-1.5 w-16 -translate-x-1/2 rounded-b-md bg-[#062a2a]" />
       </div>
       {badge && (
         <SampleBadge className="absolute -top-3 left-4">{badge}</SampleBadge>
@@ -108,7 +108,7 @@ export function SampleBadge({
   return (
     <span
       className={cn(
-        "z-10 rounded-full bg-marigold px-3 py-1 text-xs font-semibold text-[#0e3b3c] shadow-soft",
+        "z-10 rounded-full bg-marigold px-3 py-1 text-xs font-semibold text-white shadow-soft",
         className,
       )}
     >

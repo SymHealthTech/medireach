@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageIntro, Prose } from "@/components/marketing/PageIntro";
-import { getPublicSiteData, gstNote, rupees } from "@/lib/public/site-data";
+import { getPublicSiteData, rupees } from "@/lib/public/site-data";
 import { absUrl } from "@/lib/site";
 
 export const revalidate = 600;
 
 export const metadata: Metadata = {
   title: { absolute: "Terms of service – MediReach" },
-  description: "The terms for MediReach doctor, clinic and hospital websites and visiting cards: setup, yearly renewal, founding offer, domains, updates, content and GST.",
+  description: "The terms for MediReach doctor, clinic and hospital websites and visiting cards: setup, yearly renewal, domains, updates and content.",
   alternates: { canonical: absUrl("/terms") },
 };
 
-const UPDATED = "18 November 2026";
+const UPDATED = "19 November 2026";
 
 export default async function TermsPage() {
   const site = await getPublicSiteData();
@@ -64,10 +64,6 @@ export default async function TermsPage() {
               Small hospital website (up to 10 beds): {rupees(site.prices.hospitalSetup)} setup, then {rupees(site.prices.renewalHospital)} a
               year.
             </li>
-            <li>
-              Portfolio for each doctor of a clinic or hospital: {rupees(site.prices.doctorAddon)} setup, then{" "}
-              {rupees(site.prices.renewalDoctor)} a year each.
-            </li>
           </ul>
           <p>
             The renewal is due one year after your setup payment, and every year after that. It covers hosting on medireach.co.in, security
@@ -77,17 +73,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>4. Founding offer</h2>
-          <p>
-            The first {site.foundingTotal} customers across all products pay the normal setup price and then a lower renewal for life:{" "}
-            {rupees(site.prices.foundingRenewal)} a year for a doctor portfolio or clinic website, and{" "}
-            {rupees(site.prices.foundingRenewalHospital)} a year for a hospital website. It applies to the site it was given for, cannot be
-            transferred, and ends if the site lapses or is removed for breaking these terms.
-          </p>
-        </section>
-
-        <section>
-          <h2>5. If a renewal is not paid</h2>
+          <h2>4. If a renewal is not paid</h2>
           <p>
             Your site stays live for {site.renewalGraceDays} days after the renewal date. After that it is not deleted: it shows a short
             “temporarily unavailable” notice with our contact details and is hidden from search engines. Paying the renewal restores it at once.
@@ -95,7 +81,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>6. Own domain</h2>
+          <h2>5. Own domain</h2>
           <p>
             If you want your own domain (for example drname.in), we buy and connect it for you and charge only what the domain costs, including
             yearly renewals. The domain is registered for you.
@@ -103,7 +89,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>7. Updates</h2>
+          <h2>6. Updates</h2>
           <p>
             You can change your clinic timings, phone numbers, address and fees yourself after logging in. For other changes, our team updates
             your page for {rupees(site.prices.updatePrice)} per request. Your first done-for-you update is free.
@@ -111,7 +97,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>8. Your content and the NMC guidelines</h2>
+          <h2>7. Your content and the NMC guidelines</h2>
           <ul>
             <li>You own the text and photos you give us. You let us show them on your page, card and our listing pages while your page is live.</li>
             <li>
@@ -127,14 +113,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>9. GST and payment</h2>
-          <p>
-            {gstNote(site.gstMode)}. We issue an invoice for every payment. Payment is by UPI, bank transfer, card or cash, recorded by our team.
-          </p>
-        </section>
-
-        <section>
-          <h2>10. Removing your page</h2>
+          <h2>8. Removing your page</h2>
           <p>
             You can ask us to take your site offline at any time by writing to {email}. We remove it within 7 days and ask search engines to
             drop it. We may suspend a site that breaks these terms or the law.
@@ -142,7 +121,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>11. Liability</h2>
+          <h2>9. Liability</h2>
           <p>
             We work to keep pages online and accurate, but we can&apos;t promise uninterrupted service or any position in search results. Our
             total liability for any claim is limited to the amount you paid us in the 12 months before the claim.
@@ -150,7 +129,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>12. Law and changes</h2>
+          <h2>10. Law and changes</h2>
           <p>
             These terms are governed by Indian law, and the courts of Pune have jurisdiction. If we change these terms, we update this page and
             tell existing customers about important changes.
@@ -158,7 +137,7 @@ export default async function TermsPage() {
         </section>
 
         <section>
-          <h2>13. Contact</h2>
+          <h2>11. Contact</h2>
           <p>
             Questions about these terms: <a className="font-semibold text-ink underline" href={`mailto:${email}`}>{email}</a>.
           </p>

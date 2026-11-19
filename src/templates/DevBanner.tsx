@@ -10,8 +10,8 @@ export function DevBanner({ name }: { name: string }) {
         display: "flex",
         justifyContent: "center",
         padding: "6px 12px",
-        background: "#E3A23B",
-        color: "#0E3B3C",
+        background: "#F2994A",
+        color: "#FFFFFF",
         fontSize: 14,
         fontWeight: 600,
       }}

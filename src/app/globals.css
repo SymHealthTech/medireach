@@ -21,27 +21,34 @@
   --font-fraunces: var(--font-fraunces-ext), var(--font-fraunces-latin);
   --font-jakarta: var(--font-jakarta-ext), var(--font-jakarta-latin);
 
-  /* Brand */
-  --ink: #0e3b3c;
-  --ink-700: #155456;
-  --on-ink: #fbf8f3;
-  --paper: #fbf8f3;
+  /* Brand: the MediReach clinic app palette. Teal #0E7C7B is the brand
+     colour, amber #F2994A the primary action colour, success #27AE60,
+     text #1F2933 on #F7F9FA. Red #E63946 is kept for emergency / errors only.
+     Token names are historical: lagoon is the brand teal, marigold is amber,
+     ink is the deep teal shade (headings, dark panels), clay is the red,
+     leaf is the success green, sage / mint / mist are pale teal washes. */
+  --ink: #0a3f3f;
+  --ink-700: #0e5655;
+  --on-ink: #f7f9fa;
+  --paper: #f7f9fa;
   --surface: #ffffff;
-  --marigold: #e3a23b;
-  --sage: #dce8e2;
-  --clay: #c8664b;
-  --clay-text: #a64d35; /* clay for text (errors): 5.3:1+ on paper and white */
-  --leaf: #2f8f5b;
-  --leaf-text: #1e6e45; /* leaf for small text: 5.2:1+ on paper, white and leaf tints (WCAG AA) */
-  --body: #1c2526;
-  --muted-foreground: #5d6b6c;
-  --line: #e6e1d8;
+  --marigold: #f2994a;
+  --sage: #e0f2f1;
+  --marigold-700: #da8a43; /* amber hover */
+  --clay: #e63946;
+  --clay-text: #c62f3b; /* red for text (errors): 5.1:1+ on paper and white */
+  --leaf: #27ae60;
+  --leaf-text: #1c7442; /* success green for small text: 5.0:1+ on paper, white and leaf tints (WCAG AA) */
+  --body: #1f2933;
+  --muted-foreground: #5b6573;
+  --line: #e5e7eb;
 
   /* Marketing accents (homepage + marketing pages, light-only) */
-  --ink-900: #072627; /* deepest ink, for dark panels */
-  --lagoon: #1b6b66; /* mid teal for accent type on light backgrounds (6.1:1 on paper) */
-  --mint: #e8f2ec; /* pale cool wash */
-  --mist: #eef5f4; /* cool pale teal wash, contrasts with the paper hero */
+  --ink-900: #062a2a; /* deepest ink, for dark panels */
+  --lagoon: #0e7c7b; /* brand teal: accent type, links, icons (4.8:1 on paper, 5.0:1 on white) */
+  --lagoon-700: #0b6564; /* teal hover */
+  --mint: #ecf6f5; /* pale teal wash */
+  --mist: #f2f9f8; /* palest teal wash */
 
   /* shadcn semantic */
   --background: var(--paper);
@@ -54,7 +61,7 @@
   --primary-foreground: var(--on-ink);
   --secondary: var(--sage);
   --secondary-foreground: var(--ink);
-  --muted: #f3efe8;
+  --muted: #eef3f4;
   --accent: var(--sage);
   --accent-foreground: var(--ink);
   --destructive: var(--clay);
@@ -63,33 +70,36 @@
   --ring: var(--ink);
 
   /* Dashboard sidebar (ink in light mode) */
-  --sidebar: #0e3b3c;
-  --sidebar-foreground: #fbf8f3;
-  --sidebar-muted: rgb(251 248 243 / 0.7);
-  --sidebar-hover: rgb(251 248 243 / 0.08);
+  --sidebar: #0a3f3f;
+  --sidebar-foreground: #f7f9fa;
+  --sidebar-muted: rgb(247 249 250 / 0.7);
+  --sidebar-hover: rgb(247 249 250 / 0.08);
 }
 
 .dark {
-  --ink: #eaf1ef;
-  --ink-700: #c9d8d4;
-  --on-ink: #0b1f20;
-  --paper: #0b1f20;
-  --surface: #122b2c;
-  --sage: #1d4342;
-  --body: #eaf1ef;
-  --muted-foreground: #a0b2b0;
-  --line: #24494a;
-  --leaf-text: #6cc493;
-  --clay-text: #e08a72;
+  /* Dashboard only (opt-in toggle in the admin shell); the website is light-only.
+     Values from the clinic app's dark theme. */
+  --ink: #e8eaed;
+  --ink-700: #c9ced4;
+  --on-ink: #121417;
+  --paper: #121417;
+  --surface: #1e2328;
+  --sage: #173b3b;
+  --lagoon: #3fa8a6;
+  --body: #e8eaed;
+  --muted-foreground: #9ca3af;
+  --line: #2d3748;
+  --leaf-text: #5fd08e;
+  --clay-text: #f07a84;
 
-  --muted: #163536;
-  --secondary-foreground: #eaf1ef;
-  --accent-foreground: #eaf1ef;
+  --muted: #1a1f24;
+  --secondary-foreground: #e8eaed;
+  --accent-foreground: #e8eaed;
 
-  --sidebar: #081718;
-  --sidebar-foreground: #eaf1ef;
-  --sidebar-muted: rgb(234 241 239 / 0.65);
-  --sidebar-hover: rgb(234 241 239 / 0.06);
+  --sidebar: #0d0f11;
+  --sidebar-foreground: #e8eaed;
+  --sidebar-muted: rgb(232 234 237 / 0.65);
+  --sidebar-hover: rgb(232 234 237 / 0.06);
 }
 
 @theme inline {
@@ -108,6 +118,8 @@
   --color-line: var(--line);
   --color-ink-900: var(--ink-900);
   --color-lagoon: var(--lagoon);
+  --color-lagoon-700: var(--lagoon-700);
+  --color-marigold-700: var(--marigold-700);
   --color-mint: var(--mint);
   --color-mist: var(--mist);
 
@@ -144,8 +156,8 @@
   --radius-xl: 12px; /* cards */
   --radius-2xl: 16px;
 
-  --shadow-soft: 0 1px 2px rgba(14, 59, 60, 0.06), 0 8px 24px rgba(14, 59, 60, 0.06);
-  --shadow-lift: 0 2px 4px rgba(14, 59, 60, 0.06), 0 18px 40px -12px rgba(14, 59, 60, 0.22);
+  --shadow-soft: 0 1px 2px rgba(10,63,63, 0.06), 0 8px 24px rgba(10,63,63, 0.06);
+  --shadow-lift: 0 2px 4px rgba(10,63,63, 0.06), 0 18px 40px -12px rgba(10,63,63, 0.22);
 
   --container-content: 1160px;
   --container-dashboard: 1280px;
@@ -206,23 +218,31 @@
 .float-gentle { animation: mr-float 6s ease-in-out infinite; }
 
 /* ── Marketing decoration ── */
-/* Hero wash: soft teal glow top-right, mint bottom-left, on paper (no warm tints). */
+/* Hero wash (as in the clinic app): teal glow top-right, a faint amber glow
+   bottom-left, on white easing into pale teal. */
 .mr-hero-bg {
   background:
-    radial-gradient(60% 55% at 88% 8%, rgb(27 107 102 / 0.10), transparent 70%),
-    radial-gradient(50% 60% at 0% 100%, rgb(47 143 91 / 0.12), transparent 70%),
-    linear-gradient(180deg, #fdfaf5 0%, var(--paper) 100%);
+    radial-gradient(55% 60% at 85% 20%, rgb(14 124 123 / 0.12), transparent 70%),
+    radial-gradient(45% 55% at 0% 100%, rgb(242 153 74 / 0.10), transparent 70%),
+    linear-gradient(180deg, #ffffff 0%, #ffffff 35%, var(--mint) 100%);
 }
-/* Ink panels: soft lagoon + marigold glows so large dark areas don't read flat. */
+/* Ink panels: brand-teal glow bottom-left, faint amber top-right, on deep teal. */
 .mr-ink-bg {
   background:
-    radial-gradient(55% 70% at 100% 0%, rgb(227 162 59 / 0.16), transparent 70%),
-    radial-gradient(60% 80% at 0% 100%, rgb(47 143 91 / 0.22), transparent 70%),
+    radial-gradient(55% 70% at 100% 0%, rgb(242 153 74 / 0.14), transparent 70%),
+    radial-gradient(60% 80% at 0% 100%, rgb(14 124 123 / 0.45), transparent 70%),
     var(--ink);
+}
+/* Pricing section: pale teal wash with a soft teal glow behind the cards and a faint amber one at the corner. */
+.mr-pricing-bg {
+  background:
+    radial-gradient(50% 45% at 50% 60%, rgb(14 124 123 / 0.10), transparent 70%),
+    radial-gradient(35% 40% at 100% 0%, rgb(242 153 74 / 0.10), transparent 70%),
+    var(--mint);
 }
 /* Faint dot grid, used under mockups and on the pricing wash. */
 .mr-dots {
-  background-image: radial-gradient(rgb(14 59 60 / 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(rgb(10 63 63 / 0.12) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 
@@ -258,7 +278,7 @@
 .mr-marquee-wrap:active .mr-marquee,
 .mr-marquee-wrap:focus-within .mr-marquee { animation-play-state: paused; }
 
-/* QR scan line: a thin marigold line sweeping over a QR code. */
+/* QR scan line: a thin accent line sweeping over a QR code. */
 @keyframes mr-scan {
   0% { transform: translateY(0); opacity: 0; }
   10%, 90% { opacity: 1; }
@@ -266,12 +286,16 @@
 }
 .mr-scan { animation: mr-scan 2.4s ease-in-out infinite; }
 
+/* Hero carousel: the active tab's progress bar; its animationend advances the slide. */
+@keyframes mr-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.mr-progress { animation: mr-progress 6s linear both; }
+
 /* Loops inside an off-screen LoopGuard are paused. */
 [data-offscreen] *, [data-offscreen] { animation-play-state: paused !important; }
 
 /* Hover lift for homepage cards: 4 px, shadow deepens, 180 ms. */
 .mr-lift { transition: transform 180ms ease-out, box-shadow 180ms ease-out; }
-.mr-lift:hover { transform: translateY(-4px); box-shadow: 0 1px 2px rgb(14 59 60 / 0.06), 0 20px 44px rgb(14 59 60 / 0.14); }
+.mr-lift:hover { transform: translateY(-4px); box-shadow: 0 1px 2px rgb(10 63 63 / 0.06), 0 20px 44px rgb(10 63 63 / 0.14); }
 
 @media (prefers-reduced-motion: reduce) {
   .mr-enter, .mr-caret, .mr-marquee, .mr-scan, .float-gentle { animation: none !important; }

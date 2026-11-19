@@ -40,7 +40,7 @@ export function SiteNav({
     <header
       className={cn(
         "sticky top-0 z-40 border-b bg-paper/90 backdrop-blur transition-[border-color,box-shadow] duration-200",
-        solid || open ? "border-line shadow-[0_1px_2px_rgba(14,59,60,.06)]" : "border-transparent",
+        solid || open ? "border-line shadow-[0_1px_2px_rgba(10,63,63,.06)]" : "border-transparent",
       )}
     >
       <div className="mx-auto flex h-16 max-w-content items-center gap-4 px-4 sm:px-6 lg:h-[72px]">

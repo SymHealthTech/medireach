@@ -20,10 +20,10 @@ import { Icon, QrBlock, shortUrl, type ICONS } from "./index";
  * legibly in black and white: dark text on white, QR in the primary colour.
  */
 
-const PAPER = "#FBF8F3";
-const MUTED = "#5D6B6C";
-const LINE = "#E6E1D8";
-const TEXT = "#1C2526";
+const PAPER = "#F7F9FA";
+const MUTED = "#5B6573";
+const LINE = "#E5E7EB";
+const TEXT = "#1F2933";
 
 function initials(name: string): string {
   const words = name.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w));

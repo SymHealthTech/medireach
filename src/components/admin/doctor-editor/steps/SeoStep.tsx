@@ -88,7 +88,7 @@ export function SeoStep({ form: f, set, err, options, readOnly, doctorId }: Step
       <Group title="Google preview" description="How the page should look in search results. Google may vary it.">
         <div className="rounded-xl border border-line bg-white p-4 font-[arial,sans-serif] text-[#202124]">
           <div className="flex items-center gap-2 text-xs">
-            <span className="flex size-7 items-center justify-center rounded-full bg-[#f1f3f4] text-[10px] font-bold text-[#0e3b3c]">M</span>
+            <span className="flex size-7 items-center justify-center rounded-full bg-[#f1f3f4] text-[10px] font-bold text-[#0a3f3f]">M</span>
             <span>
               <span className="block text-sm">MediReach</span>
               <span className="block text-[#4d5156]">{pageUrl.replace(/^https?:\/\//, "").replace(/\//g, " › ")}</span>

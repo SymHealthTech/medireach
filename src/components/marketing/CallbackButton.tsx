@@ -1,7 +1,7 @@
 "use client";
 
 import { PhoneCall } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CALLBACK } from "@/content/marketing";
 import { LeadForm } from "./LeadForm";
 
@@ -17,12 +17,12 @@ export function CallbackButton({ className, label = CALLBACK.cta, icon = true }:
           {icon && <PhoneCall className="size-4" strokeWidth={2} />} {label}
         </button>
       </DialogTrigger>
-      <DialogContent className="rounded-2xl border-line bg-surface p-6 sm:max-w-md">
+      {/* The instructions live in the form (hidden after sending), so no Radix description. */}
+      <DialogContent aria-describedby={undefined} className="rounded-2xl border-line bg-surface p-6 sm:max-w-md">
         <DialogHeader className="text-left">
           <DialogTitle className="font-display text-2xl font-semibold text-ink">{CALLBACK.title}</DialogTitle>
-          <DialogDescription className="text-body/80">{CALLBACK.text}</DialogDescription>
         </DialogHeader>
-        <LeadForm source="homepage_form" compact />
+        <LeadForm source="homepage_form" compact title={<p className="-mt-2 text-body/80">{CALLBACK.text}</p>} />
       </DialogContent>
     </Dialog>
   );

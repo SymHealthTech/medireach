@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Clock3, Phone } from "lucide-react";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { WhatsAppIcon } from "@/components/marketing/WhatsAppLink";
-import { displayPhone, getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
+import { getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
 
 /**
  * Shown instead of a site whose renewal wasn't paid after the grace period
@@ -43,7 +43,7 @@ export async function LapsedNotice() {
                 href={`tel:+${site.contactPhone}`}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-line px-5 font-semibold text-ink hover:border-ink/40"
               >
-                <Phone className="size-4" strokeWidth={2} /> {displayPhone(site.contactPhone)}
+                <Phone className="size-4" strokeWidth={2} /> Call us
               </a>
             )}
           </div>

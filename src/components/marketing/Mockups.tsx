@@ -107,7 +107,7 @@ export function PhoneMockup({ doctor, className, badge }: { doctor: PublicDoctor
         </div>
       </div>
       {badge && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-marigold px-3 py-1 text-xs font-semibold text-[#0e3b3c]">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-marigold px-3 py-1 text-xs font-semibold text-white">
           {badge}
         </span>
       )}

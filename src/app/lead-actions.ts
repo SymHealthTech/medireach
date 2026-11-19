@@ -89,10 +89,10 @@ export async function submitLeadAction(_prev: LeadFormState, formData: FormData)
       subject: `New MediReach lead: ${lead.name}`,
       text: rows.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join("\n"),
       html:
-        `<h2 style="font-family:system-ui;color:#0E3B3C">New lead</h2><table style="font-family:system-ui;font-size:14px">` +
+        `<h2 style="font-family:system-ui;color:#0A3F3F">New lead</h2><table style="font-family:system-ui;font-size:14px">` +
         rows
           .filter(([, v]) => v)
-          .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5D6B6C">${k}</td><td>${escapeHtml(v!)}</td></tr>`)
+          .map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#5B6573">${k}</td><td>${escapeHtml(v!)}</td></tr>`)
           .join("") +
         `</table>`,
     });

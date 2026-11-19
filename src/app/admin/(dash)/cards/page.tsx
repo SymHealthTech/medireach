@@ -59,7 +59,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
             ? absUrl(paths.doctor(d.citySlug, d.slug))
             : undefined;
       const qrSvg = shareUrl
-        ? await QRCode.toString(shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0E3B3C", light: "#FFFFFF" } })
+        ? await QRCode.toString(shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0A3F3F", light: "#FFFFFF" } })
         : undefined;
       const published = d.status === "published" && d.slug && d.citySlug;
       const publicDoctor = await loadDoctorForCard(String(d._id));
@@ -118,7 +118,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                 </div>
               )}
               {c.shareUrl && c.qrSvg && <CardTools qrSvg={c.qrSvg} fileBase={c.fileBase} shareUrl={c.shareUrl} message={c.message} vcfUrl={c.vcfUrl} />}
-              {c.status !== "published" && <p className="text-xs text-marigold">Not published yet — the QR link won&apos;t open until it is.</p>}
+              {c.status !== "published" && <p className="text-xs text-amber-700 dark:text-amber-400">Not published yet — the QR link won&apos;t open until it is.</p>}
             </li>
           ))}
         </ul>

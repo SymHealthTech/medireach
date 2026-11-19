@@ -26,7 +26,7 @@ export default async function SampleCardDoctorPage({ params }: { params: Promise
   if (!doctor) notFound();
   return (
     <div className="min-h-dvh bg-mist">
-      <div className="bg-marigold px-4 py-2 text-center text-sm font-semibold text-[#0e3b3c]">
+      <div className="bg-marigold px-4 py-2 text-center text-sm font-semibold text-white">
         Sample — this is what the doctor sees after logging in. Patients only see the card.{" "}
         <Link href="/" className="underline">
           Get your own

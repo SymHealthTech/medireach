@@ -22,22 +22,30 @@ Audience: Indian doctors and clinic owners aged 28–60, mostly on Android phone
 ## 2. Design tokens
 
 ### Colour
+The website uses the same branding as the MediReach clinic app: **teal** is the brand colour, **amber** is the primary action colour. Token names are historical (`lagoon` = brand teal, `marigold` = amber, `clay` = red, `leaf` = success green).
+
 | Token | Hex | Use |
 |---|---|---|
-| `ink` | `#0E3B3C` | Primary: deep teal-green. Headings, primary buttons, dashboard sidebar |
-| `ink-700` | `#155456` | Hover / secondary emphasis |
-| `paper` | `#FBF8F3` | Page background (warm off-white) |
+| `lagoon` | `#0E7C7B` | Brand teal: logo, links, icons, accent text (4.8:1 on paper) |
+| `lagoon-700` | `#0B6564` | Teal hover |
+| `ink` | `#0A3F3F` | Deep teal shade: headings, dark bands (NMC, footer, final CTA, featured price card), secondary buttons, dashboard sidebar |
+| `ink-700` | `#0E5655` | Hover / secondary emphasis |
+| `marigold` | `#F2994A` | Amber: primary action buttons ("Get started", WhatsApp CTAs), badges, small highlights. **White text on amber.** Never body text |
+| `marigold-700` | `#DA8A43` | Amber hover |
+| `paper` | `#F7F9FA` | Page background |
 | `surface` | `#FFFFFF` | Cards, inputs |
-| `marigold` | `#E3A23B` | Accent: highlights, Founding badge, small details. Never body text |
-| `sage` | `#DCE8E2` | Soft section backgrounds, chips |
-| `clay` | `#C8664B` | Errors / compliance warnings |
-| `leaf` | `#2F8F5B` | Success / published / "open now" |
-| `text` | `#1C2526` | Body text |
-| `muted` | `#5D6B6C` | Secondary text |
-| `line` | `#E6E1D8` | Borders, dividers |
+| `sage` / `mint` / `mist` | `#E0F2F1` / `#ECF6F5` / `#F2F9F8` | Pale teal washes: section backgrounds, chips |
+| `clay` | `#E63946` (text `#C62F3B`) | Red: emergency labels and errors / compliance warnings only. Nowhere else |
+| `leaf` | `#27AE60` (text `#1C7442`) | Success / published / "open now" |
+| `text` | `#1F2933` | Body text |
+| `muted` | `#5B6573` | Secondary text |
+| `line` | `#E5E7EB` | Borders, dividers |
 
-Dark mode (dashboard only): background `#0B1F20`, surface `#122B2C`, text `#EAF1EF`, keep marigold.
-All text ≥ WCAG AA. Marigold only on `ink` or as a background behind `ink` text.
+The public website is **light mode only**. The admin dashboard keeps an opt-in dark toggle (clinic app dark values): background `#121417`, surface `#1E2328`, text `#E8EAED`, teal `#3FA8A6`, keep amber.
+All body text ≥ WCAG AA. Exception by choice: amber buttons and badges use white text (about 2.2:1), kept bold/semibold.
+
+### Logo
+Shared with the clinic app: a rounded teal square badge holding a white speech bubble with a teal pulse line and a small amber dot at the tail tip, followed by the wordmark **"Medi"** in teal and **"Reach"** in amber (bold, UI sans). On dark bands "Medi" turns white. The badge alone is the favicon / app icon / small mark.
 
 ### Typography (via `next/font`)
 - **Display:** *Fraunces* (500–700): hero, section titles, doctor/clinic names.
@@ -48,7 +56,7 @@ All text ≥ WCAG AA. Marigold only on `ink` or as a background behind `ink` tex
 ### Shape and space
 - Radius: 16 px large cards, 12 px cards, 10 px inputs/buttons, 999 px chips.
 - 8 px grid; sections 80 px vertical padding on mobile, 128 px on desktop.
-- One soft shadow: `0 1px 2px rgba(14,59,60,.06), 0 12px 32px rgba(14,59,60,.08)`. No glassmorphism, no heavy shadows.
+- One soft shadow: `0 1px 2px rgba(10,63,63,.06), 0 8px 24px rgba(10,63,63,.06)`. No glassmorphism, no heavy shadows.
 - Icons: lucide-react, 1.75 stroke. Illustrations: simple single-colour line illustrations (ink lines, sage/marigold fills). No patient photos anywhere.
 
 ---
@@ -65,9 +73,8 @@ Library: **`motion`** (Framer Motion), loaded with `LazyMotion` + `domAnimation`
 | Float | Phone/card mockups drift ±6 px vertically, 6 s loop, CSS |
 | Card tilt | Visiting card tilts up to 8° following the pointer (only on `pointer: fine` devices) |
 | Card flip | Front ↔ back, 600 ms, `rotateY`, auto every 4 s while in view; tap to flip on mobile |
-| QR scan | A thin marigold line sweeps over the QR, 2.4 s loop |
+| QR scan | A thin amber line sweeps over the QR, 2.4 s loop |
 | Typing search | Search-box text types at 45 ms per character, pauses 1.2 s, result card slides up 300 ms |
-| Count-up | Founding spots counter counts to its value over 900 ms when in view |
 | Line draw | "How it works" connector draws with `pathLength` 0 → 1 as you scroll through the section |
 | Hover | Cards lift 4 px + shadow deepens, 180 ms; buttons press scale 0.98 |
 | Marquee | Specialty chips scroll slowly (40 s per loop), pause on hover/touch |
@@ -86,22 +93,22 @@ Rules:
 Max content width 1200 px. Mobile-first. Every section has one job.
 
 ### 4.1 Top bar
-Logo (wordmark "MediReach" in Fraunces + small marigold dot). Links: Doctors · Clinics · Hospitals · Designs · Pricing · Login. Right: ink button "Get started". Sticky; transparent over the hero, turns solid paper with a hairline on scroll. Mobile: logo + "Get started" + menu sheet.
+Logo (teal badge + two-tone "MediReach" wordmark, see §2). Links: Doctors · Clinics · Hospitals · Designs · Pricing · Login. Right: amber button "Get started" (white text). Sticky; transparent over the hero, turns solid paper with a hairline on scroll. Mobile: logo + "Get started" + menu sheet.
 
 ### 4.2 Hero (with audience switcher)
 - Eyebrow chip (sage): "Websites for doctors, clinics and small hospitals · Pune"
 - **H1 (static, LCP):** "Patients search for you on Google. Make sure they find you."
-- **Audience switcher** (segmented control, sliding ink pill): **Doctor · Clinic · Hospital**. Default = Doctor. Changing it swaps:
+- **Audience switcher** (one white segmented control, ink pill on the active tab, amber progress bar while auto-advancing): **Doctor · Clinic · Hospital**. Default = Doctor. Changing it swaps:
   - Subline:
     - Doctor: "A professional portfolio website + digital visiting card. Ready in 24 hours."
     - Clinic: "A complete clinic website designed for your specialty, with your doctors, timings and location. Ready in 48 hours."
     - Hospital: "A full website for hospitals up to 10 beds: departments, doctors, facilities and 24×7 contact."
-  - Price line: "₹1,999 one-time · ₹999/year from year 2" / "₹2,999 · ₹999/year" / "₹4,999 · ₹1,499/year"
+  - Price line in a sage chip: "₹1,999 one-time · ₹999/year from year 2" / "₹2,999 · ₹999/year" / "₹4,999 · ₹1,499/year"
   - Device stage (crossfade): phone with doctor profile / laptop + phone with clinic site / laptop with hospital site.
-- Buttons: primary "Get my website on WhatsApp" (WhatsApp icon), secondary "See sample designs".
-- Trust line: "Digital visiting card included · Built for NMC advertising guidelines".
+- Buttons: primary amber "Get my website on WhatsApp" (WhatsApp icon, white text), secondary white outline "See sample designs".
+- Trust row (small green ticks): "Built for NMC guidelines · Digital visiting card included · Easy to use on any phone".
 - Floating mini-chips around the device (float animation): "Open now", "Get directions", "Save contact", "{name}.medireach.co.in". The visiting card overlaps the device at an angle with the QR scan line.
-- Background: paper with a large soft sage blob behind the device and a faint dotted grid.
+- Background: white easing into pale teal, a soft teal glow top-right and a faint amber glow bottom-left (as in the clinic app). Behind the device: a pale teal disc with a thin dashed ring, one amber dot and one teal dot. Keep it simple: no blobs, no dot grid.
 
 ### 4.3 Specialty marquee
 A slim band of chips with small icons, scrolling slowly: General OPD · Skin & Hair · Dental · Eye · ENT · Cardiology · Ayurveda · Homeopathy · Physiotherapy · Paediatrics · Gynaecology · Orthopaedics · Small hospitals. Each chip links to that design in section 4.6.
@@ -143,7 +150,7 @@ Ink band, paper text, shield icon. "Built for the NMC Guidelines on Ethical Adve
 ### 4.10 Pricing
 - Three cards (Doctor / Clinic / Small hospital) with setup price, renewal, inclusions and "Get started". Clinic card gets a subtle "Most popular" marigold tag.
 - Under the cards: "Add your clinic's doctors: ₹1,499 per doctor portfolio · Own domain at actual cost · Done-for-you updates ₹299 · Prices {incl./excl.} GST".
-- **Founding banner** (marigold): "First 100 customers: renewal at just ₹499/year for life (₹999 for hospitals). **{n} spots left**" with count-up number and a slim progress bar. Values come from Settings/DB.
+- No Founding banner and no GST note on the public site (removed 19 Nov 2026). Founding renewals stay an admin-only setting.
 
 ### 4.11 For multi-doctor clinics and hospitals
 Sage band: "One website for your clinic, a portfolio for every doctor." Small diagram: clinic site in the centre linked to 3 doctor cards. Button "Talk to us".
@@ -184,7 +191,7 @@ One clinic layout + one hospital layout in Phase 1, each skinned by a **specialt
 
 | Theme | Primary | Accent | Soft | Emphasis |
 |---|---|---|---|---|
-| General OPD | `#0E3B3C` | `#E3A23B` | `#DCE8E2` | Timings, walk-in info, services |
+| General OPD | `#0A3F3F` | `#F2994A` | `#E0F2F1` | Timings, walk-in info, services |
 | Skin & Hair | `#5B3A4A` | `#D9A38B` | `#F4E6E0` | Treatments by concern, equipment (no before/after) |
 | Dental | `#1F4E6B` | `#7FC8D6` | `#E3F2F5` | Procedures list, chairs/equipment, fees |
 | Eye | `#203A5C` | `#6BA6D6` | `#E4EEF7` | Conditions, diagnostics, optical counter |
@@ -196,7 +203,7 @@ One clinic layout + one hospital layout in Phase 1, each skinned by a **specialt
 | Paediatrics | `#2B4C7E` | `#F2B84B` | `#EAF0FA` | Vaccination schedule info, timings |
 | Gynaecology | `#5C2E55` | `#E39AB1` | `#F6E8EF` | Services, antenatal care info |
 | Orthopaedics | `#2C3E50` | `#E3A23B` | `#E8ECEF` | Procedures, physiotherapy link |
-| Small hospital | `#0E3B3C` | `#C8664B` | `#E6EFEC` | 24×7 bar, departments, beds, insurance |
+| Small hospital | `#0E5655` | `#C8664B` | `#E0F0EF` | 24×7 bar, departments, beds, insurance |
 
 Illustrations: simple line icons per specialty (tooth, eye, leaf, spine, heart outline, etc.). No body imagery, no patient photos.
 
@@ -207,7 +214,7 @@ Illustrations: simple line icons per specialty (tooth, eye, leaf, spine, heart o
 Goal: as good as Linear or Notion, but warmer. Calm, fast, never cluttered, fully usable on a phone during field visits.
 
 ### Layout
-- **Desktop (≥1024 px):** left sidebar 248 px, ink background, paper text, marigold indicator on active item; collapsible to 72 px. Top bar on paper: page title, global search (⌘K), "+ New" split button (Doctor / Clinic / Hospital), avatar menu.
+- **Desktop (≥1024 px):** left sidebar 248 px, ink background, paper text, amber indicator on active item; collapsible to 72 px. Top bar on paper: page title, global search (⌘K), "+ New" split button (Doctor / Clinic / Hospital), avatar menu.
 - **Tablet:** collapsed icon sidebar.
 - **Mobile:** top bar + **bottom tab bar**: Overview · Doctors · + (raised ink circle → choose Doctor / Clinic / Hospital) · Clinics · More (drawer).
 - Content max width 1280 px, 24 px gutters (16 px on mobile).

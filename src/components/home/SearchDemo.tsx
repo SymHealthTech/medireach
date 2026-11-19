@@ -78,7 +78,7 @@ export function SearchDemo() {
   return (
     <figure className="w-full max-w-[520px]">
       <div ref={box} aria-hidden className="rounded-2xl border border-line bg-surface p-4 shadow-soft sm:p-6">
-        <div className="flex h-12 items-center gap-3 rounded-full border border-line bg-paper px-4 shadow-[inset_0_1px_2px_rgba(14,59,60,.06)]">
+        <div className="flex h-12 items-center gap-3 rounded-full border border-line bg-paper px-4 shadow-[inset_0_1px_2px_rgba(10,63,63,.06)]">
           <Search className="size-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
           <span className="min-w-0 flex-1 truncate text-[15px] text-ink">
             {typed}

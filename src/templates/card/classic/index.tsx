@@ -17,15 +17,15 @@ import { CARD_SIZE, type CardQr, type CardTemplateProps } from "@/templates/type
  * CardTemplateProps). Rendered as HTML on the card page and as PNG / PDF.
  */
 
-const INK = "#0E3B3C";
-const INK_DEEP = "#072627";
-const INK_LIGHT = "#155456";
-const LAGOON = "#1B6B66";
-const PAPER = "#FBF8F3";
-const MARIGOLD = "#E3A23B";
-const MUTED = "#5D6B6C";
-const SAGE = "#DCE8E2";
-const LINE = "#E6E1D8";
+const INK = "#0A3F3F";
+const INK_DEEP = "#062A2A";
+const INK_LIGHT = "#0e5655";
+const LAGOON = "#0E7C7B";
+const PAPER = "#F7F9FA";
+const MARIGOLD = "#F2994A";
+const MUTED = "#5B6573";
+const SAGE = "#E0F2F1";
+const LINE = "#E5E7EB";
 
 const INK_GRADIENT = `linear-gradient(160deg, ${INK_LIGHT} 0%, ${INK} 55%, ${INK_DEEP} 100%)`;
 
@@ -131,13 +131,13 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
             overflow: "hidden",
           }}
         >
-          <div style={{ display: "flex", position: "absolute", top: -90, right: -90, width: 240, height: 240, borderRadius: 999, border: "2px solid rgba(251,248,243,0.08)" }} />
-          <div style={{ display: "flex", position: "absolute", bottom: -70, left: -70, width: 200, height: 200, borderRadius: 999, background: "rgba(227,162,59,0.14)" }} />
+          <div style={{ display: "flex", position: "absolute", top: -90, right: -90, width: 240, height: 240, borderRadius: 999, border: "2px solid rgba(247,249,250,0.08)" }} />
+          <div style={{ display: "flex", position: "absolute", bottom: -70, left: -70, width: 200, height: 200, borderRadius: 999, background: "rgba(242,153,74,0.14)" }} />
           <Photo url={photoUrl} name={d.fullName} size={188} ring={6} fonts={fonts} />
           <div style={{ display: "flex", marginTop: 30 }}>
             <QrBlock qr={qr} px={150} radius={14} />
           </div>
-          <div style={{ display: "flex", fontSize: 16, color: "rgba(251,248,243,0.78)", marginTop: 12, letterSpacing: 1 }}>Scan for my website</div>
+          <div style={{ display: "flex", fontSize: 16, color: "rgba(247,249,250,0.78)", marginTop: 12, letterSpacing: 1 }}>Scan for my website</div>
         </div>
 
         {/* Details */}
@@ -208,9 +208,9 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           textAlign: "center",
         }}
       >
-        <div style={{ display: "flex", position: "absolute", top: -220, right: -200, width: 640, height: 640, borderRadius: 999, border: "3px solid rgba(251,248,243,0.07)" }} />
-        <div style={{ display: "flex", position: "absolute", top: -120, right: -100, width: 440, height: 440, borderRadius: 999, border: "3px solid rgba(251,248,243,0.07)" }} />
-        <div style={{ display: "flex", position: "absolute", bottom: 40, left: -160, width: 420, height: 420, borderRadius: 999, background: "rgba(227,162,59,0.12)" }} />
+        <div style={{ display: "flex", position: "absolute", top: -220, right: -200, width: 640, height: 640, borderRadius: 999, border: "3px solid rgba(247,249,250,0.07)" }} />
+        <div style={{ display: "flex", position: "absolute", top: -120, right: -100, width: 440, height: 440, borderRadius: 999, border: "3px solid rgba(247,249,250,0.07)" }} />
+        <div style={{ display: "flex", position: "absolute", bottom: 40, left: -160, width: 420, height: 420, borderRadius: 999, background: "rgba(242,153,74,0.12)" }} />
 
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: MARIGOLD }}>DIGITAL VISITING CARD</div>
         <div style={{ display: "flex", marginTop: 56 }}>
@@ -220,7 +220,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           {d.fullName}
         </div>
         {d.primarySpecialty && <div style={{ display: "flex", fontSize: 42, fontWeight: 700, color: MARIGOLD, marginTop: 18 }}>{d.primarySpecialty.name}</div>}
-        {d.degreesLine && <div style={{ display: "flex", fontSize: 32, color: "rgba(251,248,243,0.78)", marginTop: 12 }}>{d.degreesLine}</div>}
+        {d.degreesLine && <div style={{ display: "flex", fontSize: 32, color: "rgba(247,249,250,0.78)", marginTop: 12 }}>{d.degreesLine}</div>}
       </div>
 
       {/* Contact panel, overlapping the header */}
@@ -234,7 +234,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
             background: "#FFFFFF",
             borderRadius: 40,
             padding: "18px 48px",
-            boxShadow: "0 30px 60px -20px rgba(7,38,39,0.35)",
+            boxShadow: "0 30px 60px -20px rgba(6,34,56,0.35)",
           }}
         >
           {rows.map((r, i) => (
@@ -262,7 +262,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 100, background: INK_DEEP, color: PAPER, fontSize: 24 }}>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", width: 8, height: 8, borderRadius: 999, background: MARIGOLD, marginLeft: 4, marginTop: 10 }} />
-        <div style={{ display: "flex", marginLeft: 16, color: "rgba(251,248,243,0.6)" }}>{ROOT_HOSTNAME}</div>
+        <div style={{ display: "flex", marginLeft: 16, color: "rgba(247,249,250,0.6)" }}>{ROOT_HOSTNAME}</div>
       </div>
     </div>
   );

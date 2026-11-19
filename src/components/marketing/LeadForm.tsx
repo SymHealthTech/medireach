@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, type ReactNode } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { submitLeadAction, type LeadFormState } from "@/app/lead-actions";
 import { cn } from "@/lib/cn";
@@ -11,17 +11,21 @@ const input =
 
 /**
  * Lead form: name, phone, city, specialty, message. Validated on the server
- * (zod), with a hidden honeypot field and rate limits.
+ * (zod), with a hidden honeypot field and rate limits. `title` shows above the
+ * fields and is hidden once the form is sent (only the thank-you remains).
  */
 export function LeadForm({
   source,
   compact = false,
   submitLabel = "Request a call back",
+  title,
   className,
 }: {
   source: "homepage_form" | "pricing" | "clinics" | "hospitals";
   compact?: boolean;
   submitLabel?: string;
+  /** Heading above the form; not shown after a successful submit. */
+  title?: ReactNode;
   className?: string;
 }) {
   const [state, action, pending] = useActionState<LeadFormState, FormData>(submitLeadAction, {});
@@ -38,7 +42,9 @@ export function LeadForm({
   }
 
   return (
-    <form action={action} className={cn("space-y-3", className)} noValidate>
+    <>
+      {title}
+      <form action={action} className={cn("space-y-3", className)} noValidate>
       <input type="hidden" name="source" value={source} />
       {/* Honeypot — hidden from people, tempting to bots. */}
       <div aria-hidden className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
@@ -96,6 +102,7 @@ export function LeadForm({
         </Link>
         .
       </p>
-    </form>
+      </form>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
-import { RESERVED_SUBDOMAINS } from "@/config/reserved";
+import { RESERVED_SUBDOMAINS, SAMPLE_SUBDOMAINS } from "@/config/reserved";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { ROOT_HOSTNAME, SITE_URL, sitePath, type SiteRoute } from "@/lib/site";
 import { subdomainError } from "@/lib/slug";
@@ -8,6 +8,8 @@ import { subdomainError } from "@/lib/slug";
 /**
  * Edge middleware.
  *
+ * 0. Sample subdomains (draditisample.medireach.co.in): rewrite to the
+ *    built-in /sample/{key} pages (config/reserved.ts SAMPLE_SUBDOMAINS).
  * 1. Site subdomains (amit.medireach.co.in, shreeskin.medireach.co.in,
  *    amit.localhost:3000 in dev): doctors and clinics/hospitals share one
  *    namespace. REWRITE (not redirect) to the canonical /[city]/doctor/[slug],
@@ -68,6 +70,13 @@ async function handleSubdomain(req: NextRequest, sub: string) {
   // Static icons from public/ (logo, apple-icon) load directly instead of bouncing to the apex.
   if (path === "/robots.txt" || path.startsWith("/sitemap") || path.startsWith("/_next/") || /^\/[\w-]+\.(png|ico)$/.test(path)) {
     return NextResponse.next();
+  }
+
+  // Built-in sample doctors (homepage visiting cards): served from /sample/{key}, no lookup.
+  const sample = SAMPLE_SUBDOMAINS[sub];
+  if (sample) {
+    if (path === "/" || path === "/card" || path === "/contact.vcf") return rewriteTo(req, `/sample/${sample}${path === "/" ? "" : path}`);
+    return NextResponse.redirect(`${SITE_URL}${path}${req.nextUrl.search}`, 308);
   }
 
   if ((RESERVED_SUBDOMAINS as readonly string[]).includes(sub) || subdomainError(sub) !== null) {

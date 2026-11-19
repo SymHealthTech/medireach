@@ -130,7 +130,7 @@ export const SPECIALTY_THEMES = [
     name: "General OPD",
     kind: "clinic",
     icon: "stethoscope",
-    palette: { primary: "#0E3B3C", accent: "#E3A23B", soft: "#DCE8E2" },
+    palette: { primary: "#0A3F3F", accent: "#F2994A", soft: "#E0F2F1" },
     heroIllustration: "stethoscope",
     serviceGroups: [],
     suggestedServices: [
@@ -352,7 +352,7 @@ export const SPECIALTY_THEMES = [
     name: "Small hospital",
     kind: "hospital",
     icon: "hospital",
-    palette: { primary: "#0E3B3C", accent: "#C8664B", soft: "#E6EFEC" },
+    palette: { primary: "#0E5655", accent: "#C8664B", soft: "#E0F0EF" },
     heroIllustration: "hospital",
     serviceGroups: [],
     suggestedServices: [

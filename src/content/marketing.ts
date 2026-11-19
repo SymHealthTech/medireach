@@ -9,36 +9,41 @@
 
 export type Audience = "doctor" | "clinic" | "hospital";
 
-/** Hero (§4.2). The H1 is static (LCP); the audience switcher swaps the rest. */
+/**
+ * Hero (§4.2): a static H1, then a three-slide carousel (Doctor · Clinic ·
+ * Hospital), each with its own tagline, one line and its price.
+ */
 export const HERO = {
-  eyebrow: "Websites for doctors, clinics and small hospitals · Pune",
-  title: "Patients search for you on Google. Make sure they find you.",
-  /** The tail of `title` the hero sets in the accent style. */
-  titleAccent: "Make sure they find you.",
-  switcherLabel: "Show me websites for",
+  h1: "Websites for doctors, clinics and small hospitals in Pune",
+  carouselLabel: "Websites for",
   audiences: {
     doctor: {
       label: "Doctor",
-      sub: "A professional portfolio website + digital visiting card. Ready in 24 hours.",
+      tagline: "Your own website, ready in 24 hours.",
+      sub: "A portfolio website and digital visiting card for individual doctors.",
       subdomain: "drname",
     },
     clinic: {
       label: "Clinic",
-      sub: "A complete clinic website designed for your specialty, with your doctors, timings and location. Ready in 48 hours.",
+      tagline: "Your clinic, easy to find on any phone.",
+      sub: "A website in a design made for your specialty, with your doctors, timings and map.",
       subdomain: "yourclinic",
     },
     hospital: {
       label: "Hospital",
-      sub: "A full website for hospitals up to 10 beds: departments, doctors, facilities and 24×7 contact.",
+      tagline: "Every department, one clear website.",
+      sub: "Departments, doctors, facilities and 24×7 contact, for hospitals up to 10 beds.",
       subdomain: "yourhospital",
     },
-  } satisfies Record<Audience, { label: string; sub: string; subdomain: string }>,
+  } satisfies Record<Audience, { label: string; tagline: string; sub: string; subdomain: string }>,
   /** `{setup}` / `{renewal}` from Settings. */
   price: "{setup} one-time · {renewal}/year from year 2",
   primaryCta: "Get my website on WhatsApp",
   secondaryCta: "See sample designs",
-  trust: "Digital visiting card included · Built for NMC advertising guidelines",
-  chips: { open: "Open now", directions: "Get directions", save: "Save contact" },
+  /** Short reassurance row under the buttons. */
+  trust: ["Built for NMC guidelines", "Digital visiting card included", "Easy to use on any phone"],
+  pause: "Pause slides",
+  play: "Play slides",
 };
 
 /** Specialty marquee (§4.3): theme names come from the theme config. */
@@ -63,53 +68,14 @@ export const FOUND = {
   ],
 };
 
-/** Three products (§4.5). `setup` / `renewal` name Settings price keys. */
-export const PRODUCTS_COPY = {
-  eyebrow: "Three products",
-  title: "Pick the website that fits your practice",
-  ribbon: "Every plan includes a digital visiting card",
-  seeSample: "See sample",
-  items: [
-    {
-      key: "doctor" as const,
-      setup: "doctorSetup" as const,
-      renewal: "renewalDoctor" as const,
-      name: "Doctor portfolio",
-      purpose: "A one-page website for an individual doctor.",
-      href: "/sample/gp",
-      inclusions: ["Profile, qualifications and registration", "Clinics and timings", "Services you offer", "Map and one-tap directions", "Up to 5 photos"],
-    },
-    {
-      key: "clinic" as const,
-      setup: "clinicSetup" as const,
-      renewal: "renewalClinic" as const,
-      name: "Clinic website",
-      purpose: "For single or multi-doctor clinics, in a design made for your specialty.",
-      href: "/designs",
-      inclusions: ["Clinic profile and your doctors", "Services and facilities", "Timings and map", "Specialty design and colours", "Up to 8 photos"],
-    },
-    {
-      key: "hospital" as const,
-      setup: "hospitalSetup" as const,
-      renewal: "renewalHospital" as const,
-      name: "Small hospital website",
-      purpose: "For hospitals up to 10 beds.",
-      href: "/designs/small-hospital",
-      inclusions: ["Departments and doctors by department", "Facilities and beds", "Insurance/TPA list", "24×7 contact bar", "Up to 12 photos"],
-    },
-  ],
-  setupLabel: "setup",
-  /** `{renewal}` from Settings. */
-  renewal: "then {renewal}/year from year 2",
-};
-
 /** Specialty designs on the homepage (§4.6); the theme points come from the theme config. */
 export const HOME_DESIGNS = {
   title: "Designs made for your specialty",
   text: "Each one is personalised with your name, logo, colours, photos and details.",
   filterLabel: "Choose a specialty",
   builtFor: "Built for this specialty",
-  colours: "Colours",
+  /** Added to every specialty's list. */
+  doctors: "Doctor profiles with qualifications and timings",
   view: "View sample",
   all: "See all designs",
   badge: "Sample",
@@ -128,7 +94,9 @@ export const CARD_SPOTLIGHT = {
   ],
   flipHint: "Tap the card to flip it",
   back: { scan: "Scan to save contact", sub: "Timings, directions and one-tap call" },
-  chat: { message: "Here is my visiting card", sent: "Sent" },
+  /** Labels on the two previews. */
+  digitalLabel: "Digital card: opens on any phone",
+  printLabel: "Print card",
 };
 
 export const HOW_IT_WORKS = {
@@ -156,7 +124,7 @@ export const NMC = {
  */
 export const PRICING = {
   title: "Simple pricing: setup once, renewal from year 2",
-  ribbon: "Every plan includes a digital visiting card",
+  sub: "No monthly fees. Every plan includes a digital visiting card.",
   plans: [
     {
       key: "doctor" as const,
@@ -208,12 +176,8 @@ export const PRICING = {
   setupLabel: "setup",
   /** `{renewal}` = yearly renewal price. */
   renewalLine: "then {renewal}/year from year 2",
-  foundingLabel: "Founding offer",
-  /** `{total}` = Founding total, `{founding}` / `{foundingHospital}` = lifetime renewal prices. */
-  founding: "First {total} customers: renewal at {founding}/year for life ({foundingHospital} for hospitals).",
-  foundingLeft: "{n} spots left",
-  /** `{addon}`, `{update}` = prices, `{gst}` = incl./excl. GST note. */
-  notes: "Add your clinic's doctors: {addon} per doctor portfolio · Own domain at actual cost · Done-for-you updates {update} · {gst}",
+  /** `{update}` = price. */
+  notes: "Own domain at actual cost · Done-for-you updates {update}",
 };
 
 /** /pricing. Prices come from Settings; `{…}` placeholders are filled on the page. */
@@ -324,20 +288,6 @@ export const MULTI_DOCTOR = {
   cta: "Talk to us",
 };
 
-/** Sample sites gallery (§4.12). */
-export const GALLERY = {
-  title: "Sample sites",
-  text: "Every name and detail on these samples is made up.",
-  badge: "Sample",
-  open: "Open sample",
-  doctors: [
-    { key: "gp" as const, label: "General physician", href: "/sample/gp" },
-    { key: "consultant" as const, label: "Consultant cardiologist", href: "/sample/consultant" },
-  ],
-  /** Theme keys of the clinic and hospital samples shown (4 clinics, 1 hospital). */
-  sites: ["general-opd", "skin", "dental", "eye", "small-hospital"] as const,
-};
-
 export const FAQ = {
   title: "Questions doctors and clinics ask",
   items: [
@@ -347,7 +297,7 @@ export const FAQ = {
     },
     {
       q: "Do I have to pay every year?",
-      a: "You pay the setup price once. From the second year there is a yearly renewal, which covers hosting, security and the updates you make yourself. The first customers get a lower renewal price for life.",
+      a: "You pay the setup price once. From the second year there is a yearly renewal, which covers hosting, security and the updates you make yourself.",
     },
     {
       q: "Can I use my own domain?",
@@ -381,8 +331,8 @@ export const FINAL_CTA = {
   title: "Get your website live this week.",
   titleAccent: "this week",
   whatsapp: "Message us on WhatsApp",
-  /** `{phone}` from Settings. */
-  call: "or call {phone}",
+  /** Links to the number from Settings; the number itself is never printed. */
+  call: "or call us",
   formTitle: "Or leave your number and we'll call you",
 };
 
@@ -468,6 +418,6 @@ export function allMarketingCopy(): string[] {
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk([HERO, MARQUEE, FOUND, PRODUCTS_COPY, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, GALLERY, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS]);
+  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS]);
   return out;
 }

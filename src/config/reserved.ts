@@ -93,7 +93,19 @@ export const RESERVED_SUBDOMAINS = [
   "ns1",
   "ns2",
   "medireach",
+  // Sample doctor addresses (see SAMPLE_SUBDOMAINS): never available to real doctors.
+  "draditisample",
 ] as const;
+
+/**
+ * Subdomains that show a built-in sample doctor (no database): the address
+ * printed on the homepage's sample visiting cards, so their QR codes work.
+ * Value = the sample key under /sample/{key}. Each one is also in
+ * RESERVED_SUBDOMAINS.
+ */
+export const SAMPLE_SUBDOMAINS: Record<string, string> = {
+  draditisample: "gp",
+};
 
 /** Prefix that marks a top-level doctor short slug (`/dr-amit-shah`). */
 export const DOCTOR_SHORT_SLUG_PREFIX = "dr-";

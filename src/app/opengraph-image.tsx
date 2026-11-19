@@ -9,10 +9,10 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "MediReach: websites and visiting cards for doctors";
 
-const INK = "#0E3B3C";
-const PAPER = "#FBF8F3";
-const MARIGOLD = "#E3A23B";
-const SAGE = "#DCE8E2";
+const INK = "#0A3F3F";
+const PAPER = "#F7F9FA";
+const MARIGOLD = "#F2994A";
+const SAGE = "#E0F2F1";
 
 export default async function OgImage() {
   const icon = `data:image/png;base64,${(await readFile(join(process.cwd(), "public", "icon-192.png"))).toString("base64")}`;

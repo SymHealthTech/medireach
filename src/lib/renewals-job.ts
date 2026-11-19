@@ -2,6 +2,7 @@ import "server-only";
 import type { Model, Types } from "mongoose";
 import { sendEmail } from "@/lib/integrations/email";
 import { optionalEnv } from "@/lib/env";
+import { MEDIREACH_PHONE } from "@/lib/site";
 import { revalidateSiteRoute } from "@/lib/public/revalidate";
 import {
   computeRenewalStatus,
@@ -141,8 +142,8 @@ export async function runRenewalJob(opts: { now?: Date; dryRun?: boolean } = {})
   const dryRun = Boolean(opts.dryRun);
   const settings = await getSettings();
   const contact: MediReachContact = {
-    whatsapp: settings.whatsappNumber || optionalEnv("NEXT_PUBLIC_WHATSAPP_NUMBER") || "919800000000",
-    ...(settings.contactPhone ? { phone: settings.contactPhone } : {}),
+    whatsapp: settings.whatsappNumber || optionalEnv("NEXT_PUBLIC_WHATSAPP_NUMBER") || MEDIREACH_PHONE,
+    phone: settings.contactPhone || MEDIREACH_PHONE,
     email: optionalEnv("NEXT_PUBLIC_SUPPORT_EMAIL") || "support@medireach.co.in",
   };
 

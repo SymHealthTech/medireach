@@ -67,7 +67,7 @@ function Buttons({ s, small }: { s: MiniSiteData; small?: boolean }) {
         <span
           key={label}
           className={cn("inline-flex items-center gap-1 rounded-md border font-semibold", small ? "px-1.5 py-1 text-[8px]" : "px-2 py-1.5 text-[9.5px]")}
-          style={i === 0 ? { background: primary, borderColor: primary, color: "#fff" } : { background: "#fff", borderColor: "#E6E1D8", color: primary }}
+          style={i === 0 ? { background: primary, borderColor: primary, color: "#fff" } : { background: "#fff", borderColor: "#E5E7EB", color: primary }}
         >
           <Icon className={small ? "size-2.5" : "size-3"} strokeWidth={2} />
           {label}

@@ -26,7 +26,7 @@ export default async function SampleCardPage({ params }: { params: Promise<{ key
   if (!doctor) notFound();
   return (
     <div className="flex min-h-dvh flex-col bg-mist">
-      <div className="bg-marigold px-4 py-2 text-center text-sm font-semibold text-[#0e3b3c]">
+      <div className="bg-marigold px-4 py-2 text-center text-sm font-semibold text-white">
         Sample card — this doctor and clinic are made up.{" "}
         <Link href="/" className="underline">
           Get your own

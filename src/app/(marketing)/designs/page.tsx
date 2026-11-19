@@ -36,7 +36,7 @@ export default function DesignsPage() {
               <li key={t.key} className="flex flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft">
                 <div className="relative">
                   <ThemeMiniPreview theme={t} name={SAMPLE_SITES[t.key].name} />
-                  <span className="absolute right-2 top-2 rounded-full bg-marigold px-2 py-0.5 text-[11px] font-bold text-[#0e3b3c]">{DESIGNS.sampleBadge}</span>
+                  <span className="absolute right-2 top-2 rounded-full bg-marigold px-2 py-0.5 text-[11px] font-bold text-white">{DESIGNS.sampleBadge}</span>
                 </div>
                 <h2 className="mt-4 flex items-center gap-2 font-display text-xl font-semibold text-ink">
                   <Icon aria-hidden className="size-5" style={{ color: t.palette.primary }} strokeWidth={1.75} />
