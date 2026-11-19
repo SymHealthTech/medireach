@@ -34,9 +34,5 @@ next-env.d.ts
 # vitest
 /.vitest
 
-google-credentials.json
-
 # Claude Code internal tooling
 .claude/
-claude-code-*.md
-clinic-software-product-spec.md
