@@ -21,7 +21,7 @@ export function LeadForm({
   title,
   className,
 }: {
-  source: "homepage_form" | "pricing" | "clinics" | "hospitals";
+  source: "homepage_form" | "pricing" | "doctors" | "clinics" | "hospitals";
   compact?: boolean;
   submitLabel?: string;
   /** Heading above the form; not shown after a successful submit. */

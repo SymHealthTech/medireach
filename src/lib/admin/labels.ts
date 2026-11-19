@@ -22,6 +22,7 @@ export const LEAD_SOURCE_LABEL: Record<(typeof LEAD_SOURCES)[number], string> = 
   homepage_form: "Website form",
   whatsapp_click: "WhatsApp click",
   pricing: "Pricing page",
+  doctors: "For doctors page",
   clinics: "For clinics page",
   hospitals: "For hospitals page",
 };

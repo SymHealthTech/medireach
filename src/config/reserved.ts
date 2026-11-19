@@ -13,6 +13,7 @@ export const RESERVED_SLUGS = [
   "account",
   "pricing",
   "designs",
+  "for-doctors",
   "for-clinics",
   "for-hospitals",
   "doctor",

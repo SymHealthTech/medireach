@@ -8,7 +8,7 @@ import { Reveal } from "./Reveal";
 import { SectionTitle } from "./Sections";
 import { WhatsAppIcon, WhatsAppLink } from "./WhatsAppLink";
 
-/** Building blocks for the product pages (/for-clinics, /for-hospitals). Server components. */
+/** Building blocks for the product pages (/for-doctors, /for-clinics, /for-hospitals). Server components. */
 
 export function ProductHero({
   eyebrow,
@@ -123,7 +123,7 @@ export function HowItWorksSection() {
   );
 }
 
-export function LeadPanel({ title, source }: { title: string; source: "pricing" | "clinics" | "hospitals" }) {
+export function LeadPanel({ title, source }: { title: string; source: "pricing" | "doctors" | "clinics" | "hospitals" }) {
   return (
     <section className="px-4 py-20 sm:px-6">
       <div className="mx-auto max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-soft sm:p-8">

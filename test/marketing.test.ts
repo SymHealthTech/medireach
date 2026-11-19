@@ -28,7 +28,7 @@ describe("marketing routes", () => {
   });
 
   it("lists the product pages and moves /hospitals to /for-hospitals for good", async () => {
-    expect(MARKETING_PATHS).toEqual(expect.arrayContaining(["/pricing", "/for-clinics", "/for-hospitals", "/designs", "/terms"]));
+    expect(MARKETING_PATHS).toEqual(expect.arrayContaining(["/pricing", "/for-doctors", "/for-clinics", "/for-hospitals", "/designs", "/terms"]));
     expect(MARKETING_PATHS).not.toContain("/hospitals");
     const config = (await import("../next.config.mjs")).default;
     const redirects = await config.redirects!();
@@ -36,9 +36,9 @@ describe("marketing routes", () => {
   });
 
   it("points the top bar and footer at the product pages", () => {
-    expect(NAV.map((n) => n.href)).toEqual(["/#doctor", "/for-clinics", "/for-hospitals", "/designs", "/pricing", "/login"]);
+    expect(NAV.map((n) => n.href)).toEqual(["/for-doctors", "/for-clinics", "/for-hospitals", "/designs", "/pricing", "/login"]);
     const footerLinks = FOOTER.columns.flatMap((c) => c.links.map((l) => l.href));
-    expect(footerLinks).toEqual(expect.arrayContaining(["/for-clinics", "/for-hospitals", "/pricing", "/terms", "/privacy"]));
+    expect(footerLinks).toEqual(expect.arrayContaining(["/for-doctors", "/for-clinics", "/for-hospitals", "/pricing", "/terms", "/privacy"]));
   });
 
   it("accepts and labels leads from the clinics page", () => {

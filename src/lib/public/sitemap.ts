@@ -14,7 +14,7 @@ import { absUrl, paths, sitePath } from "@/lib/site";
 export const SITEMAP_CHUNK_SIZE = 5000;
 
 /** Marketing pages (sample pages and /login are noindex, so not listed). */
-export const MARKETING_PATHS = ["/", "/pricing", "/for-clinics", "/for-hospitals", "/designs", "/contact", "/terms", "/privacy"];
+export const MARKETING_PATHS = ["/", "/pricing", "/for-doctors", "/for-clinics", "/for-hospitals", "/designs", "/contact", "/terms", "/privacy"];
 
 export async function allSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   const [profiles, sites, hubs] = await Promise.all([getPublishedRoutes(), getPublishedEstablishmentRoutes(), nonEmptyHubs()]);

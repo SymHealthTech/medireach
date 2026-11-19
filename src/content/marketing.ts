@@ -212,6 +212,35 @@ export const PRICING_PAGE = {
   formTitle: "Want us to call you?",
 };
 
+/** /for-doctors. */
+export const FOR_DOCTORS = {
+  eyebrow: "For doctors",
+  title: "Your own website and visiting card, ready in 24 hours",
+  text: "A portfolio page with your qualifications, registration, clinics and timings, that patients can find on Google and open on any phone.",
+  /** `{setup}` / `{renewal}` from Settings. */
+  price: "{setup} setup · {renewal}/year from year 2",
+  primaryCta: "Talk to us on WhatsApp",
+  secondaryCta: "See the visiting card",
+  includedTitle: "What your portfolio website includes",
+  included: [
+    { title: "Profile and qualifications", text: "Your photo, degrees, registration number and the languages you speak." },
+    { title: "Clinics and timings", text: "Every clinic or hospital where you consult, with its days, timings and fees." },
+    { title: "Map and directions", text: "One-tap call, WhatsApp and directions for each place you see patients." },
+    { title: "Services and conditions", text: "What you treat, written in plain words, the way patients search for it." },
+    { title: "Up to 5 photos", text: "Your clinic, consultation room and equipment. No patient photos." },
+    { title: "Your own address", text: "A short link like drname.medireach.co.in, or your own domain at actual cost." },
+  ],
+  cardTitle: "A visiting card you never need to reprint",
+  cardText: "Share it on WhatsApp or print it. The QR code opens your website, so patients always see your current timings.",
+  linkedTitle: "Already at a clinic or hospital?",
+  /** `{addon}` = per-doctor portfolio price. */
+  linkedText:
+    "If your clinic or hospital has a MediReach website, your portfolio links to it and it links back to you. Doctors joining through their clinic or hospital pay the add-on price of {addon}.",
+  whatsapp: "Hi, I'd like a MediReach portfolio website for myself.",
+  faqTitle: "Questions doctors ask",
+  formTitle: "Tell us about your practice",
+};
+
 /** /for-clinics. */
 export const FOR_CLINICS = {
   eyebrow: "For clinics",
@@ -342,7 +371,7 @@ export const FOOTER = {
     {
       title: "Products",
       links: [
-        { href: "/#doctor", label: "Doctors" },
+        { href: "/for-doctors", label: "Doctors" },
         { href: "/for-clinics", label: "Clinics" },
         { href: "/for-hospitals", label: "Hospitals" },
         { href: "/#visiting-card", label: "Visiting card" },
@@ -366,9 +395,9 @@ export const FOOTER = {
   ],
 };
 
-/** Top bar (§4.1). "Doctors" opens the homepage hero on the Doctor tab. */
+/** Top bar (§4.1). */
 export const NAV = [
-  { href: "/#doctor", label: "Doctors" },
+  { href: "/for-doctors", label: "Doctors" },
   { href: "/for-clinics", label: "Clinics" },
   { href: "/for-hospitals", label: "Hospitals" },
   { href: "/designs", label: "Designs" },
@@ -418,6 +447,6 @@ export function allMarketingCopy(): string[] {
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS]);
+  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_DOCTORS, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS]);
   return out;
 }

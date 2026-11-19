@@ -161,7 +161,7 @@ reminder goes out (30 days before the due date).
 
 ## 7. After each deploy: smoke test
 
-- `/`, `/pricing`, `/for-clinics`, `/for-hospitals`, `/designs`, `/contact`,
+- `/`, `/pricing`, `/for-doctors`, `/for-clinics`, `/for-hospitals`, `/designs`, `/contact`,
   `/terms`, `/privacy` load; `/hospitals` redirects (301) to `/for-hospitals`;
   `/#clinic` opens the homepage on the Clinic tab.
 - `/robots.txt` disallows `/admin`, `/account`, `/api` and lists the sitemap.

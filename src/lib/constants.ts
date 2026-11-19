@@ -94,7 +94,7 @@ export type PaymentPurpose = (typeof PAYMENT_PURPOSES_V2)[number];
 export const UPDATE_REQUEST_STATUSES = ["new", "in_progress", "done"] as const;
 export const DEFAULT_UPDATE_PRICE = 299;
 
-export const LEAD_SOURCES = ["homepage_form", "whatsapp_click", "pricing", "clinics", "hospitals"] as const;
+export const LEAD_SOURCES = ["homepage_form", "whatsapp_click", "pricing", "doctors", "clinics", "hospitals"] as const;
 export const LEAD_STATUSES = ["new", "contacted", "won", "lost"] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
