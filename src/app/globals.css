@@ -16,6 +16,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Self-hosted fonts (app/layout.tsx): latin-ext first, limited by
+     unicode-range to ₹ and accented letters; everything else uses latin. */
+  --font-fraunces: var(--font-fraunces-ext), var(--font-fraunces-latin);
+  --font-jakarta: var(--font-jakarta-ext), var(--font-jakarta-latin);
+
   /* Brand */
   --ink: #0e3b3c;
   --ink-700: #155456;
