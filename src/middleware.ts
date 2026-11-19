@@ -19,7 +19,8 @@ import { subdomainError } from "@/lib/slug";
  * 3. /admin/** session gate (defense-in-depth; server actions re-check roles).
  * 4. /account/** needs a doctor session cookie (the page re-verifies it).
  *
- * `app.medireach.co.in` belongs to the separate clinic-software project, so it
+ * `clinicapp.medireach.co.in` belongs to the clinic software (separate repo and
+ * Vercel project), so it
  * never reaches this app.
  */
 

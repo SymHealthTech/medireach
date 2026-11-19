@@ -1,20 +1,20 @@
 # Deploying MediReach
 
-Two separate Vercel projects from the same GitHub repository, in the **same
-Vercel account**, sharing one Atlas cluster with **separate databases**:
+This repository holds only the **MediReach portfolio** app (doctor, clinic and
+hospital websites with visiting cards). It deploys as one Vercel project:
 
 | Vercel project | Git branch | Domains | Database |
 |---|---|---|---|
-| **A: MediReach portfolio** (this app) | `main` | `medireach.co.in`, `www.medireach.co.in`, `*.medireach.co.in` | `medireach_portfolio` |
-| **B: MediReach clinic software** | `clinic-software` | `clinicapp.medireach.co.in` | `medireach` |
+| **MediReach portfolio** (this app) | `main` | `medireach.co.in`, `www.medireach.co.in`, `*.medireach.co.in` | `medireach_portfolio` |
 
-The clinic code is also frozen at tag `clinic-v1`. The two apps never share a
-database: the portfolio app refuses to start if `MONGODB_DB=medireach`, and
-`clinicapp` is a reserved subdomain, so no doctor or clinic can be given it.
-A domain added to a specific project (`clinicapp.medireach.co.in` → B) always
-wins over the wildcard (`*.medireach.co.in` → A).
-
-Moving everything to a new Vercel account and Atlas cluster: see §9.
+The **clinic software** lives in its own repository,
+[`SymHealthTech/medireach-clinic`](https://github.com/SymHealthTech/medireach-clinic),
+and its own Vercel project at `clinicapp.medireach.co.in`, using the `medireach`
+database. The two apps never share a database: this app refuses to start if
+`MONGODB_DB=medireach`, and `clinicapp` is a reserved subdomain, so no doctor or
+clinic can be given it. A domain added to a specific project
+(`clinicapp.medireach.co.in` → the clinic project) always wins over the wildcard
+(`*.medireach.co.in` → this project).
 
 ---
 
@@ -38,8 +38,7 @@ Moving everything to a new Vercel account and Atlas cluster: see §9.
 ## 2. Project A: the portfolio site (`medireach.co.in`)
 
 1. Vercel → *Add New Project* → import the repository.
-2. *Settings → Git → Production Branch*: `main` (the clinic software lives on
-   `clinic-software`).
+2. *Settings → Git → Production Branch*: `main`.
 3. Framework preset: Next.js, default build (`npm run build`) and install
    (`npm install`) commands.
 4. Environment variables (Production, and Preview if you use previews):
@@ -65,24 +64,17 @@ Moving everything to a new Vercel account and Atlas cluster: see §9.
 
 5. *Settings → Domains*: add `medireach.co.in` (primary), `www.medireach.co.in`
    (redirect to the apex; the app also redirects www itself) and
-   `*.medireach.co.in`. `clinicapp.medireach.co.in` belongs to project B; a specific
+   `*.medireach.co.in`. `clinicapp.medireach.co.in` belongs to the clinic project; a specific
    subdomain on another project takes precedence over this wildcard.
 6. Deploy.
 
-## 3. Project B: clinic software (`clinicapp.medireach.co.in`)
+## 3. Clinic software (separate repository)
 
-1. Import the same repository as a second project (e.g. `medireach-clinic`).
-2. Production branch: `clinic-software`. Framework Next.js, default build.
-3. Environment variables: the clinic software's own set (see `.env.example` on
-   that branch). Its database name is part of `MONGODB_URI`
-   (`…mongodb.net/medireach?…`); there is no `MONGODB_DB`. Set
-   `NEXT_PUBLIC_APP_URL=https://clinicapp.medireach.co.in`. Don't reuse
-   project A's secrets.
-4. Domain: `clinicapp.medireach.co.in`.
-5. Its own `vercel.json` schedules its cron jobs (`/api/cron/billing`,
-   `/api/cron/purge`); set its own `CRON_SECRET`.
-6. If Razorpay is live: in the Razorpay dashboard, point the webhook at
-   `https://clinicapp.medireach.co.in/api/webhooks/…` (same path as before).
+The clinic software is no longer in this repository. Its code, `.env.example`,
+crons and deploy notes are in
+[`SymHealthTech/medireach-clinic`](https://github.com/SymHealthTech/medireach-clinic).
+The only things this app needs to know about it are the reserved `clinicapp`
+subdomain and that `medireach` is the clinic's database, never this app's.
 
 ## 4. Seed the production database (once, in this order)
 
@@ -212,53 +204,41 @@ reminder goes out (30 days before the due date).
   previous deployment. Database changes are not rolled back (the v2 migration
   keeps the old fields until `--drop-legacy`, so v1 code still works after it).
 
-## 9. Moving both projects to a new Vercel account and Atlas cluster
+## 9. Moving to a new Vercel account and Atlas cluster
 
-Goal: both projects (§2, §3) in the new Vercel account, both databases in the
-new Atlas cluster, and the old Vercel project removed. Set everything up first
-on `*.vercel.app` addresses, then switch the domain, so the downtime is only
-the DNS switch.
+Set everything up on a `*.vercel.app` address first, then switch the domain,
+so the downtime is only the DNS switch. (The clinic software moves with its
+own repository; see its deploy notes.)
 
-1. **Protect the clinic code.** It lives on branch `clinic-software` and tag
-   `clinic-v1`. GitHub → Settings → Rules → Rulesets: block deletion and force
-   pushes for both.
-2. **Old project: stop deploying `main`.** Old Vercel project → Settings → Git
-   → Production Branch → `clinic-software` (same code as before), so `main`
-   can move to the portfolio without touching the live site.
-3. **New Atlas.** Create the cluster; *Network Access* `0.0.0.0/0`; two database
-   users, one per app (each with access to its own database only).
-4. **Copy the clinic data** (`medireach`) at a quiet time, since writes made
-   during the copy are lost:
+1. **New Atlas.** Create the cluster; *Network Access* `0.0.0.0/0`; a database
+   user with access to `medireach_portfolio` only.
+2. **Copy the data** if the old cluster's `medireach_portfolio` has real data:
    ```bash
-   mongodump    --uri="<old cluster>/medireach" --out=clinic-dump
-   mongorestore --uri="<new cluster>" clinic-dump
+   mongodump    --uri="<old cluster>/medireach_portfolio" --out=portfolio-dump
+   mongorestore --uri="<new cluster>" portfolio-dump
    ```
-   Check the collection counts match. Keep `clinic-dump` as a backup. If the
-   old cluster has a `medireach_portfolio` database with real data, copy it the
-   same way; otherwise the portfolio starts empty.
-5. **New Vercel account: connect GitHub.** Add New → Project → Import → *Adjust
+   Check the collection counts match and keep the dump as a backup. Otherwise
+   the site starts empty.
+3. **New Vercel account: connect GitHub.** Add New → Project → Import → *Adjust
    GitHub App Permissions* → install the Vercel app on the **SymHealthTech**
    organisation for the `medireach` repo (an org owner approves it).
-6. **Create project B (clinic)** as in §3, with the new Atlas `MONGODB_URI`
-   (`…/medireach`) and `NEXT_PUBLIC_APP_URL=https://clinicapp.medireach.co.in`.
-   Deploy and test on its `*.vercel.app` address.
-7. **Create project A (portfolio)** as in §2, production branch `main`, with the
-   new Atlas `MONGODB_URI` and `MONGODB_DB=medireach_portfolio`. Deploy, then
-   from your machine against the new cluster run `npm run seed:masters` and
-   `npm run seed:admin` (§4). Test on its `*.vercel.app` address.
-8. **Switch the domain** (the only moment the live site changes):
-   - Old account: remove `medireach.co.in` (and `www`) from the old project.
+4. **Create the project** as in §2, production branch `main`, with the new
+   Atlas `MONGODB_URI` and `MONGODB_DB=medireach_portfolio`. Deploy, then from
+   your machine against the new cluster run `npm run seed:masters` and
+   `npm run seed:admin` (§4) if the database is new. Test on its `*.vercel.app`
+   address.
+5. **Switch the domain** (the only moment the live site changes):
+   - Old account: remove `medireach.co.in`, `www` and `*.medireach.co.in` from
+     the old project.
    - New account: add `medireach.co.in`, `www.medireach.co.in` and
-     `*.medireach.co.in` to project A, and `clinicapp.medireach.co.in` to
-     project B.
+     `*.medireach.co.in` to this project (`clinicapp.medireach.co.in` goes to
+     the clinic project).
    - Do what Vercel's Domains page asks: a `TXT` record to prove ownership
      (the domain was in another account), and the `A`/`CNAME` records, or move
      the nameservers. The wildcard needs the domain on **Vercel nameservers in
      the new account**; if the old account held the DNS zone, move it there.
-9. **Check** both sites, the clinic's crons (Vercel → Settings → Cron Jobs),
-   Razorpay webhooks (§3), and the portfolio smoke test (§7). Clinic users log
-   in again on the new address and re-allow push notifications (SOS alerts),
-   because both are tied to the old address.
-10. **Remove the old project** from the old account (Settings → Advanced →
-    Delete Project). The other projects in that account are unaffected. Keep
-    the old Atlas cluster until you're sure, then pause or delete it.
+6. **Check** the portfolio smoke test (§7) and the renewals cron (Vercel →
+   Settings → Cron Jobs).
+7. **Remove the old project** from the old account (Settings → Advanced →
+   Delete Project). Keep the old Atlas cluster until you're sure, then pause
+   or delete it.

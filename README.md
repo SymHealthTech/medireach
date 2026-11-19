@@ -18,9 +18,10 @@ yearly renewal from year 2; prices always come from **Settings**.
 - Look, motion and section order: [`DESIGN_BRIEF.md`](./DESIGN_BRIEF.md)
 - Deploying and the v2 upgrade: [`DEPLOY.md`](./DEPLOY.md)
 
-> The previous clinic software is preserved at tag `clinic-v1` and branch
-> `clinic-software` (deployed separately at `clinicapp.medireach.co.in`). It uses the `medireach`
-> database; this app uses `medireach_portfolio` (see `MONGODB_DB`).
+> The clinic software is a separate project: repository
+> [`SymHealthTech/medireach-clinic`](https://github.com/SymHealthTech/medireach-clinic),
+> deployed at `clinicapp.medireach.co.in`. It uses the `medireach` database;
+> this app uses `medireach_portfolio` (see `MONGODB_DB`).
 
 ## Stack
 
