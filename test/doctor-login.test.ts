@@ -5,7 +5,15 @@ import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import type { MongoClient } from "mongodb";
 import { createRequire } from "node:module";
 import { connectToDatabase } from "@/lib/db";
-import { loginEmail } from "@/lib/auth/login-email";
+import { loginCodeEmail, loginEmail } from "@/lib/auth/login-email";
+import {
+  LOGIN_CODE_COLLECTION,
+  LOGIN_CODE_MAX_ATTEMPTS,
+  checkLoginCode,
+  createLoginCode,
+  sendLoginCode,
+  sessionUrlAfterCode,
+} from "@/lib/auth/login-code";
 import {
   LOGIN_LINK_LIMIT,
   VERIFICATION_COLLECTION,
@@ -115,6 +123,74 @@ describe("login links", () => {
       for (let i = 0; i < LOGIN_LINK_LIMIT.max + 1; i++) results.push((await hitLoginLinkLimit(email.toUpperCase())).allowed);
       expect(results).toEqual([true, true, true, false]);
     }
+  });
+});
+
+describe("login codes (email OTP)", () => {
+  const codes = () => mongoose.connection.collection(LOGIN_CODE_COLLECTION);
+  const wrong = (code: string) => String((Number(code) + 1) % 1_000_000).padStart(6, "0");
+
+  it("emails the code, escapes the name and has a plain-text fallback", () => {
+    const m = loginCodeEmail({ name: "Dr. <b>Asha</b>", code: "042917" });
+    expect(m.subject).toBe("042917 is your MediReach login code");
+    expect(m.html).toContain("042917");
+    expect(m.html).toContain("Dr. &lt;b&gt;Asha&lt;/b&gt;");
+    expect(m.html).toContain("expires in 10 minutes");
+    expect(m.text).toContain("Your MediReach login code is 042917");
+  });
+
+  it("sends nothing and stores nothing for unknown emails", async () => {
+    expect(await sendLoginCode("someone@example.com")).toBe(false);
+    expect(await codes().countDocuments({ email: "someone@example.com" })).toBe(0);
+    expect(await checkLoginCode("someone@example.com", "123456")).toBe(false);
+  });
+
+  it("stores only a keyed hash of a 6-digit code, for 10 minutes", async () => {
+    const code = await createLoginCode("Asha@Example.com");
+    expect(code).toMatch(/^\d{6}$/);
+    const doc = await codes().findOne({ email: "asha@example.com" });
+    expect(doc?.codeHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(doc)).not.toContain(code);
+    const ttl = (doc!.expires as Date).getTime() - Date.now();
+    expect(ttl).toBeGreaterThan(9.9 * 60_000);
+    expect(ttl).toBeLessThanOrEqual(10 * 60_000);
+  });
+
+  it("accepts the right code once, for the right email only", async () => {
+    const code = await createLoginCode("asha@example.com");
+    expect(await checkLoginCode("other@example.com", code)).toBe(false);
+    expect(await checkLoginCode("asha@example.com", "12345")).toBe(false);
+    expect(await checkLoginCode(" ASHA@example.com", code)).toBe(true);
+    expect(await checkLoginCode("asha@example.com", code)).toBe(false);
+  });
+
+  it(`burns the code after ${LOGIN_CODE_MAX_ATTEMPTS} wrong tries`, async () => {
+    const code = await createLoginCode("asha@example.com");
+    for (let i = 0; i < LOGIN_CODE_MAX_ATTEMPTS; i++) expect(await checkLoginCode("asha@example.com", wrong(code))).toBe(false);
+    expect(await checkLoginCode("asha@example.com", code)).toBe(false);
+  });
+
+  it("rejects an expired code, and a new code replaces the old one", async () => {
+    const old = await createLoginCode("asha@example.com");
+    const fresh = await createLoginCode("asha@example.com");
+    if (old !== fresh) expect(await checkLoginCode("asha@example.com", old)).toBe(false);
+    expect(await codes().countDocuments({ email: "asha@example.com" })).toBe(1);
+
+    const code = await createLoginCode("asha@example.com");
+    await codes().updateOne({ email: "asha@example.com" }, { $set: { expires: new Date(Date.now() - 1000) } });
+    expect(await checkLoginCode("asha@example.com", code)).toBe(false);
+  });
+
+  it("exchanges a correct code for a NextAuth token the adapter accepts once", async () => {
+    expect(await sessionUrlAfterCode("someone@example.com")).toBeNull();
+    const u = new URL((await sessionUrlAfterCode("asha@example.com"))!);
+    expect(u.pathname).toBe("/api/auth/callback/email");
+    expect(new URL(u.searchParams.get("callbackUrl")!).pathname).toBe("/account");
+    const raw = u.searchParams.get("token")!;
+    expect(raw).toMatch(/^[a-f0-9]{64}$/);
+    const adapter = MongoDBAdapter(mongoose.connection.getClient() as unknown as MongoClient, { databaseName: "medireach_login_test" });
+    expect((await adapter.useVerificationToken!({ identifier: "asha@example.com", token: hashLoginToken(raw) }))?.identifier).toBe("asha@example.com");
+    expect(await adapter.useVerificationToken!({ identifier: "asha@example.com", token: hashLoginToken(raw) })).toBeNull();
   });
 });
 

@@ -52,7 +52,7 @@ export function ProductHero({
             <WhatsAppLink
               href={waHref}
               placement={waPlacement}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper shadow-[0_8px_20px_-8px_rgba(10,63,63,.6)] transition-colors hover:bg-ink-700 active:scale-[.98]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-marigold px-6 font-semibold text-white shadow-[0_10px_24px_-10px_rgba(218,138,67,.8)] transition-colors hover:bg-marigold-700 active:scale-[.98]"
             >
               <WhatsAppIcon className="size-5" /> {primaryCta}
             </WhatsAppLink>
