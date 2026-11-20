@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Mail, MessageCircle, Phone } from "lucide-react";
 import { Pill } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
+import { sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { IntakeForm } from "@/components/intake/IntakeForm";
 import { Button } from "@/components/ui/button";
 import { requireAdminPage } from "@/lib/auth/admin";
@@ -29,7 +30,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
   if (!doc) notFound();
   const view = toView(doc);
   const missing = missingForSubmit(view.kind, view.data);
-  const photos = allPhotos(view.photos);
+  const photos = allPhotos(view.photos, view.kind, view.data);
   const mobile = str(view.data.mobile);
   const wa = str(view.data.whatsapp) || mobile;
   const name = doc.name || view.email;
@@ -112,7 +113,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
         <IntakeReviewControls id={view.id} status={view.status} notes={doc.adminNotes ?? ""} draftHref={draftHref} canDelete={admin.role !== "sales"} kind={view.kind} />
       </section>
 
-      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" />
+      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" cardFaces={sampleCardFaces(view.kind)} />
     </div>
   );
 }

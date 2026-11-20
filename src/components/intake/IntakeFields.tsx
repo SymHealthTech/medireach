@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { ClipboardPaste, HelpCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { cleanPastedText, fieldId, isRepeatValue, isShown, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
+import { cleanPastedText, emptyItem, fieldId, isRepeatValue, isShown, type DoctorEntry, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
 import { CardStylePicker, ChoiceCards, DesignPicker } from "./DesignPickers";
+import { DoctorsField } from "./DoctorsField";
 import { LocationField } from "./LocationField";
 
 export const inputClass =
@@ -38,6 +39,20 @@ export function IntakeField({
   context?: Record<string, unknown>;
 }) {
   const id = fieldId(errKey);
+
+  if (f.type === "doctors") {
+    const list = Array.isArray(value) ? (value as DoctorEntry[]) : [];
+    // Inside a repeat (a hospital department) the list gets its own heading; on its own the section title says it.
+    return errKey.includes(".") ? (
+      <div className="space-y-2 sm:col-span-2">
+        <p className="text-sm font-medium text-body">{f.label}</p>
+        <DoctorsField field={f} value={list} onChange={onChange} errKey={errKey} />
+      </div>
+    ) : (
+      <DoctorsField field={f} value={list} onChange={onChange} errKey={errKey} />
+    );
+  }
+
   const describedBy = error ? `${id}-error` : f.help ? `${id}-help` : undefined;
 
   if (f.type === "checkbox") {
@@ -250,7 +265,6 @@ export function SectionCard({ id, title, description, children, className }: { i
 
 function RepeatGroup({ section: s, items, onChange, errors }: { section: SectionDef; items: RepeatItem[]; onChange: (items: RepeatItem[]) => void; errors: Record<string, string> }) {
   const r = s.repeat!;
-  const blank = (): RepeatItem => Object.fromEntries(s.fields.map((f) => [f.key, f.type === "checkbox" ? false : f.key === "city" ? "Pune" : ""]));
   return (
     <div className="space-y-4">
       {items.map((it, i) => (
@@ -259,7 +273,7 @@ function RepeatGroup({ section: s, items, onChange, errors }: { section: Section
             <p className="font-semibold text-ink">
               {r.itemLabel} {items.length > 1 ? i + 1 : ""}
             </p>
-            {items.length > 1 && (
+            {(items.length > 1 || r.minToSubmit === 0) && (
               <button
                 type="button"
                 onClick={() => onChange(items.filter((_, j) => j !== i))}
@@ -290,7 +304,7 @@ function RepeatGroup({ section: s, items, onChange, errors }: { section: Section
       {items.length < r.max && (
         <button
           type="button"
-          onClick={() => onChange([...items, blank()])}
+          onClick={() => onChange([...items, emptyItem(s.fields)])}
           className="inline-flex min-h-11 items-center gap-2 rounded-[10px] border border-dashed border-lagoon/50 px-4 font-semibold text-lagoon hover:bg-lagoon/5"
         >
           <Plus className="size-4" aria-hidden /> {items.length ? r.addLabel : `Add a ${r.itemLabel.toLowerCase()}`}

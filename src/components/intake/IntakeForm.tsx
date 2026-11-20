@@ -30,6 +30,7 @@ import {
 } from "@/lib/intake/form";
 import type { IntakeView } from "@/lib/intake/server";
 import { IntakeCodeForm } from "./IntakeCodeForm";
+import { IntakeContextProvider, type CardFace } from "./IntakeContext";
 import { IntakeSection, SectionCard, inputClass } from "./IntakeFields";
 import { IntakePhotosSection } from "./IntakePhotos";
 
@@ -59,6 +60,7 @@ export function IntakeForm({
   waNumber,
   mode = "public",
   savedRef,
+  cardFaces,
 }: {
   kind: IntakeKind;
   initial: IntakeView | null;
@@ -67,6 +69,8 @@ export function IntakeForm({
   mode?: "public" | "admin";
   /** A blank form, while this browser already has a saved form of this kind (its reference). */
   savedRef?: string;
+  /** Sample visiting cards per style code (server-rendered), for the card picker. */
+  cardFaces?: Record<string, CardFace>;
 }) {
   const admin = mode === "admin";
   const sections = INTAKE_SECTIONS[kind];
@@ -343,91 +347,93 @@ export function IntakeForm({
         </div>
       )}
 
-      <form onSubmit={(e) => e.preventDefault()} noValidate>
-        <fieldset disabled={!editable} className="space-y-5">
-          <SectionCard id="section-email" title={admin ? "Applicant email" : "Your email"}>
-            <div className="space-y-1.5">
-              <label htmlFor={fieldId("email")} className="block text-sm font-medium text-body">
-                Email <span className="text-clay-text">*</span>
-              </label>
-              <input
-                id={fieldId("email")}
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  touch();
-                }}
-                aria-invalid={errors.email ? true : undefined}
-                aria-describedby={`${fieldId("email")}-help`}
-                className={cn(inputClass, "h-11 sm:max-w-md")}
-              />
-              <p id={`${fieldId("email")}-help`} className={cn("text-sm", errors.email ? "text-clay-text" : "text-body/70")}>
-                {errors.email ?? (admin ? "The applicant logs in with this email." : "Compulsory. Use this email next time to log in and complete or change the form.")}
-              </p>
-              {!admin && id && (
-                <p className="text-xs text-body/70">
-                  Form ref <strong className="whitespace-nowrap">{ref}</strong>. Filling for someone else?{" "}
-                  <a href={`/get-started/${kind}`} className="underline underline-offset-2">
-                    Start a new form
-                  </a>
+      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, cardFaces, errors }}>
+        <form onSubmit={(e) => e.preventDefault()} noValidate>
+          <fieldset disabled={!editable} className="space-y-5">
+            <SectionCard id="section-email" title={admin ? "Applicant email" : "Your email"}>
+              <div className="space-y-1.5">
+                <label htmlFor={fieldId("email")} className="block text-sm font-medium text-body">
+                  Email <span className="text-clay-text">*</span>
+                </label>
+                <input
+                  id={fieldId("email")}
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    touch();
+                  }}
+                  aria-invalid={errors.email ? true : undefined}
+                  aria-describedby={`${fieldId("email")}-help`}
+                  className={cn(inputClass, "h-11 sm:max-w-md")}
+                />
+                <p id={`${fieldId("email")}-help`} className={cn("text-sm", errors.email ? "text-clay-text" : "text-body/70")}>
+                  {errors.email ?? (admin ? "The applicant logs in with this email." : "Compulsory. Use this email next time to log in and complete or change the form.")}
                 </p>
-              )}
-            </div>
-          </SectionCard>
-
-          {sections
-            .filter((s) => !(LATE_SECTIONS as readonly string[]).includes(s.key))
-            .map((s) => (
-              <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
-            ))}
-
-          <IntakePhotosSection
-            config={photoCfg}
-            photos={photos}
-            onChange={changePhotos}
-            ensureSaved={ensureSaved}
-            sign={admin ? adminSign : publicSign}
-            waNumber={waNumber}
-            formRef={ref}
-            email={email}
-            name={name}
-            disabled={!editable}
-            error={errors.photos}
-          />
-
-          {sections
-            .filter((s) => (LATE_SECTIONS as readonly string[]).includes(s.key))
-            .map((s) => (
-              <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
-            ))}
-
-          {!admin && editable && (
-            <SectionCard id="section-send" title="Check and send">
-              {missing.length ? (
-                <>
-                  <p className="text-sm text-body">
-                    {missing.length === 1 ? "1 required item is" : `${missing.length} required items are`} still empty. You can save now and add them later, or fill them and send:
+                {!admin && id && (
+                  <p className="text-xs text-body/70">
+                    Form ref <strong className="whitespace-nowrap">{ref}</strong>. Filling for someone else?{" "}
+                    <a href={`/get-started/${kind}`} className="underline underline-offset-2">
+                      Start a new form
+                    </a>
                   </p>
-                  <ul className="mt-3 flex flex-wrap gap-2">
-                    {missing.map((m) => (
-                      <li key={m.key}>
-                        <button type="button" onClick={() => focusField(m.key)} className="rounded-full border border-marigold/40 bg-marigold/10 px-3 py-1 text-sm text-ink hover:bg-marigold/20">
-                          {m.label}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <p className="text-sm text-body">Everything required is filled. Send it to our team for review. You can still make changes after sending.</p>
-              )}
+                )}
+              </div>
             </SectionCard>
-          )}
-        </fieldset>
-      </form>
+
+            {sections
+              .filter((s) => !(LATE_SECTIONS as readonly string[]).includes(s.key))
+              .map((s) => (
+                <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
+              ))}
+
+            <IntakePhotosSection
+              config={photoCfg}
+              photos={photos}
+              onChange={changePhotos}
+              ensureSaved={ensureSaved}
+              sign={admin ? adminSign : publicSign}
+              waNumber={waNumber}
+              formRef={ref}
+              email={email}
+              name={name}
+              disabled={!editable}
+              error={errors.photos}
+            />
+
+            {sections
+              .filter((s) => (LATE_SECTIONS as readonly string[]).includes(s.key))
+              .map((s) => (
+                <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
+              ))}
+
+            {!admin && editable && (
+              <SectionCard id="section-send" title="Check and send">
+                {missing.length ? (
+                  <>
+                    <p className="text-sm text-body">
+                      {missing.length === 1 ? "1 required item is" : `${missing.length} required items are`} still empty. You can save now and add them later, or fill them and send:
+                    </p>
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {missing.map((m) => (
+                        <li key={m.key}>
+                          <button type="button" onClick={() => focusField(m.key)} className="rounded-full border border-marigold/40 bg-marigold/10 px-3 py-1 text-sm text-ink hover:bg-marigold/20">
+                            {m.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="text-sm text-body">Everything required is filled. Send it to our team for review. You can still make changes after sending.</p>
+                )}
+              </SectionCard>
+            )}
+          </fieldset>
+        </form>
+      </IntakeContextProvider>
 
       {banner && (
         <p role={banner.tone === "error" ? "alert" : "status"} className={cn("mt-4 rounded-xl p-3 text-sm", banner.tone === "error" ? "bg-clay/10 text-clay-text" : "bg-leaf/10 text-leaf-text")}>

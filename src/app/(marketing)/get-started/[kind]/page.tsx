@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { IntakeForm } from "@/components/intake/IntakeForm";
 import { INTAKE_KINDS, type IntakeKind } from "@/lib/constants";
 import { INTAKE_KIND_LABEL } from "@/lib/intake/form";
@@ -34,6 +35,7 @@ export default async function IntakeFormPage({ params, searchParams }: { params:
           kind={kind}
           initial={resume ? toView(saved) : null}
           waNumber={site.whatsappNumber}
+          cardFaces={sampleCardFaces(kind)}
           savedRef={!resume && saved ? saved.ref : undefined}
         />
       </div>

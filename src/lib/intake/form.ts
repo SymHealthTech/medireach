@@ -46,7 +46,9 @@ export type FieldType =
   /** Visiting card style picker (code names like DOC-AMBER). */
   | "card"
   /** One of a few options, shown as large radio cards. */
-  | "choice";
+  | "choice"
+  /** A list of doctors (name, designation, education, role, portfolio link, photo). `max` = how many. */
+  | "doctors";
 
 export interface FieldDef {
   key: string;
@@ -78,7 +80,16 @@ export interface SectionDef {
   repeat?: { max: number; itemLabel: string; addLabel: string; minToSubmit: number };
 }
 
-export type FieldValue = string | boolean;
+export interface DoctorEntry {
+  name: string;
+  designation: string;
+  education: string;
+  role: string;
+  portfolioUrl: string;
+  photo?: { publicId: string; url: string };
+}
+
+export type FieldValue = string | boolean | DoctorEntry[];
 export type RepeatItem = Record<string, FieldValue>;
 export type IntakeData = Record<string, FieldValue | RepeatItem[]>;
 
@@ -145,6 +156,34 @@ const locationFields = (what: string): FieldDef[] => [
 ];
 
 const TIMINGS_PLACEHOLDER = "Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm\nSunday: closed";
+
+/** Roles for a doctor at a clinic or hospital (the label is what the site shows). */
+export const DOCTOR_ROLES = [
+  { value: "founder", label: "Founder / Owner" },
+  { value: "director", label: "Medical director" },
+  { value: "hod", label: "Head of department" },
+  { value: "senior_consultant", label: "Senior consultant" },
+  { value: "consultant", label: "Consultant" },
+  { value: "visiting", label: "Visiting consultant" },
+  { value: "on_call", label: "On-call consultant" },
+  { value: "associate", label: "Associate doctor" },
+  { value: "resident", label: "Resident medical officer" },
+] as const;
+
+/** The text fields of one doctor entry (the photo is separate). */
+export const DOCTOR_FIELDS: FieldDef[] = [
+  text("name", "Doctor's name", { required: true, placeholder: "Dr. Neha Joshi" }),
+  text("designation", "Designation / specialty", { placeholder: "Consultant Dermatologist" }),
+  text("education", "Education", { placeholder: "MBBS, MD (Dermatology)" }),
+  { key: "role", label: "Role", type: "select", options: DOCTOR_ROLES },
+  { key: "portfolioUrl", label: "Portfolio / profile link", type: "url", wide: true, help: "Optional. Their own website, MediReach page or Practo profile." },
+];
+
+export const blankDoctor = (): DoctorEntry => ({ name: "", designation: "", education: "", role: "", portfolioUrl: "" });
+
+export const doctorHasContent = (e: Partial<DoctorEntry>) => Boolean(e.photo) || DOCTOR_FIELDS.some((f) => str((e as Record<string, unknown>)[f.key]) !== "");
+
+export const doctorRoleLabel = (v: unknown) => DOCTOR_ROLES.find((r) => r.value === v)?.label ?? "";
 
 const linksSection: SectionDef = {
   key: "links",
@@ -376,14 +415,6 @@ const aboutStory = (what: string): FieldDef => ({
   help: "Write here, or copy from your current website, a brochure, Word or WhatsApp and paste it. Formatting is removed; paragraphs are kept.",
 });
 
-const visitingDoctorsField: FieldDef = {
-  key: "visitingDoctors",
-  label: "Visiting consultants",
-  type: "lines",
-  wide: true,
-  placeholder: "Doctors who come on fixed days. One per line\nDr. A Rao – MD (Cardiology) – Cardiologist – Tuesdays 5–7 pm",
-};
-
 const awardsField = (what: string): FieldDef => ({
   key: "awards",
   label: "Accreditations and awards",
@@ -419,18 +450,9 @@ const CLINIC: SectionDef[] = [
   },
   {
     key: "doctors",
-    title: "Doctors",
-    fields: [
-      {
-        key: "doctors",
-        label: "Doctors at the clinic",
-        type: "lines",
-        wide: true,
-        placeholder: "One per line\nDr. Neha Joshi – MBBS, MD (Dermatology) – Dermatologist",
-        help: "Each doctor can also get their own portfolio page. Ask us.",
-      },
-      visitingDoctorsField,
-    ],
+    title: "Doctors at the clinic",
+    description: `Add each doctor who sees patients here, including visiting consultants (up to ${LIMITS.clinicDoctorsMax}). Each doctor can also get their own portfolio page. Ask us.`,
+    fields: [{ key: "doctors", label: "Doctors", type: "doctors", max: LIMITS.clinicDoctorsMax, wide: true }],
   },
   { key: "services", title: "Services and facilities", fields: [...servicesFields(), awardsField("clinic")] },
   {
@@ -474,10 +496,11 @@ const HOSPITAL: SectionDef[] = [
   {
     key: "departments",
     title: "Departments and doctors",
+    description: "Add each department and the doctors in it, including visiting consultants.",
+    repeat: { max: LIMITS.hospitalDepartmentsMax, itemLabel: "Department", addLabel: "Add another department", minToSubmit: 0 },
     fields: [
-      { key: "departments", label: "Departments", type: "lines", wide: true, placeholder: "One per line\nOrthopaedics – Dr. A Patil, Dr. S Rao\nGeneral Medicine" },
-      { key: "doctors", label: "Full-time doctors", type: "lines", wide: true, placeholder: "One per line\nDr. A Patil – MS (Ortho) – Orthopaedic Surgeon" },
-      visitingDoctorsField,
+      text("name", "Department name", { required: true, wide: true, placeholder: "Orthopaedics" }),
+      { key: "doctors", label: "Doctors in this department", type: "doctors", max: LIMITS.departmentDoctorsMax, wide: true },
     ],
   },
   {
@@ -542,8 +565,76 @@ export const INTAKE_KIND_LABEL: Record<IntakeKind, string> = { doctor: "Doctor w
 
 export const isRepeatValue = (v: unknown): v is RepeatItem[] => Array.isArray(v);
 
-function emptyItem(fields: FieldDef[]): RepeatItem {
-  return Object.fromEntries(fields.map((f) => [f.key, f.type === "checkbox" ? false : f.key === "city" ? "Pune" : ""]));
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+function emptyValue(f: FieldDef): FieldValue {
+  return f.type === "checkbox" ? false : f.type === "doctors" ? [blankDoctor()] : f.key === "city" ? "Pune" : "";
+}
+
+/** A blank repeat item (a new clinic or department). */
+export function emptyItem(fields: FieldDef[]): RepeatItem {
+  return Object.fromEntries(fields.map((f) => [f.key, emptyValue(f)]));
+}
+
+/** A saved doctor list (or an older one-per-line text) as clean entries, at least one. */
+function toDoctors(v: unknown): DoctorEntry[] {
+  const list: DoctorEntry[] = Array.isArray(v)
+    ? v.filter(isObj).map((e) => ({
+        ...blankDoctor(),
+        ...Object.fromEntries(DOCTOR_FIELDS.map((f) => [f.key, typeof e[f.key] === "string" ? (e[f.key] as string) : ""])),
+        ...(isObj(e.photo) && typeof e.photo.publicId === "string" && typeof e.photo.url === "string" ? { photo: { publicId: e.photo.publicId, url: e.photo.url } } : {}),
+      }))
+    : splitLines(v).map((l) => doctorFromLine(l));
+  return list.length ? list : [blankDoctor()];
+}
+
+function toItem(fields: FieldDef[], raw: Record<string, unknown>): RepeatItem {
+  const out = emptyItem(fields);
+  for (const f of fields) {
+    const v = raw[f.key];
+    if (f.type === "doctors") out[f.key] = toDoctors(v);
+    else if (typeof v === "string" || typeof v === "boolean") out[f.key] = v;
+  }
+  return out;
+}
+
+/** "Dr. Neha Joshi – MBBS, MD – Dermatologist" → name, qualifications, specialty. */
+export function parseDoctorLine(line: string): { name: string; qualifications?: string; specialty?: string } {
+  const [name = "", qualifications, ...rest] = line.split(/\s+[–—-]\s+|\s*\|\s*/).map((s) => s.trim());
+  return { name: name.slice(0, 120), ...(qualifications ? { qualifications: qualifications.slice(0, 200) } : {}), ...(rest.length ? { specialty: rest.join(" – ").slice(0, 120) } : {}) };
+}
+
+function doctorFromLine(line: string, role = ""): DoctorEntry {
+  const p = parseDoctorLine(line);
+  return { ...blankDoctor(), name: p.name, education: p.qualifications ?? "", designation: p.specialty ?? "", role };
+}
+
+/**
+ * Older forms kept doctors as one-per-line text (clinic: doctors + visiting
+ * consultants; hospital: departments, full-time doctors, visiting
+ * consultants). Turn them into doctor entries so nothing typed is lost.
+ */
+function upgradeLegacy(kind: IntakeKind, data: Record<string, unknown>): Record<string, unknown> {
+  const visiting = splitLines(data.visitingDoctors).map((l) => doctorFromLine(l, "visiting"));
+  const d = { ...data };
+  delete d.visitingDoctors;
+  if (kind === "clinic" && (typeof data.doctors === "string" || visiting.length)) {
+    d.doctors = [...(typeof data.doctors === "string" ? splitLines(data.doctors).map((l) => doctorFromLine(l)) : Array.isArray(data.doctors) ? data.doctors : []), ...visiting];
+  }
+  if (kind === "hospital" && (typeof data.departments === "string" || typeof data.doctors === "string" || visiting.length)) {
+    const deps: Record<string, unknown>[] = Array.isArray(data.departments)
+      ? [...data.departments]
+      : splitLines(data.departments).map((l) => {
+          const [name = "", ...rest] = l.split(/\s+[–—-]\s+/);
+          return { name, doctors: splitList(rest.join(" – ")).map((n) => ({ ...blankDoctor(), name: n })) };
+        });
+    const loose = [...splitLines(data.doctors).map((l) => doctorFromLine(l)), ...visiting];
+    // Doctors without a department: one unnamed department, so the applicant is asked to name it.
+    if (loose.length) deps.push({ name: "", doctors: loose });
+    d.departments = deps;
+    delete d.doctors;
+  }
+  return d;
 }
 
 export function emptyIntakeData(kind: IntakeKind): IntakeData {
@@ -557,23 +648,25 @@ export function emptyIntakeData(kind: IntakeKind): IntakeData {
 
 export const emptyIntakePhotos = (): IntakePhotos => ({ gallery: [], viaWhatsapp: false });
 
-/** Saved data on top of a blank form (new fields added later start empty). */
+/** Saved data on top of a blank form (new fields added later start empty; older answers are upgraded). */
 export function withDefaults(kind: IntakeKind, data: IntakeData | undefined): IntakeData {
-  const blank = emptyIntakeData(kind);
-  if (!data) return blank;
-  const out: IntakeData = { ...blank };
+  if (!data) return emptyIntakeData(kind);
+  const src = upgradeLegacy(kind, data);
+  const out: IntakeData = {};
   for (const s of INTAKE_SECTIONS[kind]) {
     if (s.repeat) {
-      const items = isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : [];
-      out[s.key] = items.length ? items.map((it) => ({ ...emptyItem(s.fields), ...it })) : (blank[s.key] as RepeatItem[]);
-    } else {
-      for (const f of s.fields) if (data[f.key] !== undefined && !isRepeatValue(data[f.key])) out[f.key] = data[f.key]!;
-    }
+      const items = Array.isArray(src[s.key]) ? (src[s.key] as unknown[]).filter(isObj).map((it) => toItem(s.fields, it)) : [];
+      out[s.key] = items.length ? items : [emptyItem(s.fields)];
+    } else Object.assign(out, toItem(s.fields, src));
   }
   return out;
 }
 
-const filled = (v: unknown) => (typeof v === "boolean" ? v : typeof v === "string" && v.trim() !== "");
+const filled = (v: unknown): boolean =>
+  typeof v === "boolean" ? v : typeof v === "string" ? v.trim() !== "" : Array.isArray(v) ? v.some((e) => isObj(e) && doctorHasContent(e)) : false;
+
+/** Anything typed in a repeat item (the default city doesn't count). */
+const itemHasContent = (it: RepeatItem) => Object.entries(it).some(([k, v]) => filled(v) && !(k === "city" && v === "Pune"));
 
 /**
  * Fill-in-the-blanks merge (used when someone starts typing, then finds a
@@ -586,10 +679,29 @@ export function mergeIntake(kind: IntakeKind, typed: IntakeData, saved: IntakeDa
   const out: IntakeData = { ...b };
   for (const s of INTAKE_SECTIONS[kind]) {
     if (s.repeat) {
-      const ta = (a[s.key] as RepeatItem[]).filter((it) => Object.values(it).some((v) => filled(v) && v !== "Pune"));
+      const ta = (a[s.key] as RepeatItem[]).filter(itemHasContent);
       out[s.key] = ta.length ? ta : (b[s.key] as RepeatItem[]);
     } else {
       for (const f of s.fields) if (filled(a[f.key])) out[f.key] = a[f.key]!;
+    }
+  }
+  return out;
+}
+
+/** Every doctor entry in a form (clinic doctors, or the doctors of each hospital department), with its department. */
+export function doctorEntries(kind: IntakeKind, data: IntakeData): { doctor: DoctorEntry; department?: string; key: string }[] {
+  const out: { doctor: DoctorEntry; department?: string; key: string }[] = [];
+  for (const s of INTAKE_SECTIONS[kind]) {
+    const groups: { values: Record<string, unknown>; prefix: string }[] = s.repeat
+      ? (isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : []).map((it, i) => ({ values: it, prefix: `${s.key}.${i}.` }))
+      : [{ values: data, prefix: "" }];
+    for (const g of groups) {
+      for (const f of s.fields) {
+        if (f.type !== "doctors" || !Array.isArray(g.values[f.key])) continue;
+        (g.values[f.key] as DoctorEntry[]).forEach((doctor, j) => {
+          if (isObj(doctor) && doctorHasContent(doctor)) out.push({ doctor, key: `${g.prefix}${f.key}.${j}`, ...(s.repeat ? { department: str(g.values.name) } : {}) });
+        });
+      }
     }
   }
   return out;
@@ -650,6 +762,7 @@ const MAX: Record<FieldType, number> = {
   design: 40,
   card: 40,
   choice: 40,
+  doctors: 0,
   lines: 3000,
   year: 4,
   number: 7,
@@ -701,8 +814,23 @@ export const mapsLinkFor = (loc: { lat: number; lng: number }) => `https://www.g
 /** Is this field shown, given the other answers (in the same repeat item, or the form)? */
 export const isShown = (f: FieldDef, values: Record<string, unknown>) => !f.showIf || values[f.showIf.key] === f.showIf.equals;
 
-function fieldSchema(f: FieldDef) {
+function fieldSchema(f: FieldDef): z.ZodTypeAny {
   if (f.type === "checkbox") return z.boolean().optional().default(false);
+  if (f.type === "doctors") {
+    const entry = z
+      .object({
+        ...Object.fromEntries(DOCTOR_FIELDS.map((d) => [d.key, fieldSchema(d)])),
+        photo: intakePhotoSchema.optional(),
+      })
+      .transform(({ photo, ...rest }) => ({ ...rest, ...(photo ? { photo: { publicId: photo.publicId, url: photo.url } } : {}) }));
+    // Empty entries (an "Add another doctor" left blank) are dropped.
+    return z
+      .array(entry)
+      .max(f.max ?? 20, `Add at most ${f.max ?? 20} doctors.`)
+      .optional()
+      .default([])
+      .transform((list) => list.filter((e) => doctorHasContent(e as Partial<DoctorEntry>)));
+  }
   const max = f.max ?? MAX[f.type];
   const base = z
     .string()
@@ -760,7 +888,8 @@ export function intakeDataSchema(kind: IntakeKind): z.ZodType<IntakeData, z.ZodT
       for (const f of s.fields) shape[f.key] = fieldSchema(f);
     }
   }
-  const schema = z.object(shape);
+  // Older answers (doctors as text lines) are upgraded first, so a page opened before a change still saves.
+  const schema = z.preprocess((v) => (isObj(v) ? upgradeLegacy(kind, v) : v), z.object(shape));
   schemaCache.set(kind, schema);
   return schema as unknown as z.ZodType<IntakeData, z.ZodTypeDef, unknown>;
 }
@@ -779,6 +908,20 @@ export interface MissingItem {
   section: string;
 }
 
+/** Repeat items that count: the first `minToSubmit`, and any other with something typed in it. */
+function activeItems(s: SectionDef, data: IntakeData): { it: RepeatItem; i: number }[] {
+  const items = isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : [];
+  return items.map((it, i) => ({ it, i })).filter(({ it, i }) => i < s.repeat!.minToSubmit || itemHasContent(it));
+}
+
+/** Doctor entries with something typed in them need a name. */
+function missingDoctorNames(f: FieldDef, values: Record<string, unknown>, prefix: string, section: string, out: MissingItem[]) {
+  const list = Array.isArray(values[f.key]) ? (values[f.key] as DoctorEntry[]) : [];
+  list.forEach((e, j) => {
+    if (isObj(e) && doctorHasContent(e) && !str(e.name)) out.push({ key: `${prefix}${f.key}.${j}.name`, label: `${prefix ? `${str(values.name) || "Department"}: ` : ""}Doctor ${j + 1}: name`, section });
+  });
+}
+
 /** Required fields that are still empty. An empty list means the form can be sent. */
 export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingItem[] {
   const out: MissingItem[] = [];
@@ -786,15 +929,19 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
     if (s.repeat) {
       const items = isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : [];
       if (items.length < s.repeat.minToSubmit) out.push({ key: s.key, label: `At least one ${s.repeat.itemLabel.toLowerCase()}`, section: s.title });
-      items.forEach((it, i) => {
+      for (const { it, i } of activeItems(s, data)) {
         for (const f of s.fields) {
           if (f.required && isShown(f, it) && !filled(it[f.key])) {
             out.push({ key: `${s.key}.${i}.${f.key}`, label: items.length > 1 ? `${s.repeat!.itemLabel} ${i + 1}: ${f.label}` : f.label, section: s.title });
           }
+          if (f.type === "doctors") missingDoctorNames(f, it, `${s.key}.${i}.`, s.title, out);
         }
-      });
+      }
     } else {
-      for (const f of s.fields) if (f.required && isShown(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
+      for (const f of s.fields) {
+        if (f.required && isShown(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
+        if (f.type === "doctors") missingDoctorNames(f, data, "", s.title, out);
+      }
     }
   }
   return out;
@@ -806,10 +953,11 @@ export function requiredProgress(kind: IntakeKind, data: IntakeData): { done: nu
   for (const s of INTAKE_SECTIONS[kind]) {
     if (s.repeat) {
       const req = s.fields.filter((f) => f.required && !f.showIf).length;
-      const n = Math.max(s.repeat.minToSubmit, isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]).length : 0);
+      const n = Math.max(s.repeat.minToSubmit, activeItems(s, data).length);
       total += req * n;
     } else total += s.fields.filter((f) => f.required && isShown(f, data)).length;
   }
+  total += doctorEntries(kind, data).length; // each doctor needs a name
   const missing = missingForSubmit(kind, data).length;
   return { done: Math.max(0, total - missing), total };
 }
@@ -840,9 +988,15 @@ export function intakePhotosSchema(kind: IntakeKind) {
   });
 }
 
-/** Every uploaded photo in a form. */
-export function allPhotos(p: IntakePhotos): IntakePhoto[] {
-  return [p.profile, p.logo, p.cover, ...p.gallery].filter((x): x is IntakePhoto => Boolean(x));
+/** Every uploaded photo in a form (with `data`, the doctors' photos too). */
+export function allPhotos(p: IntakePhotos, kind?: IntakeKind, data?: IntakeData): IntakePhoto[] {
+  const doctors = kind && data ? doctorEntries(kind, data).flatMap(({ doctor }) => (doctor.photo ? [{ ...doctor.photo, caption: doctor.name || "Doctor photo" }] : [])) : [];
+  return [p.profile, p.logo, p.cover, ...p.gallery, ...doctors].filter((x): x is IntakePhoto => Boolean(x));
+}
+
+/** One doctor entry as a line, for the admin notes. */
+export function doctorText(e: DoctorEntry): string {
+  return [str(e.name) || "(no name)", str(e.designation), str(e.education), doctorRoleLabel(e.role), str(e.portfolioUrl), e.photo ? `photo: ${e.photo.url}` : ""].filter(Boolean).join(" – ");
 }
 
 /** Pre-filled WhatsApp message for sending photos (or asking a question about a form). */

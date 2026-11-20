@@ -8,18 +8,22 @@ import { createLoginCode, checkLoginCode } from "@/lib/auth/login-code";
 import { createSessionToken } from "@/lib/auth/session";
 import { seedMasters } from "@/lib/seed/masters";
 import { checkIntakeCode, createIntakeCode, INTAKE_CODE_MAX_ATTEMPTS } from "@/lib/intake/code";
-import { createSiteFromIntake, parseDoctorLine, splitDoctorName } from "@/lib/intake/convert";
+import { createSiteFromIntake, splitDoctorName } from "@/lib/intake/convert";
 import { intakeCodeEmail, intakeSavedEmail } from "@/lib/intake/emails";
 import {
+  allPhotos,
   cleanPastedText,
   emptyIntakeData,
+  parseDoctorLine,
   parseLocation,
   intakeDataSchema,
   mergeIntake,
   missingForSubmit,
   requiredProgress,
   withDefaults,
+  type DoctorEntry,
   type IntakeData,
+  type RepeatItem,
 } from "@/lib/intake/form";
 import { isOurPhoto, saveIntake } from "@/lib/intake/server";
 import { createIntakeToken, verifyIntakeToken } from "@/lib/intake/session";
@@ -149,6 +153,48 @@ describe("form definitions", () => {
     expect(missingForSubmit("hospital", emptyIntakeData("hospital")).map((m) => m.key)).toEqual(expect.arrayContaining(["regAuthority", "regNumber"]));
   });
 
+  it("clinic doctors: separate entries, up to 5, blank ones ignored, a name needed once anything is typed", () => {
+    const base: IntakeData = { ...emptyIntakeData("clinic"), name: "X", clinicType: "skin", contactName: "Y", mobile: "9876500000", address: "A", area: "Kothrud", pincode: "411038", phones: "020 1234 5678", timings: "10–7", designDecision: "final" };
+    expect(base.doctors).toHaveLength(1); // one empty doctor to start with
+    expect(missingForSubmit("clinic", base)).toEqual([]); // an untouched entry doesn't block sending
+    const noName = { ...base, doctors: [{ name: "", designation: "Dermatologist", education: "", role: "", portfolioUrl: "" }] };
+    expect(missingForSubmit("clinic", noName).map((m) => m.key)).toEqual(["doctors.0.name"]);
+    const doc = (name: string): DoctorEntry => ({ name, designation: "", education: "", role: "consultant", portfolioUrl: "" });
+    const parsed = intakeDataSchema("clinic").parse({ doctors: [doc("Dr. A"), { name: "", designation: "", education: "", role: "", portfolioUrl: "" }, { ...doc("Dr. B"), portfolioUrl: "drb.example.com" }] });
+    expect((parsed.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A", "Dr. B"]); // blank entry dropped
+    expect((parsed.doctors as DoctorEntry[])[1]!.portfolioUrl).toBe("https://drb.example.com");
+    expect(intakeDataSchema("clinic").safeParse({ doctors: Array.from({ length: 6 }, (_, i) => doc(`Dr. ${i}`)) }).success).toBe(false);
+    expect(intakeDataSchema("clinic").safeParse({ doctors: [{ ...doc("Dr. A"), role: "boss" }] }).success).toBe(true); // unknown role → not chosen
+    expect(intakeDataSchema("clinic").parse({}).visitingDoctors).toBeUndefined();
+  });
+
+  it("hospital departments: many departments, each with its own doctors", () => {
+    const blank = emptyIntakeData("hospital");
+    expect(blank.doctors).toBeUndefined();
+    expect(missingForSubmit("hospital", blank).map((m) => m.key)).not.toContain("departments.0.name"); // empty department is ignored
+    const doc = (name: string): DoctorEntry => ({ name, designation: "", education: "", role: "", portfolioUrl: "" });
+    const data = { ...blank, departments: [{ name: "Orthopaedics", doctors: [doc("Dr. A Patil"), doc("Dr. S Rao")] }, { name: "", doctors: [doc("Dr. C")] }, { name: "Medicine", doctors: [doc("")] }] };
+    expect(missingForSubmit("hospital", data).map((m) => m.key)).toContain("departments.1.name");
+    const parsed = intakeDataSchema("hospital").parse(data);
+    expect((parsed.departments as RepeatItem[])[0]!.doctors).toHaveLength(2);
+    expect((parsed.departments as RepeatItem[])[2]!.doctors).toEqual([]);
+  });
+
+  it("upgrades older doctor lists typed as text lines", () => {
+    const clinic = withDefaults("clinic", { doctors: "Dr. Neha Joshi – MBBS, MD – Dermatologist", visitingDoctors: "Dr. A Rao – MD – Cardiologist" });
+    expect(clinic.doctors).toEqual([
+      { name: "Dr. Neha Joshi", education: "MBBS, MD", designation: "Dermatologist", role: "", portfolioUrl: "" },
+      { name: "Dr. A Rao", education: "MD", designation: "Cardiologist", role: "visiting", portfolioUrl: "" },
+    ]);
+    const hospital = withDefaults("hospital", { departments: "Orthopaedics – Dr. A Patil, Dr. S Rao\nGeneral Medicine", doctors: "Dr. X – MBBS – Physician" });
+    const deps = hospital.departments as RepeatItem[];
+    expect(deps.map((d) => d.name)).toEqual(["Orthopaedics", "General Medicine", ""]);
+    expect((deps[0]!.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao"]);
+    expect((deps[2]!.doctors as DoctorEntry[])[0]).toMatchObject({ name: "Dr. X", designation: "Physician" });
+    // A page opened before the change still saves.
+    expect((intakeDataSchema("clinic").parse({ doctors: "Dr. Neha Joshi – MBBS" }).doctors as DoctorEntry[])[0]!.name).toBe("Dr. Neha Joshi");
+  });
+
   it("merges a fresh form into a saved one (typed values win, blanks are filled)", () => {
     const saved = withDefaults("doctor", { fullName: "Dr. Asha Kulkarni", specialty: "GP", clinics: [{ name: "Saved clinic" }] });
     const typed = withDefaults("doctor", { specialty: "Dermatologist" });
@@ -253,6 +299,13 @@ describe("saving and ownership", () => {
   it("rejects photos that aren't our uploads and caps the gallery", async () => {
     const r = await saveIntake({ kind: "doctor", email: "p@example.com", data: {}, photos: { gallery: [{ publicId: "x", url: "https://evil.example/a.jpg" }] } }, null);
     expect(r).toMatchObject({ ok: false });
+    const badDoctor = { doctors: [{ name: "Dr. A", designation: "", education: "", role: "", portfolioUrl: "", photo: { publicId: "x", url: "https://evil.example/a.jpg" } }] };
+    expect(await saveIntake({ kind: "clinic", email: "p2@example.com", data: badDoctor, photos: {} }, null)).toMatchObject({ ok: false });
+    const goodDoctor = { doctors: [{ ...badDoctor.doctors[0], photo: photo(30) }] };
+    const ok = await saveIntake({ kind: "clinic", email: "p2@example.com", data: goodDoctor, photos: {} }, null);
+    expect(ok).toMatchObject({ ok: true });
+    const saved = await Intake.findById(ok.ok ? ok.intake.id : "").lean();
+    expect(allPhotos({ gallery: [], viaWhatsapp: false }, "clinic", saved!.data as IntakeData).map((p) => p.publicId)).toEqual([photo(30).publicId]);
     const many = await saveIntake({ kind: "doctor", email: "p@example.com", data: {}, photos: { gallery: Array.from({ length: 6 }, (_, i) => photo(i)) } }, null);
     expect(many).toMatchObject({ ok: false });
   });
@@ -332,8 +385,10 @@ describe("creating the website draft", () => {
       pincode: "411038",
       phones: "020 1234 5678, 98765 00000",
       timings: "Mon–Sat 10–7",
-      doctors: "Dr. Neha Joshi – MBBS, MD – Dermatologist",
-      visitingDoctors: "Dr. A Rao – MD – Cardiologist",
+      doctors: [
+        { name: "Dr. Neha Joshi", designation: "Dermatologist", education: "MBBS, MD", role: "founder", portfolioUrl: "https://drneha.example.com", photo: photo(21) },
+        { name: "Dr. A Rao", designation: "Cardiologist", education: "MD", role: "visiting", portfolioUrl: "" },
+      ],
       awards: "NABH accreditation – 2022",
       services: "Acne care",
       websiteDesign: "dental",
@@ -347,12 +402,35 @@ describe("creating the website draft", () => {
     expect(e!.internalNotes).toContain("Final choice.");
     expect(e!.address.areaId).toBeDefined();
     expect(e!.contact.phones).toEqual(["020 1234 5678", "98765 00000"]);
-    expect(e!.doctors[0]).toMatchObject({ name: "Dr. Neha Joshi", specialty: "Dermatologist" });
+    expect(e!.doctors[0]).toMatchObject({ name: "Dr. Neha Joshi", specialty: "Dermatologist", qualifications: "MBBS, MD", role: "Founder / Owner" });
     expect(e!.doctors[1]).toMatchObject({ name: "Dr. A Rao", specialty: "Cardiologist", role: "Visiting consultant" });
     expect(e!.categoryId).toBeDefined();
     expect(e!.internalNotes).toContain("NABH accreditation – 2022");
+    expect(e!.internalNotes).toContain("https://drneha.example.com");
+    expect(e!.internalNotes).toContain(photo(21).url);
     expect(e!.logo?.publicId).toBe(photo(20).publicId);
     expect(e!.slug).toBeTruthy();
+  });
+
+  it("maps hospital departments and their doctors", async () => {
+    const doc = (name: string, designation = ""): DoctorEntry => ({ name, designation, education: "", role: "consultant", portfolioUrl: "" });
+    const data = {
+      ...emptyIntakeData("hospital"),
+      name: "Sample Care Hospital",
+      departments: [
+        { name: "Orthopaedics", doctors: [doc("Dr. A Patil", "Orthopaedic Surgeon"), doc("Dr. S Rao")] },
+        { name: "Emergency", doctors: [doc("Dr. A Patil", "Orthopaedic Surgeon")] },
+      ],
+    };
+    const r = await saveIntake({ kind: "hospital", email: "hosp@example.com", data, photos: {} }, null);
+    const intake = await Intake.findById(r.ok ? r.intake.id : "").lean();
+    const made = await createSiteFromIntake(intake!);
+    const e = await Establishment.findById(made.id).lean();
+    expect(e!.departments.map((d) => d.name)).toEqual(["Orthopaedics", "Emergency"]);
+    expect(e!.doctors.map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao"]); // each doctor once
+    expect(e!.doctors[0]).toMatchObject({ specialty: "Orthopaedic Surgeon", role: "Consultant" });
+    expect(e!.internalNotes).toContain("which doctors are in which department");
+    expect(e!.internalNotes).toContain("Department 2:");
   });
 
   it("refuses a doctor form without a full name", async () => {

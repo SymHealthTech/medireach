@@ -153,6 +153,7 @@ export async function saveIntake(raw: SaveInput, sessionEmail: string | null, op
   if (!dataParsed.success) Object.assign(fieldErrors, intakeFieldErrors(dataParsed.error));
   if (!photosParsed.success) fieldErrors.photos = photosParsed.error.issues[0]?.message ?? "Please check the photos.";
   if (photosParsed.success && !allPhotos(photosParsed.data).every(isOurPhoto)) fieldErrors.photos = "Please upload the photos again.";
+  if (dataParsed.success && !allPhotos({ gallery: [], viaWhatsapp: false }, kind, dataParsed.data).every(isOurPhoto)) fieldErrors.photos = "Please upload the doctor photos again.";
   if (Object.keys(fieldErrors).length) {
     return { ok: false, error: fieldErrors.email && Object.keys(fieldErrors).length === 1 ? fieldErrors.email : "Please check the highlighted fields.", fieldErrors };
   }

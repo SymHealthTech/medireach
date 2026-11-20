@@ -18,11 +18,6 @@ const CROP: Partial<Record<SinglePhotoKey, CropMode>> = { profile: "portrait", l
 /** Cloudinary thumbnail URL. */
 const thumb = (url: string, w = 480) => url.replace("/image/upload/", `/image/upload/f_auto,q_auto,c_limit,w_${w}/`);
 
-const formatPhone = (digits: string) => {
-  const d = digits.replace(/\D/g, "");
-  return d.length === 12 && d.startsWith("91") ? `+91 ${d.slice(2, 7)} ${d.slice(7)}` : `+${d}`;
-};
-
 /**
  * Photos: upload here, or send them on WhatsApp (with the form reference in
  * the message). Uploads need a saved form, so `ensureSaved` saves first.
@@ -111,7 +106,7 @@ export function IntakePhotosSection({
         {(
           [
             { value: "upload", title: "Upload here", text: "Choose photos from your phone or computer.", icon: <Upload className="size-5" aria-hidden /> },
-            { value: "whatsapp", title: "Send on WhatsApp", text: `To ${formatPhone(waNumber)}, with your form reference.`, icon: <WhatsAppIcon className="size-5" /> },
+            { value: "whatsapp", title: "Send on WhatsApp", text: "Send them to our team on WhatsApp, with your form reference.", icon: <WhatsAppIcon className="size-5" /> },
           ] as const
         ).map((o) => (
           <button
@@ -138,7 +133,7 @@ export function IntakePhotosSection({
       {mode === "whatsapp" && (
         <div className="mt-4 space-y-3 rounded-xl border border-[#1f8f4e]/25 bg-[#1f8f4e]/5 p-4">
           <p className="text-sm text-body">
-            Send your photos to <strong className="whitespace-nowrap">{formatPhone(waNumber)}</strong>
+            Tap &ldquo;Open WhatsApp&rdquo; to send your photos to our team
             {formRef ? (
               <>
                 {" "}

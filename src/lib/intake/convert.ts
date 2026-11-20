@@ -6,7 +6,25 @@ import { isThemeKey } from "@/themes/specialty";
 import { escapeRegExp } from "@/lib/admin/list";
 import { ensureUrlKeys as ensureDoctorUrlKeys } from "@/lib/doctors/server";
 import { ensureUrlKeys as ensureSiteUrlKeys } from "@/lib/establishments/server";
-import { INTAKE_SECTIONS, designSummary, isRepeatValue, mapsLinkFor, parseLocation, splitLines, splitList, str, type IntakeData, type IntakePhoto, type RepeatItem } from "@/lib/intake/form";
+import {
+  INTAKE_SECTIONS,
+  designSummary,
+  doctorEntries,
+  doctorRoleLabel,
+  doctorText,
+  isRepeatValue,
+  mapsLinkFor,
+  parseLocation,
+  splitLines,
+  splitList,
+  str,
+  withDefaults,
+  type DoctorEntry,
+  type FieldDef,
+  type IntakeData,
+  type IntakePhoto,
+  type RepeatItem,
+} from "@/lib/intake/form";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import { Area } from "@/models/Area";
@@ -82,22 +100,28 @@ export function splitDoctorName(full: string): { title: string; firstName: strin
   return { title: "Dr.", firstName: parts[0]!, ...(parts.length > 2 ? { middleName: parts.slice(1, -1).join(" ") } : {}), lastName: parts[parts.length - 1]! };
 }
 
-/** Every filled field, as "Section — Label: value" lines, for the draft's internal notes. */
+/** One answer as text lines (doctor lists: one line per doctor), or nothing when empty. */
+function answerLines(f: FieldDef, v: unknown, indent = ""): string[] {
+  if (v === true) return [`${indent}${f.label}: Yes`];
+  if (f.type === "doctors") {
+    const list = (Array.isArray(v) ? (v as DoctorEntry[]) : []).filter((e) => doctorText(e) !== "(no name)");
+    return list.length ? [`${indent}${f.label}:`, ...list.map((e, i) => `${indent}  ${i + 1}. ${doctorText(e)}`)] : [];
+  }
+  return str(v) ? [`${indent}${f.label}: ${str(v).replace(/\n/g, "; ")}`] : [];
+}
+
+/** Every filled field, as "Label: value" lines, for the draft's internal notes. */
 export function intakeAsText(kind: IntakeKind, data: IntakeData): string {
   const out: string[] = [];
   for (const s of INTAKE_SECTIONS[kind]) {
     if (s.repeat) {
       const items = isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : [];
       items.forEach((it, i) => {
-        const rows = s.fields.filter((f) => str(it[f.key]) || it[f.key] === true).map((f) => `  ${f.label}: ${it[f.key] === true ? "Yes" : str(it[f.key])}`);
+        const rows = s.fields.flatMap((f) => answerLines(f, it[f.key], "  "));
         if (rows.length) out.push(`${s.repeat!.itemLabel} ${i + 1}:`, ...rows);
       });
     } else {
-      for (const f of s.fields) {
-        const v = data[f.key];
-        if (v === true) out.push(`${f.label}: Yes`);
-        else if (str(v)) out.push(`${f.label}: ${str(v).replace(/\n/g, "; ")}`);
-      }
+      for (const f of s.fields) out.push(...answerLines(f, data[f.key]));
     }
   }
   return out.join("\n");
@@ -124,7 +148,7 @@ export async function createSiteFromIntake(intake: Pick<IntakeDoc, "_id" | "ref"
 }
 
 async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
-  const d = intake.data as IntakeData;
+  const d = withDefaults("doctor", intake.data as IntakeData);
   const name = splitDoctorName(str(d.fullName));
   if (!name) throw new ConvertError("Add the doctor's first and last name to the form first.");
   const skipped = ["qualifications", "timings"];
@@ -210,15 +234,22 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   return { kind: "doctor" as const, id: doc._id, href: `/admin/doctors/${doc._id}` };
 }
 
-/** "Dr. Neha Joshi – MBBS, MD – Dermatologist" → name, qualifications, specialty. */
-export function parseDoctorLine(line: string): { name: string; qualifications?: string; specialty?: string } {
-  const [name = "", qualifications, ...rest] = line.split(/\s+[–—-]\s+|\s*\|\s*/).map((s) => s.trim());
-  return { name: name.slice(0, 120), ...(qualifications ? { qualifications: qualifications.slice(0, 200) } : {}), ...(rest.length ? { specialty: rest.join(" – ").slice(0, 120) } : {}) };
+/** Form doctors → the site's doctor list (each doctor once, even if in two departments). */
+function siteDoctors(kind: IntakeKind, d: IntakeData) {
+  const seen = new Set<string>();
+  return doctorEntries(kind, d)
+    .map(({ doctor: e }) => ({
+      name: str(e.name).slice(0, 120),
+      ...(str(e.education) ? { qualifications: str(e.education).slice(0, 200) } : {}),
+      ...(str(e.designation) ? { specialty: str(e.designation).slice(0, 120) } : {}),
+      ...(doctorRoleLabel(e.role) ? { role: doctorRoleLabel(e.role) } : {}),
+    }))
+    .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()));
 }
 
 async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
-  const d = intake.data as IntakeData;
   const kind = intake.kind as "clinic" | "hospital";
+  const d = withDefaults(kind, intake.data as IntakeData);
   const name = str(d.name);
   if (!name) throw new ConvertError(`Add the ${kind} name to the form first.`);
   const skipped = ["timings"];
@@ -240,7 +271,10 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
 
   const pincode = str(d.pincode);
   const beds = /^\d+$/.test(str(d.beds)) ? Number(str(d.beds)) : undefined;
-  const departments = splitLines(d.departments).map((l) => ({ name: l.split(/\s+[–—-]\s+/)[0]!.slice(0, 120), doctorIds: [] }));
+  const departments = (isRepeatValue(d.departments) ? (d.departments as RepeatItem[]) : []).filter((dep) => str(dep.name)).map((dep) => ({ name: str(dep.name).slice(0, 120), doctorIds: [] }));
+  const formDoctors = doctorEntries(kind, d);
+  if (departments.length && formDoctors.some((x) => x.department)) skipped.push("which doctors are in which department");
+  if (formDoctors.some((x) => x.doctor.photo || str(x.doctor.portfolioUrl))) skipped.push("doctor photos and portfolio links");
   if (beds !== undefined && beds > LIMITS.hospitalBedsMax) skipped.push(`beds (form says ${beds})`);
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
@@ -280,10 +314,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     departments,
     ...(beds !== undefined && beds <= LIMITS.hospitalBedsMax && kind === "hospital" ? { beds: { total: beds, types: [] } } : {}),
     ...(insurance.length || d.cashless === true ? { insurance: { cashless: d.cashless === true, providers: insurance } } : {}),
-    doctors: [
-      ...splitLines(d.doctors).map(parseDoctorLine),
-      ...splitLines(d.visitingDoctors).map((l) => ({ ...parseDoctorLine(l), role: "Visiting consultant" })),
-    ].filter((x) => x.name),
+    doctors: siteDoctors(kind, d),
     languages: splitList(d.languages),
     gallery: gallery(intake.photos?.gallery ?? [], kind === "clinic" ? LIMITS.clinicGalleryMax : LIMITS.hospitalGalleryMax),
     links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "youtube", "website"]),

@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
 import { Check } from "lucide-react";
-import { FitBox } from "@/components/home/FitBox";
+import { SampleCardFace } from "@/components/cards/SampleCardFace";
 import { CardViewer } from "@/components/marketing/CardViewer";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { WhatsAppIcon, WhatsAppLink } from "@/components/marketing/WhatsAppLink";
 import { VISITING_CARDS } from "@/content/marketing";
-import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
-import { SAMPLE_SITES } from "@/fixtures/sample-sites";
-import { cardProps, siteCardProps } from "@/lib/cards/render";
 import { CARD_STYLE_GROUPS, CARD_STYLES_BY_GROUP, cardStyleWhatsappText, type CardStyle, type CardStyleGroup } from "@/lib/cards/styles";
 import { getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
-import { absUrl, PRODUCTION_HOSTNAME } from "@/lib/site";
-import ClassicCard from "@/templates/card/classic";
-import ClassicSiteCard from "@/templates/card/classic/site";
-import { CARD_SIZE, type CardVariant } from "@/templates/types";
+import { absUrl } from "@/lib/site";
 
 /**
  * Visiting card gallery: five colour styles each for doctors, clinics and
@@ -32,25 +26,6 @@ export const metadata: Metadata = {
 };
 
 const GROUP_ID: Record<CardStyleGroup, string> = { doctor: "doctors", clinic: "clinics", hospital: "hospitals" };
-
-/** Sample owners: the sample doctor's subdomain (as on the homepage) and the sample clinic and hospital sites. */
-const sampleDoctor = { ...SAMPLE_PUBLIC_DOCTORS.gp, shareUrl: `https://draditisample.${PRODUCTION_HOSTNAME}` };
-const sampleSite = { clinic: SAMPLE_SITES["general-opd"], hospital: SAMPLE_SITES["small-hospital"] };
-
-/** A card at any size: small in the gallery, `full` in the full-screen viewer. */
-function CardFace({ style, variant, full }: { style: CardStyle; variant: CardVariant; full?: boolean }) {
-  const { width, height } = CARD_SIZE[variant];
-  const fallbackScale = full ? (variant === "print" ? 0.6 : 0.35) : variant === "print" ? 0.3 : 0.12;
-  return (
-    <FitBox width={width} height={height} fallbackScale={fallbackScale} className={full ? undefined : variant === "print" ? "rounded-lg shadow-soft" : "rounded-xl shadow-soft"}>
-      {style.group === "doctor" ? (
-        <ClassicCard {...cardProps({ ...sampleDoctor, cardStyle: style.code }, variant, "html")} />
-      ) : (
-        <ClassicSiteCard {...siteCardProps({ ...sampleSite[style.group], cardStyle: style.code }, variant, "html")} />
-      )}
-    </FitBox>
-  );
-}
 
 function StyleItem({ style, waNumber }: { style: CardStyle; waNumber: string }) {
   return (
@@ -71,12 +46,12 @@ function StyleItem({ style, waNumber }: { style: CardStyle; waNumber: string }) 
             className="grid select-none items-end gap-3 rounded-xl p-3 sm:gap-4 sm:p-4"
             style={{ gridTemplateColumns: "minmax(0,0.364fr) minmax(0,1fr)", background: style.swatches[2] }}
           >
-            <CardFace style={style} variant="phone" />
-            <CardFace style={style} variant="print" />
+            <SampleCardFace style={style} variant="phone" />
+            <SampleCardFace style={style} variant="print" />
           </span>
         }
-        phone={<CardFace style={style} variant="phone" full />}
-        print={<CardFace style={style} variant="print" full />}
+        phone={<SampleCardFace style={style} variant="phone" full />}
+        print={<SampleCardFace style={style} variant="print" full />}
       />
     </li>
   );
