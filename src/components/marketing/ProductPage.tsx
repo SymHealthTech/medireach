@@ -77,7 +77,7 @@ export function ProductHero({
 }
 
 /** "Pick your designs" (#designs, the hero's second button): website designs and visiting cards, the same on all three pages. */
-export function PickDesignsSection({ kind, waNumber, allHref }: { kind: IntakeKind; waNumber: string; allHref?: string }) {
+export function PickDesignsSection({ kind, waNumber }: { kind: IntakeKind; waNumber: string }) {
   return (
     <Reveal as="section" aria-labelledby="designs-title" className="bg-paper px-4 py-20 sm:px-6 lg:py-28">
       <div id="designs" className="mx-auto max-w-content scroll-mt-20">
@@ -85,7 +85,7 @@ export function PickDesignsSection({ kind, waNumber, allHref }: { kind: IntakeKi
           <SectionTitle id="designs-title">{PICK_DESIGNS.title[kind]}</SectionTitle>
           <p className="mx-auto mt-3 max-w-2xl text-lg text-body/85">{PICK_DESIGNS.text[kind]}</p>
         </div>
-        <PickDesigns kind={kind} cardFaces={sampleCardFaces(kind)} waNumber={waNumber} allHref={allHref} />
+        <PickDesigns kind={kind} cardFaces={sampleCardFaces(kind)} waNumber={waNumber} />
       </div>
     </Reveal>
   );

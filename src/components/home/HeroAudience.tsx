@@ -168,7 +168,7 @@ export function HeroAudience({
             <WhatsAppIcon className="size-5" /> {HERO.primaryCta}
           </WhatsAppLink>
           <Link
-            href="/designs"
+            href={`/designs?for=${audience}`}
             className="group inline-flex min-h-12 items-center justify-center gap-2 whitespace-nowrap rounded-[10px] border border-line bg-surface px-6 font-semibold text-ink transition-colors hover:border-ink/40 active:scale-[.98]"
           >
             {HERO.secondaryCta}

@@ -323,19 +323,22 @@ export const PICK_DESIGNS = {
   card: "Visiting card",
   cardText: "Share it on WhatsApp or print it. The QR code opens your website, so patients always see your current timings.",
   yourPicks: "Your picks",
+  yourPick: "Your pick",
   designLabel: "Website",
   cardLabel: "Card",
   notPicked: "Not picked yet",
   start: "Start my form with these",
+  startDesign: "Start my form with this design",
   startEmpty: "Start my website form",
   whatsapp: "Send my picks on WhatsApp",
+  whatsappDesign: "Send it on WhatsApp",
   /** `{what}` = the product; `{design}` / `{card}` = the picks. */
   whatsappText: "Hi, I'd like a MediReach {what}. Website design: {design}. Visiting card: {card}.",
+  whatsappTextDesign: "Hi, I'd like a MediReach {what}. Website design: {design}.",
   whatsappWhat: { doctor: "portfolio website", clinic: "website for my clinic", hospital: "website for our hospital" },
   undecided: "not decided yet",
   note: "Not sure yet? Leave it for now. You can pick in the form, or we'll help you choose.",
   allCards: "All visiting card styles",
-  allDesigns: "All specialty designs",
 };
 
 /** /for-hospitals (was /hospitals). */
@@ -447,7 +450,7 @@ export const FOOTER = {
         { href: "/for-clinics", label: "Clinics" },
         { href: "/for-hospitals", label: "Hospitals" },
         { href: "/visiting-cards", label: "Visiting cards" },
-        { href: "/designs", label: "Specialty designs" },
+        { href: "/designs", label: "Website designs" },
       ],
     },
     {
@@ -512,13 +515,17 @@ export const WHATSAPP_TEXT = {
   pricing: "Hi, I'd like to know more about MediReach pricing.",
 };
 
-/** Public specialty design gallery (/designs). Publicly these are "specialty designs", never "templates". */
+/**
+ * Public design gallery (/designs): doctors, clinics or hospitals (tabs), then
+ * the type and its designs, as in the website form. Publicly these are
+ * "designs", never "templates".
+ */
 export const DESIGNS = {
-  eyebrow: "Specialty designs",
+  eyebrow: "Website designs",
   title: "Designs made for your specialty",
-  text: "Each one is personalised with your name, logo, colours, photos and details. Open a sample to see the full site.",
-  view: "View sample",
-  sampleBadge: "Sample",
+  text: "Choose who the website is for and your specialty, then open a design to see a full sample website. Each one is personalised with your own name, logo, colours, photos and details.",
+  tabsLabel: "Designs for",
+  tabs: { doctor: "Doctors", clinic: "Clinics", hospital: "Hospitals" },
   sampleBar: "Sample site · {theme} design · every name and detail here is made up",
   backToAll: "All designs",
   cta: "Get this design",

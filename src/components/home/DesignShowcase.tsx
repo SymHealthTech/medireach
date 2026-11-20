@@ -103,7 +103,7 @@ export function DesignShowcase({ sites }: { sites: MiniSiteData[] }) {
               {HOME_DESIGNS.view}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
             </Link>
-            <Link href="/designs" className="inline-flex min-h-12 items-center px-2 font-semibold text-lagoon hover:text-ink">
+            <Link href={`/designs?for=${s.kind}&design=${s.themeKey}`} className="inline-flex min-h-12 items-center px-2 font-semibold text-lagoon hover:text-ink">
               {HOME_DESIGNS.all}
             </Link>
           </div>

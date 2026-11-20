@@ -64,7 +64,7 @@ export default async function ForHospitalsPage() {
 
         <IncludedGrid title={FOR_HOSPITALS.includedTitle} items={FOR_HOSPITALS.included} />
 
-        <PickDesignsSection kind="hospital" waNumber={site.whatsappNumber} allHref="/designs" />
+        <PickDesignsSection kind="hospital" waNumber={site.whatsappNumber} />
 
         <Reveal as="section" aria-labelledby="consultants-title" className="bg-sage px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">
