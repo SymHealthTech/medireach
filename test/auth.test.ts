@@ -89,7 +89,7 @@ describe("sessions and roles", () => {
 
   it("hides admin-only sections from sales", () => {
     const sales = navForRole("sales").map((n) => n.label);
-    expect(sales).toEqual(["Overview", "Doctors", "Clinics & hospitals", "Sites", "Visiting cards", "Leads"]);
+    expect(sales).toEqual(["Overview", "Doctors", "Clinics & hospitals", "Sites", "Visiting cards", "Website forms", "Leads"]);
     expect(navForRole("superadmin")).toHaveLength(NAV_ITEMS.length);
     expect(rolesFor("/admin/payments")).not.toContain("sales");
   });
@@ -98,6 +98,7 @@ describe("sessions and roles", () => {
     expect(activeNavItem("/admin")?.label).toBe("Overview");
     expect(activeNavItem("/admin/doctors/new")?.label).toBe("Doctors");
     expect(activeNavItem("/admin/update-requests")?.label).toBe("Update requests");
+    expect(activeNavItem("/admin/intakes/abc")?.label).toBe("Website forms");
     expect(activeNavItem("/admin/establishments/new")?.label).toBe("Clinics & hospitals");
     expect(activeNavItem("/admin/payments/renewals")?.label).toBe("Payments & renewals");
   });
@@ -112,6 +113,7 @@ describe("sessions and roles", () => {
       "Designs & themes",
       "Payments & renewals",
       "Update requests",
+      "Website forms",
       "Leads",
       "Master lists",
       "SEO",

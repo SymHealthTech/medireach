@@ -4,16 +4,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { LogoWordmark } from "@/components/brand/Logo";
-import { GET_STARTED, NAV } from "@/content/marketing";
+import { NAV } from "@/content/marketing";
 import { cn } from "@/lib/cn";
-import { CallbackButton } from "./CallbackButton";
+import { GetStartedButton } from "@/components/intake/GetStartedButton";
 
 /**
  * Sticky top bar (DESIGN_BRIEF.md §4.1): wordmark, links, "Get started"
  * (opens the call-back dialog). Transparent at the top, solid paper with a
  * hairline once you scroll. Mobile: logo + "Get started" + menu.
  */
-export function MarketingHeader() {
+export function MarketingHeader({ waHref }: { waHref: string }) {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -42,9 +42,8 @@ export function MarketingHeader() {
             </Link>
           ))}
         </nav>
-        <CallbackButton
-          label={GET_STARTED}
-          icon={false}
+        <GetStartedButton
+          waHref={waHref}
           className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-marigold px-4 text-sm font-semibold text-white hover:bg-marigold-700 active:scale-[.98]"
         />
         <button

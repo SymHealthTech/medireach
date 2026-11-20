@@ -1,0 +1,274 @@
+import "server-only";
+import type { Types } from "mongoose";
+import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
+import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, type IntakeKind } from "@/lib/constants";
+import { escapeRegExp } from "@/lib/admin/list";
+import { ensureUrlKeys as ensureDoctorUrlKeys } from "@/lib/doctors/server";
+import { ensureUrlKeys as ensureSiteUrlKeys } from "@/lib/establishments/server";
+import { INTAKE_SECTIONS, isRepeatValue, splitLines, splitList, str, type IntakeData, type IntakePhoto, type RepeatItem } from "@/lib/intake/form";
+import { sanitizeBioHtml } from "@/lib/sanitize";
+import { slugify } from "@/lib/slug";
+import { Area } from "@/models/Area";
+import { City } from "@/models/City";
+import { ClinicCategory } from "@/models/ClinicCategory";
+import { Council } from "@/models/Council";
+import { DoctorProfile } from "@/models/DoctorProfile";
+import { Establishment } from "@/models/Establishment";
+import type { IntakeDoc } from "@/models/Intake";
+import { Specialty } from "@/models/Specialty";
+
+/**
+ * Turn a reviewed website form into a DRAFT doctor page or clinic/hospital
+ * site. Only what maps cleanly is copied into real fields (names, contact,
+ * text, lists, photos, and masters matched by name: city, area, specialty,
+ * council, category). Everything else (qualifications, timings, awards, the
+ * applicant's notes…) goes into the draft's internal notes for the admin to
+ * enter in the editor. Nothing is published; the normal publish checks
+ * (compliance scan, approval) still apply.
+ */
+
+const ci = (s: string) => new RegExp(`^${escapeRegExp(s.trim())}$`, "i");
+
+async function matchByName<T extends { _id: Types.ObjectId }>(
+  find: (filter: Record<string, unknown>) => Promise<T | null>,
+  name: string,
+  extra: Record<string, unknown> = {},
+  fields: string[] = ["name"],
+): Promise<T | null> {
+  const n = name.trim();
+  if (!n) return null;
+  return (await find({ ...extra, $or: [...fields.map((f) => ({ [f]: ci(n) })), { slug: slugify(n) }] })) ?? null;
+}
+
+const mobile = (v: unknown) => {
+  const d = str(v).replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
+  return /^[6-9]\d{9}$/.test(d) ? d : undefined;
+};
+const phones = (v: unknown) =>
+  str(v)
+    .split(/[,/;\n]/)
+    .map((p) => p.trim())
+    .filter((p) => p.replace(/\D/g, "").length >= 6);
+const url = (v: unknown) => (/^https?:\/\/\S+$/i.test(str(v)) ? str(v) : undefined);
+const year = (v: unknown) => (/^\d{4}$/.test(str(v)) ? Number(str(v)) : undefined);
+const paragraphs = (v: unknown) =>
+  str(v)
+    ? sanitizeBioHtml(
+        str(v)
+          .split(/\n\s*\n/)
+          .map((p) => `<p>${p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p>`)
+          .join(""),
+      )
+    : undefined;
+const image = (p?: IntakePhoto, alt?: string) => (p ? { publicId: p.publicId, url: p.url, ...(alt ? { alt } : {}) } : undefined);
+const gallery = (ps: IntakePhoto[], max: number) => ps.slice(0, max).map((p) => ({ publicId: p.publicId, url: p.url, caption: p.caption ?? "" }));
+const links = (d: IntakeData, keys: string[]) => Object.fromEntries(keys.map((k) => [k, url(d[k])]).filter(([, v]) => v));
+
+/** "Dr. Amit R. Kulkarni" → title, first, middle, last. */
+export function splitDoctorName(full: string): { title: string; firstName: string; middleName?: string; lastName: string } | null {
+  const parts = full
+    .replace(/^\s*(dr|doctor)\.?\s+/i, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+  return { title: "Dr.", firstName: parts[0]!, ...(parts.length > 2 ? { middleName: parts.slice(1, -1).join(" ") } : {}), lastName: parts[parts.length - 1]! };
+}
+
+/** Every filled field, as "Section — Label: value" lines, for the draft's internal notes. */
+export function intakeAsText(kind: IntakeKind, data: IntakeData): string {
+  const out: string[] = [];
+  for (const s of INTAKE_SECTIONS[kind]) {
+    if (s.repeat) {
+      const items = isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : [];
+      items.forEach((it, i) => {
+        const rows = s.fields.filter((f) => str(it[f.key]) || it[f.key] === true).map((f) => `  ${f.label}: ${it[f.key] === true ? "Yes" : str(it[f.key])}`);
+        if (rows.length) out.push(`${s.repeat!.itemLabel} ${i + 1}:`, ...rows);
+      });
+    } else {
+      for (const f of s.fields) {
+        const v = data[f.key];
+        if (v === true) out.push(`${f.label}: Yes`);
+        else if (str(v)) out.push(`${f.label}: ${str(v).replace(/\n/g, "; ")}`);
+      }
+    }
+  }
+  return out.join("\n");
+}
+
+function notesFor(intake: Pick<IntakeDoc, "ref" | "kind" | "data" | "photos" | "adminNotes">, skipped: string[]): string {
+  const head = [
+    `From website form ${intake.ref}.`,
+    skipped.length ? `Please enter in the editor: ${skipped.join(", ")}.` : "",
+    intake.photos?.viaWhatsapp ? "Applicant is sending (some) photos on WhatsApp." : "",
+    intake.adminNotes ? `Review notes: ${intake.adminNotes}` : "",
+  ].filter(Boolean);
+  return `${head.join("\n")}\n\n--- Form answers ---\n${intakeAsText(intake.kind, intake.data as IntakeData)}`.slice(0, 20_000);
+}
+
+export class ConvertError extends Error {}
+
+/** Create the draft and return where to edit it. */
+export async function createSiteFromIntake(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">): Promise<{ kind: IntakeKind; id: Types.ObjectId; href: string }> {
+  return intake.kind === "doctor" ? createDoctor(intake) : createEstablishment(intake);
+}
+
+async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
+  const d = intake.data as IntakeData;
+  const name = splitDoctorName(str(d.fullName));
+  if (!name) throw new ConvertError("Add the doctor's first and last name to the form first.");
+  const skipped = ["qualifications", "timings"];
+
+  const [specialty, council] = await Promise.all([
+    matchByName((f) => Specialty.findOne(f).select({ _id: 1 }).lean(), str(d.specialty), {}, ["name", "plural"]),
+    matchByName((f) => Council.findOne(f).select({ _id: 1 }).lean(), str(d.council)),
+  ]);
+  if (!specialty && str(d.specialty)) skipped.push("specialty");
+
+  const clinics = [];
+  for (const c of isRepeatValue(d.clinics) ? (d.clinics as RepeatItem[]) : []) {
+    const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(c.city) || "Pune");
+    const area = city ? await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(c.area), { cityId: city._id }) : null;
+    const pincode = str(c.pincode);
+    if (!city || !area || !str(c.name) || !str(c.address) || !/^\d{6}$/.test(pincode)) {
+      if (str(c.name)) skipped.push(`clinic "${str(c.name)}" (area, city or pincode not matched)`);
+      continue;
+    }
+    const fee = /^\d+$/.test(str(c.fee)) ? Number(str(c.fee)) : undefined;
+    clinics.push({
+      name: str(c.name),
+      type: "own_clinic" as const,
+      addressLine1: str(c.address).replace(/\s*\n\s*/g, ", "),
+      areaId: area._id,
+      cityId: city._id,
+      state: city.state,
+      pincode,
+      ...(url(c.mapsUrl) ? { mapsUrl: url(c.mapsUrl) } : {}),
+      ...(phones(c.phone)[0] ? { phone: phones(c.phone)[0] } : {}),
+      timings: [],
+      ...(str(c.appointmentNote) ? { appointmentNote: str(c.appointmentNote) } : {}),
+      ...(fee !== undefined ? { fee } : {}),
+      showFee: false,
+    });
+  }
+  if (splitLines(d.awards).length) skipped.push("awards");
+
+  const ownerFree = !(await DoctorProfile.exists({ ownerEmail: intake.email }));
+  const system = (SYSTEMS_OF_MEDICINE as readonly string[]).includes(str(d.systemOfMedicine)) ? (str(d.systemOfMedicine) as (typeof SYSTEMS_OF_MEDICINE)[number]) : undefined;
+  const gender = (GENDERS as readonly string[]).includes(str(d.gender)) ? (str(d.gender) as (typeof GENDERS)[number]) : undefined;
+  const cardStyle = str(d.cardStyle).toUpperCase();
+  const fullName = `Dr. ${name.firstName} ${name.lastName}`;
+
+  const doc = new DoctorProfile({
+    status: "draft",
+    ...name,
+    ...(gender ? { gender } : {}),
+    ...(system ? { systemOfMedicine: system } : {}),
+    photo: image(intake.photos?.profile, fullName),
+    languages: splitList(d.languages),
+    practiceSinceYear: year(d.practiceSince),
+    registration: { ...(council ? { councilId: council._id } : {}), ...(str(d.registrationNumber) ? { number: str(d.registrationNumber) } : {}), ...(year(d.registrationYear) ? { year: year(d.registrationYear) } : {}) },
+    ...(specialty ? { primarySpecialtyId: specialty._id } : {}),
+    services: splitLines(d.services).map((s) => ({ name: s.slice(0, 200) })),
+    conditionsTreated: splitLines(d.conditions).map((s) => s.slice(0, 200)),
+    clinics,
+    mobile: mobile(d.mobile),
+    whatsapp: mobile(d.whatsapp) ?? mobile(d.mobile),
+    links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "linkedin", "youtube", "website"]),
+    shortBio: str(d.shortBio).slice(0, LIMITS.shortBio) || undefined,
+    fullBio: paragraphs(d.aboutMe),
+    memberships: splitLines(d.memberships).map((m) => {
+      const y = m.match(/\b(19|20)\d{2}\b/)?.[0];
+      return { name: m.replace(/[–-]?\s*\b(19|20)\d{2}\b\s*$/, "").trim() || m, ...(y && +y <= new Date().getFullYear() ? { since: +y } : {}) };
+    }),
+    interests: splitList(d.interests).slice(0, 20),
+    gallery: gallery(intake.photos?.gallery ?? [], LIMITS.galleryMax),
+    ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
+    plan: "doctor",
+    source: "inbound",
+    ...(ownerFree ? { ownerEmail: intake.email } : {}),
+  });
+  doc.internalNotes = notesFor(intake, skipped);
+  await ensureDoctorUrlKeys(doc);
+  await doc.save();
+  return { kind: "doctor" as const, id: doc._id, href: `/admin/doctors/${doc._id}` };
+}
+
+/** "Dr. Neha Joshi – MBBS, MD – Dermatologist" → name, qualifications, specialty. */
+export function parseDoctorLine(line: string): { name: string; qualifications?: string; specialty?: string } {
+  const [name = "", qualifications, ...rest] = line.split(/\s+[–—-]\s+|\s*\|\s*/).map((s) => s.trim());
+  return { name: name.slice(0, 120), ...(qualifications ? { qualifications: qualifications.slice(0, 200) } : {}), ...(rest.length ? { specialty: rest.join(" – ").slice(0, 120) } : {}) };
+}
+
+async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
+  const d = intake.data as IntakeData;
+  const kind = intake.kind as "clinic" | "hospital";
+  const name = str(d.name);
+  if (!name) throw new ConvertError(`Add the ${kind} name to the form first.`);
+  const skipped = ["timings"];
+
+  const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(d.city) || "Pune");
+  const area = city ? await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(d.area), { cityId: city._id }) : null;
+  if (!city || !area) skipped.push("area / city");
+
+  const typeText = (kind === "clinic" ? str(d.clinicType) : str(d.hospitalType)).toLowerCase();
+  const categories = await ClinicCategory.find({ kind }).select({ name: 1, defaultThemeKey: 1 }).lean();
+  const category =
+    categories.find((c) => typeText && (typeText.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(typeText))) ?? (kind === "hospital" ? categories[0] : undefined);
+  if (!category) skipped.push("category");
+
+  const pincode = str(d.pincode);
+  const beds = /^\d+$/.test(str(d.beds)) ? Number(str(d.beds)) : undefined;
+  const departments = splitLines(d.departments).map((l) => ({ name: l.split(/\s+[–—-]\s+/)[0]!.slice(0, 120), doctorIds: [] }));
+  if (beds !== undefined && beds > LIMITS.hospitalBedsMax) skipped.push(`beds (form says ${beds})`);
+  const cardStyle = str(d.cardStyle).toUpperCase();
+  const insurance = splitLines(d.insurance);
+  const label = kind === "clinic" ? "clinic" : "hospital";
+
+  const doc = new Establishment({
+    kind,
+    plan: kind,
+    status: "draft",
+    name,
+    ...(category ? { categoryId: category._id, themeKey: category.defaultThemeKey } : {}),
+    logo: image(intake.photos?.logo, `${name} logo`),
+    coverPhoto: image(intake.photos?.cover, name),
+    tagline: str(d.tagline).slice(0, 200) || undefined,
+    about: paragraphs(d.about),
+    ...(str(d.regNumber) || str(d.regAuthority) ? { registration: { authority: str(d.regAuthority) || undefined, number: str(d.regNumber) || undefined } } : {}),
+    address: {
+      line1: str(d.address).replace(/\s*\n\s*/g, ", ") || undefined,
+      ...(area && city ? { areaId: area._id, cityId: city._id, state: city.state } : {}),
+      ...(/^\d{6}$/.test(pincode) ? { pincode } : {}),
+      landmark: str(d.landmark) || undefined,
+    },
+    mapsUrl: url(d.mapsUrl),
+    contact: {
+      phones: phones(d.phones),
+      whatsapp: mobile(d.siteWhatsapp),
+      email: str(d.siteEmail) || undefined,
+      emergencyPhone: phones(d.emergencyPhone)[0],
+    },
+    is24x7: d.is24x7 === true,
+    appointmentNote: str(d.appointmentNote) || undefined,
+    visitingHours: str(d.visitingHours) || undefined,
+    services: splitLines(d.services).map((s) => ({ name: s.slice(0, 200) })),
+    facilities: splitLines(d.facilities).map((s) => ({ name: s.slice(0, 200) })),
+    equipment: splitLines(d.equipment).map((s) => ({ name: s.slice(0, 200) })),
+    departments,
+    ...(beds !== undefined && beds <= LIMITS.hospitalBedsMax && kind === "hospital" ? { beds: { total: beds, types: [] } } : {}),
+    ...(insurance.length || d.cashless === true ? { insurance: { cashless: d.cashless === true, providers: insurance } } : {}),
+    doctors: splitLines(d.doctors).map(parseDoctorLine).filter((x) => x.name),
+    languages: splitList(d.languages),
+    gallery: gallery(intake.photos?.gallery ?? [], kind === "clinic" ? LIMITS.clinicGalleryMax : LIMITS.hospitalGalleryMax),
+    links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "youtube", "website"]),
+    ...((SITE_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
+    source: "inbound",
+    contactPerson: { name: str(d.contactName) || undefined, phone: mobile(d.mobile), email: intake.email },
+    ownerEmail: intake.email,
+  });
+  doc.internalNotes = notesFor(intake, skipped);
+  await ensureSiteUrlKeys(doc);
+  await doc.save();
+  return { kind, id: doc._id, href: `/admin/establishments/${doc._id}`, label };
+}

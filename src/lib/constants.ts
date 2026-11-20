@@ -98,6 +98,16 @@ export const LEAD_SOURCES = ["homepage_form", "whatsapp_click", "pricing", "doct
 export const LEAD_STATUSES = ["new", "contacted", "won", "lost"] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
+// --- Website forms (self-filled from "Get started") ---
+/** Who the website is for. */
+export const INTAKE_KINDS = PRODUCTS;
+export type IntakeKind = Product;
+/** draft = saved but not sent; submitted = sent for review; done = website created. */
+export const INTAKE_STATUSES = ["draft", "submitted", "in_review", "done", "archived"] as const;
+export type IntakeStatus = (typeof INTAKE_STATUSES)[number];
+/** The applicant can keep editing until the team marks the form done or archived. */
+export const INTAKE_EDITABLE_STATUSES: readonly IntakeStatus[] = ["draft", "submitted", "in_review"];
+
 // --- Templates ---
 /** @deprecated v1 slot types; replaced by SITE_TEMPLATE_TYPES in step 2. */
 export const TEMPLATE_TYPES = ["portfolio", "card"] as const;

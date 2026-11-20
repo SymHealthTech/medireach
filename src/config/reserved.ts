@@ -27,6 +27,7 @@ export const RESERVED_SLUGS = [
   "terms",
   "privacy",
   "contact",
+  "get-started",
   "sitemap",
   "sitemap.xml",
   "robots",

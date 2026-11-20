@@ -445,13 +445,32 @@ export const NAV = [
   { href: "/login", label: "Login" },
 ];
 
-/** Header button: opens the call-back dialog. */
+/** Header button: opens the "Get started" options dialog. */
 export const GET_STARTED = "Get started";
 /** The "Request a call back" dialog (header + hero). */
 export const CALLBACK = {
   cta: "Request a call back",
   title: "We'll call you back",
   text: "Leave your name and number. Our team will call you within one working day and collect your details.",
+};
+
+/**
+ * "Get started" (header): choose a self-fill website form or a WhatsApp
+ * enquiry. The forms live at /get-started/{doctor|clinic|hospital}.
+ */
+export const GET_STARTED_DIALOG = {
+  title: "How would you like to start?",
+  text: "Busy right now? Fill in your details in your own time, or send us a message on WhatsApp.",
+  options: {
+    doctor: { title: "Doctor website", text: "For an individual doctor: portfolio website and visiting card." },
+    clinic: { title: "Clinic website", text: "For single or multi-doctor clinics." },
+    hospital: { title: "Hospital website", text: "For small hospitals up to 10 beds." },
+    whatsapp: { title: "WhatsApp enquiry", text: "Ask us anything. We reply on WhatsApp." },
+  },
+  formNote: "About 10 minutes. Save anytime and finish later with the same email.",
+  continue: "Already started a form?",
+  continueLink: "Continue with your email",
+  whatsappText: "Hi, I have a question about a MediReach website.",
 };
 
 /** Pre-filled WhatsApp messages, per placement. */
@@ -487,6 +506,6 @@ export function allMarketingCopy(): string[] {
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_DOCTORS, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS, VISITING_CARDS]);
+  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_DOCTORS, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, GET_STARTED_DIALOG, CALLBACK, WHATSAPP_TEXT, DESIGNS, VISITING_CARDS]);
   return out;
 }

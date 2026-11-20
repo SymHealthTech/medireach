@@ -1,5 +1,6 @@
 import {
   Building2,
+  ClipboardList,
   CreditCard,
   Globe,
   IdCard,
@@ -41,6 +42,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/templates", label: "Designs & themes", icon: Palette, roles: ADMINS },
   { href: "/admin/payments", label: "Payments & renewals", icon: CreditCard, roles: ADMINS },
   { href: "/admin/update-requests", label: "Update requests", icon: Wrench, roles: ADMINS },
+  { href: "/admin/intakes", label: "Website forms", short: "Forms", icon: ClipboardList, roles: ALL },
   { href: "/admin/leads", label: "Leads", icon: Users, roles: ALL },
   { href: "/admin/masters", label: "Master lists", icon: ListTree, roles: ADMINS },
   { href: "/admin/seo", label: "SEO", icon: Search, roles: ADMINS },
