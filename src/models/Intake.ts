@@ -27,6 +27,8 @@ export interface IntakeDoc {
     profile?: IntakePhoto;
     logo?: IntakePhoto;
     cover?: IntakePhoto;
+    /** Doctors: the photo for their "Beyond medicine" story. */
+    beyond?: IntakePhoto;
     gallery: IntakePhoto[];
     viaWhatsapp: boolean;
   };
@@ -61,6 +63,7 @@ const intakeSchema = new Schema<IntakeDoc>(
       profile: { type: photoSchema, default: undefined },
       logo: { type: photoSchema, default: undefined },
       cover: { type: photoSchema, default: undefined },
+      beyond: { type: photoSchema, default: undefined },
       gallery: { type: [photoSchema], default: [] },
       viaWhatsapp: { type: Boolean, default: false },
     },

@@ -4,7 +4,7 @@ import { Eye } from "lucide-react";
 import { ProfileView } from "@/components/public/ProfileView";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { isObjectId } from "@/lib/admin/list";
-import { getMasters, siteLinksFor, toPublicDoctor } from "@/lib/public/data";
+import { loadMasters, siteLinksFor, toPublicDoctor } from "@/lib/public/data";
 import { getReadyTemplates } from "@/lib/public/templates";
 import { DoctorProfile } from "@/models/DoctorProfile";
 
@@ -18,7 +18,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
   await requireAdminPage();
   const { id } = await params;
   if (!isObjectId(id)) notFound();
-  const [doc, masters] = await Promise.all([DoctorProfile.findById(id).lean(), getMasters()]);
+  const [doc, masters] = await Promise.all([DoctorProfile.findById(id).lean(), loadMasters()]);
   if (!doc) notFound();
 
   const sites = await siteLinksFor(doc.clinics.map((c) => c.establishmentId));

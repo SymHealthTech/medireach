@@ -218,11 +218,14 @@ export function IntakeSection({
   data,
   onChange,
   errors,
+  extra,
 }: {
   section: SectionDef;
   data: IntakeData;
   onChange: (next: IntakeData) => void;
   errors: Record<string, string>;
+  /** Shown after the section's fields (the "Beyond medicine" photo). */
+  extra?: React.ReactNode;
 }) {
   const body = s.repeat ? (
     <RepeatGroup section={s} items={isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : []} onChange={(items) => onChange({ ...data, [s.key]: items })} errors={errors} />
@@ -241,6 +244,7 @@ export function IntakeSection({
             context={data}
           />
         ))}
+      {extra}
     </div>
   );
   return (

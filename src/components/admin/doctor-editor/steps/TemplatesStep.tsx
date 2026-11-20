@@ -1,9 +1,11 @@
 "use client";
 
-import { Check, Clock } from "lucide-react";
+import { Check, ClipboardList, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CardStylePicker } from "@/components/admin/CardStylePicker";
+import { CardStylePicker, DesignPicker } from "@/components/intake/DesignPickers";
+import { DEFAULT_DOCTOR_CARD_STYLE, findCardStyle } from "@/lib/cards/styles";
 import { cn } from "@/lib/cn";
+import { DESIGN_OPTIONS, INTAKE_SECTIONS } from "@/lib/intake/form";
 import { Group, type StepProps } from "../shared";
 
 function SlotPicker({
@@ -71,25 +73,51 @@ function SlotPicker({
   );
 }
 
-export function TemplatesStep({ form: f, set, options, readOnly }: StepProps) {
+// The same pickers as the website form and the homepage (Get started → Doctor).
+const DESIGN_FIELDS = INTAKE_SECTIONS.doctor.find((s) => s.key === "design")!.fields;
+const WEBSITE_FIELD = DESIGN_FIELDS.find((x) => x.key === "websiteDesign")!;
+const CARD_FIELD = DESIGN_FIELDS.find((x) => x.key === "cardStyle")!;
+
+export function TemplatesStep({ form: f, set, options, readOnly, hints, cardFaces }: StepProps) {
+  const readyCardLayouts = options.templates.filter((t) => t.type === "card" && t.status === "ready");
+  const cardStyle = f.cardStyle || DEFAULT_DOCTOR_CARD_STYLE.code;
+  const picked = findCardStyle(cardStyle);
+  const formDesign = hints?.websiteDesign ? DESIGN_OPTIONS.doctor.find((d) => d.value === hints.websiteDesign)?.label : undefined;
+  const formCard = hints?.cardStyle ? findCardStyle(hints.cardStyle) : undefined;
   return (
-    <div className="space-y-5">
-      <Group title="Portfolio page design" description="All designs share the same SEO; only the look changes.">
-        <SlotPicker type="portfolio" value={f.portfolioTemplateId} options={options} disabled={readOnly} onChange={(portfolioTemplateId) => set({ portfolioTemplateId })} />
+    <fieldset disabled={readOnly} className="min-w-0 space-y-5">
+      {hints && (formDesign || formCard || hints.designDecision) && (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-sage/60 px-3 py-2 text-sm text-ink">
+          <ClipboardList className="size-4 shrink-0" aria-hidden />
+          <span>
+            Website form {hints.ref}: website <strong>{formDesign ?? "not decided"}</strong>, card <strong>{formCard ? `${formCard.name} (${formCard.code})` : "not decided"}</strong>
+            {hints.designDecision === "discuss" ? " · Not final: talk to the doctor first." : hints.designDecision === "final" ? " · Final choice." : ""}
+          </span>
+        </p>
+      )}
+      <Group title="Website design" description="The designs doctors see on the website. View opens the full sample site; every design has the same SEO.">
+        <DesignPicker id="portfolioTemplateId" field={WEBSITE_FIELD} value={f.portfolioTemplateId} onChange={(v) => v && set({ portfolioTemplateId: v })} undecided={false} />
       </Group>
-      <Group title="Visiting card design">
-        <SlotPicker type="card" value={f.cardTemplateId} options={options} disabled={readOnly} onChange={(cardTemplateId) => set({ cardTemplateId })} />
+      <Group
+        title="Visiting card"
+        description={`Shown with this doctor's details${cardFaces ? " (as last saved)" : ""}. View shows the phone and print card. The card page, WhatsApp image and print PDF all use the chosen colours.`}
+      >
+        <CardStylePicker id="cardStyle" field={CARD_FIELD} value={cardStyle} onChange={(code) => code && set({ cardStyle: code })} cardFaces={cardFaces} undecided={false} />
+        {picked && (
+          <p className="text-sm text-muted-foreground">
+            Chosen: <strong className="text-ink">{picked.name}</strong> <span className="font-mono">{picked.code}</span>
+            {!f.cardStyle && " (default)"}
+          </p>
+        )}
+        {readyCardLayouts.length > 1 ? (
+          <div className="space-y-2 pt-2">
+            <p className="text-sm font-medium">Card layout</p>
+            <SlotPicker type="card" value={f.cardTemplateId} options={options} disabled={readOnly} onChange={(cardTemplateId) => set({ cardTemplateId })} />
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Card layout: {readyCardLayouts[0]?.name ?? "Classic"}. More layouts are coming.</p>
+        )}
       </Group>
-      <Group title="Visiting card colours" description="The code name the doctor picked on the Visiting cards page (e.g. DOC-AMBER). The card page, WhatsApp image and print PDF all use it.">
-        <CardStylePicker
-          groups={["doctor"]}
-          value={f.cardStyle}
-          disabled={readOnly}
-          onChange={(cardStyle) => set({ cardStyle })}
-          defaultLabel="Default (DOC-LAGOON)"
-          defaultHint="Teal with amber accents"
-        />
-      </Group>
-    </div>
+    </fieldset>
   );
 }

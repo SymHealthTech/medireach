@@ -24,6 +24,10 @@ export interface DoctorFormHints {
   qualifications: ParsedQualification[];
   /** Per clinic, in form order. */
   clinics: FormClinic[];
+  /** Design choices: website design key, card style code, "final" / "discuss". */
+  websiteDesign?: string;
+  cardStyle?: string;
+  designDecision?: string;
 }
 
 export interface FormClinic {
@@ -96,6 +100,9 @@ export function doctorHints(ref: string, data: IntakeData): DoctorFormHints {
     ref,
     ...(str(data.council) ? { council: str(data.council) } : {}),
     ...(str(data.specialty) ? { specialty: str(data.specialty) } : {}),
+    ...(str(data.websiteDesign) ? { websiteDesign: str(data.websiteDesign) } : {}),
+    ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
+    ...(str(data.designDecision) ? { designDecision: str(data.designDecision) } : {}),
     qualificationLines: lines,
     qualifications: lines.map(parseQualificationLine).filter((q): q is ParsedQualification => q !== null),
     clinics: clinics

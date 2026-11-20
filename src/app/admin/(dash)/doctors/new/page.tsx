@@ -7,6 +7,8 @@ import { connectToDatabase } from "@/lib/db";
 import { emptyClinic, emptyDoctorForm, STEPS, type StepKey } from "@/lib/doctors/form";
 import { docToForm } from "@/lib/doctors/server";
 import { doctorFormHints } from "@/lib/intake/hints-server";
+import { loadDoctorForCard } from "@/lib/cards/admin";
+import { doctorCardFaces, sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { getEditorOptions } from "@/lib/doctors/options";
 import { Establishment } from "@/models/Establishment";
@@ -35,7 +37,17 @@ export default async function NewDoctorPage({
     const existing = await DoctorProfile.findById(id).lean();
     if (existing) {
       const initialStep = STEPS.some((s) => s.key === step) ? (step as StepKey) : "basics";
-      return <DoctorEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} hints={await doctorFormHints(existing._id)} />;
+      const cardDoctor = await loadDoctorForCard(String(existing._id));
+      return (
+        <DoctorEditor
+          initial={docToForm(existing)}
+          options={options}
+          role={admin.role}
+          initialStep={initialStep}
+          hints={await doctorFormHints(existing._id)}
+          cardFaces={cardDoctor ? doctorCardFaces(cardDoctor) : sampleCardFaces("doctor")}
+        />
+      );
     }
   }
 
@@ -84,5 +96,5 @@ export default async function NewDoctorPage({
     }
   }
 
-  return <DoctorEditor initial={form} options={options} role={admin.role} leadId={leadId} />;
+  return <DoctorEditor initial={form} options={options} role={admin.role} leadId={leadId} cardFaces={sampleCardFaces("doctor")} />;
 }

@@ -10,7 +10,7 @@ import { inputClass, SectionCard } from "./IntakeFields";
 import { PhotoCropDialog, type CropMode } from "./PhotoCropDialog";
 
 /** Applicant photos are compressed in uploadImage; these set the size per slot. */
-const COMPRESS = { profile: { maxSide: 1600 }, logo: { maxSide: 1200 }, cover: { maxSide: 2400 }, gallery: { maxSide: 2000 } } as const;
+const COMPRESS = { profile: { maxSide: 1600 }, logo: { maxSide: 1200 }, cover: { maxSide: 2400 }, beyond: { maxSide: 2000 }, gallery: { maxSide: 2000 } } as const;
 
 /** Slots that open "Adjust" (crop) before uploading. The cover isn't cropped: the site shows it at two shapes. */
 const CROP: Partial<Record<SinglePhotoKey, CropMode>> = { profile: "portrait", logo: "logo" };
@@ -235,6 +235,66 @@ export function IntakePhotosSection({
         )}
       </div>
     </SectionCard>
+  );
+}
+
+/**
+ * One photo uploaded inside a form section (the "Beyond medicine" photo),
+ * saved with the form's other photos.
+ */
+export function SectionPhoto({
+  photoKey,
+  label,
+  help,
+  photos,
+  onChange,
+  ensureSaved,
+  sign,
+  disabled,
+}: {
+  photoKey: SinglePhotoKey;
+  label: string;
+  help: string;
+  photos: IntakePhotos;
+  onChange: (p: IntakePhotos) => void;
+  ensureSaved: () => Promise<boolean>;
+  sign: UploadSigner;
+  disabled?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const latest = useRef(photos);
+  latest.current = photos;
+  async function pick(f: File) {
+    setError(null);
+    setBusy(true);
+    try {
+      if (!(await ensureSaved())) return;
+      const up = await uploadImage(f, "intake", sign, COMPRESS[photoKey]);
+      onChange({ ...latest.current, [photoKey]: { publicId: up.publicId, url: up.url } });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <SinglePhoto
+        label={label}
+        help={help}
+        value={photos[photoKey]}
+        busy={busy}
+        disabled={disabled || busy}
+        onPick={(f) => void pick(f)}
+        onRemove={() => onChange({ ...latest.current, [photoKey]: undefined })}
+      />
+      {error && (
+        <p role="alert" className="text-sm text-clay-text">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

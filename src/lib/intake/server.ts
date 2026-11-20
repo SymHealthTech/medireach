@@ -52,6 +52,7 @@ export function toView(doc: Pick<IntakeDoc, "_id" | "kind" | "email" | "ref" | "
       ...(ph.profile ? { profile: clean(ph.profile) } : {}),
       ...(ph.logo ? { logo: clean(ph.logo) } : {}),
       ...(ph.cover ? { cover: clean(ph.cover) } : {}),
+      ...(ph.beyond ? { beyond: clean(ph.beyond) } : {}),
       gallery: (ph.gallery ?? []).map((g) => clean(g)!),
       viaWhatsapp: Boolean(ph.viaWhatsapp),
     },

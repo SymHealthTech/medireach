@@ -3,8 +3,56 @@
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChipInput, Field, NativeSelect } from "@/components/admin/form/fields";
-import { MasterSelect, useMasterOptions } from "@/components/admin/form/MasterSelect";
+import { addMaster, MasterSelect, useMasterOptions, type MasterOption } from "@/components/admin/form/MasterSelect";
+import { useState } from "react";
+import { Loader2, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
+
+/** "Other: not in the list" for secondary specialties: type a name, it's added to the list and ticked. */
+function OtherSpecialty({ disabled, existing, onAdded }: { disabled: boolean; existing: MasterOption[]; onAdded: (id: string) => void }) {
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function add() {
+    if (!name.trim()) return;
+    setBusy(true);
+    try {
+      const o = await addMaster("specialty", name, undefined, existing);
+      if (o) {
+        onAdded(o.id);
+        setName("");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="mt-3 space-y-1.5 border-t border-line pt-3">
+      <label htmlFor="secondaryOther" className="text-sm font-medium">
+        Other: not in the list
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id="secondaryOther"
+          placeholder="Type the specialty, e.g. Sports Medicine"
+          value={name}
+          maxLength={120}
+          disabled={disabled}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void add();
+            }
+          }}
+        />
+        <Button type="button" variant="outline" disabled={disabled || busy || !name.trim()} onClick={() => void add()}>
+          {busy ? <Loader2 className="animate-spin" /> : <Plus />} Add
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function PracticeStep({ form: f, set, err, options, readOnly, hints }: StepProps) {
   const secondary = new Set(f.secondarySpecialtyIds);
@@ -76,6 +124,13 @@ export function PracticeStep({ form: f, set, err, options, readOnly, hints }: St
                 </li>
               ))}
           </ul>
+          <OtherSpecialty
+            disabled={readOnly || secondary.size >= 5}
+            existing={specialties}
+            onAdded={(id) =>
+              set((f) => (f.secondarySpecialtyIds.includes(id) || f.primarySpecialtyId === id ? {} : { secondarySpecialtyIds: [...f.secondarySpecialtyIds, id].slice(0, 5) }))
+            }
+          />
         </details>
       </Group>
 

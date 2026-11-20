@@ -40,30 +40,33 @@ export interface Masters {
   councils: { id: string; name: string }[];
 }
 
+/** Master lists straight from the database (dashboard previews; the public site uses the cached `getMasters`). */
+export async function loadMasters(): Promise<Masters> {
+  await connectToDatabase();
+  const [cities, areas, specialties, degrees, councils] = await Promise.all([
+    City.find().lean(),
+    Area.find().lean(),
+    Specialty.find().lean(),
+    Degree.find().lean(),
+    Council.find().lean(),
+  ]);
+  return {
+    cities: cities.map((c) => ({ id: String(c._id), name: c.name, slug: c.slug, state: c.state })),
+    areas: areas.map((a) => ({ id: String(a._id), name: a.name, slug: a.slug, cityId: String(a.cityId) })),
+    specialties: specialties.map((s) => ({
+      id: String(s._id),
+      name: s.name,
+      slug: s.slug,
+      plural: s.plural,
+      ...(s.description ? { description: s.description } : {}),
+    })),
+    degrees: degrees.map((d) => ({ id: String(d._id), name: d.name })),
+    councils: councils.map((c) => ({ id: String(c._id), name: c.name })),
+  };
+}
+
 export const getMasters = unstable_cache(
-  async (): Promise<Masters> => {
-    await connectToDatabase();
-    const [cities, areas, specialties, degrees, councils] = await Promise.all([
-      City.find().lean(),
-      Area.find().lean(),
-      Specialty.find().lean(),
-      Degree.find().lean(),
-      Council.find().lean(),
-    ]);
-    return {
-      cities: cities.map((c) => ({ id: String(c._id), name: c.name, slug: c.slug, state: c.state })),
-      areas: areas.map((a) => ({ id: String(a._id), name: a.name, slug: a.slug, cityId: String(a.cityId) })),
-      specialties: specialties.map((s) => ({
-        id: String(s._id),
-        name: s.name,
-        slug: s.slug,
-        plural: s.plural,
-        ...(s.description ? { description: s.description } : {}),
-      })),
-      degrees: degrees.map((d) => ({ id: String(d._id), name: d.name })),
-      councils: councils.map((c) => ({ id: String(c._id), name: c.name })),
-    };
-  },
+  loadMasters,
   ["public-masters"],
   { tags: [CACHE_TAGS.masters], revalidate: DAY },
 );

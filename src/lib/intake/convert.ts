@@ -28,6 +28,7 @@ import {
 import { parseQualificationLine } from "@/lib/intake/hints";
 import { ensureMasterLists, findOrCreateMaster } from "@/lib/masters/server";
 import { sanitizeBioHtml } from "@/lib/sanitize";
+import { parseTimingsText } from "@/lib/timings";
 import { slugify } from "@/lib/slug";
 import { Area } from "@/models/Area";
 import { City } from "@/models/City";
@@ -164,7 +165,9 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   const d = withDefaults("doctor", intake.data as IntakeData);
   const name = splitDoctorName(str(d.fullName));
   if (!name) throw new ConvertError("Add the doctor's first and last name to the form first.");
-  const skipped = ["timings"];
+  // Timings are read from the text; ones that can't be read are left for the editor.
+  const clinicItems = isRepeatValue(d.clinics) ? (d.clinics as RepeatItem[]) : [];
+  const skipped = clinicItems.some((c) => str(c.timings) && !parseTimingsText(str(c.timings))) ? ["timings (check the form answers below)"] : [];
 
   // Council and degrees are what the applicant typed: matched by name, or added to the master list.
   const [specialty, council] = await Promise.all([
@@ -204,7 +207,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       pincode,
       ...place(c),
       ...(phones(c.phone)[0] ? { phone: phones(c.phone)[0] } : {}),
-      timings: [],
+      timings: parseTimingsText(str(c.timings)) ?? [],
       ...(str(c.appointmentNote) ? { appointmentNote: str(c.appointmentNote) } : {}),
       ...(fee !== undefined ? { fee } : {}),
       showFee: false,
@@ -246,6 +249,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       return { name: m.replace(/[–-]?\s*\b(19|20)\d{2}\b\s*$/, "").trim() || m, ...(y && +y <= new Date().getFullYear() ? { since: +y } : {}) };
     }),
     interests: splitList(d.interests).slice(0, 20),
+    ...(intake.photos?.beyond ? { interestsPhoto: { ...image(intake.photos.beyond, str(d.beyondTitle) || "Beyond medicine")!, caption: str(d.beyondTitle).slice(0, 120) || undefined } } : {}),
     ...(story || str(d.beyondTitle) ? { interestsStory: { title: str(d.beyondTitle).slice(0, 200) || "Beyond medicine", ...(story ? { body: story.slice(0, LIMITS.storyBody) } : {}) } } : {}),
     gallery: gallery(allGallery, LIMITS.galleryMax),
     ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
@@ -278,7 +282,8 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const d = withDefaults(kind, intake.data as IntakeData);
   const name = str(d.name);
   if (!name) throw new ConvertError(`Add the ${kind} name to the form first.`);
-  const skipped = ["timings"];
+  const timings = parseTimingsText(str(d.timings));
+  const skipped = str(d.timings) && !timings ? ["timings (check the form answers below)"] : [];
   if (splitLines(d.awards).length) skipped.push("accreditations and awards");
 
   const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(d.city) || "Pune");
@@ -332,6 +337,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
       emergencyPhone: phones(d.emergencyPhone)[0],
     },
     is24x7: d.is24x7 === true,
+    ...(timings ? { timings } : {}),
     appointmentNote: str(d.appointmentNote) || undefined,
     visitingHours: str(d.visitingHours) || undefined,
     services: splitLines(d.services).map((s) => ({ name: s.slice(0, 200) })),

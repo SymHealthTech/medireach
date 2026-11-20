@@ -9,6 +9,8 @@ import { addMaster, MasterSelect } from "@/components/admin/form/MasterSelect";
 import { emptyClinic, type ClinicForm } from "@/lib/doctors/form";
 import type { FormClinic } from "@/lib/intake/hints";
 import { mapsLinkFor, parseLocation } from "@/lib/intake/form";
+import { parseTimingsText } from "@/lib/timings";
+import { toast } from "sonner";
 import { TimingEditor } from "../TimingEditor";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
@@ -26,35 +28,71 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
   // Website-form clinics not added yet (matched by name).
   const formClinics = (hints?.clinics ?? []).map((c, i) => ({ c, i })).filter(({ c }) => !f.clinics.some((x) => c.name && same(x.name, c.name)));
 
-  /** Add a clinic from the website form: city and area matched (a new area is added to the list). */
+  /** A website-form clinic as editor values: city and area matched (a new area is added to the list), timings read from the text. */
+  async function fromForm(fc: FormClinic): Promise<ClinicForm> {
+    const city = options.cities.find((x) => fc.city && (same(x.name, fc.city) || same(x.slug, fc.city)));
+    const cityId = city?.id ?? defaultCity;
+    const areaOpts = options.areas.filter((a) => a.cityId === cityId);
+    const area = fc.area && cityId ? await addMaster("area", fc.area, { cityId }, areaOpts) : null;
+    const geo = parseLocation(fc.location);
+    const timings = fc.timings ? parseTimingsText(fc.timings) : null;
+    return {
+      ...emptyClinic(cityId),
+      name: fc.name,
+      addressLine1: fc.address.replace(/\s*\n\s*/g, ", "),
+      areaId: area?.id ?? "",
+      state: city?.state ?? "Maharashtra",
+      pincode: /^\d{6}$/.test(fc.pincode) ? fc.pincode : "",
+      phone: fc.phone.split(/[,/;]/)[0]?.trim() ?? "",
+      mapsUrl: fc.mapsUrl || (geo ? mapsLinkFor(geo) : ""),
+      lat: geo ? String(geo.lat) : "",
+      lng: geo ? String(geo.lng) : "",
+      appointmentNote: fc.appointmentNote,
+      fee: /^\d+$/.test(fc.fee) ? Number(fc.fee) : undefined,
+      ...(timings ? { timings } : {}),
+    };
+  }
+
+  /** Add a clinic from the website form. */
   async function importClinic(fc: FormClinic, i: number) {
     setImporting(i);
     try {
-      const city = options.cities.find((x) => fc.city && (same(x.name, fc.city) || same(x.slug, fc.city)));
-      const cityId = city?.id ?? defaultCity;
-      const areaOpts = options.areas.filter((a) => a.cityId === cityId);
-      const area = fc.area && cityId ? await addMaster("area", fc.area, { cityId }, areaOpts) : null;
-      const geo = parseLocation(fc.location);
-      const fee = /^\d+$/.test(fc.fee) ? Number(fc.fee) : undefined;
-      set((prev) => ({
-        clinics: [
-          ...prev.clinics,
-          {
-            ...emptyClinic(cityId),
-            name: fc.name,
-            addressLine1: fc.address.replace(/\s*\n\s*/g, ", "),
-            areaId: area?.id ?? "",
-            state: city?.state ?? "Maharashtra",
-            pincode: /^\d{6}$/.test(fc.pincode) ? fc.pincode : "",
-            phone: fc.phone.split(/[,/;]/)[0]?.trim() ?? "",
-            mapsUrl: fc.mapsUrl || (geo ? mapsLinkFor(geo) : ""),
-            lat: geo ? String(geo.lat) : "",
-            lng: geo ? String(geo.lng) : "",
-            appointmentNote: fc.appointmentNote,
-            fee,
-          },
-        ].slice(0, 6),
-      }));
+      const clinic = await fromForm(fc);
+      set((prev) => ({ clinics: [...prev.clinics, clinic].slice(0, 6) }));
+    } finally {
+      setImporting(null);
+    }
+  }
+
+  /** Fill an existing clinic from the website form: empty fields are filled; the timings are replaced by the form's. */
+  async function fillClinic(i: number, fc: FormClinic) {
+    setImporting(-1 - i);
+    try {
+      const v = await fromForm(fc);
+      const readTimings = v.timings.some((t) => t.slots.length > 0);
+      set((prev) => {
+        const c = prev.clinics[i];
+        if (!c) return {};
+        const keep = <K extends keyof ClinicForm>(k: K): ClinicForm[K] => (c[k] === "" || c[k] === undefined ? v[k] : c[k]);
+        const sameCity = !c.cityId || c.cityId === v.cityId;
+        const next: ClinicForm = {
+          ...c,
+          name: keep("name"),
+          addressLine1: keep("addressLine1"),
+          cityId: c.cityId || v.cityId,
+          areaId: c.areaId || (sameCity ? v.areaId : ""),
+          pincode: keep("pincode"),
+          phone: keep("phone"),
+          mapsUrl: keep("mapsUrl"),
+          lat: keep("lat"),
+          lng: keep("lng"),
+          appointmentNote: keep("appointmentNote"),
+          fee: c.fee ?? v.fee,
+          timings: readTimings ? v.timings : c.timings,
+        };
+        return { clinics: updateAt(prev.clinics, i, next) };
+      });
+      toast.success(readTimings ? "Filled from the website form. Check the timings." : "Filled from the website form. The timings couldn't be read: enter them by hand.");
     } finally {
       setImporting(null);
     }
@@ -98,7 +136,8 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
       {f.clinics.map((c, i) => {
         const p = `clinics.${i}`;
         const areas = options.areas.filter((a) => a.cityId === c.cityId);
-        const fc = hints?.clinics.find((x) => x.name && same(x.name, c.name)) ?? (f.clinics.length === 1 && hints?.clinics.length === 1 ? hints.clinics[0] : undefined);
+        // The website-form clinic for this one: same name, else the same position.
+        const fc = hints?.clinics.find((x) => x.name && same(x.name, c.name)) ?? hints?.clinics[i];
         const sites = options.establishments.filter((e) => !e.cityId || e.cityId === c.cityId);
         return (
           <Group key={c.key} title={i === 0 ? "Primary clinic" : `Clinic ${i + 1}`}>
@@ -110,6 +149,23 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                   </Button>
                   <Button type="button" size="sm" variant="ghost" disabled={readOnly || i === f.clinics.length - 1} onClick={() => move(i, 1)}>
                     <ArrowDown /> Move down
+                  </Button>
+                </div>
+              )}
+              {fc && (
+                <div className="flex flex-col gap-2 rounded-lg bg-sage/60 p-3 text-sm text-ink sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 gap-2">
+                    <ClipboardList className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="font-semibold">
+                        Website form {hints?.ref}: {fc.name || `clinic ${i + 1}`}
+                      </p>
+                      <p className="text-muted-foreground">{[fc.address, fc.area, fc.city, fc.pincode].filter(Boolean).join(", ")}</p>
+                      {fc.timings && <p className="whitespace-pre-line text-muted-foreground">Timings: {fc.timings}</p>}
+                    </div>
+                  </div>
+                  <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={readOnly || importing !== null} onClick={() => void fillClinic(i, fc)}>
+                    {importing === -1 - i ? <Loader2 className="animate-spin" /> : <ClipboardList />} Fill from website form
                   </Button>
                 </div>
               )}
@@ -269,11 +325,6 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Timings</p>
-                {fc?.timings && c.timings.every((t) => t.slots.length === 0) && (
-                  <p className="whitespace-pre-line rounded-lg bg-sage/60 px-3 py-2 text-xs text-ink">
-                    <strong>Website form timings:</strong> {fc.timings}
-                  </p>
-                )}
                 <TimingEditor idPrefix={p} value={c.timings} disabled={readOnly} onChange={(timings) => setClinic(i, { timings })} />
                 {err(`${p}.timings`) && <p className="text-sm text-clay-text">{err(`${p}.timings`)}</p>}
               </div>

@@ -401,7 +401,7 @@ describe("codes and sessions", () => {
 
 describe("creating the website draft", () => {
   it("maps a doctor form onto a draft profile, with the rest in internal notes", async () => {
-    const r = await saveIntake({ kind: "doctor", email: "conv@example.com", data: fullDoctor(), photos: { profile: photo(9), gallery: [10, 11, 12, 13, 14].map(photo) } }, null);
+    const r = await saveIntake({ kind: "doctor", email: "conv@example.com", data: fullDoctor(), photos: { profile: photo(9), beyond: photo(15), gallery: [10, 11, 12, 13, 14].map(photo) } }, null);
     expect(r.ok).toBe(true);
     const intake = await Intake.findById(r.ok ? r.intake.id : "").lean();
     const made = await createSiteFromIntake(intake!);
@@ -419,6 +419,10 @@ describe("creating the website draft", () => {
     expect(doc!.clinics[0]!.geo).toEqual({ lat: 18.5074, lng: 73.8077 });
     expect(doc!.clinics[0]!.mapsUrl).toBe("https://www.google.com/maps/search/?api=1&query=18.507400,73.807700");
     expect(doc!.interestsStory).toEqual({ title: "My first marathon", body: "First paragraph.\n\nSecond paragraph." });
+    // The "Beyond medicine" photo goes with the story; timings typed as text are read into the week.
+    expect(doc!.interestsPhoto).toMatchObject({ publicId: photo(15).publicId, caption: "My first marathon" });
+    expect(doc!.clinics[0]!.timings.find((t) => t.day === 1)?.slots).toEqual([{ open: "10:00", close: "13:00" }]);
+    expect(doc!.clinics[0]!.timings.find((t) => t.day === 0)?.slots ?? []).toEqual([]);
     expect(doc!.portfolioTemplateId).toBe("classic");
     expect(doc!.cardStyle).toBe("DOC-AMBER");
     expect(doc!.internalNotes).toContain("NOT FINAL");

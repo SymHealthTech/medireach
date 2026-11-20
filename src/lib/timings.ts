@@ -131,3 +131,94 @@ export function openingHoursSpecification(timings: DayTimings[]) {
     };
   });
 }
+
+// --- Timings typed as text (website forms) ---------------------------------
+
+const DAY_RE = String.raw`(sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?`;
+const DAY_RANGE = String.raw`\b${DAY_RE}\s*(?:-|–|—|to|till|until)\s*${DAY_RE}`;
+/** Monday-first position of a day (0 = Sunday → 6). */
+const pos = (d: number) => (d + 6) % 7;
+const dayOf = (w: string) => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].indexOf(w.slice(0, 3).toLowerCase());
+
+function daysIn(seg: string): number[] | null {
+  const s = seg.toLowerCase();
+  if (/\b(daily|every\s*day|everyday|all\s*days|7\s*days|all\s*week)\b/.test(s)) return [1, 2, 3, 4, 5, 6, 0];
+  const out = new Set<number>();
+  if (/\bweekdays?\b/.test(s)) [1, 2, 3, 4, 5].forEach((d) => out.add(d));
+  if (/\bweekends?\b/.test(s)) [6, 0].forEach((d) => out.add(d));
+  const range = new RegExp(DAY_RANGE, "gi");
+  let rest = s;
+  for (const m of s.matchAll(range)) {
+    const a = dayOf(m[1]!);
+    const b = dayOf(m[2]!);
+    for (let i = pos(a); ; i = (i + 1) % 7) {
+      out.add((i + 1) % 7);
+      if (i === pos(b)) break;
+    }
+    rest = rest.replace(m[0], " ");
+  }
+  for (const m of rest.matchAll(new RegExp(String.raw`\b${DAY_RE}`, "gi"))) out.add(dayOf(m[1]!));
+  return out.size ? [...out] : null;
+}
+
+const SUFFIX = String.raw`(a\.?m\.?|p\.?m\.?|noon)?`;
+const TIME_RANGE = new RegExp(String.raw`(\d{1,2})(?:[:.](\d{2}))?\s*${SUFFIX}\s*(?:-|–|—|to|till|until)\s*(\d{1,2})(?:[:.](\d{2}))?\s*${SUFFIX}`, "gi");
+
+const hhmm = (h: number, m: number) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+const isPm = (s?: string) => !!s && /^(p|noon)/i.test(s);
+const isAm = (s?: string) => !!s && /^a/i.test(s);
+/** 12-hour → 24-hour; 13+ is already 24-hour; a bare 12 is noon (clinic hours). */
+const to24 = (h: number, pm: boolean) => (h >= 12 ? h : pm ? h + 12 : h);
+
+/** "10 to 2 pm" → 10:00–14:00; "6 to 9 pm" → 18:00–21:00; "10–1" → 10:00–13:00; "evening 6-9" → 18:00–21:00. */
+function slotsIn(seg: string): Slot[] {
+  const s = seg.toLowerCase();
+  const out: Slot[] = [];
+  for (const m of s.matchAll(TIME_RANGE)) {
+    const before = s.slice(Math.max(0, m.index! - 24), m.index);
+    const morning = /morning/.test(before);
+    const evening = /evening|night|afternoon/.test(before);
+    const [h1, m1, s1, h2, m2, s2] = [Number(m[1]), Number(m[2] ?? 0), m[3], Number(m[4]), Number(m[5] ?? 0), m[6]];
+    if (h1 > 23 || h2 > 23 || m1 > 59 || m2 > 59) continue;
+    const pm1 = s1 ? isPm(s1) : s2 && isPm(s2) ? evening || (!morning && h1 <= h2 && h1 !== 12) : s2 && isAm(s2) ? false : evening || (!morning && h1 < 7);
+    const pm2 = s2 ? isPm(s2) : pm1 || h2 <= h1 || (!morning && h2 < 7);
+    const open = hhmm(to24(h1, pm1), m1);
+    const close = hhmm(to24(h2, pm2), m2);
+    if (open < close) out.push({ open, close });
+  }
+  return out;
+}
+
+/**
+ * Timings typed in a website form ("Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm",
+ * "Sunday closed", "Mon-Sat morning 10 to 2 pm\nevening 6 to 9 pm") as a week
+ * of slots, Monday first. Lines without days use the days of the line before
+ * (Monday to Saturday if none were named). Null when nothing could be read.
+ */
+export function parseTimingsText(text: string): DayTimings[] | null {
+  const week = new Map<number, Slot[]>(WEEK_ORDER.map((d) => [d, []]));
+  let current: number[] = [1, 2, 3, 4, 5, 6];
+  let found = false;
+  for (const seg of text.split(/\r?\n|;/).map((x) => x.trim()).filter(Boolean)) {
+    const days = daysIn(seg);
+    if (days) current = days;
+    const withoutDays = seg.replace(new RegExp(DAY_RANGE, "gi"), " ");
+    const slots = slotsIn(withoutDays);
+    if (/\b(closed|holiday|off)\b/i.test(seg) && slots.length === 0) {
+      for (const d of current) week.set(d, []);
+      found = true;
+      continue;
+    }
+    for (const d of current) week.set(d, [...week.get(d)!, ...slots]);
+    if (slots.length) found = true;
+  }
+  if (!found) return null;
+  return WEEK_ORDER.map((day) => {
+    const seen = new Set<string>();
+    const slots = week
+      .get(day)!
+      .filter((x) => !seen.has(`${x.open}-${x.close}`) && seen.add(`${x.open}-${x.close}`))
+      .sort((a, b) => a.open.localeCompare(b.open));
+    return { day, slots };
+  });
+}

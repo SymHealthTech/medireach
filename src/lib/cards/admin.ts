@@ -1,6 +1,6 @@
 import "server-only";
 import { connectToDatabase } from "@/lib/db";
-import { getMasters, toPublicDoctor } from "@/lib/public/data";
+import { loadMasters, toPublicDoctor } from "@/lib/public/data";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { buildPublicEstablishment } from "@/lib/public/establishments";
 import { Establishment } from "@/models/Establishment";
@@ -12,7 +12,7 @@ import type { PublicDoctor, PublicEstablishment } from "@/templates/types";
  */
 export async function loadDoctorForCard(id: string): Promise<PublicDoctor | null> {
   await connectToDatabase();
-  const [doc, masters] = await Promise.all([DoctorProfile.findById(id).lean(), getMasters()]);
+  const [doc, masters] = await Promise.all([DoctorProfile.findById(id).lean(), loadMasters()]);
   if (!doc) return null;
   return toPublicDoctor({ ...doc, citySlug: doc.citySlug || "pune", slug: doc.slug || "draft" }, masters);
 }

@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, Cloud, Loader2
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FoundingBadge, Pill, StatusBadge } from "@/components/admin/StatusBadge";
+import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import {
   publishEstablishmentAction,
   saveEstablishmentSectionAction,
@@ -227,7 +227,6 @@ export function EstablishmentEditor({
           <h2 className="min-w-0 truncate font-display text-2xl font-semibold text-ink">{form.name.trim() || `New ${kindLabel}`}</h2>
           <StatusBadge status={form.status} />
           <Pill tone="muted">{form.kind === "hospital" ? "Hospital" : "Clinic"}</Pill>
-          {form.founding && form.foundingNumber && <FoundingBadge number={form.foundingNumber} />}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
             {save.status === "saving" && (
               <>

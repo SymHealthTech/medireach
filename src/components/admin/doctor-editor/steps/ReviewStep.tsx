@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ExternalLink, Eye, Loader2, Send, ShieldCheck, Undo2 } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Eye, Loader2, Monitor, Save, Send, ShieldCheck, Smartphone, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -8,6 +9,8 @@ import { Field, NativeSelect } from "@/components/admin/form/fields";
 import { scanText } from "@/lib/compliance/scan";
 import { APPROVAL_CHANNELS } from "@/lib/constants";
 import type { StepKey } from "@/lib/doctors/form";
+import { cn } from "@/lib/cn";
+import { absUrl, paths, subdomainUrl } from "@/lib/site";
 import { Group, grid2, type StepProps } from "../shared";
 
 export interface ReviewProps {
@@ -23,6 +26,9 @@ export interface ReviewProps {
   onUnpublish: () => void;
   onSubmitReview: () => void;
   onGoTo: (path: string, step: StepKey) => void;
+  /** Saves every unsaved change; true when all of it saved. */
+  onSaveAll: () => Promise<boolean>;
+  saving: boolean;
   stepForField: (path: string) => StepKey;
 }
 
@@ -77,6 +83,11 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
   const issueFields = [...new Set(r.issues.map((i) => i.field))];
   const canGoLive = r.blockers.length === 0 && r.issues.length === 0;
   const reasons = [...r.blockers.map((b) => b.message), ...(r.issues.length ? [`${r.issues.length} compliance issue(s)`] : [])];
+  const [saving, setSaving] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [size, setSize] = useState<"desktop" | "phone">("desktop");
+  // The address the site will have: the doctor's own subdomain, else the MediReach page.
+  const siteAddress = f.subdomain ? subdomainUrl(f.subdomain) : f.slug && f.citySlug ? absUrl(paths.doctor(f.citySlug, f.slug)) : absUrl("/");
 
   return (
     <div className="space-y-5">
@@ -160,15 +171,89 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
         </div>
       </Group>
 
-      <Group title="Publish">
+      <Group title="Save and preview" description="Save everything first, then check the website and the visiting card exactly as the doctor will see them.">
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            disabled={readOnly || r.saving || saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                if (await r.onSaveAll()) setVersion((v) => v + 1);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? <Loader2 className="animate-spin" /> : <Save />} Save everything
+          </Button>
           {f.id && (
             <Button asChild variant="outline">
               <a href={`/admin/preview/${f.id}`} target="_blank" rel="noopener">
-                <Eye /> Preview
+                <Eye /> Open full preview
               </a>
             </Button>
           )}
+        </div>
+        {f.id ? (
+          <div className="space-y-5">
+            <div className="overflow-hidden rounded-xl border border-line bg-white shadow-soft">
+              <div className="flex items-center gap-3 border-b border-line bg-muted px-3 py-2">
+                <span aria-hidden className="flex gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                  <span className="size-2.5 rounded-full bg-[#28c840]" />
+                </span>
+                <span className="min-w-0 flex-1 truncate rounded-md bg-card px-3 py-1 text-xs text-muted-foreground">{siteAddress.replace(/^https?:\/\//, "")}</span>
+                <div role="tablist" aria-label="Preview size" className="flex gap-1">
+                  {(["desktop", "phone"] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="tab"
+                      aria-selected={size === k}
+                      aria-label={k === "desktop" ? "Computer" : "Phone"}
+                      onClick={() => setSize(k)}
+                      className={cn("rounded-md p-1.5", size === k ? "bg-card text-ink shadow-soft" : "text-muted-foreground hover:text-ink")}
+                    >
+                      {k === "desktop" ? <Monitor className="size-4" /> : <Smartphone className="size-4" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-center bg-muted/40">
+                <iframe
+                  key={`${version}-${size}`}
+                  src={`/admin/preview/${f.id}?v=${version}`}
+                  title="Website preview"
+                  className={cn("h-[680px] bg-white", size === "phone" ? "w-[390px] border-x border-line" : "w-full")}
+                />
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold text-ink">Digital visiting card</p>
+              <div className="flex flex-wrap items-start gap-4">
+                {/* eslint-disable-next-line @next/next/no-img-element -- the card as rendered for printing */}
+                <img src={`/admin/cards/${f.id}/print.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (print)" className="w-full max-w-md rounded-lg border border-line shadow-soft" />
+                {/* eslint-disable-next-line @next/next/no-img-element -- the card as shared on WhatsApp */}
+                <img src={`/admin/cards/${f.id}/phone.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (phone)" className="w-44 rounded-xl border border-line shadow-soft" />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Downloads and the QR code are on{" "}
+                <a href={`/admin/cards?doctor=${f.id}`} target="_blank" rel="noopener" className="underline underline-offset-2">
+                  Visiting cards
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Enter the doctor&apos;s name (Basics) to create the draft first.</p>
+        )}
+      </Group>
+
+      <Group title="Publish">
+        <div className="flex flex-wrap gap-2">
           {r.liveUrl && (
             <Button asChild variant="outline">
               <a href={r.liveUrl} target="_blank" rel="noopener">

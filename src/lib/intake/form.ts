@@ -100,11 +100,13 @@ export interface IntakePhoto {
   url: string;
   caption?: string;
 }
-export type SinglePhotoKey = "profile" | "logo" | "cover";
+export type SinglePhotoKey = "profile" | "logo" | "cover" | "beyond";
 export interface IntakePhotos {
   profile?: IntakePhoto;
   logo?: IntakePhoto;
   cover?: IntakePhoto;
+  /** Doctors: the photo for their "Beyond medicine" story (uploaded in that section). */
+  beyond?: IntakePhoto;
   gallery: IntakePhoto[];
   /** "I'll send my photos on WhatsApp." */
   viaWhatsapp: boolean;
@@ -359,7 +361,7 @@ const DOCTOR: SectionDef[] = [
   {
     key: "beyond",
     title: "Beyond medicine",
-    description: "Optional. Your life outside the clinic: sports, travel, music, social work. It helps patients know you as a person.",
+    description: "Optional. Your life outside the clinic: sports, travel, music, social work. It helps patients know you as a person. Add a photo that goes with your story.",
     fields: [
       text("interests", "Hobbies and interests", { wide: true, placeholder: "Running, classical music, trekking" }),
       text("beyondTitle", "Title for your story", { wide: true, placeholder: "Running my first full marathon" }),
@@ -781,6 +783,7 @@ export function mergePhotos(typed: IntakePhotos, saved: IntakePhotos, galleryMax
     profile: typed.profile ?? saved.profile,
     logo: typed.logo ?? saved.logo,
     cover: typed.cover ?? saved.cover,
+    beyond: typed.beyond ?? saved.beyond,
     gallery,
     viaWhatsapp: typed.viaWhatsapp || saved.viaWhatsapp,
   };
@@ -1057,6 +1060,7 @@ export function intakePhotosSchema(kind: IntakeKind) {
     profile: intakePhotoSchema.optional(),
     logo: intakePhotoSchema.optional(),
     cover: intakePhotoSchema.optional(),
+    beyond: intakePhotoSchema.optional(),
     gallery: z.array(intakePhotoSchema).max(cfg.galleryMax, `Add at most ${cfg.galleryMax} photos.`).default([]),
     viaWhatsapp: z.boolean().default(false),
   });
@@ -1065,7 +1069,7 @@ export function intakePhotosSchema(kind: IntakeKind) {
 /** Every uploaded photo in a form (with `data`, the doctors' photos too). */
 export function allPhotos(p: IntakePhotos, kind?: IntakeKind, data?: IntakeData): IntakePhoto[] {
   const doctors = kind && data ? doctorEntries(kind, data).flatMap(({ doctor }) => (doctor.photo ? [{ ...doctor.photo, caption: doctor.name || "Doctor photo" }] : [])) : [];
-  return [p.profile, p.logo, p.cover, ...p.gallery, ...doctors].filter((x): x is IntakePhoto => Boolean(x));
+  return [p.profile, p.logo, p.cover, p.beyond, ...p.gallery, ...doctors].filter((x): x is IntakePhoto => Boolean(x));
 }
 
 /** One doctor entry as a line, for the admin notes. */

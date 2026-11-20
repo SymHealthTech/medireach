@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Field, SwitchField } from "@/components/admin/form/fields";
 import { checkUrlKeyAction } from "@/app/admin/(dash)/doctors/actions";
 import { profileDescription, profileTitle } from "@/lib/seo/profile";
-import { absUrl, paths, ROOT_HOSTNAME } from "@/lib/site";
+import { absUrl, paths, ROOT_HOSTNAME, subdomainUrl } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
 import type { DoctorForm } from "@/lib/doctors/form";
@@ -81,24 +81,64 @@ export function SeoStep({ form: f, set, err, options, readOnly, doctorId }: Step
   const title = profileTitle(doctor);
   const description = profileDescription(doctor);
   const pageUrl = f.slug && citySlug ? absUrl(paths.doctor(citySlug, f.slug)) : absUrl(`/${citySlug || "city"}/doctor/…`);
+  // Show the result as the doctor's own website (subdomain) or as the MediReach page.
+  const [view, setView] = useState<"subdomain" | "page">("subdomain");
+  const shownUrl = view === "subdomain" ? subdomainUrl(f.subdomain || slugify(f.firstName) || "name") : pageUrl;
+  const photoUrl = f.photo?.url ? f.photo.url.replace("/image/upload/", "/image/upload/f_auto,q_auto,c_fill,g_face,w_184,h_184/") : undefined;
   const suggestions = [slugify(f.firstName), slugify(`${f.firstName} ${f.lastName}`)].filter((x, i, a) => x.length >= 3 && a.indexOf(x) === i);
 
   return (
     <div className="space-y-5">
       <Group title="Google preview" description="How the page should look in search results. Google may vary it.">
+        <div role="tablist" aria-label="Show as" className="inline-flex gap-1 rounded-lg border border-line bg-card p-1">
+          {(
+            [
+              ["subdomain", "Own website (subdomain)"],
+              ["page", "MediReach page"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={view === k}
+              onClick={() => setView(k)}
+              className={cn("min-h-9 rounded-md px-3 text-sm font-semibold", view === k ? "bg-ink text-on-ink" : "text-muted-foreground hover:text-ink")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="rounded-xl border border-line bg-white p-4 font-[arial,sans-serif] text-[#202124]">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="flex size-7 items-center justify-center rounded-full bg-[#f1f3f4] text-[10px] font-bold text-[#0a3f3f]">M</span>
-            <span>
-              <span className="block text-sm">MediReach</span>
-              <span className="block text-[#4d5156]">{pageUrl.replace(/^https?:\/\//, "").replace(/\//g, " › ")}</span>
-            </span>
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-xs">
+                {view === "subdomain" && photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- small preview of the doctor's photo
+                  <img src={photoUrl} alt="" className="size-7 shrink-0 rounded-full border border-[#dadce0] object-cover" />
+                ) : (
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#f1f3f4] text-[10px] font-bold text-[#0a3f3f]">
+                    {view === "subdomain" ? (doctor.fullName.replace(/^Dr\.?\s*/i, "")[0] ?? "D") : "M"}
+                  </span>
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm">{view === "subdomain" ? doctor.fullName : "MediReach"}</span>
+                  <span className="block truncate text-[#4d5156]">{shownUrl.replace(/^https?:\/\//, "").replace(/\/$/, "").replace(/\//g, " › ")}</span>
+                </span>
+              </div>
+              <p className="mt-2 text-xl leading-snug text-[#1a0dab]">{title}</p>
+              <p className="mt-1 text-sm leading-normal text-[#4d5156]">{description}</p>
+            </div>
+            {photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- the result thumbnail Google shows for profile pages
+              <img src={photoUrl} alt="" className="mt-6 size-[92px] shrink-0 rounded-lg object-cover" />
+            )}
           </div>
-          <p className="mt-2 text-xl leading-snug text-[#1a0dab]">{title}</p>
-          <p className="mt-1 text-sm leading-normal text-[#4d5156]">{description}</p>
         </div>
         <p className="text-xs text-muted-foreground">
           Title {title.length}/60 · Description {description.length}/155
+          {!photoUrl && " · Add a profile photo (Basics) to show it in results."}
+          {view === "subdomain" && !f.subdomain && " · Set the website address below to see the real address."}
         </p>
       </Group>
 

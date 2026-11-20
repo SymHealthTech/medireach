@@ -32,7 +32,7 @@ import type { IntakeView } from "@/lib/intake/server";
 import { IntakeCodeForm } from "./IntakeCodeForm";
 import { IntakeContextProvider, type CardFace } from "./IntakeContext";
 import { IntakeSection, SectionCard, inputClass } from "./IntakeFields";
-import { IntakePhotosSection } from "./IntakePhotos";
+import { IntakePhotosSection, SectionPhoto } from "./IntakePhotos";
 
 const INTRO: Record<IntakeKind, string> = {
   doctor: "Tell us about yourself and your practice. We use this to write and design your website and visiting card.",
@@ -389,7 +389,27 @@ export function IntakeForm({
             {sections
               .filter((s) => !(LATE_SECTIONS as readonly string[]).includes(s.key))
               .map((s) => (
-                <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
+                <IntakeSection
+                  key={s.key}
+                  section={s}
+                  data={data}
+                  onChange={changeData}
+                  errors={errors}
+                  extra={
+                    kind === "doctor" && s.key === "beyond" ? (
+                      <SectionPhoto
+                        photoKey="beyond"
+                        label="Photo for your story"
+                        help="Optional. You running the marathon, on a trek, playing music or at a social-work camp. A wide (landscape) photo works best. No patient photos."
+                        photos={photos}
+                        onChange={changePhotos}
+                        ensureSaved={ensureSaved}
+                        sign={admin ? adminSign : publicSign}
+                        disabled={!editable}
+                      />
+                    ) : undefined
+                  }
+                />
               ))}
 
             <IntakePhotosSection

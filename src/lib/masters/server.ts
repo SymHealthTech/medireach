@@ -2,6 +2,7 @@ import "server-only";
 import type { Types } from "mongoose";
 import { escapeRegExp } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
+import { revalidateMasters } from "@/lib/public/revalidate";
 import { seedMasterLists } from "@/lib/seed/masters";
 import { masterSlugError, slugify } from "@/lib/slug";
 import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME, isThemeKey, type ThemeKey } from "@/themes/specialty";
@@ -30,7 +31,15 @@ export function ensureMasterLists(): Promise<void> {
   ensured ??= (async () => {
     await connectToDatabase();
     const counts = await Promise.all([Council, Degree, Specialty, City, ClinicCategory, TemplateSlot].map((m) => (m as typeof Council).estimatedDocumentCount()));
-    if (counts.some((n) => n === 0)) await seedMasterLists();
+    if (counts.some((n) => n === 0)) {
+      await seedMasterLists();
+      // Pages cached while the lists were empty would keep missing degrees, councils and areas.
+      try {
+        revalidateMasters();
+      } catch {
+        // Outside a request (scripts, tests): nothing is cached.
+      }
+    }
   })().catch((e) => {
     ensured = null; // try again on the next request
     throw e;

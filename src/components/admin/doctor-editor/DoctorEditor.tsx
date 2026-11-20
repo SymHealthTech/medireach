@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, Cloud, Loader2
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { FoundingBadge, StatusBadge } from "@/components/admin/StatusBadge";
+import { StatusBadge } from "@/components/admin/StatusBadge";
 import {
   publishDoctorAction,
   saveDoctorSectionAction,
@@ -26,6 +26,7 @@ import {
 } from "@/lib/doctors/form";
 import type { EditorOptions } from "@/lib/doctors/options";
 import type { DoctorFormHints } from "@/lib/intake/hints";
+import type { CardFace } from "@/components/intake/IntakeContext";
 import type { AdminRole } from "@/lib/constants";
 import { timeAgo } from "@/lib/format";
 import { absUrl, paths } from "@/lib/site";
@@ -63,6 +64,7 @@ export function DoctorEditor({
   initialStep = "basics",
   leadId,
   hints,
+  cardFaces,
 }: {
   initial: DoctorForm;
   options: EditorOptions;
@@ -71,6 +73,8 @@ export function DoctorEditor({
   leadId?: string;
   /** Answers from the website form this draft was made from. */
   hints?: DoctorFormHints;
+  /** Visiting cards per style code, server-rendered (the Design step). */
+  cardFaces?: Record<string, CardFace>;
 }) {
   const [form, setForm] = useState<DoctorForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -187,6 +191,20 @@ export function DoctorEditor({
     return phrases ? `Not allowed (NMC): “${phrases.join("”, “")}”. Rephrase factually.` : undefined;
   };
 
+  /** The final "Save everything" (Review step): saves every unsaved change; true when all of it saved. */
+  async function saveAll(): Promise<boolean> {
+    dirty.current.add(stepRef.current);
+    await flush();
+    await queue.current;
+    if (dirty.current.size > 0) {
+      const failed = STEPS.filter((s) => dirty.current.has(s.key)).map((s) => s.title);
+      toast.error(`Not saved: ${failed.join(", ")}. Open the step to see what to fix.`);
+      return false;
+    }
+    toast.success("Everything is saved");
+    return true;
+  }
+
   async function runStatus(action: typeof publishDoctorAction, ok: string) {
     if (!form.id) return;
     setBusy(true);
@@ -198,7 +216,7 @@ export function DoctorEditor({
     toast.success(ok);
   }
 
-  const stepProps: StepProps = { form, set, err, options, readOnly, role, doctorId: form.id, hints };
+  const stepProps: StepProps = { form, set, err, options, readOnly, role, doctorId: form.id, hints, cardFaces };
   const name = [form.title, form.firstName, form.lastName].filter(Boolean).join(" ").trim();
   const liveUrl = form.status === "published" && form.slug && form.citySlug ? absUrl(paths.doctor(form.citySlug, form.slug)) : undefined;
 
@@ -243,7 +261,6 @@ export function DoctorEditor({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h2 className="min-w-0 truncate font-display text-2xl font-semibold text-ink">{name && name !== "Dr." ? name : "New doctor"}</h2>
           <StatusBadge status={form.status} />
-          {form.founding && form.foundingNumber && <FoundingBadge number={form.foundingNumber} />}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
             {save.status === "saving" && (
               <>
@@ -308,6 +325,8 @@ export function DoctorEditor({
               liveUrl,
               stepForField,
               onGoTo: (path, s) => void goTo(s, path || undefined),
+              onSaveAll: saveAll,
+              saving: save.status === "saving",
               onPublish: () => void runStatus(publishDoctorAction, "Published — the page is live"),
               onUnpublish: () => void runStatus(unpublishDoctorAction, "Unpublished"),
               onSubmitReview: () => void runStatus(submitForReviewAction, "Sent to an admin for review"),

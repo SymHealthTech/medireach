@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
-import { FoundingBadge, Pill } from "@/components/admin/StatusBadge";
+import { Pill } from "@/components/admin/StatusBadge";
 import { DOCTOR_PLAN_LABEL, RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
 import { DOCTOR_PLANS, DOCTOR_SOURCES, DOMAIN_STATUSES } from "@/lib/constants";
 import { Group, grid2, type StepProps } from "../shared";
@@ -81,15 +81,7 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
         {err("establishmentIds") && <p className="text-sm text-clay-text">{err("establishmentIds")}</p>}
       </Group>
 
-      <Group title="Founding customer and renewal" description={isAdmin ? "Setup is paid once; the renewal is yearly from year 2." : "Only an admin can change these."}>
-        <SwitchField
-          label="Founding customer"
-          description={`First 100 customers: renewal at ${rupees(options.prices.foundingRenewal)}/year for life. A number is assigned automatically.`}
-          checked={f.founding}
-          disabled={readOnly || !isAdmin}
-          onCheckedChange={(founding) => set({ founding, renewalPrice: listPrice(founding) })}
-        />
-        {f.founding && f.foundingNumber && <FoundingBadge number={f.foundingNumber} />}
+      <Group title="Setup and renewal" description={isAdmin ? "Setup is paid once; the renewal is yearly from year 2." : "Only an admin can change these."}>
         <div className={grid2}>
           <Field label="Setup paid on" htmlFor="setupPaidAt" error={err("setupPaidAt")} help="Usually set by recording the setup payment.">
             <Input id="setupPaidAt" type="date" value={f.setupPaidAt} disabled={readOnly || !isAdmin} onChange={(e) => set({ setupPaidAt: e.target.value })} />
