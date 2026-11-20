@@ -302,3 +302,33 @@
   .mr-scan { opacity: 0; }
   .mr-lift:hover { transform: none; }
 }
+
+/* ── Loaders (components/loading) ── */
+/* The badge's pulse line draws in and wipes out like a heart monitor (path length ~36). */
+@keyframes mr-pulse-draw {
+  0% { stroke-dashoffset: 37; }
+  55% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -37; }
+}
+.mr-pulse-draw { stroke-dasharray: 37 37; animation: mr-pulse-draw 1.5s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+/* Soft rings breathing out from the badge. */
+@keyframes mr-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+.mr-ring { animation: mr-ring 1.8s ease-out infinite; }
+.mr-ring-late { animation-delay: 0.9s; }
+/* "Loading..." dots. */
+@keyframes mr-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+.mr-dot { animation: mr-dot 1.2s ease-in-out infinite; }
+@keyframes mr-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.mr-fade-in { animation: mr-fade-in 250ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mr-pulse-draw { animation: none !important; stroke-dashoffset: 0; }
+  .mr-ring { animation: none !important; opacity: 0; }
+  .mr-dot { animation: none !important; opacity: 0.6; }
+}

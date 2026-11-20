@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { startNavigationProgress } from "@/components/loading/NavigationProgress";
 import { ExternalLink, Loader2, Trash2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmButton, useActionRunner } from "@/components/admin/FormDialog";
@@ -79,6 +80,7 @@ export function IntakeReviewControls({
                 const r = await createSiteFromIntakeAction({ id });
                 if (!r.ok) return void toast.error(r.error);
                 toast.success("Draft created. Remaining items are listed in its internal notes.");
+                startNavigationProgress();
                 router.push(r.data.href);
               })
             }

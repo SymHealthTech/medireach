@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { startNavigationProgress } from "@/components/loading/NavigationProgress";
 import { Building2, Hospital, Loader2, UserRound, Users } from "lucide-react";
 import {
   CommandDialog,
@@ -71,6 +72,7 @@ export function CommandSearch({
   function go(href: string) {
     onOpenChange(false);
     setQuery("");
+    startNavigationProgress();
     router.push(href);
   }
 

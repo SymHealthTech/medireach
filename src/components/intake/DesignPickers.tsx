@@ -8,6 +8,7 @@ import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { cn } from "@/lib/cn";
 import type { IntakeKind } from "@/lib/constants";
 import { DESIGN_OPTIONS, NOT_SURE, type FieldDef } from "@/lib/intake/form";
+import { BrandLoader } from "@/components/loading/BrandLoader";
 import { getTheme } from "@/themes/specialty";
 import { useIntakeContext } from "./IntakeContext";
 
@@ -188,6 +189,17 @@ function FullScreenViewer({
 const switchTab = (active: boolean) =>
   cn("inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition", active ? "bg-white text-ink shadow-soft" : "text-white/80 hover:text-white");
 
+/** The sample site in the viewer, with the loader until it has loaded (a cold sample page can take a few seconds). */
+function SampleFrame({ src, title, className }: { src: string; title: string; className: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className={cn("relative h-full w-full overflow-hidden rounded-xl bg-white shadow-2xl", className)}>
+      {!loaded && <BrandLoader label="Opening the sample website" className="absolute inset-0 justify-center bg-white" />}
+      <iframe src={src} title={title} onLoad={() => setLoaded(true)} className={cn("size-full transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0")} />
+    </div>
+  );
+}
+
 /** Website design: tiles with View (the sample site, full screen) and Select, plus "Not decided". */
 export function DesignPicker({ id, field, value, onChange }: { id: string; field: FieldDef; value: string; onChange: (v: string) => void }) {
   const kind: IntakeKind = field.kind ?? "doctor";
@@ -237,12 +249,7 @@ export function DesignPicker({ id, field, value, onChange }: { id: string; field
             </a>
           }
         >
-          <iframe
-            key={current.value}
-            src={current.sampleHref}
-            title={`${current.label} sample website`}
-            className={cn("h-full rounded-xl bg-white shadow-2xl", device === "phone" ? "w-full max-w-[400px]" : "w-full max-w-6xl")}
-          />
+          <SampleFrame key={current.value} src={current.sampleHref} title={`${current.label} sample website`} className={device === "phone" ? "max-w-[400px]" : "max-w-6xl"} />
         </FullScreenViewer>
       )}
     </>

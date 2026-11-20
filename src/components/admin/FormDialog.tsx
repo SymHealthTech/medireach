@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { startNavigationProgress } from "@/components/loading/NavigationProgress";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -142,7 +143,10 @@ export function ConfirmButton({
                 const res = await onConfirm();
                 if (!res.ok) return void toast.error(res.error ?? "Something went wrong.");
                 toast.success(successMessage);
-                if (redirectTo) router.push(redirectTo);
+                if (redirectTo) {
+                  startNavigationProgress();
+                  router.push(redirectTo);
+                }
                 else router.refresh();
               })
             }

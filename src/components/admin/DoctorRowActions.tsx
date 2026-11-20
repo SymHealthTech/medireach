@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { startNavigationProgress } from "@/components/loading/NavigationProgress";
 import { useTransition } from "react";
 import { Ban, Copy, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, Send, Undo2 } from "lucide-react";
 import { toast } from "sonner";
@@ -88,6 +89,7 @@ export function DoctorRowActions({ doctor, canPublish }: { doctor: DoctorRowInfo
               const res = await duplicateDoctorAction({ id: doctor.id });
               if (!res.ok) return void toast.error(res.error);
               toast.success("Duplicated as a new draft");
+              startNavigationProgress();
               router.push(`/admin/doctors/${res.data.id}`);
             })
           }

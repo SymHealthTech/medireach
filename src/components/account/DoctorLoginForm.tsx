@@ -9,6 +9,7 @@ import {
   type LoginCodeState,
   type VerifyCodeState,
 } from "@/app/(marketing)/login/actions";
+import { startNavigationProgress } from "@/components/loading/NavigationProgress";
 
 const input =
   "h-12 w-full rounded-[10px] border border-line bg-paper pl-11 pr-3 text-base text-body outline-none transition-colors focus-visible:border-lagoon focus-visible:bg-surface focus-visible:ring-[3px] focus-visible:ring-lagoon/20 aria-invalid:border-clay";
@@ -108,7 +109,10 @@ function CodeStep({
 
   // Correct code: the callback sets the session cookie and lands on /account.
   useEffect(() => {
-    if (state.redirectTo) window.location.assign(state.redirectTo);
+    if (state.redirectTo) {
+      startNavigationProgress();
+      window.location.assign(state.redirectTo);
+    }
   }, [state.redirectTo]);
 
   // After a wrong code, clear the box and put the cursor back.
