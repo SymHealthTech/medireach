@@ -24,6 +24,9 @@ const Ctx = createContext<IntakeContextValue | null>(null);
 
 export const IntakeContextProvider = Ctx.Provider;
 
+/** The form context, or null outside a form (the pickers on the product pages). */
+export const useOptionalIntakeContext = (): IntakeContextValue | null => useContext(Ctx);
+
 export function useIntakeContext(): IntakeContextValue {
   const v = useContext(Ctx);
   if (!v) throw new Error("useIntakeContext outside IntakeForm");

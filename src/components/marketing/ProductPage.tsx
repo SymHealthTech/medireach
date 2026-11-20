@@ -1,9 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check } from "lucide-react";
+import { sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { DrawLine } from "@/components/home/Draw";
-import { HOW_IT_WORKS } from "@/content/marketing";
+import { HOW_IT_WORKS, PICK_DESIGNS } from "@/content/marketing";
+import type { IntakeKind } from "@/lib/constants";
 import { LeadForm } from "./LeadForm";
+import { PickDesigns } from "./PickDesigns";
 import { Reveal } from "./Reveal";
 import { SectionTitle } from "./Sections";
 import { WhatsAppIcon, WhatsAppLink } from "./WhatsAppLink";
@@ -48,17 +51,17 @@ export function ProductHero({
           <p className="mr-enter font-semibold text-ink" style={{ "--d": "120ms" } as React.CSSProperties}>
             {price}
           </p>
-          <div id="hero-cta" className="mr-enter flex flex-col gap-3 sm:flex-row" style={{ "--d": "180ms" } as React.CSSProperties}>
+          <div id="hero-cta" className="mr-enter flex flex-col gap-3 sm:flex-row sm:flex-wrap" style={{ "--d": "180ms" } as React.CSSProperties}>
             <WhatsAppLink
               href={waHref}
               placement={waPlacement}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-marigold px-6 font-semibold text-white shadow-[0_10px_24px_-10px_rgba(218,138,67,.8)] transition-colors hover:bg-marigold-700 active:scale-[.98]"
+              className="inline-flex min-h-12 whitespace-nowrap items-center justify-center gap-2 rounded-[10px] bg-marigold px-6 font-semibold text-white shadow-[0_10px_24px_-10px_rgba(218,138,67,.8)] transition-colors hover:bg-marigold-700 active:scale-[.98]"
             >
               <WhatsAppIcon className="size-5" /> {primaryCta}
             </WhatsAppLink>
             <Link
               href={secondary.href}
-              className="group inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-ink/20 bg-surface px-6 font-semibold text-ink transition-colors hover:border-ink active:scale-[.98]"
+              className="group inline-flex min-h-12 whitespace-nowrap items-center justify-center gap-2 rounded-[10px] border border-ink/20 bg-surface px-6 font-semibold text-ink transition-colors hover:border-ink active:scale-[.98]"
             >
               {secondary.label}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
@@ -70,6 +73,21 @@ export function ProductHero({
         </div>
       </div>
     </section>
+  );
+}
+
+/** "Pick your designs" (#designs, the hero's second button): website designs and visiting cards, the same on all three pages. */
+export function PickDesignsSection({ kind, waNumber, allHref }: { kind: IntakeKind; waNumber: string; allHref?: string }) {
+  return (
+    <Reveal as="section" aria-labelledby="designs-title" className="bg-paper px-4 py-20 sm:px-6 lg:py-28">
+      <div id="designs" className="mx-auto max-w-content scroll-mt-20">
+        <div className="mb-10 text-center">
+          <SectionTitle id="designs-title">{PICK_DESIGNS.title[kind]}</SectionTitle>
+          <p className="mx-auto mt-3 max-w-2xl text-lg text-body/85">{PICK_DESIGNS.text[kind]}</p>
+        </div>
+        <PickDesigns kind={kind} cardFaces={sampleCardFaces(kind)} waNumber={waNumber} allHref={allHref} />
+      </div>
+    </Reveal>
   );
 }
 

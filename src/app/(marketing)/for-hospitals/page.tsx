@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Siren } from "lucide-react";
 import { LaptopFrame, PhoneFrame } from "@/components/home/Frames";
 import { MiniSiteLaptop, MiniSitePhone, toMiniSite } from "@/components/home/MiniSite";
+import { MotionRoot } from "@/components/home/MotionRoot";
 import { MultiDoctorDiagram } from "@/components/home/Sections";
 import { FloatingWhatsApp } from "@/components/marketing/FloatingWhatsApp";
-import { HowItWorksSection, IncludedGrid, LeadPanel, ProductHero } from "@/components/marketing/ProductPage";
+import { HowItWorksSection, IncludedGrid, LeadPanel, PickDesignsSection, ProductHero } from "@/components/marketing/ProductPage";
 import { Reveal } from "@/components/marketing/Reveal";
 import { FaqList, SectionTitle } from "@/components/marketing/Sections";
 import { FAQ, FOR_HOSPITALS } from "@/content/marketing";
@@ -30,63 +31,67 @@ export default async function ForHospitalsPage() {
   const hospital = toMiniSite(SAMPLE_SITES["small-hospital"]);
 
   return (
-    <main>
-      <ProductHero
-        eyebrow={FOR_HOSPITALS.eyebrow}
-        title={FOR_HOSPITALS.title}
-        text={FOR_HOSPITALS.text}
-        price={FOR_HOSPITALS.price.replace("{setup}", rupees(p.hospitalSetup)).replace("{renewal}", rupees(p.renewalHospital))}
-        waHref={wa}
-        waPlacement="for_hospitals_hero"
-        primaryCta={FOR_HOSPITALS.primaryCta}
-        secondary={{ href: "/designs/small-hospital", label: FOR_HOSPITALS.secondaryCta }}
-        visual={
-          <div className="relative pb-10 pr-12 sm:pr-20">
-            <LaptopFrame url={`yourhospital.${ROOT_HOSTNAME}`}>
-              <MiniSiteLaptop site={hospital} />
-            </LaptopFrame>
-            <div className="float-gentle absolute bottom-0 right-0">
-              <PhoneFrame scale={0.5}>
-                <MiniSitePhone site={hospital} />
-              </PhoneFrame>
+    <MotionRoot>
+      <main>
+        <ProductHero
+          eyebrow={FOR_HOSPITALS.eyebrow}
+          title={FOR_HOSPITALS.title}
+          text={FOR_HOSPITALS.text}
+          price={FOR_HOSPITALS.price.replace("{setup}", rupees(p.hospitalSetup)).replace("{renewal}", rupees(p.renewalHospital))}
+          waHref={wa}
+          waPlacement="for_hospitals_hero"
+          primaryCta={FOR_HOSPITALS.primaryCta}
+          secondary={{ href: "#designs", label: FOR_HOSPITALS.secondaryCta }}
+          visual={
+            <div className="relative pb-10 pr-12 sm:pr-20">
+              <LaptopFrame url={`yourhospital.${ROOT_HOSTNAME}`}>
+                <MiniSiteLaptop site={hospital} />
+              </LaptopFrame>
+              <div className="float-gentle absolute bottom-0 right-0">
+                <PhoneFrame scale={0.5}>
+                  <MiniSitePhone site={hospital} />
+                </PhoneFrame>
+              </div>
+              <span
+                aria-hidden
+                className="float-gentle absolute -top-4 left-2 inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-soft ring-1 ring-line"
+              >
+                <Siren className="size-3.5 text-clay" strokeWidth={2} /> 24×7 Emergency
+              </span>
             </div>
-            <span
-              aria-hidden
-              className="float-gentle absolute -top-4 left-2 inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-soft ring-1 ring-line"
-            >
-              <Siren className="size-3.5 text-clay" strokeWidth={2} /> 24×7 Emergency
-            </span>
+          }
+        />
+
+        <IncludedGrid title={FOR_HOSPITALS.includedTitle} items={FOR_HOSPITALS.included} />
+
+        <PickDesignsSection kind="hospital" waNumber={site.whatsappNumber} allHref="/designs" />
+
+        <Reveal as="section" aria-labelledby="consultants-title" className="bg-sage px-4 py-20 sm:px-6 lg:py-28">
+          <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">
+            <div className="space-y-5">
+              <SectionTitle id="consultants-title">{FOR_HOSPITALS.consultantsTitle}</SectionTitle>
+              <p className="text-lg text-body/85">{FOR_HOSPITALS.consultantsText.replace("{addon}", rupees(p.doctorAddon))}</p>
+            </div>
+            <div data-reveal-item>
+              <MultiDoctorDiagram centre="Your hospital website" />
+            </div>
           </div>
-        }
-      />
+        </Reveal>
 
-      <IncludedGrid title={FOR_HOSPITALS.includedTitle} items={FOR_HOSPITALS.included} />
+        <HowItWorksSection />
 
-      <Reveal as="section" aria-labelledby="consultants-title" className="bg-sage px-4 py-20 sm:px-6 lg:py-28">
-        <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">
-          <div className="space-y-5">
-            <SectionTitle id="consultants-title">{FOR_HOSPITALS.consultantsTitle}</SectionTitle>
-            <p className="text-lg text-body/85">{FOR_HOSPITALS.consultantsText.replace("{addon}", rupees(p.doctorAddon))}</p>
+        <Reveal as="section" aria-labelledby="faq-title" className="bg-surface px-4 py-20 sm:px-6 lg:py-28">
+          <div className="mx-auto max-w-3xl">
+            <SectionTitle id="faq-title" className="mb-8 text-center">
+              {FOR_HOSPITALS.faqTitle}
+            </SectionTitle>
+            <FaqList items={[...FOR_HOSPITALS.faq, ...FAQ.items.filter((f) => SHARED_FAQ.test(f.q))]} />
           </div>
-          <div data-reveal-item>
-            <MultiDoctorDiagram centre="Your hospital website" />
-          </div>
-        </div>
-      </Reveal>
+        </Reveal>
 
-      <HowItWorksSection />
-
-      <Reveal as="section" aria-labelledby="faq-title" className="bg-surface px-4 py-20 sm:px-6 lg:py-28">
-        <div className="mx-auto max-w-3xl">
-          <SectionTitle id="faq-title" className="mb-8 text-center">
-            {FOR_HOSPITALS.faqTitle}
-          </SectionTitle>
-          <FaqList items={[...FOR_HOSPITALS.faq, ...FAQ.items.filter((f) => SHARED_FAQ.test(f.q))]} />
-        </div>
-      </Reveal>
-
-      <LeadPanel title={FOR_HOSPITALS.formTitle} source="hospitals" />
-      <FloatingWhatsApp href={wa} watchId="hero-cta" />
-    </main>
+        <LeadPanel title={FOR_HOSPITALS.formTitle} source="hospitals" />
+        <FloatingWhatsApp href={wa} watchId="hero-cta" />
+      </main>
+    </MotionRoot>
   );
 }

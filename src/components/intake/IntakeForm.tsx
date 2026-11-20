@@ -61,6 +61,7 @@ export function IntakeForm({
   mode = "public",
   savedRef,
   cardFaces,
+  prefill,
 }: {
   kind: IntakeKind;
   initial: IntakeView | null;
@@ -71,6 +72,8 @@ export function IntakeForm({
   savedRef?: string;
   /** Sample visiting cards per style code (server-rendered), for the card picker. */
   cardFaces?: Record<string, CardFace>;
+  /** A new form's answers picked before it opened (the designs chosen on a product page). */
+  prefill?: Partial<Record<"websiteDesign" | "cardStyle", string>>;
 }) {
   const admin = mode === "admin";
   const sections = INTAKE_SECTIONS[kind];
@@ -78,7 +81,7 @@ export function IntakeForm({
 
   const [id, setId] = useState(initial?.id);
   const [email, setEmail] = useState(initial?.email ?? "");
-  const [data, setData] = useState<IntakeData>(initial?.data ?? emptyIntakeData(kind));
+  const [data, setData] = useState<IntakeData>(initial?.data ?? { ...emptyIntakeData(kind), ...prefill });
   const [photos, setPhotos] = useState<IntakePhotos>(initial?.photos ?? emptyIntakePhotos());
   const [status, setStatus] = useState<IntakeStatus>(initial?.status ?? "draft");
   const [ref, setRef] = useState(initial?.ref);

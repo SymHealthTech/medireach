@@ -1,18 +1,16 @@
 import type { Metadata } from "next";
-import { DesignShowcase } from "@/components/home/DesignShowcase";
 import { LaptopFrame, PhoneFrame } from "@/components/home/Frames";
 import { MiniSiteLaptop, MiniSitePhone, toMiniSite } from "@/components/home/MiniSite";
 import { MotionRoot } from "@/components/home/MotionRoot";
 import { MultiDoctorDiagram } from "@/components/home/Sections";
 import { FloatingWhatsApp } from "@/components/marketing/FloatingWhatsApp";
-import { HowItWorksSection, IncludedGrid, LeadPanel, ProductHero } from "@/components/marketing/ProductPage";
+import { HowItWorksSection, IncludedGrid, LeadPanel, PickDesignsSection, ProductHero } from "@/components/marketing/ProductPage";
 import { Reveal } from "@/components/marketing/Reveal";
 import { FaqList, SectionTitle } from "@/components/marketing/Sections";
 import { FAQ, FOR_CLINICS, MULTI_DOCTOR, PRICING_PAGE } from "@/content/marketing";
 import { SAMPLE_SITES } from "@/fixtures/sample-sites";
 import { getPublicSiteData, rupees, whatsappHref } from "@/lib/public/site-data";
 import { absUrl, ROOT_HOSTNAME } from "@/lib/site";
-import { SPECIALTY_THEMES } from "@/themes/specialty";
 
 export const revalidate = 600;
 
@@ -29,8 +27,7 @@ export default async function ForClinicsPage() {
   const site = await getPublicSiteData();
   const p = site.prices;
   const wa = whatsappHref(site.whatsappNumber, FOR_CLINICS.whatsapp);
-  const clinicSites = SPECIALTY_THEMES.filter((t) => t.kind === "clinic").map((t) => toMiniSite(SAMPLE_SITES[t.key]));
-  const hero = clinicSites.find((s) => s.themeKey === "dental") ?? clinicSites[0]!;
+  const hero = toMiniSite(SAMPLE_SITES.dental);
 
   return (
     <MotionRoot>
@@ -60,15 +57,7 @@ export default async function ForClinicsPage() {
 
         <IncludedGrid title={FOR_CLINICS.includedTitle} items={FOR_CLINICS.included} />
 
-        <Reveal as="section" aria-labelledby="designs-title" className="bg-paper px-4 py-20 sm:px-6 lg:py-28">
-          <div id="designs" className="mx-auto max-w-content scroll-mt-20">
-            <div className="mb-10 text-center">
-              <SectionTitle id="designs-title">{FOR_CLINICS.designsTitle}</SectionTitle>
-              <p className="mx-auto mt-3 max-w-xl text-lg text-body/85">{FOR_CLINICS.designsText}</p>
-            </div>
-            <DesignShowcase sites={clinicSites} />
-          </div>
-        </Reveal>
+        <PickDesignsSection kind="clinic" waNumber={site.whatsappNumber} allHref="/designs" />
 
         <Reveal as="section" aria-labelledby="multi-title" className="bg-sage px-4 py-20 sm:px-6 lg:py-28">
           <div className="mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2">

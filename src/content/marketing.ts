@@ -260,7 +260,7 @@ export const FOR_DOCTORS = {
   /** `{setup}` / `{renewal}` from Settings. */
   price: "{setup} setup · {renewal}/year from year 2",
   primaryCta: "Talk to us on WhatsApp",
-  secondaryCta: "See the visiting card",
+  secondaryCta: "See portfolio website designs",
   includedTitle: "What your portfolio website includes",
   included: [
     { title: "Profile and qualifications", text: "Your photo, degrees, registration number and the languages you speak." },
@@ -270,8 +270,6 @@ export const FOR_DOCTORS = {
     { title: "Up to 5 photos", text: "Your clinic, consultation room and equipment. No patient photos." },
     { title: "Your own address", text: "A short link like drname.medireach.co.in, or your own domain at actual cost." },
   ],
-  cardTitle: "A visiting card you never need to reprint",
-  cardText: "Share it on WhatsApp or print it. The QR code opens your website, so patients always see your current timings.",
   linkedTitle: "Already at a clinic or hospital?",
   /** `{addon}` = per-doctor portfolio price. */
   linkedText:
@@ -289,7 +287,7 @@ export const FOR_CLINICS = {
   /** `{setup}` / `{renewal}` from Settings. */
   price: "{setup} setup · {renewal}/year from year 2",
   primaryCta: "Talk to us on WhatsApp",
-  secondaryCta: "See specialty designs",
+  secondaryCta: "See clinic website designs",
   includedTitle: "What your clinic website includes",
   included: [
     { title: "Clinic profile", text: "Name, logo, registration, about and the languages you speak." },
@@ -299,11 +297,45 @@ export const FOR_CLINICS = {
     { title: "Up to 8 photos", text: "Reception, consultation and procedure rooms, equipment. No patient photos." },
     { title: "Digital visiting card", text: "A print-ready card and a phone version with a QR code to your site." },
   ],
-  designsTitle: "Pick the design made for your specialty",
-  designsText: "Each one is personalised with your name, logo, colours, photos and details.",
   whatsapp: "Hi, I'd like a MediReach website for my clinic.",
   faqTitle: "Questions clinics ask",
   formTitle: "Tell us about your clinic",
+};
+
+/**
+ * "Pick your designs" on the three product pages (#designs): the website
+ * designs and visiting cards of that audience, each with View and Select (the
+ * same pickers as the website form), then start the form with them filled in.
+ */
+export const PICK_DESIGNS = {
+  title: {
+    doctor: "Pick your website design and visiting card",
+    clinic: "Pick your clinic's website design and visiting card",
+    hospital: "Pick your hospital's website design and visiting card",
+  },
+  text: {
+    doctor: "Open a design to see a full sample portfolio website on a computer or a phone. Pick one of each and your form starts with them filled in.",
+    clinic: "Choose your type of clinic to see the designs made for it, then open one to see a full sample website. Pick one of each and your form starts with them filled in.",
+    hospital: "Choose your type of hospital to see the designs made for it, then open one to see a full sample website. Pick one of each and your form starts with them filled in.",
+  },
+  website: { doctor: "Portfolio website design", clinic: "Clinic website design", hospital: "Hospital website design" },
+  websiteText: "Personalised with your own name, photo or logo, colours and details.",
+  card: "Visiting card",
+  cardText: "Share it on WhatsApp or print it. The QR code opens your website, so patients always see your current timings.",
+  yourPicks: "Your picks",
+  designLabel: "Website",
+  cardLabel: "Card",
+  notPicked: "Not picked yet",
+  start: "Start my form with these",
+  startEmpty: "Start my website form",
+  whatsapp: "Send my picks on WhatsApp",
+  /** `{what}` = the product; `{design}` / `{card}` = the picks. */
+  whatsappText: "Hi, I'd like a MediReach {what}. Website design: {design}. Visiting card: {card}.",
+  whatsappWhat: { doctor: "portfolio website", clinic: "website for my clinic", hospital: "website for our hospital" },
+  undecided: "not decided yet",
+  note: "Not sure yet? Leave it for now. You can pick in the form, or we'll help you choose.",
+  allCards: "All visiting card styles",
+  allDesigns: "All specialty designs",
 };
 
 /** /for-hospitals (was /hospitals). */
@@ -313,7 +345,7 @@ export const FOR_HOSPITALS = {
   text: "Departments, doctors, facilities, beds and a 24×7 contact bar on one site patients and their families can find quickly.",
   price: "{setup} setup · {renewal}/year from year 2",
   primaryCta: "Talk to us on WhatsApp",
-  secondaryCta: "See the hospital design",
+  secondaryCta: "See hospital website designs",
   includedTitle: "What your hospital website includes",
   included: [
     { title: "24×7 contact bar", text: "Your emergency number at the top of every screen, with one-tap call." },

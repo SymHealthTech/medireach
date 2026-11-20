@@ -11,7 +11,7 @@ import { DESIGN_GROUPS, DESIGN_OPTIONS, DESIGN_TYPE_FIELD, NOT_SURE, type Design
 import { BrandLoader } from "@/components/loading/BrandLoader";
 import { THEME_ICONS } from "@/themes/icons";
 import { getTheme } from "@/themes/specialty";
-import { useIntakeContext } from "./IntakeContext";
+import { useOptionalIntakeContext, type CardFace } from "./IntakeContext";
 
 const tile = (selected: boolean, disabled?: boolean) =>
   cn(
@@ -251,14 +251,29 @@ function WebsiteViewer({
  * hospitals: their type first (chips), then that type's designs. Each tile has
  * View (the sample site, full screen) and Select; plus "Not decided".
  */
-export function DesignPicker({ id, field, value, onChange, context = {} }: { id: string; field: FieldDef; value: string; onChange: (v: string) => void; context?: Record<string, unknown> }) {
+export function DesignPicker({
+  id,
+  field,
+  value,
+  onChange,
+  context = {},
+  undecided = true,
+}: {
+  id: string;
+  field: FieldDef;
+  value: string;
+  onChange: (v: string) => void;
+  context?: Record<string, unknown>;
+  /** Show the "Not decided" tile (the form); off on the product pages. */
+  undecided?: boolean;
+}) {
   const kind: IntakeKind = field.kind ?? "doctor";
-  if (kind === "doctor") return <DoctorDesignPicker id={id} field={field} value={value} onChange={onChange} />;
+  if (kind === "doctor") return <DoctorDesignPicker id={id} field={field} value={value} onChange={onChange} undecided={undecided} />;
   const formType = context[DESIGN_TYPE_FIELD[kind]];
-  return <TypedDesignPicker id={id} field={field} kind={kind} formType={typeof formType === "string" ? formType : ""} value={value} onChange={onChange} />;
+  return <TypedDesignPicker id={id} field={field} kind={kind} formType={typeof formType === "string" ? formType : ""} value={value} onChange={onChange} undecided={undecided} />;
 }
 
-function DoctorDesignPicker({ id, field, value, onChange }: { id: string; field: FieldDef; value: string; onChange: (v: string) => void }) {
+function DoctorDesignPicker({ id, field, value, onChange, undecided }: { id: string; field: FieldDef; value: string; onChange: (v: string) => void; undecided: boolean }) {
   const options = DESIGN_OPTIONS.doctor;
   const [viewing, setViewing] = useState<string | null>(null);
   const current = options.find((o) => o.value === viewing);
@@ -277,7 +292,7 @@ function DoctorDesignPicker({ id, field, value, onChange }: { id: string; field:
             onSelect={() => onChange(o.value)}
           />
         ))}
-        <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" />
+        {undecided && <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" />}
       </div>
       {current && <WebsiteViewer design={current} title={current.label} selected={value === current.value} onChoose={() => onChange(current.value)} onClose={() => setViewing(null)} />}
     </>
@@ -305,6 +320,7 @@ function TypedDesignPicker({
   formType,
   value,
   onChange,
+  undecided,
 }: {
   id: string;
   field: FieldDef;
@@ -313,6 +329,7 @@ function TypedDesignPicker({
   formType: string;
   value: string;
   onChange: (v: string) => void;
+  undecided: boolean;
 }) {
   const groups = DESIGN_GROUPS[kind];
   const has = (g: DesignGroup) => value !== NOT_SURE && g.designs.some((d) => d.ready && d.value === value);
@@ -398,7 +415,9 @@ function TypedDesignPicker({
                 onSelect={() => onChange(d.value)}
               />
             ))}
-            <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" className="sm:col-span-3 sm:min-h-0 sm:flex-row sm:py-3" />
+            {undecided && (
+              <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" className="sm:col-span-3 sm:min-h-0 sm:flex-row sm:py-3" />
+            )}
           </div>
           {chosenElsewhere && chosen && (
             <p className="text-sm text-body/80">
@@ -424,9 +443,25 @@ function TypedDesignPicker({
 }
 
 /** Visiting card style: tiles with View (phone and print card, full screen) and Select, plus "Not decided". */
-export function CardStylePicker({ id, field, value, onChange }: { id: string; field: FieldDef; value: string; onChange: (v: string) => void }) {
+export function CardStylePicker({
+  id,
+  field,
+  value,
+  onChange,
+  cardFaces: cardFacesProp,
+  undecided = true,
+}: {
+  id: string;
+  field: FieldDef;
+  value: string;
+  onChange: (v: string) => void;
+  /** Sample cards outside the form (the product pages); in the form they come from its context. */
+  cardFaces?: Record<string, CardFace>;
+  undecided?: boolean;
+}) {
   const styles = CARD_STYLES_BY_GROUP[field.kind ?? "doctor"];
-  const { cardFaces } = useIntakeContext();
+  const ctx = useOptionalIntakeContext();
+  const cardFaces = cardFacesProp ?? ctx?.cardFaces;
   const [viewing, setViewing] = useState<string | null>(null);
   const [face, setFace] = useState<"phone" | "print">("phone");
   const current = styles.find((c) => c.code === viewing);
@@ -463,7 +498,7 @@ export function CardStylePicker({ id, field, value, onChange }: { id: string; fi
             onSelect={() => onChange(c.code)}
           />
         ))}
-        <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" />
+        {undecided && <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" />}
       </div>
       {current && (
         <FullScreenViewer
