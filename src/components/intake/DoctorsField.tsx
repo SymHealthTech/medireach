@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, Trash2, UserRound } from "lucide-react";
 import { uploadImage } from "@/lib/client/upload-image";
-import { blankDoctor, DOCTOR_FIELDS, fieldId, type DoctorEntry, type FieldDef } from "@/lib/intake/form";
+import { blankDoctor, DOCTOR_FIELDS, fieldId, isShown, type DoctorEntry, type FieldDef } from "@/lib/intake/form";
 import { IntakeField } from "./IntakeFields";
 import { useIntakeContext } from "./IntakeContext";
 import { PhotoCropDialog } from "./PhotoCropDialog";
@@ -12,7 +12,8 @@ const thumb = (url: string) => url.replace("/image/upload/", "/image/upload/f_au
 
 /**
  * Doctors at a clinic, or in one hospital department: one card per doctor
- * (name, designation, education, role, portfolio link, photo), up to
+ * (name, designation, education, role (or their own words for "Other"),
+ * portfolio link, photo), up to
  * `field.max`. Error keys: `{errKey}.{index}.{field}`.
  */
 export function DoctorsField({ field, value, onChange, errKey }: { field: FieldDef; value: DoctorEntry[]; onChange: (v: DoctorEntry[]) => void; errKey: string }) {
@@ -70,9 +71,19 @@ function DoctorCard({ index, doctor, errKey, onChange, onRemove }: { index: numb
       <div className="flex flex-col gap-4 sm:flex-row">
         <DoctorPhoto doctor={doctor} onChange={(photo) => onChange({ photo })} errKey={errKey} />
         <div className="grid flex-1 gap-4 sm:grid-cols-2">
-          {DOCTOR_FIELDS.map((f) => {
+          {DOCTOR_FIELDS.filter((f) => isShown(f, doctor as unknown as Record<string, unknown>)).map((f) => {
             const key = `${errKey}.${f.key}`;
-            return <IntakeField key={f.key} field={f} errKey={key} value={doctor[f.key as keyof DoctorEntry] as string} error={errors[key]} onChange={(v) => onChange({ [f.key]: v as string })} />;
+            return (
+              <IntakeField
+                key={f.key}
+                field={f}
+                errKey={key}
+                value={doctor[f.key as keyof DoctorEntry] as string}
+                error={errors[key]}
+                // Leaving "Other" clears what was typed for it.
+                onChange={(v) => onChange(f.key === "role" && v !== "other" ? { role: v as string, roleOther: "" } : { [f.key]: v as string })}
+              />
+            );
           })}
         </div>
       </div>

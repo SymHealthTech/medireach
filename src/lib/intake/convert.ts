@@ -242,7 +242,7 @@ function siteDoctors(kind: IntakeKind, d: IntakeData) {
       name: str(e.name).slice(0, 120),
       ...(str(e.education) ? { qualifications: str(e.education).slice(0, 200) } : {}),
       ...(str(e.designation) ? { specialty: str(e.designation).slice(0, 120) } : {}),
-      ...(doctorRoleLabel(e.role) ? { role: doctorRoleLabel(e.role) } : {}),
+      ...(doctorRoleLabel(e) ? { role: doctorRoleLabel(e).slice(0, 80) } : {}),
     }))
     .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()));
 }

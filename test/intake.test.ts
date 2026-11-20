@@ -12,7 +12,10 @@ import { createSiteFromIntake, splitDoctorName } from "@/lib/intake/convert";
 import { intakeCodeEmail, intakeSavedEmail } from "@/lib/intake/emails";
 import {
   allPhotos,
+  DESIGN_GROUPS,
+  DESIGNS_PER_TYPE,
   cleanPastedText,
+  doctorRoleLabel,
   emptyIntakeData,
   parseDoctorLine,
   parseLocation,
@@ -168,6 +171,39 @@ describe("form definitions", () => {
     expect(intakeDataSchema("clinic").parse({}).visitingDoctors).toBeUndefined();
   });
 
+  it("doctor role 'Other': asks to specify it, and shows their words", () => {
+    const base: IntakeData = { ...emptyIntakeData("clinic"), name: "X", clinicType: "skin", contactName: "Y", mobile: "9876500000", address: "A", area: "Kothrud", pincode: "411038", phones: "020 1234 5678", timings: "10–7", designDecision: "final" };
+    const doc = (role: string, roleOther = ""): DoctorEntry => ({ name: "Dr. A", designation: "", education: "", role, roleOther, portfolioUrl: "" });
+    expect(missingForSubmit("clinic", { ...base, doctors: [doc("other")] }).map((m) => m.key)).toEqual(["doctors.0.roleOther"]);
+    expect(missingForSubmit("clinic", { ...base, doctors: [doc("other", "Dietitian")] })).toEqual([]);
+    expect(requiredProgress("clinic", { ...base, doctors: [doc("other")] }).total).toBe(requiredProgress("clinic", { ...base, doctors: [doc("consultant")] }).total + 1);
+    const hosp = { ...emptyIntakeData("hospital"), departments: [{ name: "Medicine", doctors: [doc("other")] }] };
+    expect(missingForSubmit("hospital", hosp).map((m) => m.key)).toContain("departments.0.doctors.0.roleOther");
+    // Kept only with "Other".
+    const parsed = intakeDataSchema("clinic").parse({ doctors: [doc("other", "Dietitian"), doc("consultant", "left over")] }).doctors as DoctorEntry[];
+    expect(parsed.map((d) => d.roleOther)).toEqual(["Dietitian", ""]);
+    expect(doctorRoleLabel(parsed[0]!)).toBe("Dietitian");
+    expect(doctorRoleLabel(parsed[1]!)).toBe("Consultant");
+    expect(doctorRoleLabel(doc("other"))).toBe("");
+  });
+
+  it("website designs for clinics and hospitals: grouped by type, three per type", () => {
+    expect(DESIGN_GROUPS.clinic.map((g) => g.value)).toContain("skin");
+    expect(DESIGN_GROUPS.hospital.map((g) => g.value)).toEqual(["multispecialty", "general", "maternity", "children", "orthopaedic", "surgical", "eye", "ent"]);
+    for (const g of [...DESIGN_GROUPS.clinic, ...DESIGN_GROUPS.hospital]) {
+      expect(g.designs).toHaveLength(DESIGNS_PER_TYPE);
+      expect(g.designs[0]!.ready).toBe(true); // each type has its specialty design today
+    }
+    const skin = DESIGN_GROUPS.clinic.find((g) => g.value === "skin")!;
+    expect(skin.designs.map((d) => [d.value, d.ready])).toEqual([["skin", true], ["skin:2", false], ["skin:3", false]]);
+    // Every built design can be saved; "coming soon" slots can't.
+    for (const kind of ["clinic", "hospital"] as const) {
+      for (const d of DESIGN_GROUPS[kind].flatMap((g) => g.designs)) {
+        expect(intakeDataSchema(kind).parse({ websiteDesign: d.value }).websiteDesign).toBe(d.ready ? d.value : "");
+      }
+    }
+  });
+
   it("hospital departments: many departments, each with its own doctors", () => {
     const blank = emptyIntakeData("hospital");
     expect(blank.doctors).toBeUndefined();
@@ -183,8 +219,8 @@ describe("form definitions", () => {
   it("upgrades older doctor lists typed as text lines", () => {
     const clinic = withDefaults("clinic", { doctors: "Dr. Neha Joshi – MBBS, MD – Dermatologist", visitingDoctors: "Dr. A Rao – MD – Cardiologist" });
     expect(clinic.doctors).toEqual([
-      { name: "Dr. Neha Joshi", education: "MBBS, MD", designation: "Dermatologist", role: "", portfolioUrl: "" },
-      { name: "Dr. A Rao", education: "MD", designation: "Cardiologist", role: "visiting", portfolioUrl: "" },
+      { name: "Dr. Neha Joshi", education: "MBBS, MD", designation: "Dermatologist", role: "", roleOther: "", portfolioUrl: "" },
+      { name: "Dr. A Rao", education: "MD", designation: "Cardiologist", role: "visiting", roleOther: "", portfolioUrl: "" },
     ]);
     const hospital = withDefaults("hospital", { departments: "Orthopaedics – Dr. A Patil, Dr. S Rao\nGeneral Medicine", doctors: "Dr. X – MBBS – Physician" });
     const deps = hospital.departments as RepeatItem[];

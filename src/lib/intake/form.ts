@@ -3,7 +3,7 @@ import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { LIMITS, type IntakeKind } from "@/lib/constants";
 import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
-import { SPECIALTY_THEMES } from "@/themes/specialty";
+import { DEFAULT_HOSPITAL_THEME, SPECIALTY_THEMES, type ThemeIconKey } from "@/themes/specialty";
 
 /**
  * Self-filled website forms ("Get started" → Doctor / Clinic / Hospital).
@@ -85,6 +85,8 @@ export interface DoctorEntry {
   designation: string;
   education: string;
   role: string;
+  /** The role in their own words, when `role` is "other". */
+  roleOther?: string;
   portfolioUrl: string;
   photo?: { publicId: string; url: string };
 }
@@ -168,22 +170,26 @@ export const DOCTOR_ROLES = [
   { value: "on_call", label: "On-call consultant" },
   { value: "associate", label: "Associate doctor" },
   { value: "resident", label: "Resident medical officer" },
+  { value: "other", label: "Other" },
 ] as const;
 
 /** The text fields of one doctor entry (the photo is separate). */
 export const DOCTOR_FIELDS: FieldDef[] = [
   text("name", "Doctor's name", { required: true, placeholder: "Dr. Neha Joshi" }),
   text("designation", "Designation / specialty", { placeholder: "Consultant Dermatologist" }),
-  text("education", "Education", { placeholder: "MBBS, MD (Dermatology)" }),
+  // Role and "Please specify" share a row.
   { key: "role", label: "Role", type: "select", options: DOCTOR_ROLES },
+  text("roleOther", "Please specify the role", { required: true, placeholder: "e.g. Anaesthetist, Dietitian", showIf: { key: "role", equals: "other" } }),
+  text("education", "Education", { placeholder: "MBBS, MD (Dermatology)" }),
   { key: "portfolioUrl", label: "Portfolio / profile link", type: "url", wide: true, help: "Optional. Their own website, MediReach page or Practo profile." },
 ];
 
-export const blankDoctor = (): DoctorEntry => ({ name: "", designation: "", education: "", role: "", portfolioUrl: "" });
+export const blankDoctor = (): DoctorEntry => ({ name: "", designation: "", education: "", role: "", roleOther: "", portfolioUrl: "" });
 
 export const doctorHasContent = (e: Partial<DoctorEntry>) => Boolean(e.photo) || DOCTOR_FIELDS.some((f) => str((e as Record<string, unknown>)[f.key]) !== "");
 
-export const doctorRoleLabel = (v: unknown) => DOCTOR_ROLES.find((r) => r.value === v)?.label ?? "";
+/** The role as the site shows it: the chosen label, or what they typed for "Other". */
+export const doctorRoleLabel = (e: Partial<DoctorEntry>) => (e.role === "other" ? str(e.roleOther) : (DOCTOR_ROLES.find((r) => r.value === e.role)?.label ?? ""));
 
 const linksSection: SectionDef = {
   key: "links",
@@ -404,6 +410,67 @@ const HOSPITAL_TYPES = [
   { value: "ent", label: "ENT" },
   { value: "other", label: "Other" },
 ] as const;
+
+const HOSPITAL_TYPE_ICON: Record<string, ThemeIconKey> = {
+  maternity: "flower-2",
+  children: "baby",
+  orthopaedic: "bone",
+  surgical: "activity",
+  eye: "eye",
+  ent: "ear",
+};
+
+/** Website designs offered per clinic or hospital type. */
+export const DESIGNS_PER_TYPE = 3;
+
+export interface DesignChoice {
+  /** Stored as `websiteDesign` (a theme key). Unbuilt slots get a placeholder value and can't be picked. */
+  value: string;
+  label: string;
+  /** Theme name, for built designs. */
+  sub?: string;
+  ready: boolean;
+  sampleHref: string;
+}
+
+export interface DesignGroup {
+  /** The clinic or hospital type (same values as the "Type of …" field). */
+  value: string;
+  label: string;
+  icon: ThemeIconKey;
+  /** Colours for the previews of unbuilt designs. */
+  themeKey: string;
+  /** Always DESIGNS_PER_TYPE long; designs not built yet are "coming soon". */
+  designs: DesignChoice[];
+}
+
+const designGroup = (value: string, label: string, icon: ThemeIconKey, built: string[]): DesignGroup => ({
+  value,
+  label,
+  icon,
+  themeKey: built[0]!,
+  designs: Array.from({ length: DESIGNS_PER_TYPE }, (_, i): DesignChoice => {
+    const key = built[i];
+    const theme = SPECIALTY_THEMES.find((t) => t.key === key);
+    return theme
+      ? { value: theme.key, label: `Design ${i + 1}`, sub: theme.name, ready: true, sampleHref: `/designs/${theme.key}` }
+      : { value: `${value}:${i + 1}`, label: `Design ${i + 1}`, ready: false, sampleHref: "" };
+  }),
+});
+
+/**
+ * Website design picker for clinics and hospitals: the type first, then its
+ * designs. Today each type has one built design (its specialty design); the
+ * other slots show "coming soon". To add a design, build the theme and add its
+ * key to the type's list here.
+ */
+export const DESIGN_GROUPS: Record<"clinic" | "hospital", DesignGroup[]> = {
+  clinic: SEED_CLINIC_CATEGORIES.filter((c) => c.kind === "clinic").map((c) => designGroup(c.slug, c.name, c.icon, [c.defaultThemeKey])),
+  hospital: HOSPITAL_TYPES.filter((t) => t.value !== "other").map((t) => designGroup(t.value, t.label, HOSPITAL_TYPE_ICON[t.value] ?? "hospital", [DEFAULT_HOSPITAL_THEME])),
+};
+
+/** The form field holding the clinic or hospital type (the design picker opens on it). */
+export const DESIGN_TYPE_FIELD: Record<"clinic" | "hospital", string> = { clinic: "clinicType", hospital: "hospitalType" };
 
 const aboutStory = (what: string): FieldDef => ({
   key: "about",
@@ -822,7 +889,8 @@ function fieldSchema(f: FieldDef): z.ZodTypeAny {
         ...Object.fromEntries(DOCTOR_FIELDS.map((d) => [d.key, fieldSchema(d)])),
         photo: intakePhotoSchema.optional(),
       })
-      .transform(({ photo, ...rest }) => ({ ...rest, ...(photo ? { photo: { publicId: photo.publicId, url: photo.url } } : {}) }));
+      // "Please specify" only counts with the "Other" role.
+      .transform(({ photo, ...rest }) => ({ ...rest, ...((rest as { role?: unknown }).role === "other" ? {} : { roleOther: "" }), ...(photo ? { photo: { publicId: photo.publicId, url: photo.url } } : {}) }));
     // Empty entries (an "Add another doctor" left blank) are dropped.
     return z
       .array(entry)
@@ -914,11 +982,17 @@ function activeItems(s: SectionDef, data: IntakeData): { it: RepeatItem; i: numb
   return items.map((it, i) => ({ it, i })).filter(({ it, i }) => i < s.repeat!.minToSubmit || itemHasContent(it));
 }
 
-/** Doctor entries with something typed in them need a name. */
-function missingDoctorNames(f: FieldDef, values: Record<string, unknown>, prefix: string, section: string, out: MissingItem[]) {
+/** Required doctor fields shown for this entry (the name; the role in words when it is "Other"). */
+const requiredDoctorFields = (e: Record<string, unknown>) => DOCTOR_FIELDS.filter((d) => d.required && isShown(d, e));
+
+/** Doctor entries with something typed in them need a name (and "Please specify" for an "Other" role). */
+function missingDoctorFields(f: FieldDef, values: Record<string, unknown>, prefix: string, section: string, out: MissingItem[]) {
   const list = Array.isArray(values[f.key]) ? (values[f.key] as DoctorEntry[]) : [];
   list.forEach((e, j) => {
-    if (isObj(e) && doctorHasContent(e) && !str(e.name)) out.push({ key: `${prefix}${f.key}.${j}.name`, label: `${prefix ? `${str(values.name) || "Department"}: ` : ""}Doctor ${j + 1}: name`, section });
+    if (!isObj(e) || !doctorHasContent(e)) return;
+    for (const d of requiredDoctorFields(e)) {
+      if (!str(e[d.key])) out.push({ key: `${prefix}${f.key}.${j}.${d.key}`, label: `${prefix ? `${str(values.name) || "Department"}: ` : ""}Doctor ${j + 1}: ${d.key === "name" ? "name" : "role"}`, section });
+    }
   });
 }
 
@@ -934,13 +1008,13 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
           if (f.required && isShown(f, it) && !filled(it[f.key])) {
             out.push({ key: `${s.key}.${i}.${f.key}`, label: items.length > 1 ? `${s.repeat!.itemLabel} ${i + 1}: ${f.label}` : f.label, section: s.title });
           }
-          if (f.type === "doctors") missingDoctorNames(f, it, `${s.key}.${i}.`, s.title, out);
+          if (f.type === "doctors") missingDoctorFields(f, it, `${s.key}.${i}.`, s.title, out);
         }
       }
     } else {
       for (const f of s.fields) {
         if (f.required && isShown(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
-        if (f.type === "doctors") missingDoctorNames(f, data, "", s.title, out);
+        if (f.type === "doctors") missingDoctorFields(f, data, "", s.title, out);
       }
     }
   }
@@ -957,7 +1031,7 @@ export function requiredProgress(kind: IntakeKind, data: IntakeData): { done: nu
       total += req * n;
     } else total += s.fields.filter((f) => f.required && isShown(f, data)).length;
   }
-  total += doctorEntries(kind, data).length; // each doctor needs a name
+  for (const { doctor } of doctorEntries(kind, data)) total += requiredDoctorFields(doctor as unknown as Record<string, unknown>).length; // a name, and the role for "Other"
   const missing = missingForSubmit(kind, data).length;
   return { done: Math.max(0, total - missing), total };
 }
@@ -996,7 +1070,7 @@ export function allPhotos(p: IntakePhotos, kind?: IntakeKind, data?: IntakeData)
 
 /** One doctor entry as a line, for the admin notes. */
 export function doctorText(e: DoctorEntry): string {
-  return [str(e.name) || "(no name)", str(e.designation), str(e.education), doctorRoleLabel(e.role), str(e.portfolioUrl), e.photo ? `photo: ${e.photo.url}` : ""].filter(Boolean).join(" – ");
+  return [str(e.name) || "(no name)", str(e.designation), str(e.education), doctorRoleLabel(e), str(e.portfolioUrl), e.photo ? `photo: ${e.photo.url}` : ""].filter(Boolean).join(" – ");
 }
 
 /** Pre-filled WhatsApp message for sending photos (or asking a question about a form). */

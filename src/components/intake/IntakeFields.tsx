@@ -88,7 +88,7 @@ export function IntakeField({
         {f.required && <span className="sr-only"> (required to send)</span>}
       </label>
       {f.type === "design" ? (
-        <DesignPicker id={id} field={f} value={v} onChange={onChange} />
+        <DesignPicker id={id} field={f} value={v} onChange={onChange} context={context} />
       ) : f.type === "card" ? (
         <CardStylePicker id={id} field={f} value={v} onChange={onChange} />
       ) : f.type === "choice" ? (
