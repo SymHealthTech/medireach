@@ -3,10 +3,12 @@
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChipInput, Field, NativeSelect } from "@/components/admin/form/fields";
+import { MasterSelect, useMasterOptions } from "@/components/admin/form/MasterSelect";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
-export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps) {
+export function PracticeStep({ form: f, set, err, options, readOnly, hints }: StepProps) {
   const secondary = new Set(f.secondarySpecialtyIds);
+  const specialties = useMasterOptions("specialty", options.specialties);
   return (
     <div className="space-y-5">
       <Group title="Practice">
@@ -29,24 +31,22 @@ export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps
             help="Used in the page title and address: dr-name-specialty."
             error={err("primarySpecialtyId")}
           >
-            <NativeSelect
+            <MasterSelect
               id="primarySpecialtyId"
+              kind="specialty"
+              noun="specialty"
               value={f.primarySpecialtyId}
+              options={options.specialties}
               disabled={readOnly}
-              onChange={(e) =>
+              invalid={Boolean(err("primarySpecialtyId"))}
+              hint={hints?.specialty}
+              onChange={(id) =>
                 set((f) => ({
-                  primarySpecialtyId: e.target.value,
-                  secondarySpecialtyIds: f.secondarySpecialtyIds.filter((x) => x !== e.target.value),
+                  primarySpecialtyId: id,
+                  secondarySpecialtyIds: f.secondarySpecialtyIds.filter((x) => x !== id),
                 }))
               }
-            >
-              <option value="">Choose…</option>
-              {options.specialties.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </NativeSelect>
+            />
           </Field>
         </div>
         <details className="rounded-lg border border-line bg-background p-3">
@@ -55,7 +55,7 @@ export function PracticeStep({ form: f, set, err, options, readOnly }: StepProps
           </summary>
           <p className="mt-1 text-xs text-muted-foreground">Up to 5. The doctor will also be listed on these specialty pages.</p>
           <ul className="mt-3 grid max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
-            {options.specialties
+            {specialties
               .filter((s) => s.id !== f.primarySpecialtyId)
               .map((s) => (
                 <li key={s.id}>

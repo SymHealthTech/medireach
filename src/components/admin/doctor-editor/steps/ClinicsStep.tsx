@@ -1,10 +1,14 @@
 "use client";
 
-import { ArrowDown, ArrowUp, MapPin } from "lucide-react";
+import { useState } from "react";
+import { ArrowDown, ArrowUp, ClipboardList, Loader2, MapPin, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
+import { addMaster, MasterSelect } from "@/components/admin/form/MasterSelect";
 import { emptyClinic, type ClinicForm } from "@/lib/doctors/form";
+import type { FormClinic } from "@/lib/intake/hints";
+import { mapsLinkFor, parseLocation } from "@/lib/intake/form";
 import { TimingEditor } from "../TimingEditor";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
@@ -14,8 +18,47 @@ function coordsFromMapsUrl(url: string): { lat: string; lng: string } | null {
   return m ? { lat: m[1]!, lng: m[2]! } : null;
 }
 
-export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps) {
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: StepProps) {
   const defaultCity = options.cities.find((c) => c.slug === "pune")?.id ?? options.cities[0]?.id ?? "";
+  const [importing, setImporting] = useState<number | null>(null);
+  // Website-form clinics not added yet (matched by name).
+  const formClinics = (hints?.clinics ?? []).map((c, i) => ({ c, i })).filter(({ c }) => !f.clinics.some((x) => c.name && same(x.name, c.name)));
+
+  /** Add a clinic from the website form: city and area matched (a new area is added to the list). */
+  async function importClinic(fc: FormClinic, i: number) {
+    setImporting(i);
+    try {
+      const city = options.cities.find((x) => fc.city && (same(x.name, fc.city) || same(x.slug, fc.city)));
+      const cityId = city?.id ?? defaultCity;
+      const areaOpts = options.areas.filter((a) => a.cityId === cityId);
+      const area = fc.area && cityId ? await addMaster("area", fc.area, { cityId }, areaOpts) : null;
+      const geo = parseLocation(fc.location);
+      const fee = /^\d+$/.test(fc.fee) ? Number(fc.fee) : undefined;
+      set((prev) => ({
+        clinics: [
+          ...prev.clinics,
+          {
+            ...emptyClinic(cityId),
+            name: fc.name,
+            addressLine1: fc.address.replace(/\s*\n\s*/g, ", "),
+            areaId: area?.id ?? "",
+            state: city?.state ?? "Maharashtra",
+            pincode: /^\d{6}$/.test(fc.pincode) ? fc.pincode : "",
+            phone: fc.phone.split(/[,/;]/)[0]?.trim() ?? "",
+            mapsUrl: fc.mapsUrl || (geo ? mapsLinkFor(geo) : ""),
+            lat: geo ? String(geo.lat) : "",
+            lng: geo ? String(geo.lng) : "",
+            appointmentNote: fc.appointmentNote,
+            fee,
+          },
+        ].slice(0, 6),
+      }));
+    } finally {
+      setImporting(null);
+    }
+  }
   const setClinic = (i: number, patch: Partial<ClinicForm>) => set((f) => ({ clinics: updateAt(f.clinics, i, patch) }));
   const move = (i: number, dir: -1 | 1) =>
     set((prev) => {
@@ -27,6 +70,26 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
 
   return (
     <div className="space-y-5">
+      {formClinics.length > 0 && (
+        <div className="space-y-2 rounded-lg bg-sage/60 p-3 text-sm text-ink">
+          <p className="flex items-center gap-2 font-semibold">
+            <ClipboardList className="size-4" aria-hidden /> Clinics in website form {hints?.ref}
+          </p>
+          <ul className="space-y-2">
+            {formClinics.map(({ c, i }) => (
+              <li key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-muted-foreground">
+                  <strong className="text-ink">{c.name || `Clinic ${i + 1}`}</strong>
+                  {[c.address, c.area, c.city, c.pincode].filter(Boolean).length > 0 && ` · ${[c.address, c.area, c.city, c.pincode].filter(Boolean).join(", ")}`}
+                </span>
+                <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={readOnly || importing !== null || f.clinics.length >= 6} onClick={() => void importClinic(c, i)}>
+                  {importing === i ? <Loader2 className="animate-spin" /> : <Plus />} Add this clinic
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {f.clinics.length === 0 && (
         <p className="rounded-lg border border-dashed border-line bg-card p-4 text-sm text-muted-foreground">
           Add the doctor&apos;s clinic. The first clinic is the primary one: it sets the city and area in the page address and Google title.
@@ -35,6 +98,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
       {f.clinics.map((c, i) => {
         const p = `clinics.${i}`;
         const areas = options.areas.filter((a) => a.cityId === c.cityId);
+        const fc = hints?.clinics.find((x) => x.name && same(x.name, c.name)) ?? (f.clinics.length === 1 && hints?.clinics.length === 1 ? hints.clinics[0] : undefined);
         const sites = options.establishments.filter((e) => !e.cityId || e.cityId === c.cityId);
         return (
           <Group key={c.key} title={i === 0 ? "Primary clinic" : `Clinic ${i + 1}`}>
@@ -114,7 +178,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
                 <Field label="Address line 2" htmlFor={`${p}.addressLine2`}>
                   <Input id={`${p}.addressLine2`} value={c.addressLine2} disabled={readOnly} onChange={(e) => setClinic(i, { addressLine2: e.target.value })} />
                 </Field>
-                <Field label="City" htmlFor={`${p}.cityId`} required error={err(`${p}.cityId`)}>
+                <Field label="City" htmlFor={`${p}.cityId`} required error={err(`${p}.cityId`)} help={!c.cityId && fc?.city ? `Website form: ${fc.city}` : undefined}>
                   <NativeSelect
                     id={`${p}.cityId`}
                     value={c.cityId}
@@ -124,7 +188,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
                       setClinic(i, { cityId: e.target.value, areaId: "", state: city?.state ?? c.state });
                     }}
                   >
-                    <option value="">Choose…</option>
+                    <option value="" />
                     {options.cities.map((x) => (
                       <option key={x.id} value={x.id}>
                         {x.name}
@@ -133,14 +197,18 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
                   </NativeSelect>
                 </Field>
                 <Field label="Area" htmlFor={`${p}.areaId`} required error={err(`${p}.areaId`)}>
-                  <NativeSelect id={`${p}.areaId`} value={c.areaId} disabled={readOnly || !c.cityId} onChange={(e) => setClinic(i, { areaId: e.target.value })}>
-                    <option value="">Choose…</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </NativeSelect>
+                  <MasterSelect
+                    id={`${p}.areaId`}
+                    kind="area"
+                    noun="area"
+                    value={c.areaId}
+                    options={areas}
+                    scope={{ cityId: c.cityId }}
+                    disabled={readOnly}
+                    invalid={Boolean(err(`${p}.areaId`))}
+                    hint={fc?.area}
+                    onChange={(areaId) => setClinic(i, { areaId })}
+                  />
                 </Field>
                 <Field label="State" htmlFor={`${p}.state`}>
                   <Input id={`${p}.state`} value={c.state} disabled={readOnly} onChange={(e) => setClinic(i, { state: e.target.value })} />
@@ -201,6 +269,11 @@ export function ClinicsStep({ form: f, set, err, options, readOnly }: StepProps)
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Timings</p>
+                {fc?.timings && c.timings.every((t) => t.slots.length === 0) && (
+                  <p className="whitespace-pre-line rounded-lg bg-sage/60 px-3 py-2 text-xs text-ink">
+                    <strong>Website form timings:</strong> {fc.timings}
+                  </p>
+                )}
                 <TimingEditor idPrefix={p} value={c.timings} disabled={readOnly} onChange={(timings) => setClinic(i, { timings })} />
                 {err(`${p}.timings`) && <p className="text-sm text-clay-text">{err(`${p}.timings`)}</p>}
               </div>

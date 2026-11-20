@@ -3,25 +3,29 @@
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, NativeSelect } from "@/components/admin/form/fields";
+import { MasterSelect } from "@/components/admin/form/MasterSelect";
 import { ImageUpload } from "@/components/admin/form/ImageUpload";
 import { CardStylePicker } from "@/components/admin/CardStylePicker";
 import { PhotoCropUpload } from "@/components/admin/doctor-editor/PhotoCropUpload";
 import { RichTextEditor } from "@/components/admin/doctor-editor/RichTextEditor";
 import { Group, grid2 } from "@/components/admin/doctor-editor/shared";
+import { findCardStyle } from "@/lib/cards/styles";
 import { LIMITS } from "@/lib/constants";
 import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME, type ThemeKey } from "@/themes/specialty";
 import { ThemePicker } from "../ThemePicker";
 import type { EStepProps } from "../shared";
 
-export function BasicsStep({ form: f, set, err, options, readOnly }: EStepProps) {
+export function BasicsStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const categories = options.categories.filter((c) => c.kind === f.kind);
   const category = options.categories.find((c) => c.id === f.categoryId);
   const designs = options.templates.filter((t) => t.type === f.kind);
   const cards = options.templates.filter((t) => t.type === "card");
+  const cardGroup = findCardStyle(f.cardStyle)?.group;
 
   /** Changing the category moves the theme to the category's default, unless one was picked by hand. */
   function pickCategory(id: string) {
     const next = options.categories.find((c) => c.id === id);
+    if (!next) return set({ categoryId: id }); // just added: it starts on the current design
     set((prev) => {
       const prevDefault = options.categories.find((c) => c.id === prev.categoryId)?.defaultThemeKey;
       const untouched = !prev.categoryId || prev.themeKey === prevDefault || prev.themeKey === DEFAULT_CLINIC_THEME || prev.themeKey === DEFAULT_HOSPITAL_THEME;
@@ -48,14 +52,18 @@ export function BasicsStep({ form: f, set, err, options, readOnly }: EStepProps)
             </NativeSelect>
           </Field>
           <Field label="Category" htmlFor="categoryId" required error={err("categoryId")} help="Used in the Google title, e.g. “Skin Clinic in Baner”.">
-            <NativeSelect id="categoryId" value={f.categoryId} disabled={readOnly} onChange={(e) => pickCategory(e.target.value)}>
-              <option value="">Choose…</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </NativeSelect>
+            <MasterSelect
+              id="categoryId"
+              kind="category"
+              noun="category"
+              value={f.categoryId}
+              options={categories}
+              scope={{ establishmentKind: f.kind, themeKey: f.themeKey }}
+              disabled={readOnly}
+              invalid={Boolean(err("categoryId"))}
+              hint={hints?.category}
+              onChange={pickCategory}
+            />
           </Field>
           <Field label="Name" htmlFor="name" required error={err("name")} className="sm:col-span-2">
             <Input id="name" value={f.name} disabled={readOnly} placeholder="e.g. Shree Skin Clinic" onChange={(e) => set({ name: e.target.value })} />
@@ -121,7 +129,8 @@ export function BasicsStep({ form: f, set, err, options, readOnly }: EStepProps)
         description="The code name the clinic or hospital picked on the Visiting cards page (e.g. CLN-OCEAN). The card page, WhatsApp image and print PDF all use it."
       >
         <CardStylePicker
-          groups={f.kind === "hospital" ? ["hospital", "clinic"] : ["clinic", "hospital"]}
+          // Clinic and hospital styles are separate (as on the website); an older pick from the other list stays visible.
+          groups={[f.kind, ...(cardGroup && cardGroup !== f.kind && cardGroup !== "doctor" ? [cardGroup] : [])]}
           value={f.cardStyle}
           disabled={readOnly}
           onChange={(cardStyle) => set({ cardStyle })}

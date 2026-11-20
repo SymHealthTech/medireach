@@ -220,7 +220,7 @@ Goal: as good as Linear or Notion, but warmer. Calm, fast, never cluttered, full
 - Content max width 1280 px, 24 px gutters (16 px on mobile).
 
 ### Components
-- **Stat cards:** small muted label, large Fraunces number, trend chip. Breakdown by product (doctor / clinic / hospital). Founding spots card uses a marigold progress ring. Renewals due in 30 days card.
+- **Stat cards:** small muted label, large Fraunces number, trend chip. Breakdown by product (doctor / clinic / hospital). Renewals due in 30 days card.
 - **Tables:** sticky header, 52 px rows, hover sage; on mobile each row becomes a card (logo/photo, name, type · area, status badge).
 - **Status badges:** Draft (grey), In review (marigold), Published (leaf), Suspended (clay). Founding = marigold star. Renewal due = clay dot.
 - **Multi-step forms** (doctor and clinic/hospital): left vertical stepper with ticks on desktop; top progress bar "Step 3 of 10" on mobile; sticky bottom bar Back / Save draft / Next; autosave indicator.

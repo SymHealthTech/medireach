@@ -104,7 +104,7 @@ export function PaymentDialog({
                 {v.kind === "doctor" ? (
                   <Field label="Doctor" htmlFor="p-doctor" required error={errors.doctorId}>
                     <NativeSelect id="p-doctor" value={v.doctorId} onChange={(e) => set({ doctorId: e.target.value })}>
-                      <option value="">Choose…</option>
+                      <option value="" />
                       {doctors.map((d) => (
                         <option key={d.id} value={d.id}>
                           {d.name}
@@ -115,7 +115,7 @@ export function PaymentDialog({
                 ) : (
                   <Field label="Clinic or hospital" htmlFor="p-est" required error={errors.doctorId}>
                     <NativeSelect id="p-est" value={v.establishmentId} onChange={(e) => set({ establishmentId: e.target.value })}>
-                      <option value="">Choose…</option>
+                      <option value="" />
                       {establishments.map((e) => (
                         <option key={e.id} value={e.id}>
                           {e.name} ({e.kind})

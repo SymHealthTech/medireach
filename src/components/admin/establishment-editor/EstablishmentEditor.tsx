@@ -27,6 +27,7 @@ import {
   type StepKey,
 } from "@/lib/establishments/form";
 import type { EstablishmentEditorOptions } from "@/lib/establishments/options";
+import type { SiteFormHints } from "@/lib/intake/hints";
 import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { absUrl, paths } from "@/lib/site";
@@ -52,11 +53,13 @@ export function EstablishmentEditor({
   options,
   role,
   initialStep = "basics",
+  hints,
 }: {
   initial: EstablishmentForm;
   options: EstablishmentEditorOptions;
   role: AdminRole;
   initialStep?: StepKey;
+  hints?: SiteFormHints;
 }) {
   const [form, setForm] = useState<EstablishmentForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -179,7 +182,7 @@ export function EstablishmentEditor({
     toast.success(ok);
   }
 
-  const stepProps: EStepProps = { form, set, err, options, readOnly, role };
+  const stepProps: EStepProps = { form, set, err, options, readOnly, role, hints };
   const theme = getTheme(form.themeKey, form.kind);
   const kindLabel = form.kind === "hospital" ? "hospital" : "clinic";
 

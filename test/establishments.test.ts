@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import mongoose, { Types } from "mongoose";
 import type { Db } from "mongodb";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import { countFoundingCustomers, nextFoundingNumber } from "@/lib/founding";
+import { nextFoundingNumber } from "@/lib/founding";
 import { migrateV2 } from "@/lib/migrations/v2";
 import { seedMasters } from "@/lib/seed/masters";
 import { City } from "@/models/City";
@@ -86,14 +86,6 @@ describe("founding numbers", () => {
     const numbers = await Promise.all(Array.from({ length: 10 }, () => nextFoundingNumber()));
     expect(new Set(numbers).size).toBe(10);
     expect(Math.max(...numbers)).toBe(10);
-  });
-
-  it("counts founding customers across all products (and unmigrated doctors)", async () => {
-    await DoctorProfile.create({ firstName: "A", lastName: "B", founding: true });
-    await DoctorProfile.create({ firstName: "C", lastName: "D", foundingDoctor: true });
-    await DoctorProfile.create({ firstName: "E", lastName: "F" });
-    await Establishment.create({ kind: "hospital", plan: "hospital", name: "H", founding: true });
-    expect(await countFoundingCustomers()).toBe(3);
   });
 });
 

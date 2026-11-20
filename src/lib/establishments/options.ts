@@ -1,6 +1,7 @@
 import "server-only";
 import type { EstablishmentKind } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
+import { ensureMasterLists } from "@/lib/masters/server";
 import { getSettings } from "@/lib/settings";
 import { Area } from "@/models/Area";
 import { City } from "@/models/City";
@@ -24,6 +25,7 @@ export interface EstablishmentEditorOptions {
 
 export async function getEstablishmentEditorOptions(): Promise<EstablishmentEditorOptions> {
   await connectToDatabase();
+  await ensureMasterLists();
   const [cities, areas, categories, doctors, specialties, templates, settings] = await Promise.all([
     City.find().sort({ name: 1 }).lean(),
     Area.find().sort({ name: 1 }).lean(),

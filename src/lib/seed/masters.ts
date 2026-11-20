@@ -82,7 +82,14 @@ export async function seedMasters(): Promise<SeedCounts> {
       DoctorProfile, Establishment, Payment, UpdateRequest, Lead, AuditLog,
     ].map((m) => (m as Model<unknown>).syncIndexes()),
   );
+  return seedMasterLists();
+}
 
+/**
+ * The master lists alone (no index sync), safe to run from the app: only
+ * missing entries are inserted. See `ensureMasterLists`.
+ */
+export async function seedMasterLists(): Promise<SeedCounts> {
   const cities = SEED_CITIES.map((c) => ({
     ...c,
     slug: checkSlug("city", slugify(c.name), c.name),

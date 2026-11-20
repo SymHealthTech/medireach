@@ -10,6 +10,4 @@ export const CACHE_TAGS = {
   templates: "templates",
   /** Public settings shown on marketing pages (prices, contact, GST). */
   settings: "settings",
-  /** Founding customer count across all products (spots left on the homepage). */
-  founding: "founding",
 } as const;

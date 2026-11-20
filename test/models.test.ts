@@ -67,7 +67,6 @@ describe("seedMasters", () => {
   it("creates the settings singleton with defaults", async () => {
     const s = await Setting.findOne().lean();
     expect(s).toMatchObject({
-      foundingTotal: 100,
       gstMode: "inclusive",
       renewalGraceDays: 30,
       prices: { updatePrice: 299, doctorSetup: 1999, clinicSetup: 2999, hospitalSetup: 4999, renewalHospital: 1499, foundingRenewal: 499 },

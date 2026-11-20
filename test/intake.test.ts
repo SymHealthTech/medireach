@@ -28,8 +28,13 @@ import {
   type IntakeData,
   type RepeatItem,
 } from "@/lib/intake/form";
+import { doctorHints, parseQualificationLine, siteHints } from "@/lib/intake/hints";
 import { isOurPhoto, saveIntake } from "@/lib/intake/server";
+import { findOrCreateMaster } from "@/lib/masters/server";
 import { createIntakeToken, verifyIntakeToken } from "@/lib/intake/session";
+import { Area } from "@/models/Area";
+import { Council } from "@/models/Council";
+import { Degree } from "@/models/Degree";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { Intake } from "@/models/Intake";
@@ -247,6 +252,21 @@ describe("form definitions", () => {
     expect(isOurPhoto({ publicId: photo(1).publicId, url: "https://res.cloudinary.com/other/image/upload/x.jpg" })).toBe(false);
   });
 
+  it("parses qualification lines, and builds editor hints from a form", () => {
+    expect(parseQualificationLine("MBBS – BJ Medical College, Pune – 2008")).toEqual({ degree: "MBBS", specialization: "", institute: "BJ Medical College, Pune", year: 2008 });
+    expect(parseQualificationLine("MD (Medicine) – KEM Hospital, Mumbai – 2012")).toEqual({ degree: "MD", specialization: "Medicine", institute: "KEM Hospital, Mumbai", year: 2012 });
+    expect(parseQualificationLine("BAMS,")).toEqual({ degree: "BAMS", specialization: "", institute: "" });
+    expect(parseQualificationLine("MBBS from BJMC (2008)")).toEqual({ degree: "MBBS", specialization: "", institute: "BJMC", year: 2008 });
+    expect(parseQualificationLine("MBBS, BJMC, 2008")).toEqual({ degree: "MBBS", specialization: "", institute: "BJMC", year: 2008 });
+    expect(parseQualificationLine("  ")).toBeNull();
+    const h = doctorHints("MR-1", { ...fullDoctor(), qualifications: "BAMS,\nMD", council: "MCIM" });
+    expect(h).toMatchObject({ ref: "MR-1", council: "MCIM", qualificationLines: ["BAMS,", "MD"] });
+    expect(h.qualifications.map((q) => q.degree)).toEqual(["BAMS", "MD"]);
+    expect(h.clinics[0]).toMatchObject({ name: "Asha Clinic", pincode: "411038" });
+    expect(siteHints("MR-2", "clinic", { ...emptyIntakeData("clinic"), clinicType: "skin", area: "Kothrud" })).toEqual({ ref: "MR-2", category: "Skin Clinic", area: "Kothrud", city: "Pune" });
+    expect(siteHints("MR-3", "clinic", { ...emptyIntakeData("clinic"), clinicType: "other", clinicTypeOther: "Sleep clinic" }).category).toBe("Sleep clinic");
+  });
+
   it("parses names and doctor lines", () => {
     expect(splitDoctorName("Dr. Amit R. Kulkarni")).toEqual({ title: "Dr.", firstName: "Amit", middleName: "R.", lastName: "Kulkarni" });
     expect(splitDoctorName("Amit")).toBeNull();
@@ -406,6 +426,28 @@ describe("creating the website draft", () => {
     expect(doc!.citySlug).toBe("pune");
     expect(doc!.internalNotes).toContain(intake!.ref);
     expect(doc!.internalNotes).toContain("MBBS – BJ Medical College – 2008");
+    // Qualifications land in the real field, degrees matched by name.
+    const degrees = await Degree.find({ _id: { $in: doc!.qualifications.map((q) => q.degreeId) } }).lean();
+    expect(doc!.qualifications.map((q) => [degrees.find((d) => String(d._id) === String(q.degreeId))?.name, q.institute, q.year])).toEqual([
+      ["MBBS", "BJ Medical College", 2008],
+      ["MD", "KEM", 2012],
+    ]);
+    expect(doc!.internalNotes).not.toContain("Please enter in the editor: qualifications");
+  });
+
+  it("adds a council, degree and area the lists don't have yet (what the applicant typed)", async () => {
+    const data = { ...fullDoctor(), council: "MCIM", qualifications: "BAMS,\nMD (Kayachikitsa)", clinics: [{ ...(fullDoctor().clinics as RepeatItem[])[0], area: "Zz New Area" }] };
+    const r = await saveIntake({ kind: "doctor", email: "conv2@example.com", data, photos: {} }, null);
+    const intake = await Intake.findById(r.ok ? r.intake.id : "").lean();
+    const made = await createSiteFromIntake(intake!);
+    const doc = await DoctorProfile.findById(made.id).lean();
+    expect((await Council.findById(doc!.registration.councilId).lean())?.name).toBe("MCIM");
+    expect(doc!.qualifications).toHaveLength(2);
+    expect(doc!.qualifications[1]).toMatchObject({ specialization: "Kayachikitsa", institute: "" });
+    expect(doc!.clinics).toHaveLength(1);
+    expect((await Area.findById(doc!.clinics[0]!.areaId).lean())?.name).toBe("Zz New Area");
+    // A second form with the same council doesn't make a duplicate.
+    expect((await findOrCreateMaster("council", "mcim")).created).toBe(false);
   });
 
   it("maps a clinic form onto a draft establishment", async () => {

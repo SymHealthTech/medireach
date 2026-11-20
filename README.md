@@ -147,7 +147,7 @@ marketing copy. Publicly, designs are called **specialty designs**, never
 ## Marketing copy and leads
 
 All homepage and marketing text lives in `src/content/marketing.ts`. Prices,
-GST mode, the WhatsApp number and Founding spots come from **Settings**
+GST mode and the WhatsApp number come from **Settings**
 (cached 10 minutes, refreshed on save). Form leads (homepage, pricing, for
 clinics, for hospitals) are emailed to `LEAD_NOTIFY_EMAIL` (or `ADMIN_EMAIL`);
 WhatsApp button taps are counted as `whatsapp_click` leads with no personal

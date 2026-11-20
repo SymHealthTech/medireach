@@ -1,5 +1,5 @@
 import "server-only";
-import type { Types } from "mongoose";
+import mongoose, { type Types } from "mongoose";
 import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
 import { isThemeKey } from "@/themes/specialty";
@@ -25,12 +25,13 @@ import {
   type IntakePhoto,
   type RepeatItem,
 } from "@/lib/intake/form";
+import { parseQualificationLine } from "@/lib/intake/hints";
+import { ensureMasterLists, findOrCreateMaster } from "@/lib/masters/server";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import { Area } from "@/models/Area";
 import { City } from "@/models/City";
 import { ClinicCategory } from "@/models/ClinicCategory";
-import { Council } from "@/models/Council";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import type { IntakeDoc } from "@/models/Intake";
@@ -144,25 +145,49 @@ export class ConvertError extends Error {}
 
 /** Create the draft and return where to edit it. */
 export async function createSiteFromIntake(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">): Promise<{ kind: IntakeKind; id: Types.ObjectId; href: string }> {
+  await ensureMasterLists();
   return intake.kind === "doctor" ? createDoctor(intake) : createEstablishment(intake);
+}
+
+/** The area the applicant typed, in a known city (added to the list if new). */
+async function areaIn(cityId: Types.ObjectId, name: string) {
+  if (!name.trim()) return null;
+  try {
+    const a = await findOrCreateMaster("area", name, { cityId: String(cityId) });
+    return { _id: new mongoose.Types.ObjectId(a.id) };
+  } catch {
+    return null;
+  }
 }
 
 async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
   const d = withDefaults("doctor", intake.data as IntakeData);
   const name = splitDoctorName(str(d.fullName));
   if (!name) throw new ConvertError("Add the doctor's first and last name to the form first.");
-  const skipped = ["qualifications", "timings"];
+  const skipped = ["timings"];
 
+  // Council and degrees are what the applicant typed: matched by name, or added to the master list.
   const [specialty, council] = await Promise.all([
     matchByName((f) => Specialty.findOne(f).select({ _id: 1 }).lean(), str(d.specialty), {}, ["name", "plural"]),
-    matchByName((f) => Council.findOne(f).select({ _id: 1 }).lean(), str(d.council)),
+    str(d.council) ? findOrCreateMaster("council", str(d.council)).catch(() => null) : null,
   ]);
-  if (!specialty && str(d.specialty)) skipped.push("specialty");
+  if (!specialty && str(d.specialty)) skipped.push(`specialty ("${str(d.specialty)}")`);
+  const qualificationLines = splitLines(d.qualifications);
+  const qualifications = [];
+  for (const line of qualificationLines.slice(0, 12)) {
+    const q = parseQualificationLine(line);
+    const degree = q ? await findOrCreateMaster("degree", q.degree).catch(() => null) : null;
+    if (!q || !degree) {
+      skipped.push(`qualification "${line}"`);
+      continue;
+    }
+    qualifications.push({ degreeId: new mongoose.Types.ObjectId(degree.id), specialization: q.specialization || undefined, institute: q.institute, ...(q.year ? { year: q.year } : {}) });
+  }
 
   const clinics = [];
   for (const c of isRepeatValue(d.clinics) ? (d.clinics as RepeatItem[]) : []) {
     const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(c.city) || "Pune");
-    const area = city ? await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(c.area), { cityId: city._id }) : null;
+    const area = city ? ((await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(c.area), { cityId: city._id })) ?? (await areaIn(city._id, str(c.area)))) : null;
     const pincode = str(c.pincode);
     if (!city || !area || !str(c.name) || !str(c.address) || !/^\d{6}$/.test(pincode)) {
       if (str(c.name)) skipped.push(`clinic "${str(c.name)}" (area, city or pincode not matched)`);
@@ -205,7 +230,8 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     photo: image(intake.photos?.profile, fullName),
     languages: splitList(d.languages),
     practiceSinceYear: year(d.practiceSince),
-    registration: { ...(council ? { councilId: council._id } : {}), ...(str(d.registrationNumber) ? { number: str(d.registrationNumber) } : {}), ...(year(d.registrationYear) ? { year: year(d.registrationYear) } : {}) },
+    registration: { ...(council ? { councilId: new mongoose.Types.ObjectId(council.id) } : {}), ...(str(d.registrationNumber) ? { number: str(d.registrationNumber) } : {}), ...(year(d.registrationYear) ? { year: year(d.registrationYear) } : {}) },
+    qualifications,
     ...(specialty ? { primarySpecialtyId: specialty._id } : {}),
     services: splitLines(d.services).map((s) => ({ name: s.slice(0, 200) })),
     conditionsTreated: splitLines(d.conditions).map((s) => s.slice(0, 200)),
@@ -256,7 +282,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   if (splitLines(d.awards).length) skipped.push("accreditations and awards");
 
   const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(d.city) || "Pune");
-  const area = city ? await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(d.area), { cityId: city._id }) : null;
+  const area = city ? ((await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(d.area), { cityId: city._id })) ?? (await areaIn(city._id, str(d.area)))) : null;
   if (!city || !area) skipped.push("area / city");
 
   // Clinic type is a category slug from the form; "Other" (or an older free-text answer) is matched by name.

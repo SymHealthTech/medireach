@@ -7,7 +7,6 @@ import { connectToDatabase } from "@/lib/db";
 import { timeAgo } from "@/lib/format";
 import { getSettings } from "@/lib/settings";
 import { Admin } from "@/models/Admin";
-import { countFoundingCustomers } from "@/lib/founding";
 import { AdminUserActions, BannedPhrasesForm, GeneralSettingsForm, NewAdminUserButton } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -24,9 +23,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default async function SettingsPage() {
   const admin = await requireAdminPage(rolesFor("/admin/settings"));
   await connectToDatabase();
-  const [settings, foundingUsed, users] = await Promise.all([
+  const [settings, users] = await Promise.all([
     getSettings(),
-    countFoundingCustomers(),
     can.manageAdmins(admin.role) ? Admin.find().sort({ role: 1, name: 1 }).lean() : Promise.resolve([]),
   ]);
 
@@ -34,10 +32,8 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <Section title="Prices, renewals, contact and GST">
         <GeneralSettingsForm
-          foundingUsed={foundingUsed}
           initial={{
             prices: settings.prices,
-            foundingTotal: settings.foundingTotal,
             renewalGraceDays: settings.renewalGraceDays,
             contactPhone: settings.contactPhone ?? "",
             whatsappNumber: settings.whatsappNumber ?? "",

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { ActionError, adminAction, auditCtx, objectId, requiredText } from "@/lib/admin/action";
 import { audit } from "@/lib/api/audit";
+import { findOrCreateMaster, MasterInputError, QUICK_MASTER_KINDS } from "@/lib/masters/server";
 import { revalidateMasters } from "@/lib/public/revalidate";
 import { masterSlugError, SLUG_RE, slugify } from "@/lib/slug";
 import { Area } from "@/models/Area";
@@ -112,6 +113,33 @@ export const saveMasterAction = adminAction({ schema, roles: ADMINS }, async (in
   });
   revalidateMasters();
   return { id };
+});
+
+const quickSchema = z.object({
+  kind: z.enum(QUICK_MASTER_KINDS),
+  name: requiredText(120, "Name"),
+  cityId: objectId.optional(),
+  establishmentKind: z.enum(["clinic", "hospital"]).optional(),
+  themeKey: z.string().trim().max(40).optional(),
+});
+
+/**
+ * "Other: not in the list" in an editor dropdown: the entry with that name,
+ * added to the master list first if it's new. Any dashboard user who edits
+ * doctors or sites can use it (renaming and deleting stay in Master lists).
+ */
+export const quickAddMasterAction = adminAction({ schema: quickSchema }, async ({ kind, name, ...extra }, admin) => {
+  try {
+    const r = await findOrCreateMaster(kind, name, extra);
+    if (r.created) {
+      await audit(auditCtx(admin), `master.${kind}.create`, { entity: kind, entityId: r.id, diff: { before: null, after: { name: r.name } } });
+      revalidateMasters();
+    }
+    return { id: r.id, name: r.name };
+  } catch (e) {
+    if (e instanceof MasterInputError) throw new ActionError(e.message, { name: e.message });
+    throw e;
+  }
 });
 
 /** Delete an entry only when nothing references it. */

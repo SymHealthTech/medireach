@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ClipboardList, ImageIcon } from "lucide-react";
 import type { FilterQuery } from "mongoose";
 import { EmptyState } from "@/components/admin/EmptyState";
+import { KindTabs } from "@/components/admin/KindTabs";
 import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { Pill } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
@@ -27,13 +28,14 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
   const filter: FilterQuery<IntakeDoc> = {};
   const status = oneOf(param(sp, "status"), INTAKE_STATUSES);
   if (status) filter.status = status;
-  const kind = oneOf(param(sp, "kind"), INTAKE_KINDS);
-  if (kind) filter.kind = kind;
+  // The three forms are separate lists (Doctor / Clinic / Hospital tabs), as on the website.
+  const kind = oneOf(param(sp, "kind"), INTAKE_KINDS) ?? "doctor";
+  filter.kind = kind;
   const re = searchRegex(param(sp, "q"));
   if (re) filter.$or = [{ name: re }, { email: re }, { phone: re }, { ref: re }];
   const page = pageOf(sp);
 
-  const [total, rows, counts] = await Promise.all([
+  const [total, rows, counts, kindCounts] = await Promise.all([
     Intake.countDocuments(filter),
     Intake.find(filter)
       .sort({ submittedAt: -1, lastSavedAt: -1 })
@@ -41,13 +43,14 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
       .limit(PAGE_SIZE)
       .select({ "data.designDecision": 1, kind: 1, email: 1, ref: 1, status: 1, name: 1, phone: 1, photos: 1, missingCount: 1, submittedAt: 1, updatedAfterSubmitAt: 1, lastSavedAt: 1 })
       .lean(),
-    Intake.aggregate<{ _id: IntakeStatus; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Intake.aggregate<{ _id: IntakeStatus; n: number }>([{ $match: { kind } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Intake.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$kind", n: { $sum: 1 } } }]),
   ]);
   const countOf = (s: string) => counts.find((c) => c._id === s)?.n ?? 0;
   const statusHref = (s?: string) => {
     const next = new URLSearchParams();
     if (s) next.set("status", s);
-    if (kind) next.set("kind", kind);
+    next.set("kind", kind);
     if (param(sp, "q")) next.set("q", param(sp, "q")!);
     return `/admin/intakes?${next.toString()}`;
   };
@@ -57,6 +60,13 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
       <p className="text-muted-foreground">
         Details sent by doctors, clinics and hospitals through <strong className="text-ink">Get started</strong> on the website. Review each form, fill any gaps, then create the website draft.
       </p>
+
+      <KindTabs
+        label="Form type"
+        active={kind}
+        counts={Object.fromEntries(INTAKE_KINDS.map((k) => [k, kindCounts.find((c) => c._id === k)?.n ?? 0]))}
+        hrefFor={(k) => `/admin/intakes?kind=${k}`}
+      />
 
       <nav aria-label="Form status" className="-mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
         <Link href={statusHref()} className={cn("shrink-0 rounded-xl border px-4 py-2.5 text-sm", !status ? "border-ink bg-card font-semibold" : "border-line bg-card text-muted-foreground")}>
@@ -73,16 +83,13 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
         ))}
       </nav>
 
-      <ListToolbar
-        placeholder="Search name, email, phone, ref…"
-        filters={[{ name: "kind", label: "Type", options: INTAKE_KINDS.map((k) => ({ value: k, label: INTAKE_KIND_LABEL[k] })) }]}
-      />
+      <ListToolbar placeholder="Search name, email, phone, ref…" />
 
       {rows.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          title={re || status || kind ? "No forms match" : "No forms yet"}
-          description="When someone fills a form from Get started on the website, it appears here."
+          title={re || status ? "No forms match" : `No ${INTAKE_KIND_LABEL[kind].toLowerCase()} forms yet`}
+          description={`When someone fills the ${INTAKE_KIND_LABEL[kind].toLowerCase()} form from Get started on the website, it appears here.`}
         />
       ) : (
         <ul className="space-y-3">
@@ -100,7 +107,7 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
                         {(r.data as { designDecision?: string } | undefined)?.designDecision === "discuss" && <Pill tone="ink">Design: talk first</Pill>}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {[INTAKE_KIND_LABEL[r.kind], r.ref, r.phone, r.email].filter(Boolean).join(" · ")}
+                        {[r.ref, r.phone, r.email].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">

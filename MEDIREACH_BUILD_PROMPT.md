@@ -188,7 +188,7 @@ createdAt, updatedAt, publishedAt
 - `Lead { name, phone, city?, specialty?, message?, source: 'homepage_form'|'whatsapp_click'|'pricing'|'hospitals', status: 'new'|'contacted'|'won'|'lost', createdAt }`
 - `TemplateSlot { type: 'portfolio'|'clinic'|'hospital'|'card', key ('classic','t2'…'t5'), name, status: 'coming_soon'|'in_design'|'ready', previewImage?, isDefault }`
 - Specialty themes: a typed config file `src/themes/specialty.ts` (not a DB model) with the 13 themes from `DESIGN_BRIEF.md` section 5.
-- `Setting` singleton: prices (doctorSetup 1999, clinicSetup 2999, hospitalSetup 4999, doctorAddon 1499, renewalDoctor 999, renewalClinic 999, renewalHospital 1499, foundingRenewal 499, foundingRenewalHospital 999, updatePrice 299), foundingTotal (100), renewal grace days (30), contact phone, WhatsApp number, GST mode, banned-word list override.
+- `Setting` singleton: prices (doctorSetup 1999, clinicSetup 2999, hospitalSetup 4999, doctorAddon 1499, renewalDoctor 999, renewalClinic 999, renewalHospital 1499, foundingRenewal 499, foundingRenewalHospital 999, updatePrice 299), renewal grace days (30), contact phone, WhatsApp number, GST mode, banned-word list override.
 - `AuditLog { actor, action, entity, entityId, at, diff? }`
 
 ### Seeds (script: `npm run seed:masters`)
@@ -310,7 +310,7 @@ Clinic/hospital form (multi-step, same UX as the doctor form): 1 Basics (kind, n
 
 **Renewals:** Overview shows "Renewals due in 30 days" and "Overdue". Payments & renewals page lists every site with renewal date, price (normal/founding), status, "Record renewal payment", and "Copy renewal reminder" (pre-written WhatsApp message). Automatic reminder emails via Resend at 30, 7 and 0 days before due (to ownerEmail if set, always to admin). After the grace period (Settings, default 30 days) the site is NOT deleted: status becomes `lapsed`, page shows a simple "This page is temporarily unavailable" notice with MediReach contact, and it is `noindex`; paying restores it instantly.
 
-1. **Overview:** stat cards split by product (doctors / clinics / hospitals: total, published, drafts, in review); Founding spots left = foundingTotal − founding customers across all products; renewals due in 30 days and overdue; this month's sales count + revenue; open update requests; new leads), a 6-month sales bar chart, recent activity from AuditLog, quick actions (New doctor, New clinic, New hospital, New lead, Record payment).
+1. **Overview:** stat cards split by product (doctors / clinics / hospitals: total, published, drafts, in review); renewals due in 30 days and overdue; this month's sales count + revenue; open update requests; new leads), a 6-month sales bar chart, recent activity from AuditLog, quick actions (New doctor, New clinic, New hospital, New lead, Record payment).
 2. **Doctors:**
    - Table/card list (cards on mobile) with search, filters (city, area, specialty, status, plan, founding, source), sort, pagination.
    - **Create/Edit = multi-step form with progress and autosave as draft:**
@@ -335,7 +335,7 @@ Clinic/hospital form (multi-step, same UX as the doctor form): 1 Basics (kind, n
 9. **Leads:** list + status pipeline; click-to-call and WhatsApp links; convert lead → doctor draft.
 10. **Master lists:** CRUD for cities, areas, specialties, degrees, councils with slug validation (reserved words, uniqueness).
 11. **SEO:** sitemap URL count per chunk, list of published pages missing recommended fields, button to revalidate all, link to Search Console.
-12. **Settings:** prices, founding total, contact phone/WhatsApp, GST mode, WhatsApp share message template, banned-word list editor (with defaults), admin users (superadmin only).
+12. **Settings:** prices, contact phone/WhatsApp, GST mode, WhatsApp share message template, banned-word list editor (with defaults), admin users (superadmin only).
 
 All mutations write to `AuditLog`. Every list has empty states, loading skeletons and error toasts.
 
@@ -371,7 +371,7 @@ Follow `DESIGN_BRIEF.md` exactly for look and section order. Content requirement
 - Build every section in `DESIGN_BRIEF.md` section 4 in that order, with the motion system in section 3 (`motion` with LazyMotion, CSS loops, reduced-motion support, LCP text never hidden, no layout shift).
 - Audience switcher (Doctor / Clinic / Hospital) swaps subline, price line and device preview without a page reload; the selected tab is reflected in the URL hash (`#clinic`) so sales links can open the right tab.
 - Specialty design gallery renders real Classic clinic/hospital sites with sample fixtures (fictional, labelled "Sample") and each specialty theme; previews are pre-rendered images (generated at build time or uploaded) for speed, with "View sample" opening `/designs/[themeKey]`.
-- Pricing and the founding banner read live from Settings/DB (founding spots left = foundingTotal − founding customers across doctors and establishments).
+- Pricing reads live from Settings/DB.
 - Animated search illustration uses a generic search UI with no Google logo/branding, captioned "Illustration".
 - FAQ with `FAQPage` JSON-LD (optional).
 - Lead form (name, phone, city, specialty, message): zod-validated, honeypot + rate limit, saves `Lead`, sends me an email via Resend.

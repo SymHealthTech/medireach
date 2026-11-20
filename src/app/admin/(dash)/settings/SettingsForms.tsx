@@ -54,7 +54,6 @@ const PRICE_GROUPS: { title: string; help?: string; fields: { key: PriceKey; lab
 
 export interface GeneralSettings {
   prices: Record<PriceKey, number>;
-  foundingTotal: number;
   renewalGraceDays: number;
   contactPhone: string;
   whatsappNumber: string;
@@ -62,7 +61,7 @@ export interface GeneralSettings {
   whatsappShareTemplate: string;
 }
 
-export function GeneralSettingsForm({ initial, foundingUsed }: { initial: GeneralSettings; foundingUsed: number }) {
+export function GeneralSettingsForm({ initial }: { initial: GeneralSettings }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -100,14 +99,6 @@ export function GeneralSettingsForm({ initial, foundingUsed }: { initial: Genera
         </fieldset>
       ))}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Founding spots"
-          htmlFor="s-founding"
-          help={`Across doctors, clinics and hospitals: ${foundingUsed} taken · ${Math.max(0, v.foundingTotal - foundingUsed)} left`}
-          error={errors.foundingTotal}
-        >
-          <NumberInput id="s-founding" value={v.foundingTotal} onChange={(n) => setV((x) => ({ ...x, foundingTotal: n ?? 0 }))} />
-        </Field>
         <Field
           label="Renewal grace period (days)"
           htmlFor="s-grace"

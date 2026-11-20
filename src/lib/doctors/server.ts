@@ -80,7 +80,7 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
     qualifications: d.qualifications.map((q) => ({
       degreeId: s(q.degreeId),
       specialization: s(q.specialization),
-      institute: q.institute,
+      institute: q.institute ?? "",
       year: q.year ?? undefined,
     })),
     practitionerType: d.practitionerType,

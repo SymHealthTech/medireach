@@ -1,5 +1,6 @@
 import "server-only";
 import { connectToDatabase } from "@/lib/db";
+import { ensureMasterLists } from "@/lib/masters/server";
 import { getSettings } from "@/lib/settings";
 import { Area } from "@/models/Area";
 import { City } from "@/models/City";
@@ -37,6 +38,7 @@ export interface EditorOptions {
 
 export async function getEditorOptions(): Promise<EditorOptions> {
   await connectToDatabase();
+  await ensureMasterLists();
   const [cities, areas, specialties, degrees, councils, establishments, templates, settings] = await Promise.all([
     City.find().sort({ name: 1 }).lean(),
     Area.find().sort({ name: 1 }).lean(),

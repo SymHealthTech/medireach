@@ -19,8 +19,8 @@ export default async function ContinuePage({ searchParams }: { searchParams: Pro
     lastSavedAt: new Date(d.lastSavedAt).toISOString(),
   }));
   return (
-    <main className="mr-hero-bg -mt-16 px-4 pb-20 pt-28 sm:px-6">
-      <div className="mx-auto max-w-xl rounded-3xl bg-surface p-6 shadow-lift ring-1 ring-ink/5 sm:p-8">
+    <main className="mr-hero-bg -mt-16 px-4 pb-24 pt-28 sm:px-6 sm:pt-32">
+      <div className="mx-auto max-w-lg rounded-3xl bg-surface p-6 shadow-lift ring-1 ring-ink/5 sm:p-9">
         <ContinueForms sessionEmail={session} initialForms={session ? forms : null} defaultEmail={typeof emailParam === "string" ? emailParam.slice(0, 254) : ""} />
       </div>
     </main>

@@ -24,7 +24,6 @@ const digits = z
 // exported action's arguments as server actions.
 const settingsSchema = z.object({
   prices: z.object(Object.fromEntries(PRICE_KEYS.map((k) => [k, price])) as Record<PriceKey, typeof price>),
-  foundingTotal: z.number().int().min(0).max(10_000),
   renewalGraceDays: z.number().int().min(0).max(365),
   contactPhone: digits,
   whatsappNumber: digits,
@@ -49,7 +48,7 @@ export const saveSettingsAction = adminAction(
     await audit(auditCtx(admin), "settings.update", {
       entity: "Setting",
       diff: shallowDiff(
-        { prices: before.prices, foundingTotal: before.foundingTotal, renewalGraceDays: before.renewalGraceDays, contactPhone: before.contactPhone, whatsappNumber: before.whatsappNumber, gstMode: before.gstMode, whatsappShareTemplate: before.whatsappShareTemplate },
+        { prices: before.prices, renewalGraceDays: before.renewalGraceDays, contactPhone: before.contactPhone, whatsappNumber: before.whatsappNumber, gstMode: before.gstMode, whatsappShareTemplate: before.whatsappShareTemplate },
         input,
       ),
     });

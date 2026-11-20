@@ -17,7 +17,7 @@ import { CardView } from "@/components/cards/CardView";
 import { loadDoctorForCard } from "@/lib/cards/admin";
 import { getReadyTemplates } from "@/lib/public/templates";
 import { CardTools } from "./CardTools";
-import { CardTabs, SiteCards } from "./SiteCards";
+import { CardStyleCodes, CardTabs, SiteCards } from "./SiteCards";
 
 export const metadata: Metadata = { title: "Visiting cards" };
 
@@ -27,7 +27,8 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   await requireAdminPage(rolesFor("/admin/cards"));
   await connectToDatabase();
   const sp = await searchParams;
-  if (param(sp, "type") === "sites") return <SiteCards sp={sp} />;
+  const type = param(sp, "type");
+  if (type === "clinic" || type === "hospital" || type === "sites") return <SiteCards sp={sp} kind={type === "hospital" ? "hospital" : "clinic"} />;
   const filter: FilterQuery<DoctorProfileDoc> = {};
   const doctor = param(sp, "doctor");
   if (isObjectId(doctor)) filter._id = doctor;
@@ -79,11 +80,12 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-5">
-      <CardTabs active="doctors" />
+      <CardTabs active="doctor" />
       <p className="max-w-2xl text-muted-foreground">
         Each doctor&apos;s card in their chosen design. The QR opens their website address (or short link). Download the PDF for the
         printer, or the phone PNG to share on WhatsApp.
       </p>
+      <CardStyleCodes kind="doctor" />
       <ListToolbar placeholder="Search doctors…" />
       {cards.length === 0 ? (
         <EmptyState icon={IdCard} title="No cards yet" description="A card is created automatically for every doctor." />

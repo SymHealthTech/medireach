@@ -98,7 +98,6 @@ export const saveEstablishmentSectionAction = adminAction(
         : shallowDiff((sectionPayload(step, before) ?? {}) as Record<string, unknown>, (sectionPayload(step, after) ?? {}) as Record<string, unknown>),
     });
     if (step === "doctors") await syncDoctorLinksFromEstablishment(doc._id, linkedDoctorIds(before), linkedDoctorIds(after));
-    if (step === "business" && before.founding !== after.founding) revalidateTag(CACHE_TAGS.founding);
     if (doc.status === "published") revalidatePublic(oldRoute, { kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
 
     return { id: String(doc._id), form: after, savedAt: new Date().toISOString() };

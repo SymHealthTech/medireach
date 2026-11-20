@@ -439,7 +439,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
                           <span className="rounded-full bg-marigold/15 px-3 py-1 text-xs font-semibold text-[#155e93]">{q.year}</span>
                         )}
                       </div>
-                      <p className="mt-1.5 text-body/80">{q.institute}</p>
+                      {q.institute && <p className="mt-1.5 text-body/80">{q.institute}</p>}
                     </div>
                   </li>
                 ))}

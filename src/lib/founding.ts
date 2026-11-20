@@ -30,13 +30,3 @@ export async function nextFoundingNumber(): Promise<number> {
   const c = await Counter.findOneAndUpdate({ _id: FOUNDING_COUNTER }, { $inc: { seq: 1 } }, { new: true, upsert: true }).lean();
   return c!.seq;
 }
-
-/** Founding customers across all products (for "spots left"). */
-export async function countFoundingCustomers(): Promise<number> {
-  const [doctors, establishments] = await Promise.all([
-    // `foundingDoctor` covers doctors not yet migrated (removed in step 3).
-    DoctorProfile.countDocuments({ $or: [{ founding: true }, { foundingDoctor: true }] }),
-    Establishment.countDocuments({ founding: true }),
-  ]);
-  return doctors + establishments;
-}

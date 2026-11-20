@@ -17,9 +17,7 @@ import {
   scanDoctor,
   urlKeyAvailable,
 } from "@/lib/doctors/server";
-import { revalidateTag } from "next/cache";
 import { revalidateDoctorPages } from "@/lib/public/revalidate";
-import { CACHE_TAGS } from "@/lib/public/tags";
 import { getSettings } from "@/lib/settings";
 import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { DoctorProfile } from "@/models/DoctorProfile";
@@ -104,7 +102,6 @@ export const saveDoctorSectionAction = adminAction(
       await Lead.updateOne({ _id: leadId }, { $set: { status: "won" } });
     }
     if (doc.status === "published") revalidateDoctorPages(oldRoute, { citySlug: doc.citySlug, slug: doc.slug });
-    if (step === "business" && before.founding !== after.founding) revalidateTag(CACHE_TAGS.founding);
     if (step === "business" || step === "clinics") {
       await syncEstablishmentDoctors(doc._id, before.establishmentIds, after.establishmentIds);
     }

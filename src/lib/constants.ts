@@ -143,5 +143,3 @@ export const LIMITS = {
   subdomainMin: 3,
   subdomainMax: 40,
 } as const;
-
-export const FOUNDING_TOTAL_DEFAULT = 100;

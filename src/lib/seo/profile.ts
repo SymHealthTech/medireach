@@ -298,7 +298,7 @@ export function profileJsonLd(d: PublicDoctor) {
     availableService: d.services.map((s) => compact({ "@type": "MedicalProcedure", name: s.name, description: s.description })),
     knowsLanguage: d.languages,
     memberOf: d.memberships.map((m) => ({ "@type": "Organization", name: m.name })),
-    alumniOf: [...new Set(d.qualifications.map((q) => q.institute))].map((name) => ({
+    alumniOf: [...new Set(d.qualifications.map((q) => q.institute).filter(Boolean))].map((name) => ({
       "@type": "EducationalOrganization",
       name,
     })),

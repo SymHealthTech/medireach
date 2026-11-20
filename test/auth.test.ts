@@ -89,7 +89,7 @@ describe("sessions and roles", () => {
 
   it("hides admin-only sections from sales", () => {
     const sales = navForRole("sales").map((n) => n.label);
-    expect(sales).toEqual(["Overview", "Doctors", "Clinics & hospitals", "Sites", "Visiting cards", "Website forms", "Leads"]);
+    expect(sales).toEqual(["Overview", "Doctors", "Clinics", "Hospitals", "Sites", "Visiting cards", "Website forms", "Leads"]);
     expect(navForRole("superadmin")).toHaveLength(NAV_ITEMS.length);
     expect(rolesFor("/admin/payments")).not.toContain("sales");
   });
@@ -99,7 +99,9 @@ describe("sessions and roles", () => {
     expect(activeNavItem("/admin/doctors/new")?.label).toBe("Doctors");
     expect(activeNavItem("/admin/update-requests")?.label).toBe("Update requests");
     expect(activeNavItem("/admin/intakes/abc")?.label).toBe("Website forms");
-    expect(activeNavItem("/admin/establishments/new")?.label).toBe("Clinics & hospitals");
+    expect(activeNavItem("/admin/establishments/new")?.label).toBe("Clinics");
+    expect(activeNavItem("/admin/establishments/new", NAV_ITEMS, "kind=hospital")?.label).toBe("Hospitals");
+    expect(activeNavItem("/admin/establishments", NAV_ITEMS, "kind=clinic&status=draft")?.label).toBe("Clinics");
     expect(activeNavItem("/admin/payments/renewals")?.label).toBe("Payments & renewals");
   });
 
@@ -107,7 +109,8 @@ describe("sessions and roles", () => {
     expect(NAV_ITEMS.map((n) => n.label)).toEqual([
       "Overview",
       "Doctors",
-      "Clinics & hospitals",
+      "Clinics",
+      "Hospitals",
       "Sites",
       "Visiting cards",
       "Designs & themes",

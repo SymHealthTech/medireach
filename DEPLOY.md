@@ -97,7 +97,7 @@ Then log in at `https://medireach.co.in/admin`:
 
 3. **Settings:** prices for the three products (setup, yearly renewal, founding
    renewal, per-doctor add-on, update), GST mode, WhatsApp number and contact
-   phone, Founding total, renewal grace period; review the banned-phrase list.
+   phone, renewal grace period; review the banned-phrase list.
 4. **Settings → admins:** add your team (sales accounts can't publish).
 5. Add the first real doctor, clinic or hospital, publish, and run the checks in §7.
 
@@ -130,7 +130,7 @@ the old Hospitals list). Do this once, in this order, when the v2 code goes live
    set the date on the doctor's Business step (or record the setup payment).
    Old hospitals become **drafts**: review and publish them from Clinics &
    hospitals.
-8. **Check Settings** (prices, grace period, Founding total) and the
+8. **Check Settings** (prices, grace period) and the
    Payments & renewals page.
 9. **Check the cron:** Vercel → Settings → Cron Jobs shows
    `/api/cron/renewals` daily at 03:30 UTC (09:00 IST). Try a dry run:
@@ -188,7 +188,7 @@ reminder goes out (30 days before the due date).
 ## 8. Notes
 
 - **Caching.** Doctor, clinic and hospital pages are statically generated and
-  refreshed on publish, on every edit, on a lapse and on a restoring payment. Settings changes (prices, WhatsApp number, Founding spots)
+  refreshed on publish, on every edit, on a lapse and on a restoring payment. Settings changes (prices, WhatsApp number)
   refresh public pages on save; anything else within 10 minutes.
 - **Rate limits** live in the `ratelimits` collection (auto-expiring). To
   unlock an admin who tripped the login limit, delete their `admin-login:*`

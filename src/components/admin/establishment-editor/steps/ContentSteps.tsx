@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChipInput, Field, NativeSelect, SwitchField } from "@/components/admin/form/fields";
+import { MasterSelect } from "@/components/admin/form/MasterSelect";
 import { GalleryEditor } from "@/components/admin/doctor-editor/GalleryEditor";
 import { TimingEditor } from "@/components/admin/doctor-editor/TimingEditor";
 import { AddButton, Group, grid2, removeAt, RepeatItem, updateAt } from "@/components/admin/doctor-editor/shared";
@@ -22,14 +23,14 @@ const LINKS: { key: keyof EstablishmentForm["links"]; label: string }[] = [
   { key: "youtube", label: "YouTube" },
 ];
 
-export function LocationStep({ form: f, set, err, options, readOnly }: EStepProps) {
+export function LocationStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const areas = options.areas.filter((a) => a.cityId === f.address.cityId);
   const setAddress = (patch: Partial<EstablishmentForm["address"]>) => set((p) => ({ address: { ...p.address, ...patch } }));
   return (
     <div className="space-y-5">
       <Group title="Address">
         <div className={grid2}>
-          <Field label="City" htmlFor="address.cityId" required error={err("address.cityId")}>
+          <Field label="City" htmlFor="address.cityId" required error={err("address.cityId")} help={!f.address.cityId && hints?.city ? `Website form: ${hints.city}` : undefined}>
             <NativeSelect
               id="address.cityId"
               value={f.address.cityId}
@@ -39,7 +40,7 @@ export function LocationStep({ form: f, set, err, options, readOnly }: EStepProp
                 setAddress({ cityId: e.target.value, areaId: "", ...(city ? { state: city.state } : {}) });
               }}
             >
-              <option value="">Choose…</option>
+              <option value="" />
               {options.cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -48,14 +49,18 @@ export function LocationStep({ form: f, set, err, options, readOnly }: EStepProp
             </NativeSelect>
           </Field>
           <Field label="Area" htmlFor="address.areaId" required error={err("address.areaId")}>
-            <NativeSelect id="address.areaId" value={f.address.areaId} disabled={readOnly || !f.address.cityId} onChange={(e) => setAddress({ areaId: e.target.value })}>
-              <option value="">Choose…</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </NativeSelect>
+            <MasterSelect
+              id="address.areaId"
+              kind="area"
+              noun="area"
+              value={f.address.areaId}
+              options={areas}
+              scope={{ cityId: f.address.cityId }}
+              disabled={readOnly}
+              invalid={Boolean(err("address.areaId"))}
+              hint={hints?.area}
+              onChange={(areaId) => setAddress({ areaId })}
+            />
           </Field>
           <Field label="Address line 1" htmlFor="address.line1" required error={err("address.line1")}>
             <Input id="address.line1" value={f.address.line1} disabled={readOnly} onChange={(e) => setAddress({ line1: e.target.value })} />

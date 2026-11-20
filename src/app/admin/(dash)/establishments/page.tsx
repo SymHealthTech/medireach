@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Building2, ChevronRight, CreditCard, Plus, UserPlus } from "lucide-react";
+import { redirect } from "next/navigation";
+import { Building2, ChevronRight, CreditCard, Hospital, Plus, UserPlus } from "lucide-react";
 import type { FilterQuery } from "mongoose";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/admin/EmptyState";
+import { KindTabs } from "@/components/admin/KindTabs";
 import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { FoundingBadge, Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
@@ -17,7 +19,9 @@ import { displayRenewalStatus } from "@/lib/renewals";
 import { Establishment, type EstablishmentDoc } from "@/models/Establishment";
 import { getTheme } from "@/themes/specialty";
 
-export const metadata: Metadata = { title: "Clinics & hospitals" };
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
+  return { title: param(await searchParams, "kind") === "hospital" ? "Hospitals" : "Clinics" };
+}
 
 const SORTS = { updated: { updatedAt: -1 }, name: { name: 1 }, created: { createdAt: -1 } } as const;
 
@@ -26,9 +30,14 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   const sp = await searchParams;
   const options = await getEstablishmentEditorOptions();
 
-  const filter: FilterQuery<EstablishmentDoc> = {};
+  // Clinics and hospitals are separate lists (Clinics / Hospitals in the menu).
   const kind = oneOf(param(sp, "kind"), ESTABLISHMENT_KINDS);
-  if (kind) filter.kind = kind;
+  if (!kind) {
+    const next = new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
+    next.set("kind", "clinic");
+    redirect(`/admin/establishments?${next}`);
+  }
+  const filter: FilterQuery<EstablishmentDoc> = { kind };
   const status = oneOf(param(sp, "status"), DOCTOR_STATUSES);
   if (status) filter.status = status;
   const category = param(sp, "category");
@@ -70,33 +79,35 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
     hasDue: Boolean(d.renewalDueDate),
     updatedAt: d.updatedAt,
   }));
-  const filtered = Object.keys(filter).length > 0 || Boolean(renewal);
+  const filtered = Object.keys(filter).length > 1 || Boolean(renewal);
   const pune = options.cities.find((c) => c.slug === "pune")?.id;
   const showMoney = can.seePaymentTotals(admin.role);
+  const kindCounts = Object.fromEntries((await Establishment.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$kind", n: { $sum: 1 } } }])).map((c) => [c._id, c.n]));
+  const label = kind === "hospital" ? "hospital" : "clinic";
+  const Icon = kind === "hospital" ? Hospital : Building2;
 
   return (
     <div className="space-y-5">
+      <KindTabs
+        label="Clinics or hospitals"
+        kinds={["clinic", "hospital"]}
+        active={kind}
+        counts={{ clinic: kindCounts.clinic ?? 0, hospital: kindCounts.hospital ?? 0 }}
+        hrefFor={(k) => `/admin/establishments?kind=${k}`}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">Clinic websites and small hospital websites (up to 10 beds).</p>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/admin/establishments/new?kind=hospital">
-              <Plus /> New hospital
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/admin/establishments/new?kind=clinic">
-              <Plus /> New clinic
-            </Link>
-          </Button>
-        </div>
+        <p className="text-muted-foreground">{kind === "hospital" ? "Small hospital websites (up to 10 beds) and their visiting cards." : "Clinic websites and their visiting cards."}</p>
+        <Button asChild>
+          <Link href={`/admin/establishments/new?kind=${kind}`}>
+            <Plus /> New {label}
+          </Link>
+        </Button>
       </div>
 
       <ListToolbar
         placeholder="Search name, phone, contact person…"
         filters={[
-          { name: "kind", label: "Type", options: [{ value: "clinic", label: "Clinics" }, { value: "hospital", label: "Hospitals" }] },
-          { name: "category", label: "Category", options: options.categories.map((c) => ({ value: c.id, label: c.name })) },
+          { name: "category", label: "Category", options: options.categories.filter((c) => c.kind === kind).map((c) => ({ value: c.id, label: c.name })) },
           { name: "area", label: "Area", options: options.areas.filter((a) => a.cityId === pune).map((a) => ({ value: a.id, label: a.name })) },
           { name: "status", label: "Status", options: DOCTOR_STATUSES.map((s) => ({ value: s, label: s === "review" ? "In review" : s[0]!.toUpperCase() + s.slice(1) })) },
           { name: "renewal", label: "Renewal", options: (["active", "due", "overdue", "lapsed"] as const).map((s) => ({ value: s, label: RENEWAL_STATUS_LABEL[s] })) },
@@ -111,21 +122,21 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
       {rows.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title={filtered ? "Nothing matches these filters" : "No clinics or hospitals yet"}
-          description={filtered ? "Try clearing a filter or the search." : "Add a clinic or a small hospital to build its website and visiting card."}
-          action={filtered ? undefined : { label: "New clinic", href: "/admin/establishments/new?kind=clinic" }}
+          title={filtered ? "Nothing matches these filters" : `No ${label}s yet`}
+          description={filtered ? "Try clearing a filter or the search." : `Add a ${kind === "hospital" ? "small hospital" : "clinic"} to build its website and visiting card.`}
+          action={filtered ? undefined : { label: `New ${label}`, href: `/admin/establishments/new?kind=${kind}` }}
         />
       ) : (
         <ul className="divide-y divide-line rounded-xl border border-line bg-card shadow-soft">
           {rows.map((r) => (
             <li key={r.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
-              <Link href={`/admin/establishments/${r.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+              <Link href={`/admin/establishments/${r.id}?kind=${r.kind}`} className="flex min-w-0 flex-1 items-center gap-3">
                 {r.logo ? (
                   // eslint-disable-next-line @next/next/no-img-element -- admin thumbnail
                   <img src={r.logo} alt="" className="size-10 shrink-0 rounded-lg object-cover" />
                 ) : (
                   <span className="flex size-10 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: r.color }}>
-                    <Building2 className="size-5" />
+                    <Icon className="size-5" />
                   </span>
                 )}
                 <span className="min-w-0 flex-1">
@@ -134,7 +145,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
                     {r.founding !== null && <FoundingBadge number={r.founding || undefined} />}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">
-                    {[r.kind === "hospital" ? "Hospital" : "Clinic", r.meta, `${r.doctors} doctor${r.doctors === 1 ? "" : "s"}`, `updated ${timeAgo(r.updatedAt)}`].filter(Boolean).join(" · ")}
+                    {[r.meta, `${r.doctors} doctor${r.doctors === 1 ? "" : "s"}`, `updated ${timeAgo(r.updatedAt)}`].filter(Boolean).join(" · ")}
                   </span>
                   <span className="mt-1 flex flex-wrap items-center gap-1.5">
                     <StatusBadge status={r.status} />

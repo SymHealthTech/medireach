@@ -100,7 +100,7 @@ export function IntakeReviewControls({
             confirmLabel="Delete form"
             onConfirm={() => deleteIntakeAction({ id })}
             successMessage="Form deleted"
-            redirectTo="/admin/intakes"
+            redirectTo={`/admin/intakes?kind=${kind}`}
           />
         )}
       </div>

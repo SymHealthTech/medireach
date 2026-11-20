@@ -441,7 +441,7 @@ export const sectionSchemas = {
         z.object({
           degreeId: oid,
           specialization: t(80),
-          institute: z.string().trim().min(1, "Institute is required.").max(150),
+          institute: z.string().trim().max(150).default(""),
           year,
         }),
       )

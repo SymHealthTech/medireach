@@ -149,7 +149,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
               disabled={readOnly}
               onChange={(e) => set((f) => ({ approval: { ...f.approval, approvedVia: e.target.value as typeof f.approval.approvedVia } }))}
             >
-              <option value="">Choose…</option>
+              <option value="" />
               {APPROVAL_CHANNELS.map((c) => (
                 <option key={c} value={c}>
                   {APPROVAL_LABEL[c]}

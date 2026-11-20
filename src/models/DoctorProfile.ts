@@ -266,7 +266,7 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
           {
             degreeId: { type: Schema.Types.ObjectId, ref: "Degree", required: true },
             specialization: { type: String, trim: true },
-            institute: { type: String, required: true, trim: true },
+            institute: { type: String, trim: true, default: "" },
             year: yearField,
           },
           { _id: false },

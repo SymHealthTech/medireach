@@ -40,8 +40,8 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/intakes" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-ink">
-        <ArrowLeft className="size-4" /> All website forms
+      <Link href={`/admin/intakes?kind=${doc.kind}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-ink">
+        <ArrowLeft className="size-4" /> All {INTAKE_KIND_LABEL[doc.kind].toLowerCase()} forms
       </Link>
 
       <section className="rounded-xl border border-line bg-card p-5 shadow-soft">

@@ -198,7 +198,7 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role }: ESt
           <OwnerLoginEmailButton id={f.id} savedEmail={f.ownerEmail} />
           <Field label="Source" htmlFor="source">
             <NativeSelect id="source" value={f.source} disabled={readOnly} onChange={(e) => set({ source: e.target.value as typeof f.source })}>
-              <option value="">Choose…</option>
+              <option value="" />
               {ESTABLISHMENT_SOURCES.map((s) => (
                 <option key={s} value={s}>
                   {SOURCE_LABEL[s]}
@@ -385,7 +385,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProp
           </Field>
           <Field label="Approved via" htmlFor="approval.approvedVia">
             <NativeSelect id="approval.approvedVia" value={f.approval.approvedVia} disabled={readOnly} onChange={(e) => set((p) => ({ approval: { ...p.approval, approvedVia: e.target.value as typeof p.approval.approvedVia } }))}>
-              <option value="">Choose…</option>
+              <option value="" />
               {APPROVAL_CHANNELS.map((c) => (
                 <option key={c} value={c}>
                   {APPROVAL_LABEL[c]}
@@ -414,7 +414,7 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProp
           )}
           {f.id && (
             <Button asChild variant="outline">
-              <a href={`/admin/cards?type=sites&establishment=${f.id}`} target="_blank" rel="noopener">
+              <a href={`/admin/cards?type=${f.kind}&establishment=${f.id}`} target="_blank" rel="noopener">
                 <IdCard /> Visiting card
               </a>
             </Button>

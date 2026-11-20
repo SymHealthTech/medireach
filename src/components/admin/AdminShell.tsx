@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   ExternalLink,
@@ -80,6 +80,7 @@ export function AdminShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const search = useSearchParams().toString();
   // Built here (not passed from the server) because nav items hold icon components.
   const nav = navForRole(user.role);
   const [dark, setDark] = useState(initialDark);
@@ -98,9 +99,9 @@ export function AdminShell({
     setNewOpen(false);
   }, [pathname]);
 
-  const active = activeNavItem(pathname, nav);
+  const active = activeNavItem(pathname, nav, search);
   const title =
-    pathname === NEW_DOCTOR_HREF ? "New doctor" : pathname === "/admin/establishments/new" ? "New clinic or hospital" : (active?.label ?? "Dashboard");
+    pathname === NEW_DOCTOR_HREF ? "New doctor" : pathname === "/admin/establishments/new" ? (active?.label === "Hospitals" ? "New hospital" : "New clinic") : (active?.label ?? "Dashboard");
 
   function toggleTheme() {
     setDark((d) => {

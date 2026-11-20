@@ -3,6 +3,7 @@ import {
   ClipboardList,
   CreditCard,
   Globe,
+  Hospital,
   IdCard,
   LayoutDashboard,
   ListTree,
@@ -36,7 +37,8 @@ const ADMINS: readonly AdminRole[] = ["superadmin", "admin"];
 export const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, roles: ALL },
   { href: "/admin/doctors", label: "Doctors", icon: UserRound, roles: ALL },
-  { href: "/admin/establishments", label: "Clinics & hospitals", short: "Clinics", icon: Building2, roles: ALL },
+  { href: "/admin/establishments?kind=clinic", label: "Clinics", icon: Building2, roles: ALL },
+  { href: "/admin/establishments?kind=hospital", label: "Hospitals", icon: Hospital, roles: ALL },
   { href: "/admin/pages", label: "Sites", icon: Globe, roles: ALL },
   { href: "/admin/cards", label: "Visiting cards", icon: IdCard, roles: ALL },
   { href: "/admin/templates", label: "Designs & themes", icon: Palette, roles: ADMINS },
@@ -50,7 +52,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 /** Bottom tab bar on mobile: Overview, Doctors, [+ New], Clinics, More (DESIGN_BRIEF.md §6). */
-export const MOBILE_TABS = ["/admin", "/admin/doctors", "/admin/establishments"] as const;
+export const MOBILE_TABS = ["/admin", "/admin/doctors", "/admin/establishments?kind=clinic"] as const;
 
 export const NEW_DOCTOR_HREF = "/admin/doctors/new";
 
@@ -65,11 +67,24 @@ export function navForRole(role: AdminRole): NavItem[] {
   return NAV_ITEMS.filter((i) => i.roles.includes(role));
 }
 
-/** Active item for a pathname (longest matching prefix; Overview only on exact match). */
-export function activeNavItem(pathname: string, items: NavItem[] = NAV_ITEMS): NavItem | undefined {
-  return items
-    .filter((i) => (i.href === "/admin" ? pathname === "/admin" : pathname === i.href || pathname.startsWith(`${i.href}/`)))
-    .sort((a, b) => b.href.length - a.href.length)[0];
+const pathOf = (href: string) => href.split("?")[0]!;
+const queryOf = (href: string) => new URLSearchParams(href.split("?")[1] ?? "");
+
+/**
+ * Active item for a pathname (longest matching prefix; Overview only on exact
+ * match). Items that share a path (Clinics / Hospitals) are told apart by the
+ * query (`?kind=hospital`); without one, the first of them is active.
+ */
+export function activeNavItem(pathname: string, items: NavItem[] = NAV_ITEMS, search = ""): NavItem | undefined {
+  const params = new URLSearchParams(search);
+  const matches = items
+    .filter((i) => {
+      const p = pathOf(i.href);
+      return p === "/admin" ? pathname === "/admin" : pathname === p || pathname.startsWith(`${p}/`);
+    })
+    .sort((a, b) => pathOf(b.href).length - pathOf(a.href).length);
+  const best = matches.filter((m) => pathOf(m.href) === pathOf(matches[0]?.href ?? ""));
+  return best.find((m) => [...queryOf(m.href)].every(([k, v]) => params.get(k) === v)) ?? best[0];
 }
 
 export const ROLE_LABEL: Record<AdminRole, string> = {
@@ -81,7 +96,7 @@ export const ROLE_LABEL: Record<AdminRole, string> = {
 
 /** Roles allowed on a section, from the same config the menu uses. */
 export function rolesFor(href: string): readonly AdminRole[] {
-  const item = NAV_ITEMS.find((i) => i.href === href);
+  const item = NAV_ITEMS.find((i) => i.href === href || pathOf(i.href) === href);
   if (!item) throw new Error(`No nav item for ${href}`);
   return item.roles;
 }

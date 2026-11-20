@@ -106,7 +106,7 @@ export function MasterDialog({
           {kind === "area" && cities && (
             <Field label="City" htmlFor="m-city" required error={errors.cityId}>
               <NativeSelect id="m-city" value={v.cityId} onChange={(e) => set({ cityId: e.target.value })}>
-                <option value="">Choose…</option>
+                <option value="" />
                 {cities.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}

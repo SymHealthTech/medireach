@@ -43,7 +43,7 @@ export function NewUpdateRequestButton({ doctors, defaultPrice }: { doctors: { i
             help={chosen ? (chosen.freeAvailable ? "First update — free." : `Charged ₹${defaultPrice}.`) : undefined}
           >
             <NativeSelect id="ur-doctor" value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
-              <option value="">Choose…</option>
+              <option value="" />
               {doctors.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}

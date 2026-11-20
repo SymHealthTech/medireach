@@ -6,6 +6,7 @@ import { isObjectId } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
 import { emptyEstablishmentForm, STEPS, type StepKey } from "@/lib/establishments/form";
 import { getEstablishmentEditorOptions } from "@/lib/establishments/options";
+import { siteFormHints } from "@/lib/intake/hints-server";
 import { docToForm } from "@/lib/establishments/server";
 import { Establishment } from "@/models/Establishment";
 
@@ -25,7 +26,7 @@ export default async function NewEstablishmentPage({ searchParams }: { searchPar
     const existing = await Establishment.findById(id).lean();
     if (existing) {
       const initialStep = STEPS.some((s) => s.key === step) ? (step as StepKey) : "basics";
-      return <EstablishmentEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} />;
+      return <EstablishmentEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} hints={await siteFormHints(existing._id)} />;
     }
   }
 

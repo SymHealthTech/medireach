@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { AdminRole } from "@/lib/constants";
 import type { DoctorForm } from "@/lib/doctors/form";
 import type { EditorOptions } from "@/lib/doctors/options";
+import type { DoctorFormHints } from "@/lib/intake/hints";
 
 export interface StepProps {
   form: DoctorForm;
@@ -16,6 +17,8 @@ export interface StepProps {
   readOnly: boolean;
   role: AdminRole;
   doctorId?: string;
+  /** Answers from the website form ("Get started") this draft was made from. */
+  hints?: DoctorFormHints;
 }
 
 /** A titled group inside a step. */

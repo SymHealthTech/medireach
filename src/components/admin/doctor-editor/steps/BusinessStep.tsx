@@ -42,7 +42,7 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
           </Field>
           <Field label="Source" htmlFor="source">
             <NativeSelect id="source" value={f.source} disabled={readOnly} onChange={(e) => set({ source: e.target.value as typeof f.source })}>
-              <option value="">Choose…</option>
+              <option value="" />
               {DOCTOR_SOURCES.map((s) => (
                 <option key={s} value={s}>
                   {SOURCE_LABEL[s]}

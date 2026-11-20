@@ -6,6 +6,7 @@ import { isObjectId } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
 import { emptyClinic, emptyDoctorForm, STEPS, type StepKey } from "@/lib/doctors/form";
 import { docToForm } from "@/lib/doctors/server";
+import { doctorFormHints } from "@/lib/intake/hints-server";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { getEditorOptions } from "@/lib/doctors/options";
 import { Establishment } from "@/models/Establishment";
@@ -34,7 +35,7 @@ export default async function NewDoctorPage({
     const existing = await DoctorProfile.findById(id).lean();
     if (existing) {
       const initialStep = STEPS.some((s) => s.key === step) ? (step as StepKey) : "basics";
-      return <DoctorEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} />;
+      return <DoctorEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} hints={await doctorFormHints(existing._id)} />;
     }
   }
 

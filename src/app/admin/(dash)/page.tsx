@@ -5,15 +5,14 @@ import { MonthlyBars, type MonthPoint } from "@/components/admin/MonthlyBars";
 import { can, requireAdminPage } from "@/lib/auth/admin";
 import { connectToDatabase } from "@/lib/db";
 import { formatINR, monthLabel, startOfMonthIST, timeAgo } from "@/lib/format";
-import { getSettings } from "@/lib/settings";
 import { nowInIndia } from "@/lib/timings";
 import { AuditLog } from "@/models/AuditLog";
 import { DoctorProfile } from "@/models/DoctorProfile";
-import { countFoundingCustomers } from "@/lib/founding";
 import { Lead } from "@/models/Lead";
 import { Payment } from "@/models/Payment";
 import { UpdateRequest } from "@/models/UpdateRequest";
 import { Establishment } from "@/models/Establishment";
+import { Intake } from "@/models/Intake";
 import { RENEWAL_DUE_SOON_DAYS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -93,29 +92,6 @@ function ProductCard({ label, icon: Icon, counts, href }: { label: string; icon:
   );
 }
 
-/** Founding spots left with a marigold progress ring (DESIGN_BRIEF.md §4). */
-function FoundingCard({ left, total }: { left: number; total: number }) {
-  const used = Math.max(0, total - left);
-  const pct = total > 0 ? used / total : 0;
-  const r = 26;
-  const c = 2 * Math.PI * r;
-  return (
-    <div className="flex items-center gap-4 rounded-xl border border-line bg-card p-4 shadow-soft">
-      <svg viewBox="0 0 64 64" className="size-16 shrink-0 -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" className="stroke-line" />
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="6" strokeLinecap="round" className="stroke-marigold" strokeDasharray={`${pct * c} ${c}`} />
-      </svg>
-      <div>
-        <p className="text-sm text-muted-foreground">Founding spots left</p>
-        <p className="font-display text-3xl font-semibold leading-none text-ink">{left}</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {used} of {total} taken
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const admin = await requireAdminPage();
   await connectToDatabase();
@@ -130,7 +106,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   const renewalCount = async (filter: Record<string, unknown>) =>
     (await DoctorProfile.countDocuments(filter)) + (await Establishment.countDocuments(filter));
 
-  const [statusCounts, siteCounts, renewals, foundingUsed, settings, newLeads, openRequests, monthSales, monthly, published, activity] = await Promise.all([
+  const [statusCounts, siteCounts, renewals, newLeads, openRequests, monthSales, monthly, published, activity, formCounts] = await Promise.all([
     DoctorProfile.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
     Establishment.aggregate<{ _id: { kind: string; status: string }; n: number }>([{ $group: { _id: { kind: "$kind", status: "$status" }, n: { $sum: 1 } } }]),
     showMoney
@@ -140,8 +116,6 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
           renewalCount({ renewalStatus: "lapsed" }),
         ])
       : Promise.resolve([0, 0, 0] as const),
-    countFoundingCustomers(),
-    getSettings(),
     Lead.countDocuments({ status: "new", source: { $ne: "whatsapp_click" } }),
     showMoney ? UpdateRequest.countDocuments({ status: { $ne: "done" } }) : Promise.resolve(0),
     showMoney
@@ -161,7 +135,12 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
       .sort({ at: -1 })
       .limit(10)
       .lean(),
+    Intake.aggregate<{ _id: { kind: string; status: string }; n: number }>([
+      { $match: { status: { $in: ["draft", "submitted", "in_review"] } } },
+      { $group: { _id: { kind: "$kind", status: "$status" }, n: { $sum: 1 } } },
+    ]),
   ]);
+  const formsOf = (kind: string, status: string) => formCounts.find((c) => c._id.kind === kind && c._id.status === status)?.n ?? 0;
 
   const count = (s: string) => statusCounts.find((c) => c._id === s)?.n ?? 0;
   const doctorCounts = Object.fromEntries(statusCounts.map((c) => [c._id, c.n]));
@@ -208,6 +187,31 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         <ProductCard label="Hospitals" icon={Hospital} counts={siteCountsOf("hospital")} href="/admin/establishments?kind=hospital" />
       </section>
 
+      <section aria-labelledby="website-forms" className="space-y-3">
+        <h2 id="website-forms" className="text-sm font-semibold text-muted-foreground">
+          Website forms (Get started)
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(
+            [
+              ["doctor", "Doctor forms", UserRound],
+              ["clinic", "Clinic forms", Building2],
+              ["hospital", "Hospital forms", Hospital],
+            ] as const
+          ).map(([kind, label, Icon]) => (
+            <Link key={kind} href={`/admin/intakes?kind=${kind}&status=submitted`} className="block rounded-xl border border-line bg-card p-4 shadow-soft transition hover:border-ink/30">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Icon className="size-4" strokeWidth={1.75} /> {label}
+              </p>
+              <p className="mt-1 font-display text-3xl font-semibold leading-none text-ink">{formsOf(kind, "submitted")}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                to review · {formsOf(kind, "in_review")} in review · {formsOf(kind, "draft")} in progress
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {showMoney && (
         <section aria-label="Renewals" className="grid grid-cols-3 gap-3">
           <StatCard label="Due in 30 days" value={dueSoon} href="/admin/payments/renewals?status=due" />
@@ -216,17 +220,18 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         </section>
       )}
 
-      <section aria-label="Key numbers" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Key numbers" className={`grid grid-cols-2 gap-3 ${showMoney ? "sm:grid-cols-3" : ""}`}>
         <StatCard label="New leads" value={newLeads} href="/admin/leads?status=new" />
         {showMoney ? (
           <StatCard label="This month's sales" value={formatINR(monthSales[0]?.amount ?? 0)} hint={`${monthSales[0]?.n ?? 0} payment${monthSales[0]?.n === 1 ? "" : "s"}`} href="/admin/payments" />
         ) : (
           <StatCard label="Published" value={count("published")} href="/admin/pages" />
         )}
-        {showMoney && <StatCard label="Open update requests" value={openRequests} href="/admin/update-requests" />}
-        <div className="col-span-2 lg:col-span-1">
-          <FoundingCard left={Math.max(0, settings.foundingTotal - foundingUsed)} total={settings.foundingTotal} />
-        </div>
+        {showMoney && (
+          <div className="col-span-2 sm:col-span-1">
+            <StatCard label="Open update requests" value={openRequests} href="/admin/update-requests" />
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="quick-actions" className="space-y-3">

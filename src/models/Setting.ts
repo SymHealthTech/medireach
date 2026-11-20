@@ -2,7 +2,6 @@ import mongoose, { Schema, type Model, type Types } from "mongoose";
 import {
   DEFAULT_PRICES,
   DEFAULT_RENEWAL_GRACE_DAYS,
-  FOUNDING_TOTAL_DEFAULT,
   GST_MODES,
   PRICE_KEYS,
   type PriceKey,
@@ -22,7 +21,6 @@ export interface SettingDoc {
   key: typeof SETTINGS_KEY;
   /** All prices (₹). Older documents may still hold v1 gp/consultant/update until migrate:v2 --drop-legacy. */
   prices: Record<PriceKey, number>;
-  foundingTotal: number;
   /** Days after the renewal due date before a site lapses. */
   renewalGraceDays: number;
   contactPhone?: string;
@@ -39,7 +37,6 @@ const settingSchema = new Schema<SettingDoc>(
   {
     key: { type: String, required: true, unique: true, default: SETTINGS_KEY },
     prices: Object.fromEntries(PRICE_KEYS.map((k) => [k, { type: Number, default: DEFAULT_PRICES[k], min: 0 }])),
-    foundingTotal: { type: Number, default: FOUNDING_TOTAL_DEFAULT, min: 0 },
     renewalGraceDays: { type: Number, default: DEFAULT_RENEWAL_GRACE_DAYS, min: 0, max: 365 },
     contactPhone: { type: String, trim: true },
     whatsappNumber: { type: String, trim: true },

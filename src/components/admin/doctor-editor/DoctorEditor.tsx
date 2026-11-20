@@ -25,6 +25,7 @@ import {
   type StepKey,
 } from "@/lib/doctors/form";
 import type { EditorOptions } from "@/lib/doctors/options";
+import type { DoctorFormHints } from "@/lib/intake/hints";
 import type { AdminRole } from "@/lib/constants";
 import { timeAgo } from "@/lib/format";
 import { absUrl, paths } from "@/lib/site";
@@ -61,12 +62,15 @@ export function DoctorEditor({
   role,
   initialStep = "basics",
   leadId,
+  hints,
 }: {
   initial: DoctorForm;
   options: EditorOptions;
   role: AdminRole;
   initialStep?: StepKey;
   leadId?: string;
+  /** Answers from the website form this draft was made from. */
+  hints?: DoctorFormHints;
 }) {
   const [form, setForm] = useState<DoctorForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -194,7 +198,7 @@ export function DoctorEditor({
     toast.success(ok);
   }
 
-  const stepProps: StepProps = { form, set, err, options, readOnly, role, doctorId: form.id };
+  const stepProps: StepProps = { form, set, err, options, readOnly, role, doctorId: form.id, hints };
   const name = [form.title, form.firstName, form.lastName].filter(Boolean).join(" ").trim();
   const liveUrl = form.status === "published" && form.slug && form.citySlug ? absUrl(paths.doctor(form.citySlug, form.slug)) : undefined;
 
