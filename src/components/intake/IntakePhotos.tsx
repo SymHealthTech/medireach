@@ -7,31 +7,13 @@ import { uploadImage, type UploadSigner } from "@/lib/client/upload-image";
 import { cn } from "@/lib/cn";
 import { photosWhatsappText, type IntakePhoto, type IntakePhotos, type PhotoConfig, type SinglePhotoKey } from "@/lib/intake/form";
 import { inputClass, SectionCard } from "./IntakeFields";
-import { PhotoCropDialog } from "./PhotoCropDialog";
+import { PhotoCropDialog, type CropMode } from "./PhotoCropDialog";
 
-/** Shrink big phone photos before upload; falls back to the original (e.g. HEIC on Chrome). */
-async function shrink(file: Blob, maxSide = 2400): Promise<Blob> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = reject;
-      el.src = url;
-    });
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    if (scale === 1 && file.size < 4 * 1024 * 1024) return file;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b ?? file), "image/jpeg", 0.88));
-  } catch {
-    return file;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
+/** Applicant photos are compressed in uploadImage; these set the size per slot. */
+const COMPRESS = { profile: { maxSide: 1600 }, logo: { maxSide: 1200 }, cover: { maxSide: 2400 }, gallery: { maxSide: 2000 } } as const;
+
+/** Slots that open "Adjust" (crop) before uploading. The cover isn't cropped: the site shows it at two shapes. */
+const CROP: Partial<Record<SinglePhotoKey, CropMode>> = { profile: "portrait", logo: "logo" };
 
 /** Cloudinary thumbnail URL. */
 const thumb = (url: string, w = 480) => url.replace("/image/upload/", `/image/upload/f_auto,q_auto,c_limit,w_${w}/`);
@@ -81,16 +63,17 @@ export function IntakePhotosSection({
     onChange(p);
   };
 
-  // Profile photo: crop first ("Adjust your photo"), then upload.
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  // Profile photo and logo: crop first ("Adjust"), then upload.
+  const [crop, setCrop] = useState<{ src: string; key: SinglePhotoKey } | null>(null);
   const closeCrop = () => {
-    if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
-    setCropSrc(null);
+    if (crop?.src.startsWith("blob:")) URL.revokeObjectURL(crop.src);
+    setCrop(null);
   };
   async function uploadCropped(blob: Blob) {
+    if (!crop) return;
     if (!(await ensureSaved())) throw new Error("Enter your email at the top first: photos are saved with your form.");
-    const up = await uploadImage(blob, "intake", sign);
-    set({ ...latest.current, profile: { publicId: up.publicId, url: up.url } });
+    const up = await uploadImage(blob, "intake", sign, COMPRESS[crop.key]);
+    set({ ...latest.current, [crop.key]: { publicId: up.publicId, url: up.url } });
     closeCrop();
   }
 
@@ -105,7 +88,7 @@ export function IntakePhotosSection({
       if (target === "gallery" && files.length > list.length) setUploadError(`You can add up to ${config.galleryMax} photos here. Send any others on WhatsApp.`);
       for (let i = 0; i < list.length; i++) {
         if (target === "gallery") setBusy(`Uploading ${i + 1} of ${list.length}…`);
-        const up = await uploadImage(await shrink(list[i]!), "intake", sign);
+        const up = await uploadImage(list[i]!, "intake", sign, COMPRESS[target]);
         const photo: IntakePhoto = { publicId: up.publicId, url: up.url };
         set(target === "gallery" ? { ...latest.current, gallery: [...latest.current.gallery, photo] } : { ...latest.current, [target]: photo });
       }
@@ -188,8 +171,8 @@ export function IntakePhotosSection({
               value={photos[s.key]}
               busy={busy === s.key}
               disabled={disabled || busy !== null}
-              onPick={(f) => (s.key === "profile" ? setCropSrc(URL.createObjectURL(f)) : upload([f], s.key))}
-              onAdjust={s.key === "profile" && photos.profile ? () => setCropSrc(photos.profile!.url) : undefined}
+              onPick={(f) => (CROP[s.key] ? setCrop({ src: URL.createObjectURL(f), key: s.key }) : upload([f], s.key))}
+              onAdjust={CROP[s.key] && photos[s.key] ? () => setCrop({ src: photos[s.key]!.url, key: s.key }) : undefined}
               onRemove={() => set({ ...photos, [s.key]: undefined })}
               round={s.key === "profile"}
             />
@@ -249,7 +232,7 @@ export function IntakePhotosSection({
             )}
           </ul>
         </div>
-        <PhotoCropDialog src={cropSrc} onCancel={closeCrop} onDone={uploadCropped} />
+        <PhotoCropDialog key={crop?.key ?? "none"} src={crop?.src ?? null} mode={crop ? CROP[crop.key] : "portrait"} onCancel={closeCrop} onDone={uploadCropped} />
         {(uploadError || error) && (
           <p role="alert" className="text-sm text-clay-text">
             {uploadError || error}

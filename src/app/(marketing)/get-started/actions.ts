@@ -25,7 +25,7 @@ import { Intake } from "@/models/Intake";
 
 export type SaveIntakeResult =
   | { ok: true; intake: IntakeView }
-  | { ok: false; error: string; fieldErrors?: Record<string, string>; needsCode?: boolean; email?: string };
+  | { ok: false; error: string; fieldErrors?: Record<string, string>; needsCode?: boolean; email?: string; existing?: IntakeView };
 
 const GENERIC = "Something went wrong. Please try again, or message us on WhatsApp.";
 

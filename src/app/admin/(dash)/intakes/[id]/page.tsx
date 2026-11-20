@@ -11,7 +11,7 @@ import { isObjectId } from "@/lib/admin/list";
 import { INTAKE_STATUS_LABEL, INTAKE_STATUS_TONE } from "@/lib/admin/labels";
 import { connectToDatabase } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
-import { INTAKE_KIND_LABEL, allPhotos, missingForSubmit, str } from "@/lib/intake/form";
+import { INTAKE_KIND_LABEL, allPhotos, designSummary, missingForSubmit, str } from "@/lib/intake/form";
 import { toView } from "@/lib/intake/server";
 import { getPublicSiteData } from "@/lib/public/site-data";
 import { Intake } from "@/models/Intake";
@@ -34,6 +34,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
   const wa = str(view.data.whatsapp) || mobile;
   const name = doc.name || view.email;
   const draftHref = doc.convertedTo ? (doc.convertedTo.kind === "doctor" ? `/admin/doctors/${doc.convertedTo.id}` : `/admin/establishments/${doc.convertedTo.id}`) : undefined;
+  const design = designSummary(view.kind, view.data);
   const waText = `Hello ${name}, this is MediReach about your website form ${view.ref}.`;
 
   return (
@@ -64,6 +65,10 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
             <p className="text-sm text-muted-foreground">
               Photos: {photos.length} uploaded
               {view.photos.viaWhatsapp ? " · the applicant chose to send photos on WhatsApp (search the chats for the ref)" : ""}
+            </p>
+            <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              Design: website <strong className="text-ink">{design.website}</strong> · visiting card <strong className="text-ink">{design.card}</strong>
+              <Pill tone={design.final ? "leaf" : "marigold"}>{design.final ? "Final" : design.decision}</Pill>
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -107,7 +112,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
         <IntakeReviewControls id={view.id} status={view.status} notes={doc.adminNotes ?? ""} draftHref={draftHref} canDelete={admin.role !== "sales"} kind={view.kind} />
       </section>
 
-      <IntakeForm kind={view.kind} initial={view} sessionEmail={null} waNumber={site.whatsappNumber} mode="admin" />
+      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" />
     </div>
   );
 }

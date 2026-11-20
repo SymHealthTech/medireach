@@ -39,7 +39,7 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
       .sort({ submittedAt: -1, lastSavedAt: -1 })
       .skip((page - 1) * PAGE_SIZE)
       .limit(PAGE_SIZE)
-      .select({ data: 0 })
+      .select({ "data.designDecision": 1, kind: 1, email: 1, ref: 1, status: 1, name: 1, phone: 1, photos: 1, missingCount: 1, submittedAt: 1, updatedAfterSubmitAt: 1, lastSavedAt: 1 })
       .lean(),
     Intake.aggregate<{ _id: IntakeStatus; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]),
   ]);
@@ -97,6 +97,7 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
                         {r.name || r.email}
                         <Pill tone={INTAKE_STATUS_TONE[r.status]}>{INTAKE_STATUS_LABEL[r.status]}</Pill>
                         {r.updatedAfterSubmitAt && r.status !== "draft" && <Pill tone="clay">Updated</Pill>}
+                        {(r.data as { designDecision?: string } | undefined)?.designDecision === "discuss" && <Pill tone="ink">Design: talk first</Pill>}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {[INTAKE_KIND_LABEL[r.kind], r.ref, r.phone, r.email].filter(Boolean).join(" · ")}

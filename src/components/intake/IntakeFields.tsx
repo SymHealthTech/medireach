@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ClipboardPaste, HelpCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { cleanPastedText, fieldId, isRepeatValue, isShown, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
+import { CardStylePicker, ChoiceCards, DesignPicker } from "./DesignPickers";
 import { LocationField } from "./LocationField";
 
 export const inputClass =
@@ -71,7 +72,13 @@ export function IntakeField({
         )}
         {f.required && <span className="sr-only"> (required to send)</span>}
       </label>
-      {f.type === "location" ? (
+      {f.type === "design" ? (
+        <DesignPicker id={id} field={f} value={v} onChange={onChange} />
+      ) : f.type === "card" ? (
+        <CardStylePicker id={id} field={f} value={v} onChange={onChange} />
+      ) : f.type === "choice" ? (
+        <ChoiceCards id={id} field={f} value={v} onChange={onChange} />
+      ) : f.type === "location" ? (
         <LocationField id={id} value={v} onChange={onChange} hint={[context.name, context.address, context.area, context.city].filter((x) => typeof x === "string" && x.trim()).join(", ")} />
       ) : f.type === "story" ? (
         <StoryInput common={common} value={v} max={f.max ?? 6000} onChange={onChange} />

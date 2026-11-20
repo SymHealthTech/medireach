@@ -4,12 +4,11 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { downscale } from "@/components/admin/doctor-editor/PhotoCropUpload";
 import { uploadImage } from "@/lib/client/upload-image";
 import type { ImageValue } from "@/lib/doctors/form";
 import type { UploadPurpose } from "@/lib/integrations/cloudinary";
 
-/** One wide image (e.g. a cover photo), uploaded as-is after downscaling. No cropping. */
+/** One wide image (e.g. a cover photo). No cropping; uploadImage compresses it. */
 export function ImageUpload({
   value,
   onChange,
@@ -30,7 +29,7 @@ export function ImageUpload({
     if (!file) return;
     setBusy(true);
     try {
-      const up = await uploadImage(await downscale(file, 2400), purpose);
+      const up = await uploadImage(file, purpose);
       onChange({ publicId: up.publicId, url: up.url });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed.");

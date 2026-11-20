@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { connectToDatabase } from "@/lib/db";
+import { needsCompression, targetSize } from "@/lib/client/compress-image";
+import { compressOptionsFor } from "@/lib/client/upload-image";
 import { createLoginCode, checkLoginCode } from "@/lib/auth/login-code";
 import { createSessionToken } from "@/lib/auth/session";
 import { seedMasters } from "@/lib/seed/masters";
@@ -60,6 +62,9 @@ function fullDoctor(): IntakeData {
     visitingAt: "Ruby Hall Clinic, Pune",
     interests: "Running, trekking",
     beyondTitle: "My first marathon",
+    websiteDesign: "classic",
+    cardStyle: "doc-amber",
+    designDecision: "discuss",
     beyondStory: "First paragraph.\r\n\r\n\r\nSecond paragraph.\u200B",
   };
 }
@@ -87,6 +92,39 @@ describe("form definitions", () => {
     const clinic = (fullDoctor().clinics as object[])[0];
     expect(intakeDataSchema("doctor").safeParse({ clinics: [clinic, clinic] }).success).toBe(true);
     expect(intakeDataSchema("doctor").safeParse({ clinics: [clinic, clinic, clinic] }).success).toBe(false);
+  });
+
+  it("asks for the design decision, and drops unknown design codes instead of failing", () => {
+    expect(missingForSubmit("doctor", { ...fullDoctor(), designDecision: "" }).map((m) => m.key)).toEqual(["designDecision"]);
+    const d = intakeDataSchema("doctor").parse({ ...fullDoctor(), websiteDesign: "t3", cardStyle: "BLUE-ish" });
+    expect(d.websiteDesign).toBe(""); // t3 isn't built yet
+    expect(d.cardStyle).toBe("");
+    expect(intakeDataSchema("doctor").parse(fullDoctor()).cardStyle).toBe("DOC-AMBER");
+    expect(intakeDataSchema("clinic").parse({ websiteDesign: "dental" }).websiteDesign).toBe("dental");
+    expect(intakeDataSchema("doctor").safeParse({ designDecision: "maybe" }).success).toBe(false);
+  });
+
+  it("clinic and hospital types: a list with 'Other, please specify'", () => {
+    const base = { ...emptyIntakeData("clinic"), name: "X", contactName: "Y", mobile: "9876500000", address: "A", area: "Kothrud", pincode: "411038", phones: "020 1234 5678", timings: "10–7", designDecision: "final" };
+    expect(missingForSubmit("clinic", { ...base, clinicType: "skin" })).toEqual([]);
+    expect(missingForSubmit("clinic", { ...base, clinicType: "other" }).map((m) => m.key)).toEqual(["clinicTypeOther"]);
+    expect(missingForSubmit("clinic", { ...base, clinicType: "" }).map((m) => m.key)).toEqual(["clinicType"]);
+    // Older free-text answers map to the list by name, or become "not chosen".
+    expect(intakeDataSchema("clinic").parse({ clinicType: "Skin clinic" }).clinicType).toBe("skin");
+    expect(intakeDataSchema("clinic").parse({ clinicType: "something odd" }).clinicType).toBe("");
+    expect(missingForSubmit("hospital", { ...emptyIntakeData("hospital"), hospitalType: "other" }).map((m) => m.key)).toContain("hospitalTypeOther");
+  });
+
+  it("decides when to compress images, per upload purpose", () => {
+    expect(targetSize(4000, 3000, 2000)).toEqual({ width: 2000, height: 1500 });
+    expect(targetSize(800, 600, 2000)).toEqual({ width: 800, height: 600 });
+    expect(needsCompression({ width: 4032, height: 3024, size: 3_000_000, type: "image/jpeg" })).toBe(true); // phone photo
+    expect(needsCompression({ width: 1200, height: 900, size: 2_000_000, type: "image/jpeg" })).toBe(true); // heavy file
+    expect(needsCompression({ width: 1200, height: 900, size: 200_000, type: "image/jpeg" })).toBe(false); // already small
+    expect(needsCompression({ width: 1200, height: 900, size: 200_000, type: "image/png" })).toBe(true); // PNG photo
+    expect(needsCompression({ width: 600, height: 600, size: 80_000, type: "image/png" }, { keepAlpha: true })).toBe(false); // small logo
+    expect(compressOptionsFor("logo")).toEqual({ maxSide: 1200, keepAlpha: true });
+    expect(compressOptionsFor("gallery").maxSide).toBe(2000);
   });
 
   it("cleans pasted stories and checks map pins", () => {
@@ -169,6 +207,16 @@ describe("saving and ownership", () => {
     const owner = await saveIntake({ id, kind: "doctor", email: "a@example.com", data: { fullName: "Dr. A B" }, photos: {} }, "a@example.com");
     expect(owner.ok).toBe(true);
     if (owner.ok) expect(owner.sessionEmail).toBeUndefined();
+  });
+
+  it("never overwrites a saved form from a fresh, blank form in the same browser", async () => {
+    const first = await saveIntake({ kind: "doctor", email: "same@example.com", data: { fullName: "Dr. Saved Name" }, photos: {} }, null);
+    expect(first.ok).toBe(true);
+    const fresh = await saveIntake({ kind: "doctor", email: "same@example.com", data: { specialty: "ENT" }, photos: {} }, "same@example.com");
+    expect(fresh).toMatchObject({ ok: false, existing: { ref: first.ok ? first.intake.ref : "" } });
+    expect((await Intake.findOne({ email: "same@example.com" }).lean())?.name).toBe("Dr. Saved Name");
+    // A different email from the same browser starts its own form.
+    expect(await saveIntake({ kind: "doctor", email: "other@example.com", data: {}, photos: {} }, "same@example.com")).toMatchObject({ ok: true, sessionEmail: "other@example.com" });
   });
 
   it("lets the owner change the email only to an unused address", async () => {
@@ -262,6 +310,9 @@ describe("creating the website draft", () => {
     expect(doc!.clinics[0]!.geo).toEqual({ lat: 18.5074, lng: 73.8077 });
     expect(doc!.clinics[0]!.mapsUrl).toBe("https://www.google.com/maps/search/?api=1&query=18.507400,73.807700");
     expect(doc!.interestsStory).toEqual({ title: "My first marathon", body: "First paragraph.\n\nSecond paragraph." });
+    expect(doc!.portfolioTemplateId).toBe("classic");
+    expect(doc!.cardStyle).toBe("DOC-AMBER");
+    expect(doc!.internalNotes).toContain("NOT FINAL");
     expect(doc!.links.instagram).toBe("https://instagram.com/drasha");
     expect(doc!.citySlug).toBe("pune");
     expect(doc!.internalNotes).toContain(intake!.ref);
@@ -282,16 +333,24 @@ describe("creating the website draft", () => {
       phones: "020 1234 5678, 98765 00000",
       timings: "Mon–Sat 10–7",
       doctors: "Dr. Neha Joshi – MBBS, MD – Dermatologist",
+      visitingDoctors: "Dr. A Rao – MD – Cardiologist",
+      awards: "NABH accreditation – 2022",
       services: "Acne care",
+      websiteDesign: "dental",
+      designDecision: "final",
     };
     const r = await saveIntake({ kind: "clinic", email: "clinic@example.com", data, photos: { logo: photo(20) } }, null);
     const intake = await Intake.findById(r.ok ? r.intake.id : "").lean();
     const made = await createSiteFromIntake(intake!);
     const e = await Establishment.findById(made.id).lean();
-    expect(e).toMatchObject({ kind: "clinic", plan: "clinic", status: "draft", name: "Shree Skin Clinic", themeKey: "skin", ownerEmail: "clinic@example.com" });
+    expect(e).toMatchObject({ kind: "clinic", plan: "clinic", status: "draft", name: "Shree Skin Clinic", themeKey: "dental", ownerEmail: "clinic@example.com" });
+    expect(e!.internalNotes).toContain("Final choice.");
     expect(e!.address.areaId).toBeDefined();
     expect(e!.contact.phones).toEqual(["020 1234 5678", "98765 00000"]);
     expect(e!.doctors[0]).toMatchObject({ name: "Dr. Neha Joshi", specialty: "Dermatologist" });
+    expect(e!.doctors[1]).toMatchObject({ name: "Dr. A Rao", specialty: "Cardiologist", role: "Visiting consultant" });
+    expect(e!.categoryId).toBeDefined();
+    expect(e!.internalNotes).toContain("NABH accreditation – 2022");
     expect(e!.logo?.publicId).toBe(photo(20).publicId);
     expect(e!.slug).toBeTruthy();
   });

@@ -15,18 +15,27 @@ export async function generateMetadata({ params }: { params: Promise<{ kind: str
 }
 
 /**
- * Self-fill website form. A browser with a form session (lib/intake/session.ts)
- * gets its saved form of this kind back; anyone else starts blank.
+ * Self-fill website form. Always starts blank (so the next doctor or a second
+ * form never sees the last one). With ?continue=1 (Continue page, Edit, or a
+ * refresh after saving) a browser with a form session (lib/intake/session.ts)
+ * gets its saved form of this kind back.
  */
-export default async function IntakeFormPage({ params }: { params: Promise<{ kind: string }> }) {
-  const { kind } = await params;
+export default async function IntakeFormPage({ params, searchParams }: { params: Promise<{ kind: string }>; searchParams: Promise<{ continue?: string }> }) {
+  const [{ kind }, sp] = await Promise.all([params, searchParams]);
   if (!isKind(kind)) notFound();
   const [email, site] = await Promise.all([getIntakeEmail(), getPublicSiteData()]);
   const saved = email ? await intakeFor(email, kind) : null;
+  const resume = sp.continue === "1" && saved;
   return (
     <main className="mr-hero-bg -mt-16 px-4 pt-24 sm:px-6 sm:pt-28">
       <div className="mx-auto max-w-3xl">
-        <IntakeForm kind={kind} initial={saved ? toView(saved) : null} sessionEmail={email} waNumber={site.whatsappNumber} />
+        <IntakeForm
+          key={resume ? saved._id.toString() : "new"}
+          kind={kind}
+          initial={resume ? toView(saved) : null}
+          waNumber={site.whatsappNumber}
+          savedRef={!resume && saved ? saved.ref : undefined}
+        />
       </div>
     </main>
   );

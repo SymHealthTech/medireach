@@ -1,5 +1,9 @@
 import { z } from "zod";
+import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { LIMITS, type IntakeKind } from "@/lib/constants";
+import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
+import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
+import { SPECIALTY_THEMES } from "@/themes/specialty";
 
 /**
  * Self-filled website forms ("Get started" → Doctor / Clinic / Hospital).
@@ -36,7 +40,13 @@ export type FieldType =
   /** Long free text (a blog-style story) with a paste button. */
   | "story"
   /** A pin on the map, stored as "lat,lng". */
-  | "location";
+  | "location"
+  /** Website design picker (doctor portfolio designs, or clinic/hospital specialty designs). */
+  | "design"
+  /** Visiting card style picker (code names like DOC-AMBER). */
+  | "card"
+  /** One of a few options, shown as large radio cards. */
+  | "choice";
 
 export interface FieldDef {
   key: string;
@@ -55,6 +65,8 @@ export interface FieldDef {
   showIf?: { key: string; equals: string };
   /** Step-by-step instructions, shown under the field on request. */
   steps?: readonly string[];
+  /** Design pickers: which kind of site the choices are for. */
+  kind?: IntakeKind;
 }
 
 export interface SectionDef {
@@ -148,12 +160,54 @@ const linksSection: SectionDef = {
   ],
 };
 
-const preferencesSection = (cardPlaceholder: string, namePlaceholder: string): SectionDef => ({
+/** "Not decided yet" for the pickers. */
+export const NOT_SURE = "";
+
+/** Website design choices per kind. Doctors: portfolio designs (unbuilt ones show as coming soon). Clinics/hospitals: specialty designs, own kind first. */
+export const DESIGN_OPTIONS: Record<IntakeKind, readonly { value: string; label: string; ready: boolean; sampleHref: string }[]> = {
+  doctor: SAMPLE_DESIGNS.map((d) => ({ value: d.key, label: d.name, ready: d.ready, sampleHref: `/sample/gp?design=${d.key}` })),
+  clinic: [...SPECIALTY_THEMES].sort((a, b) => Number(b.kind === "clinic") - Number(a.kind === "clinic")).map((t) => ({ value: t.key, label: t.name, ready: true, sampleHref: `/designs/${t.key}` })),
+  hospital: [...SPECIALTY_THEMES].sort((a, b) => Number(b.kind === "hospital") - Number(a.kind === "hospital")).map((t) => ({ value: t.key, label: t.name, ready: true, sampleHref: `/designs/${t.key}` })),
+};
+
+export const DESIGN_DECISIONS = [
+  { value: "final", label: "Final", description: "Go ahead with the designs I picked." },
+  { value: "discuss", label: "Not final yet", description: "Talk to me first. I'd like to discuss the design before you finalise it." },
+] as const;
+
+const designSection = (kind: IntakeKind): SectionDef => ({
+  key: "design",
+  title: "Website and visiting card design",
+  description: "Pick what you like. Not sure? Choose “Not decided” and we'll help you choose.",
+  fields: [
+    {
+      key: "websiteDesign",
+      label: "Website design",
+      type: "design",
+      kind,
+      wide: true,
+      options: DESIGN_OPTIONS[kind].filter((d) => d.ready).map((d) => ({ value: d.value, label: d.label })),
+    },
+    {
+      key: "cardStyle",
+      label: "Visiting card",
+      type: "card",
+      kind,
+      wide: true,
+      options: CARD_STYLES_BY_GROUP[kind].map((c) => ({ value: c.code, label: c.name })),
+    },
+    { key: "designDecision", label: "Is this your final choice?", type: "choice", required: true, wide: true, options: DESIGN_DECISIONS },
+  ],
+});
+
+/** Shown after the photos, just before sending. */
+export const LATE_SECTIONS = ["design", "preferences"] as const;
+
+const preferencesSection = (namePlaceholder: string): SectionDef => ({
   key: "preferences",
   title: "Anything else",
   fields: [
     text("websiteName", "Website name you would like", { placeholder: namePlaceholder, help: "Your website address will be <name>.medireach.co.in. We check it is free." }),
-    text("cardStyle", "Design or visiting card code", { placeholder: cardPlaceholder, help: "Optional. See the visiting card styles and specialty designs on our website." }),
     { key: "notes", label: "Notes for our team", type: "textarea", wide: true, placeholder: "Anything you want on the website, or things we should know." },
   ],
 });
@@ -276,7 +330,8 @@ const DOCTOR: SectionDef[] = [
     ],
   },
   { ...linksSection, fields: [...linksSection.fields.slice(0, 3), { key: "linkedin", label: "LinkedIn", type: "url" }, ...linksSection.fields.slice(3)] },
-  preferencesSection("DOC-AMBER", "dramit"),
+  designSection("doctor"),
+  preferencesSection("dramit"),
 ];
 
 // --- Clinic / hospital ------------------------------------------------------
@@ -293,15 +348,61 @@ const addressFields = (what: string): FieldDef[] => [
   { key: "siteEmail", label: "Email for patients", type: "email", wide: true },
 ];
 
+/** Clinic types = the clinic categories (so the draft gets the right category), plus Other. */
+const CLINIC_TYPES = [
+  ...SEED_CLINIC_CATEGORIES.filter((c) => c.kind === "clinic").map((c) => ({ value: c.slug, label: c.name })),
+  { value: "other", label: "Other" },
+] as const;
+
+const HOSPITAL_TYPES = [
+  { value: "multispecialty", label: "Multi-speciality" },
+  { value: "general", label: "General hospital" },
+  { value: "maternity", label: "Maternity and women's" },
+  { value: "children", label: "Children's" },
+  { value: "orthopaedic", label: "Orthopaedic" },
+  { value: "surgical", label: "Surgical" },
+  { value: "eye", label: "Eye" },
+  { value: "ent", label: "ENT" },
+  { value: "other", label: "Other" },
+] as const;
+
+const aboutStory = (what: string): FieldDef => ({
+  key: "about",
+  label: `About the ${what}`,
+  type: "story",
+  wide: true,
+  max: LIMITS.storyBody,
+  placeholder: `How the ${what} started, what you focus on, and how you look after patients.`,
+  help: "Write here, or copy from your current website, a brochure, Word or WhatsApp and paste it. Formatting is removed; paragraphs are kept.",
+});
+
+const visitingDoctorsField: FieldDef = {
+  key: "visitingDoctors",
+  label: "Visiting consultants",
+  type: "lines",
+  wide: true,
+  placeholder: "Doctors who come on fixed days. One per line\nDr. A Rao – MD (Cardiology) – Cardiologist – Tuesdays 5–7 pm",
+};
+
+const awardsField = (what: string): FieldDef => ({
+  key: "awards",
+  label: "Accreditations and awards",
+  type: "lines",
+  wide: true,
+  placeholder: `One per line\nNABH accreditation – 2022\nAward name – Given by – Year`,
+  help: `Facts only, e.g. accreditations, certificates and awards the ${what} has received.`,
+});
+
 const CLINIC: SectionDef[] = [
   {
     key: "about",
     title: "About the clinic",
     fields: [
       text("name", "Clinic name", { required: true }),
-      text("clinicType", "Type of clinic", { required: true, placeholder: "Skin clinic, dental clinic, multi-speciality…" }),
+      { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES },
+      text("clinicTypeOther", "Please specify", { required: true, placeholder: "e.g. Sleep clinic, IVF centre", showIf: { key: "clinicType", equals: "other" } }),
       text("tagline", "One-line description", { wide: true, placeholder: "Skin, hair and nail care in Kothrud" }),
-      { key: "about", label: "About the clinic", type: "textarea", wide: true },
+      aboutStory("clinic"),
       { key: "yearStarted", label: "Year started", type: "year" },
       text("languages", "Languages spoken", { placeholder: "English, Hindi, Marathi" }),
     ],
@@ -328,9 +429,10 @@ const CLINIC: SectionDef[] = [
         placeholder: "One per line\nDr. Neha Joshi – MBBS, MD (Dermatology) – Dermatologist",
         help: "Each doctor can also get their own portfolio page. Ask us.",
       },
+      visitingDoctorsField,
     ],
   },
-  { key: "services", title: "Services and facilities", fields: servicesFields() },
+  { key: "services", title: "Services and facilities", fields: [...servicesFields(), awardsField("clinic")] },
   {
     key: "registration",
     title: "Registration",
@@ -338,7 +440,8 @@ const CLINIC: SectionDef[] = [
     fields: [text("regAuthority", "Registered with", { placeholder: "Pune Municipal Corporation" }), text("regNumber", "Registration number")],
   },
   linksSection,
-  preferencesSection("CLN-TEAL", "shreeskin"),
+  designSection("clinic"),
+  preferencesSection("shreeskin"),
 ];
 
 const HOSPITAL: SectionDef[] = [
@@ -347,9 +450,10 @@ const HOSPITAL: SectionDef[] = [
     title: "About the hospital",
     fields: [
       text("name", "Hospital name", { required: true }),
-      text("hospitalType", "Type of hospital", { placeholder: "Multi-speciality, maternity, orthopaedic…" }),
+      { key: "hospitalType", label: "Type of hospital", type: "select", options: HOSPITAL_TYPES },
+      text("hospitalTypeOther", "Please specify", { required: true, placeholder: "e.g. Cancer care, De-addiction", showIf: { key: "hospitalType", equals: "other" } }),
       text("tagline", "One-line description", { wide: true, placeholder: "A 10-bed multi-speciality hospital in Wakad" }),
-      { key: "about", label: "About the hospital", type: "textarea", wide: true },
+      aboutStory("hospital"),
       { key: "beds", label: "Number of beds", type: "number", help: `For hospitals up to ${LIMITS.hospitalBedsMax} beds.` },
       { key: "yearStarted", label: "Year started", type: "year" },
       text("languages", "Languages spoken", { wide: true, placeholder: "English, Hindi, Marathi" }),
@@ -372,7 +476,8 @@ const HOSPITAL: SectionDef[] = [
     title: "Departments and doctors",
     fields: [
       { key: "departments", label: "Departments", type: "lines", wide: true, placeholder: "One per line\nOrthopaedics – Dr. A Patil, Dr. S Rao\nGeneral Medicine" },
-      { key: "doctors", label: "Doctors", type: "lines", wide: true, placeholder: "One per line\nDr. A Patil – MS (Ortho) – Orthopaedic Surgeon" },
+      { key: "doctors", label: "Full-time doctors", type: "lines", wide: true, placeholder: "One per line\nDr. A Patil – MS (Ortho) – Orthopaedic Surgeon" },
+      visitingDoctorsField,
     ],
   },
   {
@@ -382,6 +487,7 @@ const HOSPITAL: SectionDef[] = [
       ...servicesFields(),
       { key: "insurance", label: "Insurance / TPA accepted", type: "lines", placeholder: "One per line\nStar Health\nMediAssist" },
       { key: "cashless", label: "Cashless treatment available", type: "checkbox" },
+      awardsField("hospital"),
     ],
   },
   {
@@ -394,7 +500,8 @@ const HOSPITAL: SectionDef[] = [
     ],
   },
   linksSection,
-  preferencesSection("HSP-NAVY", "samplecare"),
+  designSection("hospital"),
+  preferencesSection("samplecare"),
 ];
 
 export const INTAKE_SECTIONS: Record<IntakeKind, SectionDef[]> = { doctor: DOCTOR, clinic: CLINIC, hospital: HOSPITAL };
@@ -409,21 +516,23 @@ export const INTAKE_PHOTOS: Record<IntakeKind, PhotoConfig> = {
   },
   clinic: {
     singles: [
-      { key: "logo", label: "Clinic logo", help: "If you have one." },
-      { key: "cover", label: "Main photo", help: "Shown at the top of your website, e.g. the clinic front." },
+      { key: "logo", label: "Clinic logo", help: "If you have one. After choosing it, drag and zoom so the whole logo fits the square." },
+      { key: "cover", label: "Main photo", help: "Shown at the top of your website. A wide photo of the clinic front or reception works well." },
     ],
     galleryMax: LIMITS.clinicGalleryMax,
-    galleryLabel: "Clinic photos",
-    galleryHelp: "Reception, rooms, equipment, outside view.",
+    galleryLabel: `Clinic photos (up to ${LIMITS.clinicGalleryMax})`,
+    galleryHelp:
+      "Outside view, reception, consultation rooms, equipment, your team, certificates and accreditations, health camps and events. Add a caption to say what each photo shows. No patient photos.",
   },
   hospital: {
     singles: [
-      { key: "logo", label: "Hospital logo", help: "If you have one." },
-      { key: "cover", label: "Main photo", help: "Shown at the top of your website, e.g. the building front." },
+      { key: "logo", label: "Hospital logo", help: "If you have one. After choosing it, drag and zoom so the whole logo fits the square." },
+      { key: "cover", label: "Main photo", help: "Shown at the top of your website. A wide photo of the building front works well." },
     ],
     galleryMax: LIMITS.hospitalGalleryMax,
-    galleryLabel: "Hospital photos",
-    galleryHelp: "Reception, wards, OT, equipment, outside view.",
+    galleryLabel: `Hospital photos (up to ${LIMITS.hospitalGalleryMax})`,
+    galleryHelp:
+      "Building, reception, wards, OT, ICU, equipment, ambulance, your team, certificates and accreditations, health camps and events. Add a caption to say what each photo shows. No patient photos.",
   },
 };
 
@@ -538,6 +647,9 @@ const MAX: Record<FieldType, number> = {
   textarea: 3000,
   story: LIMITS.storyBody,
   location: 40,
+  design: 40,
+  card: 40,
+  choice: 40,
   lines: 3000,
   year: 4,
   number: 7,
@@ -618,7 +730,12 @@ function fieldSchema(f: FieldDef) {
       return base.transform(cleanPastedText).refine((v) => v.length <= max, `Use at most ${max} characters.`);
     case "location":
       return base.refine((v) => v === "" || parseLocation(v) !== null, "Pick the location again.");
+    case "design":
+    case "card":
     case "select":
+      // Unknown or retired codes (e.g. typed by hand in older forms) become "not decided" instead of blocking the save.
+      return base.transform((v) => (f.options ?? []).find((o) => o.value.toLowerCase() === v.toLowerCase() || o.label.toLowerCase() === v.toLowerCase())?.value ?? "");
+    case "choice":
       return base.refine((v) => v === "" || (f.options ?? []).some((o) => o.value === v), "Choose an option.");
     default:
       return cap(base);
@@ -731,4 +848,16 @@ export function allPhotos(p: IntakePhotos): IntakePhoto[] {
 /** Pre-filled WhatsApp message for sending photos (or asking a question about a form). */
 export function photosWhatsappText(ref: string | undefined, email: string, name: string): string {
   return [`Hi, I'm sending photos for my MediReach website form.`, name && `Name: ${name}`, ref && `Form ref: ${ref}`, email && `Email: ${email}`].filter(Boolean).join("\n");
+}
+
+/** The applicant's design choices in words, for the admin (review page and draft notes). */
+export function designSummary(kind: IntakeKind, data: IntakeData): { website: string; card: string; decision: string; final: boolean } {
+  const design = DESIGN_OPTIONS[kind].find((d) => d.value === data.websiteDesign);
+  const card = CARD_STYLES_BY_GROUP[kind].find((c) => c.code === data.cardStyle);
+  return {
+    website: design ? design.label : "Not decided",
+    card: card ? `${card.name} (${card.code})` : "Not decided",
+    decision: data.designDecision === "final" ? "Final" : data.designDecision === "discuss" ? "Not final: talk to them before finalising" : "Not answered",
+    final: data.designDecision === "final",
+  };
 }

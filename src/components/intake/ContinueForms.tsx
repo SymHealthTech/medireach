@@ -65,7 +65,7 @@ export function ContinueForms({ sessionEmail, initialForms, defaultEmail }: { se
           <ul className="space-y-3">
             {forms.map((f) => (
               <li key={f.id}>
-                <Link href={`/get-started/${f.kind}`} className="group flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 hover:border-lagoon/50 hover:shadow-soft">
+                <Link href={`/get-started/${f.kind}?continue=1`} className="group flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 hover:border-lagoon/50 hover:shadow-soft">
                   <span className="min-w-0 flex-1">
                     <span className="block font-semibold text-ink">{f.name || INTAKE_KIND_LABEL[f.kind]}</span>
                     <span className="block text-sm text-body/75">

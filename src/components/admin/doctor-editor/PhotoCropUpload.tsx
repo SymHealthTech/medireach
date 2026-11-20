@@ -13,7 +13,7 @@ import type { UploadPurpose } from "@/lib/integrations/cloudinary";
 const MIN_RECOMMENDED = 1200;
 const MAX_OUTPUT = 1600;
 
-/** Crop the selected area of an image to a square JPEG blob (max 1600px). */
+/** Crop the selected area to a square, lossless PNG (max 1600px); uploadImage then compresses it once. */
 async function cropToBlob(src: string, area: Area): Promise<Blob> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const el = new Image();
@@ -28,7 +28,7 @@ async function cropToBlob(src: string, area: Area): Promise<Blob> {
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, size, size);
   return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not process the photo."))), "image/jpeg", 0.9),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not process the photo."))), "image/png"),
   );
 }
 
@@ -196,8 +196,7 @@ export function SimpleImageUpload({
     if (!file) return;
     setBusy(true);
     try {
-      const blob = await downscale(file, 2400);
-      const up = await uploadImage(blob, purpose, sign);
+      const up = await uploadImage(file, purpose, sign);
       onChange({ publicId: up.publicId, url: up.url });
     } catch (e) {
       onError(e instanceof Error ? e.message : "Upload failed.");
@@ -231,28 +230,4 @@ export function SimpleImageUpload({
       />
     </div>
   );
-}
-
-/** Shrink very large photos in the browser before upload (keeps aspect). */
-export async function downscale(file: File, maxSide: number): Promise<Blob> {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("Could not read that image."));
-      el.src = url;
-    });
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    if (scale === 1 && file.size < 4 * 1024 * 1024) return file;
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    return await new Promise((resolve, reject) =>
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not process the image."))), "image/jpeg", 0.88),
-    );
-  } finally {
-    URL.revokeObjectURL(url);
-  }
 }

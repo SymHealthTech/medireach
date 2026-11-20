@@ -1,11 +1,12 @@
 import "server-only";
 import type { Types } from "mongoose";
 import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
-import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, type IntakeKind } from "@/lib/constants";
+import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
+import { isThemeKey } from "@/themes/specialty";
 import { escapeRegExp } from "@/lib/admin/list";
 import { ensureUrlKeys as ensureDoctorUrlKeys } from "@/lib/doctors/server";
 import { ensureUrlKeys as ensureSiteUrlKeys } from "@/lib/establishments/server";
-import { INTAKE_SECTIONS, isRepeatValue, mapsLinkFor, parseLocation, splitLines, splitList, str, type IntakeData, type IntakePhoto, type RepeatItem } from "@/lib/intake/form";
+import { INTAKE_SECTIONS, designSummary, isRepeatValue, mapsLinkFor, parseLocation, splitLines, splitList, str, type IntakeData, type IntakePhoto, type RepeatItem } from "@/lib/intake/form";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import { Area } from "@/models/Area";
@@ -103,8 +104,10 @@ export function intakeAsText(kind: IntakeKind, data: IntakeData): string {
 }
 
 function notesFor(intake: Pick<IntakeDoc, "ref" | "kind" | "data" | "photos" | "adminNotes">, skipped: string[], extraPhotos: IntakePhoto[] = []): string {
+  const ds = designSummary(intake.kind, intake.data as IntakeData);
   const head = [
     `From website form ${intake.ref}.`,
+    `Design: website ${ds.website}, visiting card ${ds.card}. ${ds.final ? "Final choice." : "NOT FINAL: talk to them before finalising the design."}`,
     skipped.length ? `Please enter in the editor: ${skipped.join(", ")}.` : "",
     intake.photos?.viaWhatsapp ? "Applicant is sending (some) photos on WhatsApp." : "",
     intake.adminNotes ? `Review notes: ${intake.adminNotes}` : "",
@@ -196,6 +199,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     ...(story || str(d.beyondTitle) ? { interestsStory: { title: str(d.beyondTitle).slice(0, 200) || "Beyond medicine", ...(story ? { body: story.slice(0, LIMITS.storyBody) } : {}) } } : {}),
     gallery: gallery(allGallery, LIMITS.galleryMax),
     ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
+    ...((TEMPLATE_KEYS as readonly string[]).includes(str(d.websiteDesign)) ? { portfolioTemplateId: str(d.websiteDesign) as TemplateKey } : {}),
     plan: "doctor",
     source: "inbound",
     ...(ownerFree ? { ownerEmail: intake.email } : {}),
@@ -218,15 +222,20 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const name = str(d.name);
   if (!name) throw new ConvertError(`Add the ${kind} name to the form first.`);
   const skipped = ["timings"];
+  if (splitLines(d.awards).length) skipped.push("accreditations and awards");
 
   const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(d.city) || "Pune");
   const area = city ? await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(d.area), { cityId: city._id }) : null;
   if (!city || !area) skipped.push("area / city");
 
-  const typeText = (kind === "clinic" ? str(d.clinicType) : str(d.hospitalType)).toLowerCase();
-  const categories = await ClinicCategory.find({ kind }).select({ name: 1, defaultThemeKey: 1 }).lean();
+  // Clinic type is a category slug from the form; "Other" (or an older free-text answer) is matched by name.
+  const typeSlug = kind === "clinic" ? str(d.clinicType) : "";
+  const typeText = (kind === "clinic" ? str(d.clinicTypeOther) || (typeSlug === "other" ? "" : typeSlug) : str(d.hospitalTypeOther)).toLowerCase();
+  const categories = await ClinicCategory.find({ kind }).select({ name: 1, slug: 1, defaultThemeKey: 1 }).lean();
   const category =
-    categories.find((c) => typeText && (typeText.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(typeText))) ?? (kind === "hospital" ? categories[0] : undefined);
+    categories.find((c) => typeSlug && c.slug === typeSlug) ??
+    categories.find((c) => typeText && (typeText.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(typeText))) ??
+    (kind === "hospital" ? categories[0] : undefined);
   if (!category) skipped.push("category");
 
   const pincode = str(d.pincode);
@@ -243,6 +252,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     status: "draft",
     name,
     ...(category ? { categoryId: category._id, themeKey: category.defaultThemeKey } : {}),
+    ...(isThemeKey(str(d.websiteDesign)) ? { themeKey: str(d.websiteDesign) } : {}),
     logo: image(intake.photos?.logo, `${name} logo`),
     coverPhoto: image(intake.photos?.cover, name),
     tagline: str(d.tagline).slice(0, 200) || undefined,
@@ -270,7 +280,10 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     departments,
     ...(beds !== undefined && beds <= LIMITS.hospitalBedsMax && kind === "hospital" ? { beds: { total: beds, types: [] } } : {}),
     ...(insurance.length || d.cashless === true ? { insurance: { cashless: d.cashless === true, providers: insurance } } : {}),
-    doctors: splitLines(d.doctors).map(parseDoctorLine).filter((x) => x.name),
+    doctors: [
+      ...splitLines(d.doctors).map(parseDoctorLine),
+      ...splitLines(d.visitingDoctors).map((l) => ({ ...parseDoctorLine(l), role: "Visiting consultant" })),
+    ].filter((x) => x.name),
     languages: splitList(d.languages),
     gallery: gallery(intake.photos?.gallery ?? [], kind === "clinic" ? LIMITS.clinicGalleryMax : LIMITS.hospitalGalleryMax),
     links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "youtube", "website"]),

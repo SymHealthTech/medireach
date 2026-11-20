@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Home, Info, Loader2, Lock, Pencil, Send } from "lucide-react";
 import { WhatsAppIcon } from "@/components/marketing/WhatsAppLink";
-import { endIntakeSessionAction, saveIntakeAction, signIntakeUploadAction, type VerifyIntakeResult } from "@/app/(marketing)/get-started/actions";
+import { saveIntakeAction, signIntakeUploadAction, type VerifyIntakeResult } from "@/app/(marketing)/get-started/actions";
 import { saveIntakeAdminAction } from "@/app/admin/(dash)/intakes/actions";
 import { signUploadAction } from "@/app/admin/(dash)/upload-actions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -15,6 +15,7 @@ import {
   INTAKE_KIND_LABEL,
   INTAKE_PHOTOS,
   INTAKE_SECTIONS,
+  LATE_SECTIONS,
   emptyIntakeData,
   emptyIntakePhotos,
   fieldId,
@@ -55,23 +56,24 @@ const dateOf = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("en-IN"
 export function IntakeForm({
   kind,
   initial,
-  sessionEmail,
   waNumber,
   mode = "public",
+  savedRef,
 }: {
   kind: IntakeKind;
   initial: IntakeView | null;
-  sessionEmail: string | null;
   /** MediReach WhatsApp number (digits). */
   waNumber: string;
   mode?: "public" | "admin";
+  /** A blank form, while this browser already has a saved form of this kind (its reference). */
+  savedRef?: string;
 }) {
   const admin = mode === "admin";
   const sections = INTAKE_SECTIONS[kind];
   const photoCfg = INTAKE_PHOTOS[kind];
 
   const [id, setId] = useState(initial?.id);
-  const [email, setEmail] = useState(initial?.email ?? sessionEmail ?? "");
+  const [email, setEmail] = useState(initial?.email ?? "");
   const [data, setData] = useState<IntakeData>(initial?.data ?? emptyIntakeData(kind));
   const [photos, setPhotos] = useState<IntakePhotos>(initial?.photos ?? emptyIntakePhotos());
   const [status, setStatus] = useState<IntakeStatus>(initial?.status ?? "draft");
@@ -140,6 +142,12 @@ export function IntakeForm({
               setCodeFor(r.email);
               return false;
             }
+            if (r.existing) {
+              helpers.current.openSaved(r.existing);
+              setBanner({ tone: "ok", text: `This email already has a ${INTAKE_KIND_LABEL[kind].toLowerCase()} form (${r.existing.ref}). We opened it and added what you just typed. Check it and keep going.` });
+              setTimeout(() => void save("auto"), 0);
+              return false;
+            }
             setErrors(r.fieldErrors ?? {});
             if (how !== "auto" || !r.fieldErrors) setBanner({ tone: "error", text: r.error });
             if (how !== "auto" && r.fieldErrors) {
@@ -148,6 +156,7 @@ export function IntakeForm({
             }
             return false;
           }
+          if (!cur.id) helpers.current.rememberInUrl();
           apply(r.intake);
           if (how === "submit") {
             setJustSent(true);
@@ -195,16 +204,35 @@ export function IntakeForm({
     return save("save");
   }, [save]);
 
+  /**
+   * After the first save the URL becomes ?continue=1, so a refresh reopens
+   * this form; a plain /get-started/{kind} always starts blank. (Same route:
+   * replaceState keeps this page instance.)
+   */
+  function rememberInUrl() {
+    if (admin) return;
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}?continue=1`);
+  }
+
+  /** Open a saved form, keeping what was just typed on top (fill-in-the-blanks). */
+  function openSaved(saved: IntakeView) {
+    const merged = mergeIntake(kind, latest.current.data, saved.data);
+    const mergedPhotos = mergePhotos(latest.current.photos, saved.photos, photoCfg.galleryMax);
+    apply(saved);
+    setData(merged);
+    setPhotos(mergedPhotos);
+    latest.current = { id: saved.id, email: saved.email, data: merged, photos: mergedPhotos };
+    rememberInUrl();
+    touch();
+  }
+
+  // save() is memoised; it reaches these through a ref so it always gets the current ones.
+  const helpers = useRef({ openSaved, rememberInUrl });
+  helpers.current = { openSaved, rememberInUrl };
+
   function onVerified(r: Extract<VerifyIntakeResult, { ok: true }>) {
     setCodeFor(null);
-    if (r.intake) {
-      const merged = mergeIntake(kind, latest.current.data, r.intake.data);
-      const mergedPhotos = mergePhotos(latest.current.photos, r.intake.photos, photoCfg.galleryMax);
-      apply(r.intake);
-      setData(merged);
-      setPhotos(mergedPhotos);
-      latest.current = { id: r.intake.id, email: r.intake.email, data: merged, photos: mergedPhotos };
-    }
+    if (r.intake) openSaved(r.intake);
     touch();
     setBanner({ tone: "ok", text: r.intake ? "We opened your saved form and added what you just typed. Check it and keep going." : "Email confirmed. Your form is saved." });
     // Quiet save: keeps the message above.
@@ -296,6 +324,14 @@ export function IntakeForm({
         </header>
       )}
 
+      {!admin && !id && savedRef && (
+        <p className="mb-6 rounded-2xl border border-line bg-surface p-4 text-sm text-body">
+          This is a new, empty form. You also have a saved {INTAKE_KIND_LABEL[kind].toLowerCase()} form ({savedRef}).{" "}
+          <a href={`/get-started/${kind}?continue=1`} className="font-semibold text-lagoon underline underline-offset-2">
+            Continue that form
+          </a>
+        </p>
+      )}
       {!admin && status !== "draft" && (
         <div role="status" className="mb-6 flex gap-3 rounded-2xl border border-line bg-surface p-4 text-sm text-body">
           {editable ? <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-leaf" aria-hidden /> : <Lock className="mt-0.5 size-5 shrink-0 text-lagoon" aria-hidden />}
@@ -331,27 +367,22 @@ export function IntakeForm({
               <p id={`${fieldId("email")}-help`} className={cn("text-sm", errors.email ? "text-clay-text" : "text-body/70")}>
                 {errors.email ?? (admin ? "The applicant logs in with this email." : "Compulsory. Use this email next time to log in and complete or change the form.")}
               </p>
-              {!admin && id && sessionEmail && (
+              {!admin && id && (
                 <p className="text-xs text-body/70">
-                  Form ref <strong className="whitespace-nowrap">{ref}</strong>.{" "}
-                  <button
-                    type="button"
-                    className="underline underline-offset-2"
-                    onClick={async () => {
-                      await endIntakeSessionAction();
-                      window.location.assign(`/get-started/${kind}`);
-                    }}
-                  >
-                    Not you? Start a new form
-                  </button>
+                  Form ref <strong className="whitespace-nowrap">{ref}</strong>. Filling for someone else?{" "}
+                  <a href={`/get-started/${kind}`} className="underline underline-offset-2">
+                    Start a new form
+                  </a>
                 </p>
               )}
             </div>
           </SectionCard>
 
-          {sections.map((s) => (
-            <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
-          ))}
+          {sections
+            .filter((s) => !(LATE_SECTIONS as readonly string[]).includes(s.key))
+            .map((s) => (
+              <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
+            ))}
 
           <IntakePhotosSection
             config={photoCfg}
@@ -366,6 +397,12 @@ export function IntakeForm({
             disabled={!editable}
             error={errors.photos}
           />
+
+          {sections
+            .filter((s) => (LATE_SECTIONS as readonly string[]).includes(s.key))
+            .map((s) => (
+              <IntakeSection key={s.key} section={s} data={data} onChange={changeData} errors={errors} />
+            ))}
 
           {!admin && editable && (
             <SectionCard id="section-send" title="Check and send">

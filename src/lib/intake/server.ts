@@ -120,6 +120,8 @@ export type SaveOutcome =
       notify: IntakeNotice[];
     }
   | { ok: false; error: string; fieldErrors?: Record<string, string> }
+  /** This browser owns the email, but started a blank form: open the saved one instead (the page merges). */
+  | { ok: false; existing: IntakeView; error: string }
   /** A form already exists for this email: prove it with a code first. */
   | { ok: false; needsCode: true; email: string; error: string };
 
@@ -173,6 +175,8 @@ export async function saveIntake(raw: SaveInput, sessionEmail: string | null, op
         if (email === doc.email) return { ok: false, needsCode: true, email, error: "A form is already saved with this email. Enter the code we email you to open it." };
         return { ok: false, error: "Your session has ended. Use “Continue a saved form” to log in again." };
       }
+      // A fresh (blank) form for an email that already has this kind of form: never overwrite it; the page merges and continues it.
+      if (!id) return { ok: false, existing: toView(doc.toObject()), error: "This email already has a saved form." };
       if (email !== doc.email) {
         // Changing the form's email: only to an address with no forms yet (else it would grant access to them).
         if (await Intake.exists({ email })) return { ok: false, error: "That email already has a saved form. Use “Continue a saved form” with that email.", fieldErrors: { email: "Already used for another form." } };

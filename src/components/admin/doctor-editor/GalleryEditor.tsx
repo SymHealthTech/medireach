@@ -9,7 +9,6 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { uploadImage } from "@/lib/client/upload-image";
 import type { DoctorForm } from "@/lib/doctors/form";
-import { downscale } from "./PhotoCropUpload";
 
 type Item = DoctorForm["gallery"][number];
 
@@ -114,7 +113,7 @@ export function GalleryEditor({
     const added: Item[] = [];
     try {
       for (const file of Array.from(files).slice(0, room)) {
-        const up = await uploadImage(await downscale(file, 2400), "gallery");
+        const up = await uploadImage(file, "gallery");
         added.push({ publicId: up.publicId, url: up.url, caption: "" });
       }
     } catch (e) {
