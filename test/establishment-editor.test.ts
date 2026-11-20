@@ -72,6 +72,15 @@ describe("clinic/hospital editor (server)", () => {
     expect(publishProblems(doc, scanEstablishment(doc, DEFAULT_BANNED_PHRASES))).toEqual([]);
   });
 
+  it("saves the visiting card style code (clinic or hospital styles)", async () => {
+    const { doc, f } = await clinicReady("Card Style Clinic");
+    await save(doc, "basics", { ...f, cardStyle: "HSP-NAVY" });
+    expect((await Establishment.findById(doc._id).lean())!.cardStyle).toBe("HSP-NAVY");
+    expect(docToForm(doc.toObject()).cardStyle).toBe("HSP-NAVY");
+    await save(doc, "basics", { ...f, cardStyle: "" });
+    expect((await Establishment.findById(doc._id).lean())!.cardStyle).toBeUndefined();
+  });
+
   it("de-duplicates page slugs per city and never makes a dr- short link", async () => {
     const a = await clinicReady("Dr Patil Clinic");
     const b = await clinicReady("Dr Patil Clinic");

@@ -1,6 +1,8 @@
 import { Clock, Globe, MapPin, MessageCircle, Phone, UserPlus } from "lucide-react";
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { qrForUrl } from "@/lib/cards/qr";
+import { alpha, DEFAULT_DOCTOR_CARD_STYLE, doctorCardPalette } from "@/lib/cards/styles";
 import { cn } from "@/lib/cn";
 import { formatPhone } from "@/lib/phone";
 import { openDaysSummary } from "@/lib/timings";
@@ -34,6 +36,13 @@ export function DigitalCard({
   const phone = d.phone ?? clinic?.phone;
   const hours = clinic ? openDaysSummary(clinic.timings) : "";
   const qr = qrForUrl(d.shareUrl);
+  // Card style colours (lib/cards/styles.ts) as CSS variables; the default (Lagoon) keeps the brand ink background.
+  const p = doctorCardPalette(d.cardStyle);
+  const isDefault = p === DEFAULT_DOCTOR_CARD_STYLE.palette;
+  const vars = { "--dc-hl": p.highlight, "--dc-ink": p.ink, "--dc-brand": p.brand, "--dc-soft": p.soft } as CSSProperties;
+  const headerBg = isDefault
+    ? undefined
+    : { background: `radial-gradient(55% 70% at 100% 0%, ${alpha(p.highlight, 0.16)}, transparent 70%), linear-gradient(160deg, ${p.panel[0]} 0%, ${p.panel[1]} 55%, ${p.panel[2]} 100%)` };
 
   const actions = [
     ...(phone ? [{ label: "Call", href: `tel:+${phone}`, icon: Phone, external: false }] : []),
@@ -47,21 +56,22 @@ export function DigitalCard({
   return (
     <article
       aria-label={`${d.fullName} – digital visiting card`}
+      style={vars}
       className={cn(
         "mx-auto w-full max-w-[420px] overflow-hidden bg-surface shadow-lift ring-1 ring-ink/5",
         compact ? "rounded-[28px]" : "rounded-[32px]",
         className,
       )}
     >
-      <div className={cn("mr-ink-bg relative overflow-hidden px-6 text-center text-paper", compact ? "pb-16 pt-6" : "pb-20 pt-8")}>
+      <div className={cn("relative overflow-hidden px-6 text-center", isDefault ? "mr-ink-bg text-paper" : "text-white", compact ? "pb-16 pt-6" : "pb-20 pt-8")} style={headerBg}>
         <span aria-hidden className="absolute -right-16 -top-16 size-56 rounded-full border border-paper/10" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-marigold">Digital visiting card</p>
-        <div className={cn("mx-auto rounded-full bg-marigold p-[5px]", compact ? "mt-4 size-[96px] p-1" : "mt-6 size-[132px]")}>
-          <div className="relative size-full overflow-hidden rounded-full bg-sage">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-(--dc-hl)">Digital visiting card</p>
+        <div className={cn("mx-auto rounded-full bg-(--dc-hl) p-[5px]", compact ? "mt-4 size-[96px] p-1" : "mt-6 size-[132px]")}>
+          <div className="relative size-full overflow-hidden rounded-full bg-(--dc-soft)">
             {d.photo ? (
               <Image src={d.photo.url} alt={d.photo.alt} fill priority={priority} sizes={compact ? "96px" : "132px"} className="object-cover" />
             ) : (
-              <span aria-hidden className={cn("flex size-full items-center justify-center font-display font-semibold text-ink", compact ? "text-3xl" : "text-4xl")}>
+              <span aria-hidden className={cn("flex size-full items-center justify-center font-display font-semibold text-(--dc-ink)", compact ? "text-3xl" : "text-4xl")}>
                 {d.firstName[0]}
                 {d.lastName[0]}
               </span>
@@ -69,7 +79,7 @@ export function DigitalCard({
           </div>
         </div>
         <Name className={cn("font-display font-semibold leading-tight", compact ? "mt-3 text-[24px]" : "mt-5 text-[28px]")}>{d.fullName}</Name>
-        {d.primarySpecialty && <p className="mt-1.5 font-semibold text-marigold">{d.primarySpecialty.name}</p>}
+        {d.primarySpecialty && <p className="mt-1.5 font-semibold text-(--dc-hl)">{d.primarySpecialty.name}</p>}
         {d.degreesLine && <p className="mt-1 text-sm text-paper/75">{d.degreesLine}</p>}
       </div>
 
@@ -82,11 +92,11 @@ export function DigitalCard({
                 {...(external ? { target: "_blank", rel: "noopener" } : {})}
                 {...("download" in a && a.download ? { download: "" } : {})}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold text-ink transition hover:bg-mint active:scale-[.97]",
+                  "flex flex-col items-center justify-center gap-1 rounded-xl text-xs font-semibold text-(--dc-ink) transition hover:bg-(--dc-soft) active:scale-[.97]",
                   compact ? "min-h-[54px]" : "min-h-[64px]",
                 )}
               >
-                <span className={label === "WhatsApp" ? "text-leaf-text" : "text-lagoon"}>
+                <span className={label === "WhatsApp" ? "text-leaf-text" : "text-(--dc-brand)"}>
                   <Icon className="size-5" strokeWidth={1.9} />
                 </span>
                 {label}
@@ -99,30 +109,30 @@ export function DigitalCard({
       <ul className={cn("px-6 text-sm", compact ? "space-y-2.5 py-4" : "space-y-4 pb-6 pt-6")}>
         {phone && (
           <li className="flex items-start gap-3">
-            <Phone aria-hidden className="mt-0.5 size-4 shrink-0 text-lagoon" strokeWidth={1.9} />
-            <a href={`tel:+${phone}`} className="font-semibold text-ink">
+            <Phone aria-hidden className="mt-0.5 size-4 shrink-0 text-(--dc-brand)" strokeWidth={1.9} />
+            <a href={`tel:+${phone}`} className="font-semibold text-(--dc-ink)">
               {formatPhone(phone)}
             </a>
           </li>
         )}
         {clinic && (
           <li className="flex items-start gap-3">
-            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-lagoon" strokeWidth={1.9} />
+            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-(--dc-brand)" strokeWidth={1.9} />
             <span>
-              <span className="block font-semibold text-ink">{clinic.name}</span>
+              <span className="block font-semibold text-(--dc-ink)">{clinic.name}</span>
               <span className="text-body/80">{compact ? `${clinic.area.name}, ${clinic.city.name}` : clinic.fullAddress}</span>
             </span>
           </li>
         )}
         {hours && (
           <li className="flex items-start gap-3">
-            <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-lagoon" strokeWidth={1.9} />
+            <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-(--dc-brand)" strokeWidth={1.9} />
             <span className="text-body/80">{hours}</span>
           </li>
         )}
         <li className="flex items-start gap-3">
-          <Globe aria-hidden className="mt-0.5 size-4 shrink-0 text-lagoon" strokeWidth={1.9} />
-          <a href={websiteUrl} className="break-all font-semibold text-lagoon underline-offset-4 hover:underline">
+          <Globe aria-hidden className="mt-0.5 size-4 shrink-0 text-(--dc-brand)" strokeWidth={1.9} />
+          <a href={websiteUrl} className="break-all font-semibold text-(--dc-brand) underline-offset-4 hover:underline">
             {d.shareUrl.replace(/^https?:\/\//, "")}
           </a>
         </li>
@@ -131,11 +141,11 @@ export function DigitalCard({
       <div className={cn("flex items-center gap-4 border-t border-line bg-paper px-6", compact ? "py-3.5" : "py-5")}>
         <div className="shrink-0 rounded-xl bg-white p-2 ring-1 ring-line">
           <svg width={compact ? 64 : 96} height={compact ? 64 : 96} viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges" role="img" aria-label={`QR code for ${d.shareUrl}`}>
-            <path d={qr.path} fill="#0A3F3F" />
+            <path d={qr.path} fill={p.ink} />
           </svg>
         </div>
         <p className="text-sm text-body/80">
-          <span className={cn("block font-display font-semibold text-ink", compact ? "text-base" : "text-lg")}>Scan with any phone</span>
+          <span className={cn("block font-display font-semibold text-(--dc-ink)", compact ? "text-base" : "text-lg")}>Scan with any phone</span>
           {compact ? "Opens the website." : "Opens the website with timings, directions and contact."}
         </p>
       </div>

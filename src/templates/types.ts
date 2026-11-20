@@ -111,6 +111,8 @@ export interface PublicDoctor {
 
   portfolioTemplateId: string;
   cardTemplateId: string;
+  /** Visiting card colour style code, e.g. "DOC-AMBER" (lib/cards/styles.ts); absent = Lagoon. */
+  cardStyle?: string;
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
   /** Renewal not paid after the grace period: the page shows a "temporarily unavailable" notice instead. */
   lapsed?: boolean;
@@ -275,6 +277,8 @@ export interface PublicEstablishment {
 
   siteTemplateId: string;
   cardTemplateId: string;
+  /** Visiting card colour style code, e.g. "CLN-OCEAN" (lib/cards/styles.ts); absent = specialty theme colours. */
+  cardStyle?: string;
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
   /** Renewal not paid after the grace period: the page shows a "temporarily unavailable" notice instead. */
   lapsed?: boolean;

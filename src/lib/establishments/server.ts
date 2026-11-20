@@ -53,6 +53,7 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
     about: s(d.about),
     siteTemplateId: d.siteTemplateId ?? "classic",
     cardTemplateId: d.cardTemplateId ?? "classic",
+    cardStyle: d.cardStyle ?? "",
     address: {
       line1: s(d.address?.line1),
       line2: s(d.address?.line2),
@@ -166,6 +167,7 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
         about: d.about ? sanitizeBioHtml(d.about) : undefined,
         siteTemplateId: d.siteTemplateId,
         cardTemplateId: d.cardTemplateId,
+        cardStyle: d.cardStyle,
       });
       break;
     }

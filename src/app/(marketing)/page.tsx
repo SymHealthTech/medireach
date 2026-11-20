@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Check, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { FloatingWhatsApp } from "@/components/marketing/FloatingWhatsApp";
 import { LeadForm } from "@/components/marketing/LeadForm";
 import { Reveal } from "@/components/marketing/Reveal";
@@ -200,6 +201,14 @@ export default async function HomePage() {
                 />
                 <p className="mt-3 text-center text-xs text-muted-foreground">{CARD_SPOTLIGHT.flipHint}</p>
               </div>
+              <Link
+                href="/visiting-cards"
+                data-reveal-item
+                className="group mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-ink px-6 font-semibold text-paper transition-colors hover:bg-ink-700 active:scale-[.98]"
+              >
+                {CARD_SPOTLIGHT.allStyles}
+                <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+              </Link>
             </div>
           </div>
         </Reveal>

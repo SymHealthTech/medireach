@@ -10,6 +10,7 @@ import {
   type EstablishmentKind,
   type RenewalStatus,
 } from "@/lib/constants";
+import { SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { htmlToText } from "@/lib/compliance/scan";
 import { chips, dateStr, email, HHMM, image, optOid, phone, t, url, type ImageValue } from "@/lib/doctors/form";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
@@ -51,6 +52,8 @@ export interface EstablishmentForm {
   about: string; // sanitised HTML
   siteTemplateId: string;
   cardTemplateId: string;
+  /** Visiting card colour style code ("" = the specialty theme colours). */
+  cardStyle: string;
 
   // 2 Location and contact
   address: { line1: string; line2: string; cityId: string; areaId: string; state: string; pincode: string; landmark: string; parkingNote: string };
@@ -130,6 +133,7 @@ export function emptyEstablishmentForm(kind: EstablishmentKind = "clinic"): Esta
     about: "",
     siteTemplateId: "classic",
     cardTemplateId: "classic",
+    cardStyle: "",
     address: { line1: "", line2: "", cityId: "", areaId: "", state: "Maharashtra", pincode: "", landmark: "", parkingNote: "" },
     mapsUrl: "",
     lat: "",
@@ -342,6 +346,7 @@ export const sectionSchemas = {
     about: z.string().max(10_000),
     siteTemplateId: z.enum(TEMPLATE_KEYS),
     cardTemplateId: z.enum(TEMPLATE_KEYS),
+    cardStyle: z.enum(["", ...SITE_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
   }),
   location: z
     .object({
@@ -487,6 +492,7 @@ export function sectionPayload(step: StepKey, f: EstablishmentForm): unknown {
         about: f.about,
         siteTemplateId: f.siteTemplateId,
         cardTemplateId: f.cardTemplateId,
+        cardStyle: f.cardStyle,
       };
     case "location":
       return {

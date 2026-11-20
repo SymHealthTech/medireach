@@ -36,7 +36,7 @@ describe("marketing routes", () => {
   });
 
   it("points the top bar and footer at the product pages", () => {
-    expect(NAV.map((n) => n.href)).toEqual(["/for-doctors", "/for-clinics", "/for-hospitals", "/designs", "/pricing", "/login"]);
+    expect(NAV.map((n) => n.href)).toEqual(["/for-doctors", "/for-clinics", "/for-hospitals", "/visiting-cards", "/pricing", "/login"]);
     const footerLinks = FOOTER.columns.flatMap((c) => c.links.map((l) => l.href));
     expect(footerLinks).toEqual(expect.arrayContaining(["/for-doctors", "/for-clinics", "/for-hospitals", "/pricing", "/terms", "/privacy"]));
   });

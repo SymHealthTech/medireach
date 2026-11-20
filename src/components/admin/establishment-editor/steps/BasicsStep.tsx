@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, NativeSelect } from "@/components/admin/form/fields";
 import { ImageUpload } from "@/components/admin/form/ImageUpload";
+import { CardStylePicker } from "@/components/admin/CardStylePicker";
 import { PhotoCropUpload } from "@/components/admin/doctor-editor/PhotoCropUpload";
 import { RichTextEditor } from "@/components/admin/doctor-editor/RichTextEditor";
 import { Group, grid2 } from "@/components/admin/doctor-editor/shared";
@@ -113,6 +114,20 @@ export function BasicsStep({ form: f, set, err, options, readOnly }: EStepProps)
             </NativeSelect>
           </Field>
         </div>
+      </Group>
+
+      <Group
+        title="Visiting card colours"
+        description="The code name the clinic or hospital picked on the Visiting cards page (e.g. CLN-OCEAN). The card page, WhatsApp image and print PDF all use it."
+      >
+        <CardStylePicker
+          groups={f.kind === "hospital" ? ["hospital", "clinic"] : ["clinic", "hospital"]}
+          value={f.cardStyle}
+          disabled={readOnly}
+          onChange={(cardStyle) => set({ cardStyle })}
+          defaultLabel="Default: specialty design colours"
+          defaultHint="The card uses the colours of the specialty design chosen above."
+        />
       </Group>
 
       <Group title="Logo and cover photo" description="Premises or signboard only. Never patients.">

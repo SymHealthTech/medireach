@@ -166,6 +166,7 @@ export function toPublicEstablishment(
     links,
     siteTemplateId: e.siteTemplateId ?? "classic",
     cardTemplateId: e.cardTemplateId ?? "classic",
+    ...(e.cardStyle ? { cardStyle: e.cardStyle } : {}),
     seo: {
       ...(e.seo?.titleOverride ? { titleOverride: e.seo.titleOverride } : {}),
       ...(e.seo?.descriptionOverride ? { descriptionOverride: e.seo.descriptionOverride } : {}),

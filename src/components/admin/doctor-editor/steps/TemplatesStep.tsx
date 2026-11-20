@@ -2,6 +2,7 @@
 
 import { Check, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { CardStylePicker } from "@/components/admin/CardStylePicker";
 import { cn } from "@/lib/cn";
 import { Group, type StepProps } from "../shared";
 
@@ -78,6 +79,16 @@ export function TemplatesStep({ form: f, set, options, readOnly }: StepProps) {
       </Group>
       <Group title="Visiting card design">
         <SlotPicker type="card" value={f.cardTemplateId} options={options} disabled={readOnly} onChange={(cardTemplateId) => set({ cardTemplateId })} />
+      </Group>
+      <Group title="Visiting card colours" description="The code name the doctor picked on the Visiting cards page (e.g. DOC-AMBER). The card page, WhatsApp image and print PDF all use it.">
+        <CardStylePicker
+          groups={["doctor"]}
+          value={f.cardStyle}
+          disabled={readOnly}
+          onChange={(cardStyle) => set({ cardStyle })}
+          defaultLabel="Default (DOC-LAGOON)"
+          defaultHint="Teal with amber accents"
+        />
       </Group>
     </div>
   );

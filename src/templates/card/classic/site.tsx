@@ -4,12 +4,14 @@ import { openDaysSummary } from "@/lib/timings";
 import { DevBanner } from "@/templates/DevBanner";
 import { CARD_SIZE, type SiteCardTemplateProps } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
+import { siteCardPalette } from "@/lib/cards/styles";
 import { Icon, QrBlock, shortUrl, type ICONS } from "./index";
 
 /**
  * Classic visiting card for clinics and hospitals (DESIGN_BRIEF.md §10):
  * logo, name, category, address, timings summary (or "24×7"), phone and QR,
- * in the site's specialty theme colours.
+ * in the colours of the site's card style code (`cardStyle`, see
+ * lib/cards/styles.ts), else its specialty theme colours.
  *
  *  - print (85 × 55 mm): theme panel on the left with the logo and QR code;
  *    name, category and contact rows on the right.
@@ -70,7 +72,7 @@ function PrintRow({ icon, children, strong, soft, primary }: { icon: keyof typeo
 
 function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
-  const { primary, accent, soft } = getTheme(s.themeKey, s.kind).palette;
+  const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
   const phone = s.emergencyPhone ?? s.phones[0];
   const what = s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic");
   return (
@@ -131,7 +133,7 @@ function PhoneRow({ icon, label, value, last, soft, primary }: { icon: keyof typ
 
 function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
-  const { primary, accent, soft } = getTheme(s.themeKey, s.kind).palette;
+  const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
   const what = s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic");
   const rows: { icon: keyof typeof ICONS; label: string; value: string }[] = [
     ...(s.emergencyPhone ? [{ icon: "phone" as const, label: "24×7 emergency", value: formatPhone(s.emergencyPhone) }] : []),

@@ -14,6 +14,7 @@ import {
   type DoctorStatus,
   type RenewalStatus,
 } from "@/lib/constants";
+import { DOCTOR_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { htmlToText } from "@/lib/compliance/scan";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
 
@@ -137,6 +138,8 @@ export interface DoctorForm {
   // 9 Templates
   portfolioTemplateId: string;
   cardTemplateId: string;
+  /** Visiting card colour style code ("" = default, DOC-LAGOON). */
+  cardStyle: string;
 
   // 10 Review
   approval: { doctorApprovedAt: string; approvedVia: "" | (typeof APPROVAL_CHANNELS)[number] };
@@ -220,6 +223,7 @@ export function emptyDoctorForm(): DoctorForm {
     internalNotes: "",
     portfolioTemplateId: "classic",
     cardTemplateId: "classic",
+    cardStyle: "",
     approval: { doctorApprovedAt: "", approvedVia: "" },
   };
 }
@@ -582,6 +586,7 @@ export const sectionSchemas = {
   templates: z.object({
     portfolioTemplateId: z.enum(TEMPLATE_KEYS),
     cardTemplateId: z.enum(TEMPLATE_KEYS),
+    cardStyle: z.enum(["", ...DOCTOR_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
   }),
   review: z.object({
     approval: z.object({
@@ -611,7 +616,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "business":
       return { plan: f.plan, founding: f.founding, setupPaidAt: f.setupPaidAt, renewalPrice: f.renewalPrice, renewalDueDate: f.renewalDueDate, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, establishmentIds: f.establishmentIds, salesExecutive: f.salesExecutive, source: f.source, internalNotes: f.internalNotes };
     case "templates":
-      return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId };
+      return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle };
     case "review":
       return { approval: f.approval };
   }

@@ -1,4 +1,5 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
+import { SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import {
   APPROVAL_CHANNELS,
   DEFAULT_TEMPLATE_KEY,
@@ -105,6 +106,8 @@ export interface EstablishmentDoc {
 
   siteTemplateId: TemplateKey;
   cardTemplateId: TemplateKey;
+  /** Visiting card colour style code ("CLN-…" / "HSP-…", lib/cards/styles.ts). */
+  cardStyle?: string;
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
 
   // Business (never exposed publicly)
@@ -246,6 +249,7 @@ const establishmentSchema = new Schema<EstablishmentDoc>(
 
     siteTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
     cardTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
+    cardStyle: { type: String, enum: SITE_CARD_STYLE_CODES },
     seo: {
       titleOverride: str,
       descriptionOverride: str,

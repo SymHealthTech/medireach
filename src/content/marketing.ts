@@ -97,6 +97,46 @@ export const CARD_SPOTLIGHT = {
   /** Labels on the two previews. */
   digitalLabel: "Digital card: opens on any phone",
   printLabel: "Print card",
+  /** Link to /visiting-cards. */
+  allStyles: "See all 15 card styles",
+};
+
+/** Visiting card gallery (/visiting-cards): five colour styles per audience, each with a code name. */
+export const VISITING_CARDS = {
+  eyebrow: "Digital visiting cards",
+  title: "Pick the visiting card you like",
+  text: "Five colour styles each for doctors, clinics and hospitals. Every style has a code name: tell us the code when you ask for your website, and we link the card to it.",
+  steps: [
+    { title: "Pick a style", text: "Look through the cards below and note the code name, like DOC-AMBER." },
+    { title: "Send us the code", text: "Open a card with “View full card” and tap “Choose this card”, or mention the code on WhatsApp with your website request." },
+    { title: "We link it to your website", text: "Your card gets your own name, photo or logo and contact details. Its QR code opens your website." },
+  ],
+  jumpLabel: "Show cards for",
+  groups: {
+    doctor: { tab: "Doctors", title: "Visiting cards for doctors", text: "With your photo, specialty, qualifications, clinic and timings." },
+    clinic: { tab: "Clinics", title: "Visiting cards for clinics", text: "With your logo, clinic type, timings and address." },
+    hospital: { tab: "Hospitals", title: "Visiting cards for hospitals", text: "With your logo, emergency number, timings and address." },
+  },
+  codeLabel: "Code name",
+  copy: "Copy code",
+  copied: "Copied",
+  view: "View full card",
+  close: "Close",
+  choose: "Choose this card",
+  phoneLabel: "Phone card",
+  printLabel: "Print card",
+  sampleNote: "Sample details. Your card shows your own name, photo or logo and contact details.",
+  included: {
+    title: "Every card comes with",
+    points: ["A card link to share on WhatsApp", "A phone image for WhatsApp status", "A print-ready PDF (85 × 55 mm)", "A QR code that opens your website", "One-tap call and directions"],
+  },
+  faq: [
+    { q: "Is the visiting card extra?", a: "No. A digital visiting card is included in every plan." },
+    { q: "Can I change the colours later?", a: "Yes. Send us another code name and we switch it. Your card link and QR code stay the same." },
+    { q: "Can a clinic use a hospital style?", a: "Yes. Clinic and hospital cards share the same layout, so either set of styles works." },
+  ],
+  help: "Not sure which one? Ask us on WhatsApp",
+  helpText: "Hi, I need help choosing a MediReach visiting card.",
 };
 
 export const HOW_IT_WORKS = {
@@ -374,7 +414,7 @@ export const FOOTER = {
         { href: "/for-doctors", label: "Doctors" },
         { href: "/for-clinics", label: "Clinics" },
         { href: "/for-hospitals", label: "Hospitals" },
-        { href: "/#visiting-card", label: "Visiting card" },
+        { href: "/visiting-cards", label: "Visiting cards" },
         { href: "/designs", label: "Specialty designs" },
       ],
     },
@@ -400,7 +440,7 @@ export const NAV = [
   { href: "/for-doctors", label: "Doctors" },
   { href: "/for-clinics", label: "Clinics" },
   { href: "/for-hospitals", label: "Hospitals" },
-  { href: "/designs", label: "Designs" },
+  { href: "/visiting-cards", label: "Visiting cards" },
   { href: "/pricing", label: "Pricing" },
   { href: "/login", label: "Login" },
 ];
@@ -447,6 +487,6 @@ export function allMarketingCopy(): string[] {
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === "object") Object.values(v).forEach(walk);
   };
-  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_DOCTORS, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS]);
+  walk([HERO, MARQUEE, FOUND, HOME_DESIGNS, CARD_SPOTLIGHT, HOW_IT_WORKS, NMC, PRICING, PRICING_PAGE, FOR_DOCTORS, FOR_CLINICS, FOR_HOSPITALS, MULTI_DOCTOR, FAQ, FINAL_CTA, FOOTER, NAV, GET_STARTED, CALLBACK, WHATSAPP_TEXT, DESIGNS, VISITING_CARDS]);
   return out;
 }

@@ -84,6 +84,19 @@ describe("doctor editor (server)", () => {
     expect(docToForm(doc.toObject()).approval).toEqual({ doctorApprovedAt: "2026-11-15", approvedVia: "whatsapp" });
   });
 
+  it("saves the visiting card style code and clears it again", async () => {
+    const f = emptyDoctorForm();
+    f.firstName = "Ravi";
+    f.lastName = "Kale";
+    const doc = new DoctorProfile({ firstName: "x", lastName: "x" });
+    await save(doc, "basics", f);
+    await save(doc, "templates", { ...f, cardStyle: "DOC-AMBER" });
+    expect((await DoctorProfile.findById(doc._id).lean())!.cardStyle).toBe("DOC-AMBER");
+    expect(docToForm(doc.toObject()).cardStyle).toBe("DOC-AMBER");
+    await save(doc, "templates", { ...f, cardStyle: "" });
+    expect((await DoctorProfile.findById(doc._id).lean())!.cardStyle).toBeUndefined();
+  });
+
   it("saves and removes the Beyond medicine photo and story", async () => {
     const f = emptyDoctorForm();
     f.firstName = "Neha";
