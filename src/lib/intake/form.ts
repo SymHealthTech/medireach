@@ -32,7 +32,11 @@ export type FieldType =
   | "number"
   | "pincode"
   | "select"
-  | "checkbox";
+  | "checkbox"
+  /** Long free text (a blog-style story) with a paste button. */
+  | "story"
+  /** A pin on the map, stored as "lat,lng". */
+  | "location";
 
 export interface FieldDef {
   key: string;
@@ -47,6 +51,10 @@ export interface FieldDef {
   /** Spans both columns. */
   wide?: boolean;
   autoComplete?: string;
+  /** Only shown (and only required) when another field has this value. */
+  showIf?: { key: string; equals: string };
+  /** Step-by-step instructions, shown under the field on request. */
+  steps?: readonly string[];
 }
 
 export interface SectionDef {
@@ -96,7 +104,7 @@ const GENDERS = [
 ] as const;
 
 const SYSTEMS = [
-  { value: "allopathy", label: "Allopathy (MBBS)" },
+  { value: "allopathy", label: "Allopathy" },
   { value: "dental", label: "Dental" },
   { value: "ayurveda", label: "Ayurveda" },
   { value: "homeopathy", label: "Homeopathy" },
@@ -104,6 +112,25 @@ const SYSTEMS = [
   { value: "siddha", label: "Siddha" },
   { value: "other", label: "Other" },
 ] as const;
+
+/** How to copy a Google Maps link on a phone. */
+export const MAPS_LINK_STEPS = [
+  "Open the Google Maps app and search for your clinic. If it is not listed, press and hold on the exact spot to drop a pin.",
+  "Tap Share (for a dropped pin, first tap the address card at the bottom).",
+  "Tap Copy link.",
+  "Come back here, press and hold in this box and tap Paste.",
+] as const;
+
+const locationFields = (what: string): FieldDef[] => [
+  {
+    key: "location",
+    label: "Location on map",
+    type: "location",
+    wide: true,
+    help: `Tap “Pick on map” and place the pin on your ${what}. At the ${what} right now? Use your current location.`,
+  },
+  { key: "mapsUrl", label: "Or paste a Google Maps link", type: "url", wide: true, help: "Not needed if you pinned it on the map.", steps: MAPS_LINK_STEPS },
+];
 
 const TIMINGS_PLACEHOLDER = "Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm\nSunday: closed";
 
@@ -162,6 +189,7 @@ const DOCTOR: SectionDef[] = [
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
       text("specialty", "Specialty", { required: true, placeholder: "General Physician, Dermatologist…" }),
       { key: "systemOfMedicine", label: "System of medicine", type: "select", options: SYSTEMS },
+      text("systemOther", "Please specify", { required: true, placeholder: "e.g. Naturopathy, Yoga, Sowa-Rigpa", showIf: { key: "systemOfMedicine", equals: "other" } }),
       {
         key: "qualifications",
         label: "Qualifications",
@@ -186,9 +214,9 @@ const DOCTOR: SectionDef[] = [
   },
   {
     key: "clinics",
-    title: "Clinics and timings",
-    description: "Where patients can meet you. Add up to 3 places.",
-    repeat: { max: 3, itemLabel: "Clinic", addLabel: "Add another clinic", minToSubmit: 1 },
+    title: "Your clinics and timings",
+    description: "Your main clinics where patients meet you (up to 2). Hospitals you visit as a consultant go in the next section.",
+    repeat: { max: 2, itemLabel: "Clinic", addLabel: "Add a second clinic", minToSubmit: 1 },
     fields: [
       text("name", "Clinic or hospital name", { required: true }),
       { key: "phone", label: "Clinic phone", type: "phone" },
@@ -196,10 +224,24 @@ const DOCTOR: SectionDef[] = [
       text("area", "Area", { required: true, placeholder: "Kothrud" }),
       text("city", "City", { required: true, placeholder: "Pune" }),
       { key: "pincode", label: "Pincode", type: "pincode" },
-      { key: "mapsUrl", label: "Google Maps link", type: "url" },
+      ...locationFields("clinic"),
       { key: "timings", label: "Timings", type: "textarea", required: true, wide: true, placeholder: TIMINGS_PLACEHOLDER },
       { key: "fee", label: "Consultation fee (₹)", type: "number", help: "Optional. Shown only if you want." },
       text("appointmentNote", "Appointment note", { placeholder: "Appointments preferred. Walk-ins welcome." }),
+    ],
+  },
+  {
+    key: "visiting",
+    title: "Visiting consultant",
+    description: "Hospitals where you consult on fixed days or on call. Names only: your website shows them as “Visiting consultant at …”.",
+    fields: [
+      {
+        key: "visitingAt",
+        label: "Visiting consultant at",
+        type: "lines",
+        wide: true,
+        placeholder: "One hospital per line\nRuby Hall Clinic, Pune\nJehangir Hospital, Pune",
+      },
     ],
   },
   {
@@ -213,7 +255,24 @@ const DOCTOR: SectionDef[] = [
       { key: "conditions", label: "Conditions you treat", type: "lines", placeholder: "One per line\nThyroid disorders\nFever and infections" },
       { key: "awards", label: "Awards", type: "lines", placeholder: "Award – Given by – Year" },
       { key: "memberships", label: "Memberships", type: "lines", placeholder: "Indian Medical Association – 2010" },
+    ],
+  },
+  {
+    key: "beyond",
+    title: "Beyond medicine",
+    description: "Optional. Your life outside the clinic: sports, travel, music, social work. It helps patients know you as a person.",
+    fields: [
       text("interests", "Hobbies and interests", { wide: true, placeholder: "Running, classical music, trekking" }),
+      text("beyondTitle", "Title for your story", { wide: true, placeholder: "Running my first full marathon" }),
+      {
+        key: "beyondStory",
+        label: "Your story",
+        type: "story",
+        wide: true,
+        max: LIMITS.storyBody,
+        placeholder: "Write a few paragraphs, like a short blog post.",
+        help: "Write here, or copy from Word, Google Docs, WhatsApp or a blog and paste it. Formatting is removed; paragraphs are kept.",
+      },
     ],
   },
   { ...linksSection, fields: [...linksSection.fields.slice(0, 3), { key: "linkedin", label: "LinkedIn", type: "url" }, ...linksSection.fields.slice(3)] },
@@ -222,13 +281,13 @@ const DOCTOR: SectionDef[] = [
 
 // --- Clinic / hospital ------------------------------------------------------
 
-const addressFields = (): FieldDef[] => [
+const addressFields = (what: string): FieldDef[] => [
   { key: "address", label: "Address", type: "textarea", required: true, wide: true, placeholder: "Shop 4, Shanti Complex, Karve Road" },
   text("area", "Area", { required: true, placeholder: "Kothrud" }),
   text("city", "City", { required: true, placeholder: "Pune" }),
   { key: "pincode", label: "Pincode", type: "pincode", required: true },
   text("landmark", "Landmark", { placeholder: "Opposite City Pride" }),
-  { key: "mapsUrl", label: "Google Maps link", type: "url", wide: true },
+  ...locationFields(what),
   { key: "phones", label: "Phone numbers", type: "phone", required: true, help: "Separate several numbers with commas." },
   { key: "siteWhatsapp", label: "WhatsApp number for patients", type: "mobile" },
   { key: "siteEmail", label: "Email for patients", type: "email", wide: true },
@@ -252,7 +311,7 @@ const CLINIC: SectionDef[] = [
     key: "address",
     title: "Address and timings",
     fields: [
-      ...addressFields(),
+      ...addressFields("clinic"),
       { key: "timings", label: "Timings", type: "textarea", required: true, wide: true, placeholder: TIMINGS_PLACEHOLDER },
       text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome." }),
     ],
@@ -301,7 +360,7 @@ const HOSPITAL: SectionDef[] = [
     key: "address",
     title: "Address, timings and emergency",
     fields: [
-      ...addressFields(),
+      ...addressFields("hospital"),
       { key: "emergencyPhone", label: "24×7 emergency number", type: "phone" },
       { key: "is24x7", label: "Open 24×7", type: "checkbox" },
       { key: "timings", label: "OPD timings", type: "textarea", required: true, wide: true, placeholder: TIMINGS_PLACEHOLDER },
@@ -342,10 +401,11 @@ export const INTAKE_SECTIONS: Record<IntakeKind, SectionDef[]> = { doctor: DOCTO
 
 export const INTAKE_PHOTOS: Record<IntakeKind, PhotoConfig> = {
   doctor: {
-    singles: [{ key: "profile", label: "Your photo", help: "A clear, recent photo of you. A plain background looks clean." }],
+    singles: [{ key: "profile", label: "Your photo", help: "A clear, recent photo of you. After choosing it, drag to centre your face and zoom if needed." }],
     galleryMax: LIMITS.galleryMax,
-    galleryLabel: "Clinic photos",
-    galleryHelp: "Outside, reception, consultation room.",
+    galleryLabel: "Photos: clinic, achievements and activities (up to 5)",
+    galleryHelp:
+      "Your clinic, awards and achievements, conferences, and activities outside medicine like trekking, marathons or music. Pick your best 5 and add a caption to say what each photo shows.",
   },
   clinic: {
     singles: [
@@ -476,6 +536,8 @@ const MAX: Record<FieldType, number> = {
   phone: 120,
   url: 500,
   textarea: 3000,
+  story: LIMITS.storyBody,
+  location: 40,
   lines: 3000,
   year: 4,
   number: 7,
@@ -496,6 +558,36 @@ export function normalizeMobile(s: string): string {
   const t = s.replace(/[\s()-]/g, "").replace(/^(\+?91|0)(?=\d{10}$)/, "");
   return /^\d{10}$/.test(t) ? t : s.trim();
 }
+
+/**
+ * Text pasted from Word, Google Docs, WhatsApp or a web page: Windows line
+ * ends, invisible characters, trailing spaces and runs of blank lines are
+ * cleaned; paragraphs (blank lines) stay.
+ */
+export function cleanPastedText(s: string): string {
+  return s
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u200B-\u200D\uFEFF\u00AD]/g, "")
+    .replace(/\u00A0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** "18.5074,73.8077" → { lat, lng }, or null. */
+export function parseLocation(v: unknown): { lat: number; lng: number } | null {
+  const m = typeof v === "string" ? v.trim().match(/^(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)$/) : null;
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+}
+
+/** Google Maps link for a pinned location. */
+export const mapsLinkFor = (loc: { lat: number; lng: number }) => `https://www.google.com/maps/search/?api=1&query=${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`;
+
+/** Is this field shown, given the other answers (in the same repeat item, or the form)? */
+export const isShown = (f: FieldDef, values: Record<string, unknown>) => !f.showIf || values[f.showIf.key] === f.showIf.equals;
 
 function fieldSchema(f: FieldDef) {
   if (f.type === "checkbox") return z.boolean().optional().default(false);
@@ -522,6 +614,10 @@ function fieldSchema(f: FieldDef) {
       return base.transform((s) => s.replace(/[₹,\s]/g, "")).refine((v) => v === "" || /^\d{1,7}$/.test(v), "Enter a number.");
     case "pincode":
       return base.transform((s) => s.replace(/\s/g, "")).refine((v) => v === "" || /^\d{6}$/.test(v), "Enter a 6-digit pincode.");
+    case "story":
+      return base.transform(cleanPastedText).refine((v) => v.length <= max, `Use at most ${max} characters.`);
+    case "location":
+      return base.refine((v) => v === "" || parseLocation(v) !== null, "Pick the location again.");
     case "select":
       return base.refine((v) => v === "" || (f.options ?? []).some((o) => o.value === v), "Choose an option.");
     default:
@@ -575,13 +671,13 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
       if (items.length < s.repeat.minToSubmit) out.push({ key: s.key, label: `At least one ${s.repeat.itemLabel.toLowerCase()}`, section: s.title });
       items.forEach((it, i) => {
         for (const f of s.fields) {
-          if (f.required && !filled(it[f.key])) {
+          if (f.required && isShown(f, it) && !filled(it[f.key])) {
             out.push({ key: `${s.key}.${i}.${f.key}`, label: items.length > 1 ? `${s.repeat!.itemLabel} ${i + 1}: ${f.label}` : f.label, section: s.title });
           }
         }
       });
     } else {
-      for (const f of s.fields) if (f.required && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
+      for (const f of s.fields) if (f.required && isShown(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
     }
   }
   return out;
@@ -591,11 +687,11 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
 export function requiredProgress(kind: IntakeKind, data: IntakeData): { done: number; total: number } {
   let total = 0;
   for (const s of INTAKE_SECTIONS[kind]) {
-    const req = s.fields.filter((f) => f.required).length;
     if (s.repeat) {
+      const req = s.fields.filter((f) => f.required && !f.showIf).length;
       const n = Math.max(s.repeat.minToSubmit, isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]).length : 0);
       total += req * n;
-    } else total += req;
+    } else total += s.fields.filter((f) => f.required && isShown(f, data)).length;
   }
   const missing = missingForSubmit(kind, data).length;
   return { done: Math.max(0, total - missing), total };

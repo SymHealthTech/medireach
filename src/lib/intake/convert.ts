@@ -5,7 +5,7 @@ import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, type IntakeKind } from "@/lib/con
 import { escapeRegExp } from "@/lib/admin/list";
 import { ensureUrlKeys as ensureDoctorUrlKeys } from "@/lib/doctors/server";
 import { ensureUrlKeys as ensureSiteUrlKeys } from "@/lib/establishments/server";
-import { INTAKE_SECTIONS, isRepeatValue, splitLines, splitList, str, type IntakeData, type IntakePhoto, type RepeatItem } from "@/lib/intake/form";
+import { INTAKE_SECTIONS, isRepeatValue, mapsLinkFor, parseLocation, splitLines, splitList, str, type IntakeData, type IntakePhoto, type RepeatItem } from "@/lib/intake/form";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import { Area } from "@/models/Area";
@@ -62,6 +62,12 @@ const paragraphs = (v: unknown) =>
     : undefined;
 const image = (p?: IntakePhoto, alt?: string) => (p ? { publicId: p.publicId, url: p.url, ...(alt ? { alt } : {}) } : undefined);
 const gallery = (ps: IntakePhoto[], max: number) => ps.slice(0, max).map((p) => ({ publicId: p.publicId, url: p.url, caption: p.caption ?? "" }));
+/** Pinned location → geo, and a maps link when none was pasted. */
+const place = (v: Record<string, unknown>) => {
+  const geo = parseLocation(v.location);
+  const mapsUrl = url(v.mapsUrl) ?? (geo ? mapsLinkFor(geo) : undefined);
+  return { ...(geo ? { geo } : {}), ...(mapsUrl ? { mapsUrl } : {}) };
+};
 const links = (d: IntakeData, keys: string[]) => Object.fromEntries(keys.map((k) => [k, url(d[k])]).filter(([, v]) => v));
 
 /** "Dr. Amit R. Kulkarni" → title, first, middle, last. */
@@ -96,12 +102,13 @@ export function intakeAsText(kind: IntakeKind, data: IntakeData): string {
   return out.join("\n");
 }
 
-function notesFor(intake: Pick<IntakeDoc, "ref" | "kind" | "data" | "photos" | "adminNotes">, skipped: string[]): string {
+function notesFor(intake: Pick<IntakeDoc, "ref" | "kind" | "data" | "photos" | "adminNotes">, skipped: string[], extraPhotos: IntakePhoto[] = []): string {
   const head = [
     `From website form ${intake.ref}.`,
     skipped.length ? `Please enter in the editor: ${skipped.join(", ")}.` : "",
     intake.photos?.viaWhatsapp ? "Applicant is sending (some) photos on WhatsApp." : "",
     intake.adminNotes ? `Review notes: ${intake.adminNotes}` : "",
+    extraPhotos.length ? `More photos from the form (not placed):\n${extraPhotos.map((ph) => `- ${ph.caption ? `${ph.caption}: ` : ""}${ph.url}`).join("\n")}` : "",
   ].filter(Boolean);
   return `${head.join("\n")}\n\n--- Form answers ---\n${intakeAsText(intake.kind, intake.data as IntakeData)}`.slice(0, 20_000);
 }
@@ -143,7 +150,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       cityId: city._id,
       state: city.state,
       pincode,
-      ...(url(c.mapsUrl) ? { mapsUrl: url(c.mapsUrl) } : {}),
+      ...place(c),
       ...(phones(c.phone)[0] ? { phone: phones(c.phone)[0] } : {}),
       timings: [],
       ...(str(c.appointmentNote) ? { appointmentNote: str(c.appointmentNote) } : {}),
@@ -152,6 +159,10 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     });
   }
   if (splitLines(d.awards).length) skipped.push("awards");
+  if (splitLines(d.visitingAt).length) skipped.push("visiting consultant hospitals");
+  if (str(d.systemOther)) skipped.push(`system of medicine ("${str(d.systemOther)}")`);
+  const allGallery = intake.photos?.gallery ?? [];
+  const story = str(d.beyondStory);
 
   const ownerFree = !(await DoctorProfile.exists({ ownerEmail: intake.email }));
   const system = (SYSTEMS_OF_MEDICINE as readonly string[]).includes(str(d.systemOfMedicine)) ? (str(d.systemOfMedicine) as (typeof SYSTEMS_OF_MEDICINE)[number]) : undefined;
@@ -182,13 +193,14 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       return { name: m.replace(/[–-]?\s*\b(19|20)\d{2}\b\s*$/, "").trim() || m, ...(y && +y <= new Date().getFullYear() ? { since: +y } : {}) };
     }),
     interests: splitList(d.interests).slice(0, 20),
-    gallery: gallery(intake.photos?.gallery ?? [], LIMITS.galleryMax),
+    ...(story || str(d.beyondTitle) ? { interestsStory: { title: str(d.beyondTitle).slice(0, 200) || "Beyond medicine", ...(story ? { body: story.slice(0, LIMITS.storyBody) } : {}) } } : {}),
+    gallery: gallery(allGallery, LIMITS.galleryMax),
     ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
     plan: "doctor",
     source: "inbound",
     ...(ownerFree ? { ownerEmail: intake.email } : {}),
   });
-  doc.internalNotes = notesFor(intake, skipped);
+  doc.internalNotes = notesFor(intake, skipped, allGallery.slice(LIMITS.galleryMax));
   await ensureDoctorUrlKeys(doc);
   await doc.save();
   return { kind: "doctor" as const, id: doc._id, href: `/admin/doctors/${doc._id}` };
@@ -242,7 +254,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
       ...(/^\d{6}$/.test(pincode) ? { pincode } : {}),
       landmark: str(d.landmark) || undefined,
     },
-    mapsUrl: url(d.mapsUrl),
+    ...place(d),
     contact: {
       phones: phones(d.phones),
       whatsapp: mobile(d.siteWhatsapp),

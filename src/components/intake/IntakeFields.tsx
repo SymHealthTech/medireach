@@ -1,8 +1,10 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ClipboardPaste, HelpCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { fieldId, isRepeatValue, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
+import { cleanPastedText, fieldId, isRepeatValue, isShown, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
+import { LocationField } from "./LocationField";
 
 export const inputClass =
   "w-full rounded-[10px] border border-line bg-surface px-3 text-base text-body outline-none placeholder:text-body/40 focus-visible:border-ink focus-visible:ring-[3px] focus-visible:ring-ink/20 aria-invalid:border-clay disabled:bg-paper disabled:text-body/70";
@@ -24,12 +26,15 @@ export function IntakeField({
   onChange,
   errKey,
   error,
+  context = {},
 }: {
   field: FieldDef;
   value: FieldValue | undefined;
   onChange: (v: FieldValue) => void;
   errKey: string;
   error?: string;
+  /** The other answers in the same form or repeat item (search hint for the map). */
+  context?: Record<string, unknown>;
 }) {
   const id = fieldId(errKey);
   const describedBy = error ? `${id}-error` : f.help ? `${id}-help` : undefined;
@@ -66,7 +71,11 @@ export function IntakeField({
         )}
         {f.required && <span className="sr-only"> (required to send)</span>}
       </label>
-      {f.type === "textarea" || f.type === "lines" ? (
+      {f.type === "location" ? (
+        <LocationField id={id} value={v} onChange={onChange} hint={[context.name, context.address, context.area, context.city].filter((x) => typeof x === "string" && x.trim()).join(", ")} />
+      ) : f.type === "story" ? (
+        <StoryInput common={common} value={v} max={f.max ?? 6000} onChange={onChange} />
+      ) : f.type === "textarea" || f.type === "lines" ? (
         <textarea {...common} rows={f.type === "lines" ? 4 : f.max && f.max <= 200 ? 2 : 4} onChange={(e) => onChange(e.target.value)} className={cn(inputClass, "min-h-11 py-2.5 leading-relaxed")} />
       ) : f.type === "select" ? (
         <select {...common} onChange={(e) => onChange(e.target.value)} className={cn(inputClass, "h-11")}>
@@ -89,11 +98,94 @@ export function IntakeField({
           {f.help}
         </p>
       ) : null}
+      {f.steps && <Steps steps={f.steps} />}
       {f.max && f.max <= 200 && (f.type === "textarea" || f.type === "text") && (
         <p className={cn("text-right text-xs", v.length > f.max ? "text-clay-text" : "text-body/50")}>
           {v.length}/{f.max}
         </p>
       )}
+    </div>
+  );
+}
+
+/** "How do I get this?" steps, folded by default. */
+function Steps({ steps }: { steps: readonly string[] }) {
+  return (
+    <details className="group rounded-lg border border-line bg-paper/60 px-3 py-2 text-sm">
+      <summary className="flex min-h-8 cursor-pointer list-none items-center gap-1.5 font-semibold text-lagoon">
+        <HelpCircle className="size-4" aria-hidden /> How do I get this link?
+      </summary>
+      <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-body">
+        {steps.map((st) => (
+          <li key={st}>{st}</li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
+/** Large text box for a blog-style story: paste button (handy on phones), cleaned paste, counter. */
+function StoryInput({
+  common,
+  value,
+  max,
+  onChange,
+}: {
+  common: React.TextareaHTMLAttributes<HTMLTextAreaElement>;
+  value: string;
+  max: number;
+  onChange: (v: string) => void;
+}) {
+  const [note, setNote] = useState<string | null>(null);
+  const append = (text: string) => {
+    const clean = cleanPastedText(text);
+    if (!clean) return;
+    onChange(value.trim() ? `${value.trimEnd()}\n\n${clean}` : clean);
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={async () => {
+            setNote(null);
+            try {
+              const text = await navigator.clipboard.readText();
+              if (text.trim()) append(text);
+              else setNote("Nothing copied yet. Copy your text first, then tap Paste.");
+            } catch {
+              setNote("Your browser blocked the paste button. Press and hold in the box below and tap Paste (or press Ctrl+V).");
+            }
+          }}
+          className="inline-flex min-h-10 items-center gap-2 rounded-[10px] border border-lagoon/40 bg-lagoon/5 px-3 text-sm font-semibold text-lagoon hover:bg-lagoon/10"
+        >
+          <ClipboardPaste className="size-4" aria-hidden /> Paste copied text
+        </button>
+        {value && (
+          <button type="button" onClick={() => onChange("")} className="inline-flex min-h-10 items-center gap-1.5 rounded-[10px] px-3 text-sm text-clay-text hover:bg-clay/10">
+            <Trash2 className="size-4" aria-hidden /> Clear
+          </button>
+        )}
+      </div>
+      {note && <p className="text-sm text-body/80">{note}</p>}
+      <textarea
+        {...common}
+        rows={14}
+        onChange={(e) => onChange(e.target.value)}
+        onPaste={(e) => {
+          // Keep paragraphs, drop invisible characters from Word / web pages.
+          const text = e.clipboardData.getData("text/plain");
+          if (!text) return;
+          e.preventDefault();
+          const el = e.currentTarget;
+          const next = el.value.slice(0, el.selectionStart) + cleanPastedText(text) + el.value.slice(el.selectionEnd);
+          onChange(next);
+        }}
+        className={cn(inputClass, "min-h-64 py-3 leading-relaxed")}
+      />
+      <p className={cn("text-right text-xs", value.length > max ? "text-clay-text" : "text-body/50")}>
+        {value.length.toLocaleString("en-IN")}/{max.toLocaleString("en-IN")}
+      </p>
     </div>
   );
 }
@@ -114,16 +206,19 @@ export function IntakeSection({
     <RepeatGroup section={s} items={isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : []} onChange={(items) => onChange({ ...data, [s.key]: items })} errors={errors} />
   ) : (
     <div className="grid gap-4 sm:grid-cols-2">
-      {s.fields.map((f) => (
-        <IntakeField
-          key={f.key}
-          field={f}
-          errKey={f.key}
-          value={data[f.key] as FieldValue | undefined}
-          error={errors[f.key]}
-          onChange={(v) => onChange({ ...data, [f.key]: v })}
-        />
-      ))}
+      {s.fields
+        .filter((f) => isShown(f, data))
+        .map((f) => (
+          <IntakeField
+            key={f.key}
+            field={f}
+            errKey={f.key}
+            value={data[f.key] as FieldValue | undefined}
+            error={errors[f.key]}
+            onChange={(v) => onChange({ ...data, [f.key]: v })}
+            context={data}
+          />
+        ))}
     </div>
   );
   return (
@@ -168,7 +263,7 @@ function RepeatGroup({ section: s, items, onChange, errors }: { section: Section
             )}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {s.fields.map((f) => {
+            {s.fields.filter((f) => isShown(f, it)).map((f) => {
               const key = `${s.key}.${i}.${f.key}`;
               return (
                 <IntakeField
@@ -178,6 +273,7 @@ function RepeatGroup({ section: s, items, onChange, errors }: { section: Section
                   value={it[f.key]}
                   error={errors[key]}
                   onChange={(v) => onChange(items.map((x, j) => (j === i ? { ...x, [f.key]: v } : x)))}
+                  context={it}
                 />
               );
             })}

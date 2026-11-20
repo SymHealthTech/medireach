@@ -9,7 +9,9 @@ import { checkIntakeCode, createIntakeCode, INTAKE_CODE_MAX_ATTEMPTS } from "@/l
 import { createSiteFromIntake, parseDoctorLine, splitDoctorName } from "@/lib/intake/convert";
 import { intakeCodeEmail, intakeSavedEmail } from "@/lib/intake/emails";
 import {
+  cleanPastedText,
   emptyIntakeData,
+  parseLocation,
   intakeDataSchema,
   mergeIntake,
   missingForSubmit,
@@ -54,7 +56,11 @@ function fullDoctor(): IntakeData {
     languages: "English, Marathi",
     services: "Diabetes care\n- Health check-ups",
     instagram: "instagram.com/drasha",
-    clinics: [{ name: "Asha Clinic", address: "Shop 4, Karve Road", area: "kothrud", city: "Pune", pincode: "411038", timings: "Mon–Sat 10–1", phone: "020 2546 1234", fee: "₹500", mapsUrl: "", appointmentNote: "" }],
+    clinics: [{ name: "Asha Clinic", address: "Shop 4, Karve Road", area: "kothrud", city: "Pune", pincode: "411038", timings: "Mon–Sat 10–1", phone: "020 2546 1234", fee: "₹500", mapsUrl: "", location: "18.507400,73.807700", appointmentNote: "" }],
+    visitingAt: "Ruby Hall Clinic, Pune",
+    interests: "Running, trekking",
+    beyondTitle: "My first marathon",
+    beyondStory: "First paragraph.\r\n\r\n\r\nSecond paragraph.\u200B",
   };
 }
 
@@ -72,6 +78,25 @@ describe("form definitions", () => {
     expect(bad.success).toBe(false);
     const keys = bad.error!.issues.map((i) => i.path.join("."));
     expect(keys).toEqual(expect.arrayContaining(["mobile", "clinics.0.pincode"]));
+  });
+
+  it("asks to specify 'Other' system of medicine only when chosen, and allows 2 clinics", () => {
+    expect(missingForSubmit("doctor", fullDoctor()).map((m) => m.key)).not.toContain("systemOther");
+    expect(missingForSubmit("doctor", { ...fullDoctor(), systemOfMedicine: "other" }).map((m) => m.key)).toContain("systemOther");
+    expect(missingForSubmit("doctor", { ...fullDoctor(), systemOfMedicine: "other", systemOther: "Naturopathy" })).toEqual([]);
+    const clinic = (fullDoctor().clinics as object[])[0];
+    expect(intakeDataSchema("doctor").safeParse({ clinics: [clinic, clinic] }).success).toBe(true);
+    expect(intakeDataSchema("doctor").safeParse({ clinics: [clinic, clinic, clinic] }).success).toBe(false);
+  });
+
+  it("cleans pasted stories and checks map pins", () => {
+    expect(cleanPastedText("A\r\n\r\n\r\n\r\nB  \nC\u200B\u00A0D")).toBe("A\n\nB\nC D");
+    const d = intakeDataSchema("doctor").parse(fullDoctor());
+    expect(d.beyondStory).toBe("First paragraph.\n\nSecond paragraph.");
+    expect(parseLocation("18.5074, 73.8077")).toEqual({ lat: 18.5074, lng: 73.8077 });
+    expect(parseLocation("x,y")).toBeNull();
+    expect(parseLocation("95,10")).toBeNull();
+    expect(intakeDataSchema("clinic").safeParse({ location: "hello" }).success).toBe(false);
   });
 
   it("lists what's missing before sending, including inside clinics", () => {
@@ -180,7 +205,7 @@ describe("saving and ownership", () => {
   it("rejects photos that aren't our uploads and caps the gallery", async () => {
     const r = await saveIntake({ kind: "doctor", email: "p@example.com", data: {}, photos: { gallery: [{ publicId: "x", url: "https://evil.example/a.jpg" }] } }, null);
     expect(r).toMatchObject({ ok: false });
-    const many = await saveIntake({ kind: "doctor", email: "p@example.com", data: {}, photos: { gallery: [1, 2, 3, 4, 5, 6].map(photo) } }, null);
+    const many = await saveIntake({ kind: "doctor", email: "p@example.com", data: {}, photos: { gallery: Array.from({ length: 6 }, (_, i) => photo(i)) } }, null);
     expect(many).toMatchObject({ ok: false });
   });
 });
@@ -219,7 +244,7 @@ describe("codes and sessions", () => {
 
 describe("creating the website draft", () => {
   it("maps a doctor form onto a draft profile, with the rest in internal notes", async () => {
-    const r = await saveIntake({ kind: "doctor", email: "conv@example.com", data: fullDoctor(), photos: { profile: photo(9), gallery: [photo(10)] } }, null);
+    const r = await saveIntake({ kind: "doctor", email: "conv@example.com", data: fullDoctor(), photos: { profile: photo(9), gallery: [10, 11, 12, 13, 14].map(photo) } }, null);
     expect(r.ok).toBe(true);
     const intake = await Intake.findById(r.ok ? r.intake.id : "").lean();
     const made = await createSiteFromIntake(intake!);
@@ -232,7 +257,11 @@ describe("creating the website draft", () => {
     expect(doc!.clinics[0]).toMatchObject({ name: "Asha Clinic", pincode: "411038", fee: 500 });
     expect(doc!.services.map((s) => s.name)).toEqual(["Diabetes care", "Health check-ups"]);
     expect(doc!.photo?.publicId).toBe(photo(9).publicId);
-    expect(doc!.gallery).toHaveLength(1);
+    expect(doc!.gallery).toHaveLength(5);
+    expect(doc!.internalNotes).toContain("Ruby Hall Clinic");
+    expect(doc!.clinics[0]!.geo).toEqual({ lat: 18.5074, lng: 73.8077 });
+    expect(doc!.clinics[0]!.mapsUrl).toBe("https://www.google.com/maps/search/?api=1&query=18.507400,73.807700");
+    expect(doc!.interestsStory).toEqual({ title: "My first marathon", body: "First paragraph.\n\nSecond paragraph." });
     expect(doc!.links.instagram).toBe("https://instagram.com/drasha");
     expect(doc!.citySlug).toBe("pune");
     expect(doc!.internalNotes).toContain(intake!.ref);

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Info, Loader2, Lock, Send } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Home, Info, Loader2, Lock, Pencil, Send } from "lucide-react";
+import { WhatsAppIcon } from "@/components/marketing/WhatsAppLink";
 import { endIntakeSessionAction, saveIntakeAction, signIntakeUploadAction, type VerifyIntakeResult } from "@/app/(marketing)/get-started/actions";
 import { saveIntakeAdminAction } from "@/app/admin/(dash)/intakes/actions";
 import { signUploadAction } from "@/app/admin/(dash)/upload-actions";
@@ -21,6 +22,7 @@ import {
   mergeIntake,
   mergePhotos,
   missingForSubmit,
+  photosWhatsappText,
   requiredProgress,
   type IntakeData,
   type IntakePhotos,
@@ -214,6 +216,65 @@ export function IntakeForm({
   const pct = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
   const name = intakeContactName(kind, data);
 
+  // After sending: a centred thank-you instead of the form, with Edit and Home.
+  if (justSent && !admin) {
+    const waHref = `https://wa.me/${waNumber.replace(/\D/g, "")}?text=${encodeURIComponent(photosWhatsappText(ref, email, name))}`;
+    return (
+      <div className="flex min-h-[calc(100dvh-10rem)] items-center justify-center pb-16">
+        <div role="status" className="w-full max-w-lg rounded-3xl bg-surface p-6 text-center shadow-lift ring-1 ring-ink/5 sm:p-10">
+          <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-leaf/15">
+            <CheckCircle2 className="size-9 text-leaf" strokeWidth={1.75} aria-hidden />
+          </span>
+          <h1 className="mt-5 font-display text-3xl font-semibold tracking-[-0.015em] text-ink">Thank you{name ? `, ${name}` : ""}</h1>
+          <p className="mt-2 text-body/85">Your details are with our team.</p>
+          <p className="mx-auto mt-4 inline-block rounded-xl bg-paper px-4 py-2 text-sm text-body">
+            Form reference <strong className="whitespace-nowrap font-display text-base text-ink">{ref}</strong>
+          </p>
+          <ol className="mx-auto mt-6 max-w-sm space-y-3 text-left text-sm text-body">
+            {[
+              "We check your details and call you if anything is missing.",
+              "We write and design your website and visiting card.",
+              "You see it and approve it before it goes live.",
+            ].map((t, i) => (
+              <li key={t} className="flex gap-3">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-lagoon/10 text-xs font-bold text-lagoon">{i + 1}</span>
+                <span>{t}</span>
+              </li>
+            ))}
+          </ol>
+          {photos.viaWhatsapp && (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener"
+              className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-[#1f8f4e] px-4 text-sm font-semibold text-white hover:bg-[#187a42]"
+            >
+              <WhatsAppIcon className="size-5" /> Send your photos on WhatsApp
+            </a>
+          )}
+          <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                setJustSent(false);
+                window.scrollTo({ top: 0 });
+              }}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-ink/20 bg-surface px-5 font-semibold text-ink hover:bg-paper"
+            >
+              <Pencil className="size-4" aria-hidden /> Edit my form
+            </button>
+            <Link href="/" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] bg-marigold px-5 font-semibold text-white hover:bg-marigold-700">
+              <Home className="size-4" aria-hidden /> Back to home
+            </Link>
+          </div>
+          <p className="mt-5 text-xs text-body/70">
+            We emailed these details to <span className="break-all">{email}</span>. To change anything later, use Get started → Continue with your email.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn(!admin && "pb-32")}>
       {!admin && (
@@ -235,18 +296,7 @@ export function IntakeForm({
         </header>
       )}
 
-      {justSent && !admin && (
-        <div role="status" className="mb-6 flex gap-3 rounded-2xl border border-leaf/30 bg-leaf/10 p-5 text-body">
-          <CheckCircle2 className="mt-0.5 size-6 shrink-0 text-leaf" aria-hidden />
-          <div>
-            <p className="font-semibold text-ink">Thank you. Your details are with our team.</p>
-            <p className="mt-1 text-sm">
-              Form reference <strong className="whitespace-nowrap">{ref}</strong>. We&apos;ll check everything, add anything that&apos;s missing and design your website. We&apos;ll contact you on your mobile before it goes live. You can still change this form any time with the same email.
-            </p>
-          </div>
-        </div>
-      )}
-      {!justSent && !admin && status !== "draft" && (
+      {!admin && status !== "draft" && (
         <div role="status" className="mb-6 flex gap-3 rounded-2xl border border-line bg-surface p-4 text-sm text-body">
           {editable ? <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-leaf" aria-hidden /> : <Lock className="mt-0.5 size-5 shrink-0 text-lagoon" aria-hidden />}
           <p>

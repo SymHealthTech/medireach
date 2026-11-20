@@ -1,15 +1,16 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import { Crop, ImagePlus, Lightbulb, Loader2, Trash2, Upload } from "lucide-react";
 import { WhatsAppIcon } from "@/components/marketing/WhatsAppLink";
 import { uploadImage, type UploadSigner } from "@/lib/client/upload-image";
 import { cn } from "@/lib/cn";
 import { photosWhatsappText, type IntakePhoto, type IntakePhotos, type PhotoConfig, type SinglePhotoKey } from "@/lib/intake/form";
 import { inputClass, SectionCard } from "./IntakeFields";
+import { PhotoCropDialog } from "./PhotoCropDialog";
 
 /** Shrink big phone photos before upload; falls back to the original (e.g. HEIC on Chrome). */
-async function shrink(file: File, maxSide = 2400): Promise<Blob> {
+async function shrink(file: Blob, maxSide = 2400): Promise<Blob> {
   const url = URL.createObjectURL(file);
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -80,7 +81,20 @@ export function IntakePhotosSection({
     onChange(p);
   };
 
-  async function upload(files: File[], target: SinglePhotoKey | "gallery") {
+  // Profile photo: crop first ("Adjust your photo"), then upload.
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const closeCrop = () => {
+    if (cropSrc?.startsWith("blob:")) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  };
+  async function uploadCropped(blob: Blob) {
+    if (!(await ensureSaved())) throw new Error("Enter your email at the top first: photos are saved with your form.");
+    const up = await uploadImage(blob, "intake", sign);
+    set({ ...latest.current, profile: { publicId: up.publicId, url: up.url } });
+    closeCrop();
+  }
+
+  async function upload(files: Blob[], target: SinglePhotoKey | "gallery") {
     if (!files.length) return;
     setUploadError(null);
     setBusy(target === "gallery" ? "Saving your form…" : target);
@@ -174,7 +188,8 @@ export function IntakePhotosSection({
               value={photos[s.key]}
               busy={busy === s.key}
               disabled={disabled || busy !== null}
-              onPick={(f) => upload([f], s.key)}
+              onPick={(f) => (s.key === "profile" ? setCropSrc(URL.createObjectURL(f)) : upload([f], s.key))}
+              onAdjust={s.key === "profile" && photos.profile ? () => setCropSrc(photos.profile!.url) : undefined}
               onRemove={() => set({ ...photos, [s.key]: undefined })}
               round={s.key === "profile"}
             />
@@ -185,7 +200,10 @@ export function IntakePhotosSection({
           <p className="text-sm font-medium text-body">
             {config.galleryLabel} <span className="font-normal text-body/70">({photos.gallery.length}/{config.galleryMax})</span>
           </p>
-          <p className="text-xs text-body/70">{config.galleryHelp}</p>
+          <p className="mt-1 flex gap-2 rounded-lg bg-marigold/10 px-3 py-2 text-sm text-body">
+            <Lightbulb className="mt-0.5 size-4 shrink-0 text-marigold-700" aria-hidden />
+            <span>{config.galleryHelp}</span>
+          </p>
           <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {photos.gallery.map((g, i) => (
               <li key={g.publicId} className="overflow-hidden rounded-xl border border-line bg-paper">
@@ -194,7 +212,7 @@ export function IntakePhotosSection({
                 <div className="space-y-2 p-2">
                   <input
                     aria-label={`Caption for photo ${i + 1}`}
-                    placeholder="Caption (optional)"
+                    placeholder="What is this? e.g. Pune Marathon 2024"
                     value={g.caption ?? ""}
                     maxLength={120}
                     disabled={disabled}
@@ -231,6 +249,7 @@ export function IntakePhotosSection({
             )}
           </ul>
         </div>
+        <PhotoCropDialog src={cropSrc} onCancel={closeCrop} onDone={uploadCropped} />
         {(uploadError || error) && (
           <p role="alert" className="text-sm text-clay-text">
             {uploadError || error}
@@ -278,6 +297,7 @@ function SinglePhoto({
   busy,
   disabled,
   onPick,
+  onAdjust,
   onRemove,
   round,
 }: {
@@ -287,6 +307,7 @@ function SinglePhoto({
   busy: boolean;
   disabled?: boolean;
   onPick: (f: File) => void;
+  onAdjust?: () => void;
   onRemove: () => void;
   round?: boolean;
 }) {
@@ -308,6 +329,11 @@ function SinglePhoto({
         <p className="text-xs text-body/70">{help}</p>
         {value && (
           <div className="flex flex-wrap gap-1 pt-1">
+            {onAdjust && (
+              <button type="button" disabled={disabled} onClick={onAdjust} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-lagoon hover:bg-lagoon/10">
+                <Crop className="size-4" aria-hidden /> Adjust
+              </button>
+            )}
             <ReplaceButton disabled={disabled} busy={busy} onPick={onPick} />
             <button type="button" disabled={disabled} onClick={onRemove} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm text-clay-text hover:bg-clay/10">
               <Trash2 className="size-4" aria-hidden /> Remove
