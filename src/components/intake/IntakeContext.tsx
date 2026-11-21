@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import type { UploadSigner } from "@/lib/client/upload-image";
+import type { IntakeKind } from "@/lib/constants";
 
 /** Sample visiting cards for one style, server-rendered: a small preview, and the full phone and print cards. */
 export interface CardFace {
@@ -18,6 +19,10 @@ export interface IntakeContextValue {
   /** Card style code → sample cards. Without them the picker shows colour swatches. */
   cardFaces?: Record<string, CardFace>;
   errors: Record<string, string>;
+  /** Which form this is (picks the suggestion lists). */
+  kind?: IntakeKind;
+  /** The whole form's answers (suggestions inside a doctor card follow the clinic type or specialty). */
+  data?: Record<string, unknown>;
 }
 
 const Ctx = createContext<IntakeContextValue | null>(null);

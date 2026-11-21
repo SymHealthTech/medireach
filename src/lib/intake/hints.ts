@@ -1,4 +1,4 @@
-import { DESIGN_GROUPS, str, splitLines, type IntakeData, type RepeatItem } from "./form";
+import { DESIGN_GROUPS, doctorEntries, doctorRoleLabel, str, splitLines, type IntakeData, type RepeatItem } from "./form";
 
 /**
  * What a website form ("Get started") said, for fields the admin editor keeps
@@ -17,6 +17,8 @@ export interface ParsedQualification {
 
 export interface DoctorFormHints {
   ref: string;
+  /** The website form, for the "Open website form" link. */
+  intakeId?: string;
   council?: string;
   specialty?: string;
   /** The applicant's lines, as typed. */
@@ -44,11 +46,41 @@ export interface FormClinic {
   timings: string;
 }
 
+/** A doctor from a clinic or hospital website form. */
+export interface FormSiteDoctor {
+  name: string;
+  qualifications: string;
+  specialty: string;
+  role: string;
+  profileUrl: string;
+  photo?: { publicId: string; url: string };
+  department?: string;
+}
+
 export interface SiteFormHints {
   ref: string;
+  intakeId?: string;
   category?: string;
   area?: string;
   city?: string;
+  /** Answers the editor offers to copy in ("Use this"), as typed. */
+  tagline?: string;
+  yearStarted?: string;
+  awards: string[];
+  timings?: string;
+  appointmentNote?: string;
+  visitingHours?: string;
+  services: string[];
+  facilities: string[];
+  equipment: string[];
+  insurance: string[];
+  doctors: FormSiteDoctor[];
+  departments: string[];
+  websiteName?: string;
+  notes?: string;
+  websiteDesign?: string;
+  cardStyle?: string;
+  designDecision?: string;
 }
 
 const YEAR = /\b(19[4-9]\d|20\d{2})\b/g;
@@ -93,11 +125,12 @@ export function parseQualificationLine(line: string): ParsedQualification | null
   };
 }
 
-export function doctorHints(ref: string, data: IntakeData): DoctorFormHints {
+export function doctorHints(ref: string, data: IntakeData, intakeId?: string): DoctorFormHints {
   const lines = splitLines(data.qualifications);
   const clinics = Array.isArray(data.clinics) ? (data.clinics as RepeatItem[]) : [];
   return {
     ref,
+    ...(intakeId ? { intakeId } : {}),
     ...(str(data.council) ? { council: str(data.council) } : {}),
     ...(str(data.specialty) ? { specialty: str(data.specialty) } : {}),
     ...(str(data.websiteDesign) ? { websiteDesign: str(data.websiteDesign) } : {}),
@@ -123,14 +156,41 @@ export function doctorHints(ref: string, data: IntakeData): DoctorFormHints {
   };
 }
 
-export function siteHints(ref: string, kind: "clinic" | "hospital", data: IntakeData): SiteFormHints {
+export function siteHints(ref: string, kind: "clinic" | "hospital", data: IntakeData, intakeId?: string): SiteFormHints {
   const typeKey = kind === "clinic" ? "clinicType" : "hospitalType";
   const type = str(data[typeKey]);
   const category = type === "other" ? str(data[`${typeKey}Other`]) : (DESIGN_GROUPS[kind].find((g) => g.value === type)?.label ?? type);
+  const opt = (k: string, v: unknown) => (str(v) ? { [k]: str(v) } : {});
   return {
     ref,
+    ...(intakeId ? { intakeId } : {}),
     ...(category ? { category } : {}),
-    ...(str(data.area) ? { area: str(data.area) } : {}),
-    ...(str(data.city) ? { city: str(data.city) } : {}),
+    ...opt("area", data.area),
+    ...opt("city", data.city),
+    ...opt("tagline", data.tagline),
+    ...opt("yearStarted", data.yearStarted),
+    ...opt("timings", data.timings),
+    ...opt("appointmentNote", data.appointmentNote),
+    ...opt("visitingHours", data.visitingHours),
+    ...opt("websiteName", data.websiteName),
+    ...opt("notes", data.notes),
+    ...opt("websiteDesign", data.websiteDesign),
+    ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
+    ...opt("designDecision", data.designDecision),
+    awards: splitLines(data.awards),
+    services: splitLines(data.services),
+    facilities: splitLines(data.facilities),
+    equipment: splitLines(data.equipment),
+    insurance: splitLines(data.insurance),
+    doctors: doctorEntries(kind, data).map(({ doctor: e, department }) => ({
+      name: str(e.name),
+      qualifications: str(e.education),
+      specialty: str(e.designation),
+      role: doctorRoleLabel(e),
+      profileUrl: str(e.portfolioUrl),
+      ...(e.photo ? { photo: { publicId: e.photo.publicId, url: e.photo.url } } : {}),
+      ...(department ? { department } : {}),
+    })),
+    departments: (Array.isArray(data.departments) ? (data.departments as RepeatItem[]) : []).map((d) => str(d.name)).filter(Boolean),
   };
 }

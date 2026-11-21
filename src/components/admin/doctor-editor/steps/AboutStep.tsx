@@ -9,6 +9,8 @@ import { GalleryEditor } from "../GalleryEditor";
 import { SimpleImageUpload } from "../PhotoCropUpload";
 import { RichTextEditor } from "../RichTextEditor";
 import { InterestsPhotoFields, InterestsStoryFields } from "../BeyondMedicineFields";
+import { SuggestionChips } from "@/components/admin/form/Suggestions";
+import { MEMBERSHIP_SUGGESTIONS } from "@/lib/suggestions";
 import { AddButton, Group, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
 const INTERESTS = ["Marathon runner", "Classical music", "Cycling", "Photography", "Yoga", "Trekking", "Reading", "Cricket"];
@@ -86,6 +88,12 @@ export function AboutStep({ form: f, set, err, readOnly }: StepProps) {
               </div>
             </RepeatItem>
           ))}
+          <SuggestionChips
+            items={MEMBERSHIP_SUGGESTIONS}
+            have={f.memberships.map((m) => m.name)}
+            disabled={readOnly || f.memberships.length >= 15}
+            onAdd={(names) => set((f) => ({ memberships: [...f.memberships.filter((m) => m.name.trim()), ...names.map((name) => ({ name, since: undefined }))].slice(0, 15) }))}
+          />
           <AddButton disabled={readOnly || f.memberships.length >= 15} onClick={() => set((f) => ({ memberships: [...f.memberships, { name: "", since: undefined }] }))}>
             Add membership
           </AddButton>

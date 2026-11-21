@@ -1,9 +1,9 @@
 "use client";
 
-import { Copy, Plus, X } from "lucide-react";
+import { Copy, Plus, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { DAY_NAMES } from "@/lib/timings";
+import { DAY_NAMES, TIMING_PRESETS } from "@/lib/timings";
 import type { ClinicForm, SlotValue } from "@/lib/doctors/form";
 
 type Timings = ClinicForm["timings"];
@@ -13,7 +13,7 @@ const DEFAULT_SLOT: SlotValue = { open: "10:00", close: "13:00" };
 
 /**
  * Weekly timings (DESIGN_BRIEF.md §4): 7 day rows, open/closed toggle,
- * multiple slots per day, and "copy Monday" shortcuts.
+ * multiple slots per day, one-tap presets and "copy Monday" shortcuts.
  */
 export function TimingEditor({
   value,
@@ -38,6 +38,22 @@ export function TimingEditor({
 
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick timings">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <Wand2 className="size-3.5" aria-hidden /> Quick fill:
+        </span>
+        {TIMING_PRESETS.map((p) => (
+          <button
+            key={p.label}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(p.timings.map((t) => ({ day: t.day, slots: t.slots.map((s) => ({ ...s })) })))}
+            className="rounded-full border border-dashed border-line px-2.5 py-1 text-xs hover:border-ink/40 disabled:opacity-50"
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" disabled={disabled || get(1).length === 0} onClick={() => copyMonday([2, 3, 4, 5])}>
           <Copy /> Copy Monday to all weekdays

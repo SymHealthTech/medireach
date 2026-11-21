@@ -92,7 +92,16 @@ export interface EstablishmentDoc {
   departments: (NamedItem & { doctorIds: Types.ObjectId[] })[];
   beds?: { total: number; types: { type: string; count: number }[] };
   insurance?: { cashless: boolean; providers: string[] };
-  doctors: { doctorProfileId?: Types.ObjectId; name?: string; qualifications?: string; specialty?: string; role?: string }[];
+  doctors: {
+    doctorProfileId?: Types.ObjectId;
+    name?: string;
+    qualifications?: string;
+    specialty?: string;
+    role?: string;
+    /** Doctors without a linked portfolio: their own photo and an outside profile link (Practo, own website). */
+    photo?: ImageRef;
+    profileUrl?: string;
+  }[];
   languages: string[];
   gallery: GalleryItem[];
   links: {
@@ -230,6 +239,8 @@ const establishmentSchema = new Schema<EstablishmentDoc>(
             qualifications: str,
             specialty: str,
             role: str,
+            photo: { type: imageSchema, default: undefined },
+            profileUrl: str,
           },
           { _id: false },
         ),

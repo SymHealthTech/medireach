@@ -7,6 +7,8 @@ import { addMaster, MasterSelect, useMasterOptions, type MasterOption } from "@/
 import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SuggestionChips } from "@/components/admin/form/Suggestions";
+import { conditionSuggestions, doctorServiceSuggestions } from "@/lib/suggestions";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
 /** "Other: not in the list" for secondary specialties: type a name, it's added to the list and ticked. */
@@ -57,6 +59,8 @@ function OtherSpecialty({ disabled, existing, onAdded }: { disabled: boolean; ex
 export function PracticeStep({ form: f, set, err, options, readOnly, hints }: StepProps) {
   const secondary = new Set(f.secondarySpecialtyIds);
   const specialties = useMasterOptions("specialty", options.specialties);
+  // Suggestions follow the primary specialty (the same lists as the website form).
+  const specialtyName = specialties.find((s) => s.id === f.primarySpecialtyId)?.name ?? hints?.specialty ?? "";
   return (
     <div className="space-y-5">
       <Group title="Practice">
@@ -158,6 +162,12 @@ export function PracticeStep({ form: f, set, err, options, readOnly, hints }: St
               </div>
             </RepeatItem>
           ))}
+          <SuggestionChips
+            items={doctorServiceSuggestions(specialtyName)}
+            have={f.services.map((x) => x.name)}
+            disabled={readOnly || f.services.length >= 30}
+            onAdd={(names) => set((f) => ({ services: [...f.services.filter((x) => x.name.trim()), ...names.map((name) => ({ name, description: "" }))].slice(0, 30) }))}
+          />
           <AddButton disabled={readOnly || f.services.length >= 30} onClick={() => set((f) => ({ services: [...f.services, { name: "", description: "" }] }))}>
             Add service
           </AddButton>
@@ -172,6 +182,7 @@ export function PracticeStep({ form: f, set, err, options, readOnly, hints }: St
             value={f.conditionsTreated}
             onChange={(conditionsTreated) => set({ conditionsTreated })}
             placeholder="e.g. Diabetes, Asthma — press Enter after each"
+            suggestions={conditionSuggestions(specialtyName)}
             max={40}
           />
         </Field>

@@ -222,3 +222,47 @@ export function parseTimingsText(text: string): DayTimings[] | null {
     return { day, slots };
   });
 }
+
+/**
+ * A week of slots as website-form text, one line per group of days with the
+ * same hours: "Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm\nSun: Closed". Reads back
+ * with `parseTimingsText`. "" when closed all week.
+ */
+export function timingsToText(timings: DayTimings[]): string {
+  if (!hasAnyTimings(timings)) return "";
+  const groups = new Map<string, number[]>();
+  for (const day of WEEK_ORDER) {
+    const text = formatSlots(slotsForDay(timings, day));
+    groups.set(text, [...(groups.get(text) ?? []), day]);
+  }
+  const position = (d: number) => WEEK_ORDER.indexOf(d as (typeof WEEK_ORDER)[number]);
+  const label = (days: number[]) => {
+    const runs: number[][] = [];
+    for (const d of days) {
+      const last = runs.at(-1);
+      if (last && position(d) === position(last.at(-1)!) + 1) last.push(d);
+      else runs.push([d]);
+    }
+    return runs.map((r) => (r.length >= 2 ? `${DAY_SHORT[r[0]!]}–${DAY_SHORT[r.at(-1)!]}` : DAY_SHORT[r[0]!])).join(", ");
+  };
+  return [...groups.entries()].map(([hours, days]) => `${label(days)}: ${hours}`).join("\n");
+}
+
+const MON_SAT = [1, 2, 3, 4, 5, 6];
+const MON_FRI = [1, 2, 3, 4, 5];
+const week = (days: number[], slots: Slot[], extra: Record<number, Slot[]> = {}): DayTimings[] =>
+  WEEK_ORDER.map((day) => ({ day, slots: (extra[day] ?? (days.includes(day) ? slots : [])).map((s) => ({ ...s })) }));
+
+/** One-tap starting points for weekly timings (both website forms and the admin editors). */
+export const TIMING_PRESETS: { label: string; timings: DayTimings[] }[] = [
+  { label: "Mon–Sat · 10–1 and 6–9", timings: week(MON_SAT, [{ open: "10:00", close: "13:00" }, { open: "18:00", close: "21:00" }]) },
+  { label: "Mon–Sat · 9 am – 9 pm", timings: week(MON_SAT, [{ open: "09:00", close: "21:00" }]) },
+  { label: "Mon–Sat · 10 am – 7 pm", timings: week(MON_SAT, [{ open: "10:00", close: "19:00" }]) },
+  { label: "Mon–Fri · 9 am – 5 pm", timings: week(MON_FRI, [{ open: "09:00", close: "17:00" }]) },
+  { label: "Evenings only · 6–9 pm", timings: week(MON_SAT, [{ open: "18:00", close: "21:00" }]) },
+  {
+    label: "Mon–Sat 10–1, 6–9 · Sun 10–1",
+    timings: week(MON_SAT, [{ open: "10:00", close: "13:00" }, { open: "18:00", close: "21:00" }], { 0: [{ open: "10:00", close: "13:00" }] }),
+  },
+  { label: "All days · 8 am – 10 pm", timings: week([1, 2, 3, 4, 5, 6, 0], [{ open: "08:00", close: "22:00" }]) },
+];

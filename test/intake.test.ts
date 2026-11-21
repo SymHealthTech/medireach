@@ -263,7 +263,7 @@ describe("form definitions", () => {
     expect(h).toMatchObject({ ref: "MR-1", council: "MCIM", qualificationLines: ["BAMS,", "MD"] });
     expect(h.qualifications.map((q) => q.degree)).toEqual(["BAMS", "MD"]);
     expect(h.clinics[0]).toMatchObject({ name: "Asha Clinic", pincode: "411038" });
-    expect(siteHints("MR-2", "clinic", { ...emptyIntakeData("clinic"), clinicType: "skin", area: "Kothrud" })).toEqual({ ref: "MR-2", category: "Skin Clinic", area: "Kothrud", city: "Pune" });
+    expect(siteHints("MR-2", "clinic", { ...emptyIntakeData("clinic"), clinicType: "skin", area: "Kothrud" })).toMatchObject({ ref: "MR-2", category: "Skin Clinic", area: "Kothrud", city: "Pune", doctors: [], services: [] });
     expect(siteHints("MR-3", "clinic", { ...emptyIntakeData("clinic"), clinicType: "other", clinicTypeOther: "Sleep clinic" }).category).toBe("Sleep clinic");
   });
 

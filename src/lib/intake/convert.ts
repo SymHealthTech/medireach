@@ -273,6 +273,8 @@ function siteDoctors(kind: IntakeKind, d: IntakeData) {
       ...(str(e.education) ? { qualifications: str(e.education).slice(0, 200) } : {}),
       ...(str(e.designation) ? { specialty: str(e.designation).slice(0, 120) } : {}),
       ...(doctorRoleLabel(e) ? { role: doctorRoleLabel(e).slice(0, 80) } : {}),
+      ...(url(e.portfolioUrl) ? { profileUrl: url(e.portfolioUrl)!.slice(0, 500) } : {}),
+      ...(e.photo ? { photo: image(e.photo, str(e.name) || undefined) } : {}),
     }))
     .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()));
 }
@@ -305,7 +307,6 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const departments = (isRepeatValue(d.departments) ? (d.departments as RepeatItem[]) : []).filter((dep) => str(dep.name)).map((dep) => ({ name: str(dep.name).slice(0, 120), doctorIds: [] }));
   const formDoctors = doctorEntries(kind, d);
   if (departments.length && formDoctors.some((x) => x.department)) skipped.push("which doctors are in which department");
-  if (formDoctors.some((x) => x.doctor.photo || str(x.doctor.portfolioUrl))) skipped.push("doctor photos and portfolio links");
   if (beds !== undefined && beds > LIMITS.hospitalBedsMax) skipped.push(`beds (form says ${beds})`);
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
@@ -328,6 +329,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
       ...(area && city ? { areaId: area._id, cityId: city._id, state: city.state } : {}),
       ...(/^\d{6}$/.test(pincode) ? { pincode } : {}),
       landmark: str(d.landmark) || undefined,
+      parkingNote: str(d.parkingNote).slice(0, 200) || undefined,
     },
     ...place(d),
     contact: {

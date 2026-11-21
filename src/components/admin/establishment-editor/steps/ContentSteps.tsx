@@ -1,15 +1,21 @@
 "use client";
 
-import { Plus, Sparkles, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChipInput, Field, NativeSelect, SwitchField } from "@/components/admin/form/fields";
 import { MasterSelect } from "@/components/admin/form/MasterSelect";
+import { FormNote, SuggestionChips } from "@/components/admin/form/Suggestions";
+import { LocationField } from "@/components/intake/LocationField";
 import { GalleryEditor } from "@/components/admin/doctor-editor/GalleryEditor";
 import { TimingEditor } from "@/components/admin/doctor-editor/TimingEditor";
 import { AddButton, Group, grid2, removeAt, RepeatItem, updateAt } from "@/components/admin/doctor-editor/shared";
 import { galleryMax, type EstablishmentForm, type NamedValue } from "@/lib/establishments/form";
+import { coordsFromMapsUrl, mapsLinkFor, parseLocation } from "@/lib/intake/form";
+import { equipmentSuggestions, facilitySuggestions, LANGUAGE_SUGGESTIONS, APPOINTMENT_NOTE_SUGGESTIONS, serviceSuggestions } from "@/lib/suggestions";
+import { parseTimingsText, timingsToText } from "@/lib/timings";
 import { getTheme } from "@/themes/specialty";
 import type { EStepProps } from "../shared";
 
@@ -25,6 +31,8 @@ const LINKS: { key: keyof EstablishmentForm["links"]; label: string }[] = [
 
 export function LocationStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const areas = options.areas.filter((a) => a.cityId === f.address.cityId);
+  const areaName = options.areas.find((a) => a.id === f.address.areaId)?.name;
+  const cityName = options.cities.find((c) => c.id === f.address.cityId)?.name;
   const setAddress = (patch: Partial<EstablishmentForm["address"]>) => set((p) => ({ address: { ...p.address, ...patch } }));
   return (
     <div className="space-y-5">
@@ -77,10 +85,35 @@ export function LocationStep({ form: f, set, err, options, readOnly, hints }: ES
           <Field label="Parking note" htmlFor="address.parkingNote" error={err("address.parkingNote")} className="sm:col-span-2">
             <Input id="address.parkingNote" value={f.address.parkingNote} disabled={readOnly} placeholder="e.g. Two-wheeler parking in the basement" onChange={(e) => setAddress({ parkingNote: e.target.value })} />
           </Field>
-          <Field label="Google Maps link" htmlFor="mapsUrl" error={err("mapsUrl")} className="sm:col-span-2">
-            <Input id="mapsUrl" value={f.mapsUrl} disabled={readOnly} placeholder="https://maps.app.goo.gl/…" onChange={(e) => set({ mapsUrl: e.target.value })} />
+        </div>
+      </Group>
+
+      <Group title="Map location" description="Pin it on the map (search the area, then drag the pin to the entrance), use your current location at the site, or paste a Google Maps link.">
+        {!readOnly && (
+          <LocationField
+            id="location"
+            value={f.lat && f.lng ? `${f.lat},${f.lng}` : ""}
+            hint={[f.name, f.address.line1, areaName, cityName].filter(Boolean).join(", ")}
+            onChange={(v) => {
+              const loc = parseLocation(v);
+              set((p) => (loc ? { lat: loc.lat.toFixed(6), lng: loc.lng.toFixed(6), mapsUrl: p.mapsUrl || mapsLinkFor(loc) } : { lat: "", lng: "" }));
+            }}
+          />
+        )}
+        <div className={grid2}>
+          <Field label="Google Maps link" htmlFor="mapsUrl" error={err("mapsUrl")} className="sm:col-span-2" help="Paste the site's Maps link; the pin is picked up from it when the link has coordinates.">
+            <Input
+              id="mapsUrl"
+              value={f.mapsUrl}
+              disabled={readOnly}
+              placeholder="https://maps.app.goo.gl/…"
+              onChange={(e) => {
+                const coords = coordsFromMapsUrl(e.target.value);
+                set((p) => ({ mapsUrl: e.target.value, ...(coords && !p.lat ? coords : {}) }));
+              }}
+            />
           </Field>
-          <Field label="Latitude" htmlFor="lat" error={err("lat")} help="From Google Maps: long-press the pin.">
+          <Field label="Latitude" htmlFor="lat" error={err("lat")}>
             <Input id="lat" inputMode="decimal" value={f.lat} disabled={readOnly} onChange={(e) => set({ lat: e.target.value })} />
           </Field>
           <Field label="Longitude" htmlFor="lng" error={err("lng")}>
@@ -130,7 +163,7 @@ export function LocationStep({ form: f, set, err, options, readOnly, hints }: ES
             </Field>
           )}
           <Field label="Languages spoken" htmlFor="languages">
-            <ChipInput id="languages" value={f.languages} onChange={(languages) => set({ languages })} suggestions={["English", "Hindi", "Marathi", "Gujarati", "Kannada"]} max={12} disabled={readOnly} />
+            <ChipInput id="languages" value={f.languages} onChange={(languages) => set({ languages })} suggestions={LANGUAGE_SUGGESTIONS} max={12} disabled={readOnly} />
           </Field>
         </div>
       </Group>
@@ -149,9 +182,35 @@ export function LocationStep({ form: f, set, err, options, readOnly, hints }: ES
 }
 
 // ---------------------------------------------------------------- Timings
-export function TimingsStep({ form: f, set, err, readOnly }: EStepProps) {
+export function TimingsStep({ form: f, set, err, readOnly, hints }: EStepProps) {
+  const formWeek = hints?.timings ? parseTimingsText(hints.timings) : null;
+  const sameAsForm = formWeek ? timingsToText(formWeek) === timingsToText(f.timings) : false;
   return (
     <div className="space-y-5">
+      {hints?.timings && (
+        <FormNote
+          action={
+            formWeek &&
+            !sameAsForm && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={readOnly}
+                onClick={() => {
+                  set({ is24x7: false, timings: formWeek });
+                  toast.success("Timings filled from the website form. Check them.");
+                }}
+              >
+                Use these timings
+              </Button>
+            )
+          }
+        >
+          Website form {hints.ref}: <span className="whitespace-pre-line">{hints.timings}</span>
+          {!formWeek && " (couldn't be read: enter them below)"}
+        </FormNote>
+      )}
       <Group title="Opening hours">
         <SwitchField
           label="Open 24×7"
@@ -164,6 +223,16 @@ export function TimingsStep({ form: f, set, err, readOnly }: EStepProps) {
         <Field label="Appointment note (optional)" htmlFor="appointmentNote" error={err("appointmentNote")} help="e.g. “Walk-ins welcome; call ahead for procedures.”">
           <Input id="appointmentNote" maxLength={200} value={f.appointmentNote} disabled={readOnly} onChange={(e) => set({ appointmentNote: e.target.value })} />
         </Field>
+        {!f.appointmentNote && (
+          <SuggestionChips
+            single
+            label="Use"
+            items={[...(hints?.appointmentNote ? [hints.appointmentNote] : []), ...APPOINTMENT_NOTE_SUGGESTIONS]}
+            have={[]}
+            disabled={readOnly}
+            onAdd={([appointmentNote]) => set({ appointmentNote })}
+          />
+        )}
       </Group>
     </div>
   );
@@ -178,6 +247,9 @@ function NamedList({
   readOnly,
   addLabel,
   placeholder,
+  suggestions,
+  fromForm,
+  formRef,
 }: {
   id: "facilities" | "equipment";
   items: NamedValue[];
@@ -186,9 +258,16 @@ function NamedList({
   readOnly: boolean;
   addLabel: string;
   placeholder: string;
+  suggestions: string[];
+  fromForm?: string[];
+  formRef?: string;
 }) {
+  const have = items.map((x) => x.name);
+  const add = (names: string[]) => onChange([...items.filter((x) => x.name.trim()), ...names.map((name) => ({ name, description: "" }))]);
   return (
     <div className="space-y-2">
+      {fromForm && fromForm.length > 0 && <SuggestionChips tone="form" label={`Website form ${formRef ?? ""}`.trim()} items={fromForm} have={have} disabled={readOnly} onAdd={add} />}
+      <SuggestionChips items={suggestions} have={have} disabled={readOnly} onAdd={add} />
       {items.map((x, i) => (
         <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
           <Input id={`${id}.${i}.name`} value={x.name} placeholder={placeholder} disabled={readOnly} aria-invalid={Boolean(err(`${id}.${i}.name`))} onChange={(e) => onChange(updateAt(items, i, { name: e.target.value }))} />
@@ -208,22 +287,18 @@ function NamedList({
   );
 }
 
-export function ServicesStep({ form: f, set, err, readOnly }: EStepProps) {
+export function ServicesStep({ form: f, set, err, readOnly, options, hints }: EStepProps) {
   const theme = getTheme(f.themeKey, f.kind);
-  const missing = theme.suggestedServices.filter((s) => !f.services.some((x) => x.name.toLowerCase() === s.name.toLowerCase()));
+  const type = options.categories.find((c) => c.id === f.categoryId)?.slug ?? f.themeKey;
+  const groupOf = (name: string) => theme.suggestedServices.find((s) => s.name.toLowerCase() === name.toLowerCase())?.group ?? "";
+  const addServices = (names: string[]) =>
+    set((p) => ({ services: [...p.services.filter((x) => x.name.trim()), ...names.map((name) => ({ name, description: "", group: groupOf(name) }))] }));
+  const have = f.services.map((x) => x.name);
   return (
     <div className="space-y-5">
       <Group title="Services" description={theme.serviceGroups.length ? `Grouped on the page as: ${theme.serviceGroups.join(" · ")}.` : "Listed on the page in this order."}>
-        {missing.length > 0 && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={readOnly}
-            onClick={() => set((p) => ({ services: [...p.services, ...missing.map((s) => ({ name: s.name, description: "", group: s.group ?? "" }))] }))}
-          >
-            <Sparkles /> Add {missing.length} suggested for {theme.name}
-          </Button>
-        )}
+        {hints && hints.services.length > 0 && <SuggestionChips tone="form" label={`Website form ${hints.ref}`} items={hints.services} have={have} disabled={readOnly} onAdd={addServices} />}
+        <SuggestionChips items={serviceSuggestions(f.kind, type)} have={have} disabled={readOnly} onAdd={addServices} />
         {f.services.map((s, i) => (
           <RepeatItem key={i} title={s.name || `Service ${i + 1}`} disabled={readOnly} onRemove={() => set((p) => ({ services: removeAt(p.services, i) }))}>
             <div className={grid2}>
@@ -254,11 +329,33 @@ export function ServicesStep({ form: f, set, err, readOnly }: EStepProps) {
       </Group>
 
       <Group title="Facilities" description="Factual list: lab, pharmacy, X-ray, parking, lift, wheelchair access…">
-        <NamedList id="facilities" items={f.facilities} onChange={(facilities) => set({ facilities })} err={err} readOnly={readOnly} addLabel="Add facility" placeholder="e.g. Pharmacy" />
+        <NamedList
+          id="facilities"
+          items={f.facilities}
+          onChange={(facilities) => set({ facilities })}
+          err={err}
+          readOnly={readOnly}
+          addLabel="Add facility"
+          placeholder="e.g. Pharmacy"
+          suggestions={facilitySuggestions(f.kind)}
+          fromForm={hints?.facilities}
+          formRef={hints?.ref}
+        />
       </Group>
 
       <Group title="Equipment" description="What you have, never how it compares.">
-        <NamedList id="equipment" items={f.equipment} onChange={(equipment) => set({ equipment })} err={err} readOnly={readOnly} addLabel="Add equipment" placeholder="e.g. Digital X-ray" />
+        <NamedList
+          id="equipment"
+          items={f.equipment}
+          onChange={(equipment) => set({ equipment })}
+          err={err}
+          readOnly={readOnly}
+          addLabel="Add equipment"
+          placeholder="e.g. Digital X-ray"
+          suggestions={equipmentSuggestions(f.kind, type)}
+          fromForm={hints?.equipment}
+          formRef={hints?.ref}
+        />
       </Group>
     </div>
   );

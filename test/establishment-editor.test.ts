@@ -60,6 +60,7 @@ async function clinicReady(name = "Shree Skin Clinic") {
   f.approval = { ownerApprovedAt: "2026-11-15", approvedVia: "whatsapp" };
   const doc = new Establishment({ kind: "clinic", plan: "clinic", name: "x" });
   await save(doc, "basics", f);
+  await save(doc, "design", f);
   await save(doc, "location", f);
   await save(doc, "review", f);
   return { doc, f, x };
@@ -74,11 +75,42 @@ describe("clinic/hospital editor (server)", () => {
 
   it("saves the visiting card style code (clinic or hospital styles)", async () => {
     const { doc, f } = await clinicReady("Card Style Clinic");
-    await save(doc, "basics", { ...f, cardStyle: "HSP-NAVY" });
+    await save(doc, "design", { ...f, cardStyle: "HSP-NAVY" });
     expect((await Establishment.findById(doc._id).lean())!.cardStyle).toBe("HSP-NAVY");
     expect(docToForm(doc.toObject()).cardStyle).toBe("HSP-NAVY");
-    await save(doc, "basics", { ...f, cardStyle: "" });
+    await save(doc, "design", { ...f, cardStyle: "" });
     expect((await Establishment.findById(doc._id).lean())!.cardStyle).toBeUndefined();
+  });
+
+  it("keeps the kind fixed, moves the design with the category, and saves the design step separately", async () => {
+    const x = await ids();
+    const f = emptyEstablishmentForm("clinic");
+    f.name = "Type Follow Clinic";
+    const doc = new Establishment({ kind: "clinic", plan: "clinic", name: "x" });
+    await save(doc, "basics", f);
+    expect(doc.themeKey).toBe("general-opd");
+    f.categoryId = x.skin;
+    await save(doc, "basics", f);
+    expect(doc.themeKey).toBe("skin"); // follows the new type
+    f.themeKey = "dental";
+    await save(doc, "design", f);
+    f.categoryId = String((await ClinicCategory.findOne({ slug: "eye" }).lean())!._id);
+    await save(doc, "basics", f);
+    expect(doc.themeKey).toBe("dental"); // picked by hand: kept
+    // Basics can't switch a saved site to a hospital.
+    await save(doc, "basics", { ...emptyEstablishmentForm("hospital"), name: "Type Follow Clinic", categoryId: f.categoryId });
+    expect(doc.kind).toBe("clinic");
+  });
+
+  it("keeps a photo and an outside profile link for doctors added by name only", async () => {
+    const { doc, f } = await clinicReady("Photo Doctors Clinic");
+    const photo = { publicId: "intake/x", url: "https://res.cloudinary.com/demo/image/upload/intake/x.jpg" };
+    f.doctors = [{ key: "v", doctorProfileId: "", name: "Dr. Neha Joshi", qualifications: "MBBS, MD", specialty: "Consultant Dermatologist", role: "Visiting consultant", profileUrl: "https://www.practo.com/pune/doctor/neha", photo }];
+    await save(doc, "doctors", f);
+    const back = docToForm((await Establishment.findById(doc._id).lean())!);
+    expect(back.doctors[0]).toMatchObject({ name: "Dr. Neha Joshi", role: "Visiting consultant", profileUrl: "https://www.practo.com/pune/doctor/neha", photo: { url: photo.url } });
+    f.doctors = [{ ...f.doctors[0]!, profileUrl: "practo" }];
+    expect(sectionSchemas.doctors.safeParse(sectionPayload("doctors", f)).success).toBe(false);
   });
 
   it("de-duplicates page slugs per city and never makes a dr- short link", async () => {
@@ -149,9 +181,9 @@ describe("clinic/hospital editor (server)", () => {
     await save(doc, "basics", f);
 
     f.doctors = [
-      { key: "a", doctorProfileId: String(amit._id), name: "", qualifications: "", specialty: "", role: "" },
-      { key: "n", doctorProfileId: String(neha._id), name: "", qualifications: "", specialty: "", role: "Consultant" },
-      { key: "v", doctorProfileId: "", name: "Dr. Visiting", qualifications: "MS", specialty: "Surgeon", role: "" },
+      { key: "a", doctorProfileId: String(amit._id), name: "", qualifications: "", specialty: "", role: "", profileUrl: "" },
+      { key: "n", doctorProfileId: String(neha._id), name: "", qualifications: "", specialty: "", role: "Consultant", profileUrl: "" },
+      { key: "v", doctorProfileId: "", name: "Dr. Visiting", qualifications: "MS", specialty: "Surgeon", role: "", profileUrl: "" },
     ];
     await save(doc, "doctors", f);
     await syncDoctorLinksFromEstablishment(doc._id, [], [String(amit._id), String(neha._id)]);

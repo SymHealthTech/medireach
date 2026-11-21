@@ -1,24 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, ClipboardList, Loader2, MapPin, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, ClipboardList, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { addMaster, MasterSelect } from "@/components/admin/form/MasterSelect";
 import { emptyClinic, type ClinicForm } from "@/lib/doctors/form";
 import type { FormClinic } from "@/lib/intake/hints";
-import { mapsLinkFor, parseLocation } from "@/lib/intake/form";
+import { coordsFromMapsUrl, mapsLinkFor, parseLocation } from "@/lib/intake/form";
 import { parseTimingsText } from "@/lib/timings";
 import { toast } from "sonner";
+import { LocationField } from "@/components/intake/LocationField";
 import { TimingEditor } from "../TimingEditor";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
-
-/** Pull lat/lng out of a pasted Google Maps link ("…@18.50,73.80,17z" or "?q=18.5,73.8"). */
-function coordsFromMapsUrl(url: string): { lat: string; lng: string } | null {
-  const m = /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/.exec(url) ?? /[?&](?:q|query|ll)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(url);
-  return m ? { lat: m[1]!, lng: m[2]! } : null;
-}
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -307,21 +302,20 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                   <Input id={`${p}.lng`} inputMode="decimal" value={c.lng} disabled={readOnly} onChange={(e) => setClinic(i, { lng: e.target.value })} />
                 </Field>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={readOnly}
-                onClick={() =>
-                  navigator.geolocation?.getCurrentPosition(
-                    (pos) => setClinic(i, { lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) }),
-                    () => undefined,
-                    { enableHighAccuracy: true, timeout: 10000 },
-                  )
-                }
-              >
-                <MapPin /> Use my current location (at the clinic)
-              </Button>
+              {!readOnly && (
+                <div className="space-y-1.5">
+                  <p className="text-sm font-medium">Map location</p>
+                  <LocationField
+                    id={`${p}.location`}
+                    value={c.lat && c.lng ? `${c.lat},${c.lng}` : ""}
+                    hint={[c.name, c.addressLine1, options.areas.find((a) => a.id === c.areaId)?.name, options.cities.find((x) => x.id === c.cityId)?.name].filter(Boolean).join(", ")}
+                    onChange={(v) => {
+                      const loc = parseLocation(v);
+                      setClinic(i, loc ? { lat: loc.lat.toFixed(6), lng: loc.lng.toFixed(6), ...(c.mapsUrl ? {} : { mapsUrl: mapsLinkFor(loc) }) } : { lat: "", lng: "" });
+                    }}
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">Timings</p>

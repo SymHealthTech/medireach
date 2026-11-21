@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, Cloud, Loader2, Lock } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardList, Cloud, ExternalLink, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -32,8 +33,10 @@ import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { absUrl, paths } from "@/lib/site";
 import { getTheme } from "@/themes/specialty";
+import type { CardFace } from "@/components/intake/IntakeContext";
 import type { EStepProps } from "./shared";
 import { BasicsStep } from "./steps/BasicsStep";
+import { DesignStep } from "./steps/DesignStep";
 import { GalleryStep, LocationStep, ServicesStep, TimingsStep } from "./steps/ContentSteps";
 import { DoctorsStep, ExtrasStep } from "./steps/PeopleSteps";
 import { BusinessStep, ReviewStep, SeoStep } from "./steps/SiteSteps";
@@ -54,12 +57,14 @@ export function EstablishmentEditor({
   role,
   initialStep = "basics",
   hints,
+  cardFaces,
 }: {
   initial: EstablishmentForm;
   options: EstablishmentEditorOptions;
   role: AdminRole;
   initialStep?: StepKey;
   hints?: SiteFormHints;
+  cardFaces?: Record<string, CardFace>;
 }) {
   const [form, setForm] = useState<EstablishmentForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -113,6 +118,8 @@ export function EstablishmentEditor({
           foundingNumber: server.foundingNumber,
           renewalStatus: server.renewalStatus,
           ...(dirty.current.has("seo") ? {} : { slug: server.slug, shortSlug: server.shortSlug, subdomain: server.subdomain }),
+          // A new type moves the design to that type's design on the server (unless one was picked by hand).
+          ...(s === "basics" && !dirty.current.has("design") ? { themeKey: server.themeKey } : {}),
           ...(s === "business" && !dirty.current.has("business")
             ? { renewalDueDate: server.renewalDueDate, renewalPrice: server.renewalPrice }
             : {}),
@@ -182,7 +189,7 @@ export function EstablishmentEditor({
     toast.success(ok);
   }
 
-  const stepProps: EStepProps = { form, set, err, options, readOnly, role, hints };
+  const stepProps: EStepProps = { form, set, err, options, readOnly, role, hints, cardFaces };
   const theme = getTheme(form.themeKey, form.kind);
   const kindLabel = form.kind === "hospital" ? "hospital" : "clinic";
 
@@ -258,6 +265,22 @@ export function EstablishmentEditor({
           <Progress value={((stepIndex + 1) / STEPS.length) * 100} className="h-1.5" />
         </div>
 
+        {hints && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-sage/50 px-4 py-3 text-sm text-ink">
+            <ClipboardList className="size-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              Made from website form <strong>{hints.ref}</strong>. Its answers are shown in each step with <em>Use</em> / <em>Add</em> buttons.
+            </span>
+            {hints.intakeId && (
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/admin/intakes/${hints.intakeId}`} target="_blank">
+                  <ExternalLink /> Open website form
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+
         {readOnly && (
           <div className="flex items-start gap-3 rounded-xl border border-line bg-muted p-4 text-sm">
             <Lock className="mt-0.5 size-4 shrink-0" />
@@ -276,6 +299,7 @@ export function EstablishmentEditor({
         {step === "gallery" && <GalleryStep {...stepProps} />}
         {step === "seo" && <SeoStep {...stepProps} />}
         {step === "business" && <BusinessStep {...stepProps} />}
+        {step === "design" && <DesignStep {...stepProps} />}
         {step === "review" && (
           <ReviewStep
             {...stepProps}

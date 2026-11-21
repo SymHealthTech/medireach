@@ -103,7 +103,7 @@ function DoctorCard({ d }: { d: PublicSiteDoctor }) {
   );
   const cls = "flex items-start gap-4 rounded-2xl bg-surface p-5 shadow-soft ring-1 ring-ink/5";
   return d.url ? (
-    <a href={d.url} className={cn(cls, "transition hover:-translate-y-1 hover:shadow-lift")}>
+    <a href={d.url} {...(d.external ? { target: "_blank", rel: "noopener nofollow" } : {})} className={cn(cls, "transition hover:-translate-y-1 hover:shadow-lift")}>
       {body}
     </a>
   ) : (

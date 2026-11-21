@@ -55,7 +55,7 @@ describe("card style catalogue", () => {
     expect(docTemplates("CLN-TEAL").success).toBe(false);
     expect(DOCTOR_CARD_STYLE_CODES).toHaveLength(5);
     expect(SITE_CARD_STYLE_CODES).toHaveLength(10);
-    const siteShape = siteSchemas.basics.shape.cardStyle;
+    const siteShape = siteSchemas.design.shape.cardStyle;
     expect(siteShape.safeParse("HSP-CRIMSON").success).toBe(true);
     expect(siteShape.safeParse("CLN-BERRY").success).toBe(true);
     expect(siteShape.safeParse("DOC-AMBER").success).toBe(false);

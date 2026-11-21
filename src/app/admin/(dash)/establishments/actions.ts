@@ -17,6 +17,7 @@ import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { sitePath } from "@/lib/site";
 import { RESERVED_SUBDOMAINS } from "@/config/reserved";
 import { Establishment } from "@/models/Establishment";
+import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME } from "@/themes/specialty";
 
 const id = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.");
 const stepKeys = STEPS.map((s) => s.key) as [StepKey, ...StepKey[]];
@@ -68,7 +69,7 @@ export const saveEstablishmentSectionAction = adminAction(
     } else {
       if (step !== "basics") throw new ActionError("Start with the name.");
       const k = kind ?? "clinic";
-      doc = new Establishment({ kind: k, plan: k, name: "x", status: "draft" });
+      doc = new Establishment({ kind: k, plan: k, name: "x", status: "draft", themeKey: k === "hospital" ? DEFAULT_HOSPITAL_THEME : DEFAULT_CLINIC_THEME });
     }
 
     const before = docToForm(doc.toObject());

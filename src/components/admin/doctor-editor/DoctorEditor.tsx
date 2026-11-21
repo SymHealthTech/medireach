@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, Cloud, Loader2, Lock } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardList, Cloud, ExternalLink, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -292,6 +293,22 @@ export function DoctorEditor({
           </div>
           <Progress value={((stepIndex + 1) / STEPS.length) * 100} className="h-1.5" />
         </div>
+
+        {hints && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-sage/50 px-4 py-3 text-sm text-ink">
+            <ClipboardList className="size-4 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              Made from website form <strong>{hints.ref}</strong>. Its answers are shown in each step with <em>Use</em> / <em>Fill</em> buttons.
+            </span>
+            {hints.intakeId && (
+              <Button asChild size="sm" variant="outline">
+                <Link href={`/admin/intakes/${hints.intakeId}`} target="_blank">
+                  <ExternalLink /> Open website form
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
 
         {readOnly && (
           <div className="flex items-start gap-3 rounded-xl border border-line bg-muted p-4 text-sm">

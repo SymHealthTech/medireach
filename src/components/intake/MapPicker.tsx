@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { Crosshair, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { inputClass } from "./IntakeFields";
+import { inputClass } from "./input-class";
 import { currentPosition } from "./LocationField";
 
 type LatLng = { lat: number; lng: number };

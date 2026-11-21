@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { EstablishmentEditor } from "@/components/admin/establishment-editor/EstablishmentEditor";
+import { sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { isObjectId } from "@/lib/admin/list";
@@ -21,5 +22,5 @@ export default async function EditEstablishmentPage({ params, searchParams }: { 
   const [doc, options, sp, hints] = await Promise.all([Establishment.findById(id).lean(), getEstablishmentEditorOptions(), searchParams, siteFormHints(id)]);
   if (!doc) notFound();
   const step = STEPS.some((s) => s.key === sp.step) ? (sp.step as StepKey) : "basics";
-  return <EstablishmentEditor key={id} initial={docToForm(doc)} options={options} role={admin.role} initialStep={step} hints={hints} />;
+  return <EstablishmentEditor key={id} initial={docToForm(doc)} options={options} role={admin.role} initialStep={step} hints={hints} cardFaces={sampleCardFaces(doc.kind)} />;
 }

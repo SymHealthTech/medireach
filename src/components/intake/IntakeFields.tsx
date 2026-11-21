@@ -7,9 +7,12 @@ import { cleanPastedText, emptyItem, fieldId, isRepeatValue, isShown, type Docto
 import { CardStylePicker, ChoiceCards, DesignPicker } from "./DesignPickers";
 import { DoctorsField } from "./DoctorsField";
 import { LocationField } from "./LocationField";
+import { SuggestionChips, SuggestionDatalist, datalistId, suggestMode, useFieldSuggestions } from "./Suggestions";
+import { TimingsField } from "./TimingsField";
 
-export const inputClass =
-  "w-full rounded-[10px] border border-line bg-surface px-3 text-base text-body outline-none placeholder:text-body/40 focus-visible:border-ink focus-visible:ring-[3px] focus-visible:ring-ink/20 aria-invalid:border-clay disabled:bg-paper disabled:text-body/70";
+import { inputClass } from "./input-class";
+
+export { inputClass };
 
 const INPUT_TYPE: Partial<Record<FieldDef["type"], { type: string; inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"] }>> = {
   email: { type: "email", inputMode: "email" },
@@ -39,6 +42,8 @@ export function IntakeField({
   context?: Record<string, unknown>;
 }) {
   const id = fieldId(errKey);
+  const suggestions = useFieldSuggestions(f, context);
+  const mode = suggestMode(f);
 
   if (f.type === "doctors") {
     const list = Array.isArray(value) ? (value as DoctorEntry[]) : [];
@@ -76,7 +81,7 @@ export function IntakeField({
   } as const;
 
   return (
-    <div className={cn("space-y-1.5", f.wide && "sm:col-span-2")}>
+    <div className={cn("min-w-0 space-y-1.5", f.wide && "sm:col-span-2")}>
       <label htmlFor={id} className="block text-sm font-medium text-body">
         {f.label}
         {f.required && (
@@ -95,6 +100,8 @@ export function IntakeField({
         <ChoiceCards id={id} field={f} value={v} onChange={onChange} />
       ) : f.type === "location" ? (
         <LocationField id={id} value={v} onChange={onChange} hint={[context.name, context.address, context.area, context.city].filter((x) => typeof x === "string" && x.trim()).join(", ")} />
+      ) : f.type === "timings" ? (
+        <TimingsField id={id} value={v} onChange={onChange} placeholder={f.placeholder} describedBy={describedBy} invalid={Boolean(error)} />
       ) : f.type === "story" ? (
         <StoryInput common={common} value={v} max={f.max ?? 6000} onChange={onChange} />
       ) : f.type === "textarea" || f.type === "lines" ? (
@@ -109,8 +116,17 @@ export function IntakeField({
           ))}
         </select>
       ) : (
-        <input {...common} {...INPUT_TYPE[f.type]} type={INPUT_TYPE[f.type]?.type ?? "text"} onChange={(e) => onChange(e.target.value)} className={cn(inputClass, "h-11")} />
+        <input
+          {...common}
+          {...INPUT_TYPE[f.type]}
+          type={INPUT_TYPE[f.type]?.type ?? "text"}
+          list={mode === "typeahead" ? datalistId(id) : undefined}
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(inputClass, "h-11")}
+        />
       )}
+      {mode === "typeahead" && suggestions.length > 0 && <SuggestionDatalist id={datalistId(id)} items={suggestions} />}
+      {mode && mode !== "typeahead" && suggestions.length > 0 && <SuggestionChips mode={mode} items={suggestions} value={v} onChange={onChange} label={f.label} />}
       {error ? (
         <p id={`${id}-error`} className="text-sm text-clay-text">
           {error}

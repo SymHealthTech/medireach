@@ -97,6 +97,8 @@ export function toPublicEstablishment(
             ...(x.qualifications ? { qualifications: x.qualifications } : {}),
             ...(x.specialty ? { specialty: x.specialty } : {}),
             ...(x.role ? { role: x.role } : {}),
+            ...(x.profileUrl && /^https?:\/\//i.test(x.profileUrl) ? { url: x.profileUrl, external: true } : {}),
+            ...(x.photo?.url ? { photo: { url: x.photo.url, alt: x.photo.alt || x.name } } : {}),
           },
         ]
       : [];

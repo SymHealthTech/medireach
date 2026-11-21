@@ -17,7 +17,7 @@ import { RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
 import { APPROVAL_CHANNELS, DOMAIN_STATUSES, ESTABLISHMENT_SOURCES } from "@/lib/constants";
 import type { EstablishmentForm, StepKey } from "@/lib/establishments/form";
 import { establishmentDescription, establishmentTitle } from "@/lib/seo/establishment";
-import { absUrl, paths, ROOT_HOSTNAME } from "@/lib/site";
+import { absUrl, paths, ROOT_HOSTNAME, subdomainUrl } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
 import type { EStepProps } from "../shared";
@@ -68,7 +68,7 @@ export function seoInput(f: EstablishmentForm, o: EStepProps["options"]) {
   };
 }
 
-export function SeoStep({ form: f, set, err, options, readOnly }: EStepProps) {
+export function SeoStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const citySlug = f.citySlug || options.cities.find((c) => c.id === f.address.cityId)?.slug || "";
   const slugState = useAvailability("slug", f.slug, f.id, citySlug);
   const shortState = useAvailability("shortSlug", f.shortSlug, f.id, citySlug);
@@ -79,24 +79,67 @@ export function SeoStep({ form: f, set, err, options, readOnly }: EStepProps) {
   const folder = f.kind === "hospital" ? paths.hospital : paths.clinic;
   const pageUrl = absUrl(folder(citySlug || "city", f.slug || "…"));
   const base = slugify(f.name).replace(/^dr-/, "");
-  const suggestions = [base.replace(/-/g, ""), base].filter((x, i, a) => x.length >= 3 && x.length <= 40 && a.indexOf(x) === i);
+  // What they asked for on the website form first, then from the name.
+  const asked = hints?.websiteName ? slugify(hints.websiteName.replace(/\.medireach.*$/i, "")).replace(/-/g, "") : "";
+  const suggestions = [asked, base.replace(/-/g, ""), base].filter((x, i, a) => x.length >= 3 && x.length <= 40 && a.indexOf(x) === i);
+  // Show the result as the site's own website (subdomain) or as the MediReach page, as in the doctor editor.
+  const [view, setView] = useState<"subdomain" | "page">("subdomain");
+  const shownUrl = view === "subdomain" ? subdomainUrl(f.subdomain || suggestions[0] || "name") : pageUrl;
+  const logoUrl = f.logo?.url ? f.logo.url.replace("/image/upload/", "/image/upload/f_auto,q_auto,c_pad,b_white,w_56,h_56/") : undefined;
+  const coverUrl = f.coverPhoto?.url ? f.coverPhoto.url.replace("/image/upload/", "/image/upload/f_auto,q_auto,c_fill,w_184,h_184/") : undefined;
 
   return (
     <div className="space-y-5">
       <Group title="Google preview" description="How the site should look in search results. Google may vary it.">
+        <div role="tablist" aria-label="Show as" className="inline-flex gap-1 rounded-lg border border-line bg-card p-1">
+          {(
+            [
+              ["subdomain", "Own website (subdomain)"],
+              ["page", "MediReach page"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="tab"
+              aria-selected={view === k}
+              onClick={() => setView(k)}
+              className={cn("min-h-9 rounded-md px-3 text-sm font-semibold", view === k ? "bg-ink text-on-ink" : "text-muted-foreground hover:text-ink")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="rounded-xl border border-line bg-white p-4 font-[arial,sans-serif] text-[#202124]">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="flex size-7 items-center justify-center rounded-full bg-[#f1f3f4] text-[10px] font-bold text-[#0a3f3f]">M</span>
-            <span>
-              <span className="block text-sm">MediReach</span>
-              <span className="block text-[#4d5156]">{pageUrl.replace(/^https?:\/\//, "").replace(/\//g, " › ")}</span>
-            </span>
+          <div className="flex gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-xs">
+                {view === "subdomain" && logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- small preview of the site's logo
+                  <img src={logoUrl} alt="" className="size-7 shrink-0 rounded-full border border-[#dadce0] object-contain" />
+                ) : (
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#f1f3f4] text-[10px] font-bold text-[#0a3f3f]">
+                    {view === "subdomain" ? (f.name.trim()[0]?.toUpperCase() ?? "C") : "M"}
+                  </span>
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm">{view === "subdomain" ? f.name || input.name : "MediReach"}</span>
+                  <span className="block truncate text-[#4d5156]">{shownUrl.replace(/^https?:\/\//, "").replace(/\/$/, "").replace(/\//g, " › ")}</span>
+                </span>
+              </div>
+              <p className="mt-2 text-xl leading-snug text-[#1a0dab]">{title}</p>
+              <p className="mt-1 text-sm leading-normal text-[#4d5156]">{description}</p>
+            </div>
+            {coverUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- the result thumbnail Google may show
+              <img src={coverUrl} alt="" className="mt-6 size-[92px] shrink-0 rounded-lg object-cover" />
+            )}
           </div>
-          <p className="mt-2 text-xl leading-snug text-[#1a0dab]">{title}</p>
-          <p className="mt-1 text-sm leading-normal text-[#4d5156]">{description}</p>
         </div>
         <p className="text-xs text-muted-foreground">
           Title {title.length}/60 · Description {description.length}/155
+          {!logoUrl && " · Add a logo (Basics) to show it in results."}
+          {view === "subdomain" && !f.subdomain && " · Set the website address below to see the real address."}
         </p>
       </Group>
 
@@ -128,6 +171,7 @@ export function SeoStep({ form: f, set, err, options, readOnly }: EStepProps) {
               {suggestions.map((s) => (
                 <button key={s} type="button" disabled={readOnly} onClick={() => set({ subdomain: s })} className="rounded-full border border-dashed border-line px-2.5 py-1 text-xs hover:border-ink/40">
                   Use {s}
+                  {s === asked && ` (asked for in form ${hints?.ref})`}
                 </button>
               ))}
             </div>

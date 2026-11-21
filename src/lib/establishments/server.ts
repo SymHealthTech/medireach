@@ -1,4 +1,5 @@
 import "server-only";
+import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME } from "@/themes/specialty";
 import { Types, type HydratedDocument } from "mongoose";
 import { ActionError } from "@/lib/admin/action";
 import { can, type CurrentAdmin } from "@/lib/auth/admin";
@@ -96,6 +97,8 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
       qualifications: s(x.qualifications),
       specialty: s(x.specialty),
       role: s(x.role),
+      ...(x.photo ? { photo: { publicId: x.photo.publicId, url: x.photo.url, ...(x.photo.alt ? { alt: x.photo.alt } : {}) } } : {}),
+      profileUrl: s(x.profileUrl),
     })),
     registration: { authority: s(d.registration?.authority), number: s(d.registration?.number) },
     departments: (d.departments ?? []).map((x, i) => ({
@@ -147,28 +150,35 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
   switch (step) {
     case "basics": {
       const d = input as SectionData<"basics">;
+      // The kind is set once, by "New clinic" / "New hospital"; it can't be switched later.
+      if (doc.isNew) doc.set({ kind: d.kind, plan: d.kind });
       if (d.categoryId) {
-        const cat = await ClinicCategory.findById(d.categoryId).select({ kind: 1 }).lean();
+        const cat = await ClinicCategory.findById(d.categoryId).select({ kind: 1, defaultThemeKey: 1 }).lean();
         if (!cat) throw new ActionError("That category no longer exists.", { categoryId: "Choose again." });
-        if (cat.kind !== d.kind) throw new ActionError(`That category is for ${cat.kind}s.`, { categoryId: "Doesn't match the type." });
+        if (cat.kind !== doc.kind) throw new ActionError(`That category is for ${cat.kind}s.`, { categoryId: "Doesn't match the type." });
+        // A new category moves the design to its specialty design, unless one was picked by hand (Design step).
+        if (String(doc.categoryId ?? "") !== d.categoryId) {
+          const prev = doc.categoryId ? await ClinicCategory.findById(doc.categoryId).select({ defaultThemeKey: 1 }).lean() : null;
+          const untouched = !prev || doc.themeKey === prev.defaultThemeKey || doc.themeKey === DEFAULT_CLINIC_THEME || doc.themeKey === DEFAULT_HOSPITAL_THEME;
+          if (untouched && cat.defaultThemeKey) doc.themeKey = cat.defaultThemeKey;
+        }
       }
-      await assertTemplateReady(d.kind, d.siteTemplateId);
-      await assertTemplateReady("card", d.cardTemplateId);
       doc.set({
-        kind: d.kind,
-        plan: d.kind,
         name: d.name,
         categoryId: toOid(d.categoryId),
-        themeKey: d.themeKey,
         logo: d.logo,
         coverPhoto: d.coverPhoto,
         tagline: d.tagline,
         shortDescription: d.shortDescription,
         about: d.about ? sanitizeBioHtml(d.about) : undefined,
-        siteTemplateId: d.siteTemplateId,
-        cardTemplateId: d.cardTemplateId,
-        cardStyle: d.cardStyle,
       });
+      break;
+    }
+    case "design": {
+      const d = input as SectionData<"design">;
+      await assertTemplateReady(doc.kind, d.siteTemplateId);
+      await assertTemplateReady("card", d.cardTemplateId);
+      doc.set({ themeKey: d.themeKey, siteTemplateId: d.siteTemplateId, cardTemplateId: d.cardTemplateId, cardStyle: d.cardStyle });
       break;
     }
     case "location": {
@@ -223,6 +233,7 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
           qualifications: x.qualifications,
           specialty: x.specialty,
           role: x.role,
+          ...(x.doctorProfileId ? {} : { photo: x.photo, profileUrl: x.profileUrl }),
         })),
       });
       // Departments can only list doctors who are on the team.

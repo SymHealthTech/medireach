@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, UserPlus } from "lucide-react";
+import { ClipboardList, ExternalLink, Plus, UserPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -9,21 +9,97 @@ import { Textarea } from "@/components/ui/textarea";
 import { Pill } from "@/components/admin/StatusBadge";
 import { ChipInput, Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { AddButton, Group, grid2, removeAt, RepeatItem, updateAt } from "@/components/admin/doctor-editor/shared";
+import { PhotoCropUpload } from "@/components/admin/doctor-editor/PhotoCropUpload";
+import { RoleSelect, SuggestionChips } from "@/components/admin/form/Suggestions";
 import { LIMITS } from "@/lib/constants";
-import { randomKey } from "@/lib/establishments/form";
+import { randomKey, type EstablishmentForm } from "@/lib/establishments/form";
+import type { FormSiteDoctor } from "@/lib/intake/hints";
+import {
+  BED_TYPE_SUGGESTIONS,
+  DEGREE_SUGGESTIONS,
+  DEPARTMENT_SUGGESTIONS,
+  DESIGNATION_SUGGESTIONS,
+  INSURANCE_SUGGESTIONS,
+  REG_AUTHORITY_SUGGESTIONS,
+  VISITING_HOURS_SUGGESTIONS,
+} from "@/lib/suggestions";
 import type { EStepProps } from "../shared";
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 // ---------------------------------------------------------------- Doctors
-export function DoctorsStep({ form: f, set, err, options, readOnly }: EStepProps) {
+type SiteDoctor = EstablishmentForm["doctors"][number];
+const blankSiteDoctor = (): SiteDoctor => ({ key: randomKey(), doctorProfileId: "", name: "", qualifications: "", specialty: "", role: "", profileUrl: "" });
+const sameName = (a: string, b: string) => a.replace(/^dr\.?\s*/i, "").trim().toLowerCase() === b.replace(/^dr\.?\s*/i, "").trim().toLowerCase();
+
+export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const linked = new Set(f.doctors.map((d) => d.doctorProfileId).filter(Boolean));
   const doctorById = new Map(options.doctors.map((d) => [d.id, d]));
+  const nameOf = (d: SiteDoctor) => (d.doctorProfileId ? (doctorById.get(d.doctorProfileId)?.name ?? "") : d.name);
+  // Website-form doctors not on the list yet (matched by name).
+  const formDoctors = (hints?.doctors ?? []).filter((x) => x.name && !f.doctors.some((d) => sameName(nameOf(d), x.name)));
+  const fromForm = (x: FormSiteDoctor): SiteDoctor => {
+    // Same name as a MediReach portfolio: link it (the portfolio brings photo, degrees and page).
+    const profile = options.doctors.find((p) => sameName(p.name, x.name) && !linked.has(p.id));
+    return profile
+      ? { ...blankSiteDoctor(), doctorProfileId: profile.id, role: x.role }
+      : { ...blankSiteDoctor(), name: x.name, qualifications: x.qualifications, specialty: x.specialty, role: x.role, profileUrl: x.profileUrl, ...(x.photo ? { photo: x.photo } : {}) };
+  };
+  const setDoctor = (i: number, patch: Partial<SiteDoctor>) => set((prev) => ({ doctors: updateAt(prev.doctors, i, patch) }));
+
   return (
     <div className="space-y-5">
+      <datalist id="dl-degrees">
+        {DEGREE_SUGGESTIONS.map((x) => (
+          <option key={x} value={x} />
+        ))}
+      </datalist>
+      <datalist id="dl-designations">
+        {DESIGNATION_SUGGESTIONS.map((x) => (
+          <option key={x} value={x} />
+        ))}
+      </datalist>
+
+      {formDoctors.length > 0 && (
+        <div className="space-y-2 rounded-lg bg-sage/60 p-3 text-sm text-ink">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-2 font-semibold">
+              <ClipboardList className="size-4" aria-hidden /> Doctors in website form {hints?.ref}
+            </p>
+            {formDoctors.length > 1 && (
+              <Button type="button" size="sm" variant="outline" disabled={readOnly} onClick={() => set((prev) => ({ doctors: [...prev.doctors, ...formDoctors.map(fromForm)] }))}>
+                <Plus /> Add all {formDoctors.length}
+              </Button>
+            )}
+          </div>
+          <ul className="space-y-2">
+            {formDoctors.map((x, i) => (
+              <li key={`${x.name}-${i}`} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
+                  {x.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- small Cloudinary thumbnail from the form
+                    <img src={x.photo.url.replace("/image/upload/", "/image/upload/f_auto,q_auto,c_fill,g_face,w_64,h_64/")} alt="" className="size-8 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <UserRound className="size-8 shrink-0 rounded-full bg-card p-1.5" aria-hidden />
+                  )}
+                  <span className="min-w-0">
+                    <strong className="text-ink">{x.name}</strong>
+                    {[x.specialty, x.qualifications, x.role, x.department && `Dept: ${x.department}`].filter(Boolean).length > 0 &&
+                      ` · ${[x.specialty, x.qualifications, x.role, x.department && `Dept: ${x.department}`].filter(Boolean).join(" · ")}`}
+                  </span>
+                </span>
+                <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={readOnly} onClick={() => set((prev) => ({ doctors: [...prev.doctors, fromForm(x)] }))}>
+                  <Plus /> Add
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <Group
         title="Doctors"
-        description="Link doctors who have a MediReach portfolio (their cards link to it, and their page links back here). Doctors without one can be added by name."
+        description="Link doctors who have a MediReach portfolio (their cards link to it, and their page links back here). Doctors without one are added with their own details and photo."
       >
         {f.doctors.map((d, i) => {
           const p = `doctors.${i}`;
@@ -32,13 +108,8 @@ export function DoctorsStep({ form: f, set, err, options, readOnly }: EStepProps
             <RepeatItem key={d.key} title={profile?.name || d.name || `Doctor ${i + 1}`} disabled={readOnly} onRemove={() => set((prev) => ({ doctors: removeAt(prev.doctors, i) }))}>
               <div className={grid2}>
                 <Field label="MediReach portfolio" htmlFor={`${p}.doctorProfileId`} error={err(`${p}.doctorProfileId`)}>
-                  <NativeSelect
-                    id={`${p}.doctorProfileId`}
-                    value={d.doctorProfileId}
-                    disabled={readOnly}
-                    onChange={(e) => set((prev) => ({ doctors: updateAt(prev.doctors, i, { doctorProfileId: e.target.value }) }))}
-                  >
-                    <option value="">None (add by name below)</option>
+                  <NativeSelect id={`${p}.doctorProfileId`} value={d.doctorProfileId} disabled={readOnly} onChange={(e) => setDoctor(i, { doctorProfileId: e.target.value })}>
+                    <option value="">None (add their details below)</option>
                     {options.doctors
                       .filter((x) => x.id === d.doctorProfileId || !linked.has(x.id))
                       .map((x) => (
@@ -50,23 +121,32 @@ export function DoctorsStep({ form: f, set, err, options, readOnly }: EStepProps
                       ))}
                   </NativeSelect>
                 </Field>
-                <Field label="Role at this site (optional)" htmlFor={`${p}.role`} error={err(`${p}.role`)} help="e.g. Consultant, Medical director, Visiting">
-                  <Input id={`${p}.role`} value={d.role} disabled={readOnly} onChange={(e) => set((prev) => ({ doctors: updateAt(prev.doctors, i, { role: e.target.value }) }))} />
+                <Field label="Role at this site (optional)" htmlFor={`${p}.role`} error={err(`${p}.role`)}>
+                  <RoleSelect id={`${p}.role`} value={d.role} disabled={readOnly} onChange={(role) => setDoctor(i, { role })} />
                 </Field>
-                {!d.doctorProfileId && (
-                  <>
-                    <Field label="Name" htmlFor={`${p}.name`} required error={err(`${p}.name`)}>
-                      <Input id={`${p}.name`} value={d.name} placeholder="Dr. …" disabled={readOnly} onChange={(e) => set((prev) => ({ doctors: updateAt(prev.doctors, i, { name: e.target.value }) }))} />
-                    </Field>
-                    <Field label="Qualifications" htmlFor={`${p}.qualifications`}>
-                      <Input id={`${p}.qualifications`} value={d.qualifications} placeholder="MBBS, MD" disabled={readOnly} onChange={(e) => set((prev) => ({ doctors: updateAt(prev.doctors, i, { qualifications: e.target.value }) }))} />
-                    </Field>
-                    <Field label="Specialty" htmlFor={`${p}.specialty`}>
-                      <Input id={`${p}.specialty`} value={d.specialty} disabled={readOnly} onChange={(e) => set((prev) => ({ doctors: updateAt(prev.doctors, i, { specialty: e.target.value }) }))} />
-                    </Field>
-                  </>
-                )}
               </div>
+              {!d.doctorProfileId && (
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  <div className="shrink-0 sm:w-44">
+                    <p className="mb-1.5 text-sm font-medium">Profile photo</p>
+                    <PhotoCropUpload value={d.photo} disabled={readOnly} onChange={(photo) => setDoctor(i, { photo })} />
+                  </div>
+                  <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                    <Field label="Name" htmlFor={`${p}.name`} required error={err(`${p}.name`)}>
+                      <Input id={`${p}.name`} value={d.name} placeholder="Dr. …" disabled={readOnly} onChange={(e) => setDoctor(i, { name: e.target.value })} />
+                    </Field>
+                    <Field label="Designation / specialty" htmlFor={`${p}.specialty`} error={err(`${p}.specialty`)}>
+                      <Input id={`${p}.specialty`} list="dl-designations" value={d.specialty} placeholder="Consultant Dermatologist" disabled={readOnly} onChange={(e) => setDoctor(i, { specialty: e.target.value })} />
+                    </Field>
+                    <Field label="Qualifications" htmlFor={`${p}.qualifications`} error={err(`${p}.qualifications`)}>
+                      <Input id={`${p}.qualifications`} list="dl-degrees" value={d.qualifications} placeholder="MBBS, MD (Dermatology)" disabled={readOnly} onChange={(e) => setDoctor(i, { qualifications: e.target.value })} />
+                    </Field>
+                    <Field label="Profile link (optional)" htmlFor={`${p}.profileUrl`} error={err(`${p}.profileUrl`)} help="Their own website or Practo profile. The card links to it.">
+                      <Input id={`${p}.profileUrl`} type="url" inputMode="url" value={d.profileUrl} placeholder="https://…" disabled={readOnly} onChange={(e) => setDoctor(i, { profileUrl: e.target.value })} />
+                    </Field>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap items-center gap-2">
                 {profile ? (
                   <>
@@ -91,10 +171,7 @@ export function DoctorsStep({ form: f, set, err, options, readOnly }: EStepProps
           );
         })}
         {err("doctors") && <p className="text-sm text-clay-text">{err("doctors")}</p>}
-        <AddButton
-          disabled={readOnly}
-          onClick={() => set((prev) => ({ doctors: [...prev.doctors, { key: randomKey(), doctorProfileId: "", name: "", qualifications: "", specialty: "", role: "" }] }))}
-        >
+        <AddButton disabled={readOnly} onClick={() => set((prev) => ({ doctors: [...prev.doctors, blankSiteDoctor()] }))}>
           Add doctor
         </AddButton>
         {!f.id && <p className="text-xs text-muted-foreground">Save the name first to create portfolios from here.</p>}
@@ -104,7 +181,7 @@ export function DoctorsStep({ form: f, set, err, options, readOnly }: EStepProps
 }
 
 // ---------------------------------------------------------------- Registration + hospital extras
-export function ExtrasStep({ form: f, set, err, options, readOnly }: EStepProps) {
+export function ExtrasStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const hospital = f.kind === "hospital";
   const team = f.doctors.filter((d) => d.doctorProfileId);
   const doctorName = (id: string) => options.doctors.find((d) => d.id === id)?.name ?? "Doctor";
@@ -124,6 +201,9 @@ export function ExtrasStep({ form: f, set, err, options, readOnly }: EStepProps)
             <Input id="registration.number" value={f.registration.number} disabled={readOnly} onChange={(e) => set((p) => ({ registration: { ...p.registration, number: e.target.value } }))} />
           </Field>
         </div>
+        {!f.registration.authority && (
+          <SuggestionChips single label="Use" items={REG_AUTHORITY_SUGGESTIONS} have={[]} disabled={readOnly} onAdd={([authority]) => set((p) => ({ registration: { ...p.registration, authority: authority! } }))} />
+        )}
       </Group>
 
       <Group title="Insurance and cashless" description="Factual list of insurers/TPAs you work with.">
@@ -133,7 +213,8 @@ export function ExtrasStep({ form: f, set, err, options, readOnly }: EStepProps)
             id="insurance.providers"
             value={f.insurance.providers}
             onChange={(providers) => set((p) => ({ insurance: { ...p.insurance, providers } }))}
-            placeholder="Type a name and press Enter"
+            placeholder="Type a name and press Enter, or tap a suggestion"
+            suggestions={[...(hints?.insurance ?? []), ...INSURANCE_SUGGESTIONS]}
             max={60}
             disabled={readOnly}
           />
@@ -159,6 +240,12 @@ export function ExtrasStep({ form: f, set, err, options, readOnly }: EStepProps)
                 </Button>
               </div>
             ))}
+            <SuggestionChips
+              items={BED_TYPE_SUGGESTIONS}
+              have={f.beds.types.map((b) => b.type)}
+              disabled={readOnly}
+              onAdd={(types) => set((p) => ({ beds: { ...p.beds, types: [...p.beds.types.filter((b) => b.type.trim()), ...types.map((type) => ({ type, count: undefined }))].slice(0, 10) } }))}
+            />
             <AddButton disabled={readOnly} onClick={() => set((p) => ({ beds: { ...p.beds, types: [...p.beds.types, { type: "", count: undefined }] } }))}>
               Add bed type
             </AddButton>
@@ -202,6 +289,22 @@ export function ExtrasStep({ form: f, set, err, options, readOnly }: EStepProps)
               </RepeatItem>
             ))}
             {err("departments") && <p className="text-sm text-clay-text">{err("departments")}</p>}
+            {hints && hints.departments.length > 0 && (
+              <SuggestionChips
+                tone="form"
+                label={`Website form ${hints.ref}`}
+                items={hints.departments}
+                have={f.departments.map((d) => d.name)}
+                disabled={readOnly}
+                onAdd={(names) => set((p) => ({ departments: [...p.departments, ...names.map((name) => ({ key: randomKey(), name, description: "", doctorIds: [] }))] }))}
+              />
+            )}
+            <SuggestionChips
+              items={DEPARTMENT_SUGGESTIONS}
+              have={f.departments.map((d) => d.name)}
+              disabled={readOnly}
+              onAdd={(names) => set((p) => ({ departments: [...p.departments, ...names.map((name) => ({ key: randomKey(), name, description: "", doctorIds: [] }))].slice(0, 30) }))}
+            />
             <AddButton disabled={readOnly} onClick={() => set((p) => ({ departments: [...p.departments, { key: randomKey(), name: "", description: "", doctorIds: [] }] }))}>
               Add department
             </AddButton>
@@ -211,12 +314,22 @@ export function ExtrasStep({ form: f, set, err, options, readOnly }: EStepProps)
             <Field label="Visiting hours for patients' families" htmlFor="visitingHours" error={err("visitingHours")}>
               <Input id="visitingHours" maxLength={200} value={f.visitingHours} disabled={readOnly} placeholder="e.g. 11 am–1 pm and 5 pm–7 pm" onChange={(e) => set({ visitingHours: e.target.value })} />
             </Field>
+            {!f.visitingHours && (
+              <SuggestionChips
+                single
+                label="Use"
+                items={[...(hints?.visitingHours ? [hints.visitingHours] : []), ...VISITING_HOURS_SUGGESTIONS]}
+                have={[]}
+                disabled={readOnly}
+                onAdd={([visitingHours]) => set({ visitingHours })}
+              />
+            )}
           </Group>
         </>
       )}
       {!hospital && (
         <p className="text-sm text-muted-foreground">
-          Beds, departments and visiting hours are for hospitals. Change the type in Basics if this is a hospital.
+          Beds, departments and visiting hours are for hospitals. If this is a hospital, create it with “New hospital” instead.
         </p>
       )}
     </div>

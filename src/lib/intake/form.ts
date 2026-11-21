@@ -3,6 +3,7 @@ import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { LIMITS, type IntakeKind } from "@/lib/constants";
 import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
+import type { SuggestKey } from "@/lib/suggestions";
 import { DEFAULT_HOSPITAL_THEME, SPECIALTY_THEMES, type ThemeIconKey } from "@/themes/specialty";
 
 /**
@@ -48,7 +49,9 @@ export type FieldType =
   /** One of a few options, shown as large radio cards. */
   | "choice"
   /** A list of doctors (name, designation, education, role, portfolio link, photo). `max` = how many. */
-  | "doctors";
+  | "doctors"
+  /** Weekly timings picked day by day (presets, copy Monday), stored as text like "Mon–Sat: 10 am – 1 pm". */
+  | "timings";
 
 export interface FieldDef {
   key: string;
@@ -69,6 +72,11 @@ export interface FieldDef {
   steps?: readonly string[];
   /** Design pickers: which kind of site the choices are for. */
   kind?: IntakeKind;
+  /**
+   * One-tap suggestions (see lib/suggestions). "lines" fields add a line,
+   * comma lists ("languages") add an item, other text fields take the value.
+   */
+  suggest?: SuggestKey;
 }
 
 export interface SectionDef {
@@ -160,6 +168,15 @@ const locationFields = (what: string): FieldDef[] => [
 ];
 
 const TIMINGS_PLACEHOLDER = "Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm\nSunday: closed";
+const timingsField = (label = "Timings"): FieldDef => ({
+  key: "timings",
+  label,
+  type: "timings",
+  required: true,
+  wide: true,
+  placeholder: TIMINGS_PLACEHOLDER,
+  help: "Tap a common pattern, then adjust any day. Or type them in your own words.",
+});
 
 /** Roles for a doctor at a clinic or hospital (the label is what the site shows). */
 export const DOCTOR_ROLES = [
@@ -178,11 +195,11 @@ export const DOCTOR_ROLES = [
 /** The text fields of one doctor entry (the photo is separate). */
 export const DOCTOR_FIELDS: FieldDef[] = [
   text("name", "Doctor's name", { required: true, placeholder: "Dr. Neha Joshi" }),
-  text("designation", "Designation / specialty", { placeholder: "Consultant Dermatologist" }),
+  text("designation", "Designation / specialty", { placeholder: "Consultant Dermatologist", suggest: "designation" }),
   // Role and "Please specify" share a row.
   { key: "role", label: "Role", type: "select", options: DOCTOR_ROLES },
   text("roleOther", "Please specify the role", { required: true, placeholder: "e.g. Anaesthetist, Dietitian", showIf: { key: "role", equals: "other" } }),
-  text("education", "Education", { placeholder: "MBBS, MD (Dermatology)" }),
+  text("education", "Education", { placeholder: "MBBS, MD (Dermatology)", suggest: "education" }),
   { key: "portfolioUrl", label: "Portfolio / profile link", type: "url", wide: true, help: "Optional. Their own website, MediReach page or Practo profile." },
 ];
 
@@ -265,16 +282,29 @@ const contactPersonSection: SectionDef = {
   description: "Who we should call if something is missing.",
   fields: [
     text("contactName", "Your name", { required: true, autoComplete: "name" }),
-    text("contactRole", "Your role", { placeholder: "Owner, doctor, manager" }),
+    text("contactRole", "Your role", { placeholder: "Owner, doctor, manager", suggest: "contactRole" }),
     { key: "mobile", label: "Mobile number", type: "mobile", required: true, autoComplete: "tel" },
     { key: "whatsapp", label: "WhatsApp number", type: "mobile", help: "Leave empty if it is the same as the mobile number." },
   ],
 };
 
 const servicesFields = (): FieldDef[] => [
-  { key: "services", label: "Services / treatments", type: "lines", wide: true, placeholder: "One per line\nSkin allergy treatment\nAcne treatment" },
-  { key: "facilities", label: "Facilities", type: "lines", placeholder: "One per line\nWheelchair access\nParking" },
-  { key: "equipment", label: "Equipment", type: "lines", placeholder: "One per line\nDigital X-ray" },
+  {
+    key: "services",
+    label: "Services / treatments",
+    type: "lines",
+    wide: true,
+    placeholder: "One per line\nSkin allergy treatment\nAcne treatment",
+    suggest: "services",
+    help: "Tap the suggestions to add them, or type your own (one per line).",
+  },
+  { key: "facilities", label: "Facilities", type: "lines", wide: true, placeholder: "One per line\nWheelchair access\nParking", suggest: "facilities" },
+  { key: "equipment", label: "Equipment", type: "lines", wide: true, placeholder: "One per line\nDigital X-ray", suggest: "equipment" },
+];
+
+const insuranceFields = (): FieldDef[] => [
+  { key: "insurance", label: "Insurance / TPA accepted", type: "lines", wide: true, placeholder: "One per line\nStar Health\nMediAssist", suggest: "insurance" },
+  { key: "cashless", label: "Cashless treatment available", type: "checkbox" },
 ];
 
 // --- Doctor -----------------------------------------------------------------
@@ -288,7 +318,7 @@ const DOCTOR: SectionDef[] = [
       { key: "mobile", label: "Mobile number", type: "mobile", required: true, autoComplete: "tel", help: "We call you on this number if anything is missing." },
       { key: "whatsapp", label: "WhatsApp number", type: "mobile", help: "Leave empty if it is the same as the mobile number." },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
-      text("specialty", "Specialty", { required: true, placeholder: "General Physician, Dermatologist…" }),
+      text("specialty", "Specialty", { required: true, placeholder: "General Physician, Dermatologist…", suggest: "specialty" }),
       { key: "systemOfMedicine", label: "System of medicine", type: "select", options: SYSTEMS },
       text("systemOther", "Please specify", { required: true, placeholder: "e.g. Naturopathy, Yoga, Sowa-Rigpa", showIf: { key: "systemOfMedicine", equals: "other" } }),
       {
@@ -300,7 +330,7 @@ const DOCTOR: SectionDef[] = [
         placeholder: "One per line\nMBBS – BJ Medical College, Pune – 2008\nMD (Medicine) – KEM Hospital, Mumbai – 2012",
       },
       { key: "practiceSince", label: "Practising since (year)", type: "year", placeholder: "2012" },
-      text("languages", "Languages you speak", { placeholder: "English, Hindi, Marathi" }),
+      text("languages", "Languages you speak", { placeholder: "English, Hindi, Marathi", suggest: "languages" }),
     ],
   },
   {
@@ -308,7 +338,7 @@ const DOCTOR: SectionDef[] = [
     title: "Registration",
     description: "The NMC guidelines ask for your registration number on your website.",
     fields: [
-      text("council", "Medical council", { placeholder: "Maharashtra Medical Council" }),
+      text("council", "Medical council", { placeholder: "Maharashtra Medical Council", suggest: "council" }),
       text("registrationNumber", "Registration number", { required: true }),
       { key: "registrationYear", label: "Registration year", type: "year" },
     ],
@@ -326,9 +356,9 @@ const DOCTOR: SectionDef[] = [
       text("city", "City", { required: true, placeholder: "Pune" }),
       { key: "pincode", label: "Pincode", type: "pincode" },
       ...locationFields("clinic"),
-      { key: "timings", label: "Timings", type: "textarea", required: true, wide: true, placeholder: TIMINGS_PLACEHOLDER },
+      timingsField(),
       { key: "fee", label: "Consultation fee (₹)", type: "number", help: "Optional. Shown only if you want." },
-      text("appointmentNote", "Appointment note", { placeholder: "Appointments preferred. Walk-ins welcome." }),
+      text("appointmentNote", "Appointment note", { placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" }),
     ],
   },
   {
@@ -352,10 +382,18 @@ const DOCTOR: SectionDef[] = [
     fields: [
       { key: "shortBio", label: "Short introduction (1–2 lines)", type: "textarea", max: LIMITS.shortBio, wide: true },
       { key: "aboutMe", label: "About you", type: "textarea", wide: true, placeholder: "Your experience, training and how you work with patients." },
-      { key: "services", label: "Services you offer", type: "lines", placeholder: "One per line\nDiabetes care\nHealth check-ups" },
-      { key: "conditions", label: "Conditions you treat", type: "lines", placeholder: "One per line\nThyroid disorders\nFever and infections" },
+      {
+        key: "services",
+        label: "Services you offer",
+        type: "lines",
+        wide: true,
+        placeholder: "One per line\nDiabetes care\nHealth check-ups",
+        suggest: "doctorServices",
+        help: "Suggestions follow your specialty. Tap to add, or type your own.",
+      },
+      { key: "conditions", label: "Conditions you treat", type: "lines", wide: true, placeholder: "One per line\nThyroid disorders\nFever and infections", suggest: "conditions" },
       { key: "awards", label: "Awards", type: "lines", placeholder: "Award – Given by – Year" },
-      { key: "memberships", label: "Memberships", type: "lines", placeholder: "Indian Medical Association – 2010" },
+      { key: "memberships", label: "Memberships", type: "lines", placeholder: "Indian Medical Association – 2010", suggest: "memberships" },
     ],
   },
   {
@@ -363,7 +401,7 @@ const DOCTOR: SectionDef[] = [
     title: "Beyond medicine",
     description: "Optional. Your life outside the clinic: sports, travel, music, social work. It helps patients know you as a person. Add a photo that goes with your story.",
     fields: [
-      text("interests", "Hobbies and interests", { wide: true, placeholder: "Running, classical music, trekking" }),
+      text("interests", "Hobbies and interests", { wide: true, placeholder: "Running, classical music, trekking", suggest: "interests" }),
       text("beyondTitle", "Title for your story", { wide: true, placeholder: "Running my first full marathon" }),
       {
         key: "beyondStory",
@@ -389,6 +427,7 @@ const addressFields = (what: string): FieldDef[] => [
   text("city", "City", { required: true, placeholder: "Pune" }),
   { key: "pincode", label: "Pincode", type: "pincode", required: true },
   text("landmark", "Landmark", { placeholder: "Opposite City Pride" }),
+  text("parkingNote", "Parking", { placeholder: "Two-wheeler parking in the basement" }),
   ...locationFields(what),
   { key: "phones", label: "Phone numbers", type: "phone", required: true, help: "Separate several numbers with commas." },
   { key: "siteWhatsapp", label: "WhatsApp number for patients", type: "mobile" },
@@ -504,7 +543,7 @@ const CLINIC: SectionDef[] = [
       text("tagline", "One-line description", { wide: true, placeholder: "Skin, hair and nail care in Kothrud" }),
       aboutStory("clinic"),
       { key: "yearStarted", label: "Year started", type: "year" },
-      text("languages", "Languages spoken", { placeholder: "English, Hindi, Marathi" }),
+      text("languages", "Languages spoken", { placeholder: "English, Hindi, Marathi", suggest: "languages" }),
     ],
   },
   contactPersonSection,
@@ -513,8 +552,8 @@ const CLINIC: SectionDef[] = [
     title: "Address and timings",
     fields: [
       ...addressFields("clinic"),
-      { key: "timings", label: "Timings", type: "textarea", required: true, wide: true, placeholder: TIMINGS_PLACEHOLDER },
-      text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome." }),
+      timingsField(),
+      text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" }),
     ],
   },
   {
@@ -523,12 +562,12 @@ const CLINIC: SectionDef[] = [
     description: `Add each doctor who sees patients here, including visiting consultants (up to ${LIMITS.clinicDoctorsMax}). Each doctor can also get their own portfolio page. Ask us.`,
     fields: [{ key: "doctors", label: "Doctors", type: "doctors", max: LIMITS.clinicDoctorsMax, wide: true }],
   },
-  { key: "services", title: "Services and facilities", fields: [...servicesFields(), awardsField("clinic")] },
+  { key: "services", title: "Services, facilities and insurance", fields: [...servicesFields(), ...insuranceFields(), awardsField("clinic")] },
   {
     key: "registration",
     title: "Registration",
     description: "Optional for clinics.",
-    fields: [text("regAuthority", "Registered with", { placeholder: "Pune Municipal Corporation" }), text("regNumber", "Registration number")],
+    fields: [text("regAuthority", "Registered with", { placeholder: "Pune Municipal Corporation", suggest: "regAuthority" }), text("regNumber", "Registration number")],
   },
   linksSection,
   designSection("clinic"),
@@ -547,7 +586,7 @@ const HOSPITAL: SectionDef[] = [
       aboutStory("hospital"),
       { key: "beds", label: "Number of beds", type: "number", help: `For hospitals up to ${LIMITS.hospitalBedsMax} beds.` },
       { key: "yearStarted", label: "Year started", type: "year" },
-      text("languages", "Languages spoken", { wide: true, placeholder: "English, Hindi, Marathi" }),
+      text("languages", "Languages spoken", { wide: true, placeholder: "English, Hindi, Marathi", suggest: "languages" }),
     ],
   },
   contactPersonSection,
@@ -558,8 +597,8 @@ const HOSPITAL: SectionDef[] = [
       ...addressFields("hospital"),
       { key: "emergencyPhone", label: "24×7 emergency number", type: "phone" },
       { key: "is24x7", label: "Open 24×7", type: "checkbox" },
-      { key: "timings", label: "OPD timings", type: "textarea", required: true, wide: true, placeholder: TIMINGS_PLACEHOLDER },
-      text("visitingHours", "Visiting hours", { placeholder: "11 am – 1 pm, 5 pm – 8 pm" }),
+      timingsField("OPD timings"),
+      text("visitingHours", "Visiting hours", { wide: true, placeholder: "11 am – 1 pm, 5 pm – 8 pm", suggest: "visitingHours" }),
     ],
   },
   {
@@ -568,7 +607,7 @@ const HOSPITAL: SectionDef[] = [
     description: "Add each department and the doctors in it, including visiting consultants.",
     repeat: { max: LIMITS.hospitalDepartmentsMax, itemLabel: "Department", addLabel: "Add another department", minToSubmit: 0 },
     fields: [
-      text("name", "Department name", { required: true, wide: true, placeholder: "Orthopaedics" }),
+      text("name", "Department name", { required: true, wide: true, placeholder: "Orthopaedics", suggest: "department" }),
       { key: "doctors", label: "Doctors in this department", type: "doctors", max: LIMITS.departmentDoctorsMax, wide: true },
     ],
   },
@@ -577,8 +616,7 @@ const HOSPITAL: SectionDef[] = [
     title: "Services, facilities and insurance",
     fields: [
       ...servicesFields(),
-      { key: "insurance", label: "Insurance / TPA accepted", type: "lines", placeholder: "One per line\nStar Health\nMediAssist" },
-      { key: "cashless", label: "Cashless treatment available", type: "checkbox" },
+      ...insuranceFields(),
       awardsField("hospital"),
     ],
   },
@@ -587,7 +625,7 @@ const HOSPITAL: SectionDef[] = [
     title: "Registration",
     description: "Hospitals must show their registration or licence number.",
     fields: [
-      text("regAuthority", "Registered with", { required: true, placeholder: "Pune Municipal Corporation" }),
+      text("regAuthority", "Registered with", { required: true, placeholder: "Pune Municipal Corporation", suggest: "regAuthority" }),
       text("regNumber", "Registration / licence number", { required: true }),
     ],
   },
@@ -833,6 +871,7 @@ const MAX: Record<FieldType, number> = {
   card: 40,
   choice: 40,
   doctors: 0,
+  timings: 3000,
   lines: 3000,
   year: 4,
   number: 7,
@@ -876,6 +915,12 @@ export function parseLocation(v: unknown): { lat: number; lng: number } | null {
   const lat = Number(m[1]);
   const lng = Number(m[2]);
   return Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
+}
+
+/** Pull lat/lng out of a pasted Google Maps link ("…@18.50,73.80,17z" or "?q=18.5,73.8"). */
+export function coordsFromMapsUrl(url: string): { lat: string; lng: string } | null {
+  const m = /@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/.exec(url) ?? /[?&](?:q|query|ll)=(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/.exec(url);
+  return m ? { lat: m[1]!, lng: m[2]! } : null;
 }
 
 /** Google Maps link for a pinned location. */

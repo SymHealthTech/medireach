@@ -211,6 +211,8 @@ export interface PublicSiteDoctor {
   specialty?: string;
   role?: string;
   url?: string;
+  /** `url` is an outside profile (Practo, own website), not a MediReach page. */
+  external?: boolean;
   photo?: PublicImage;
 }
 

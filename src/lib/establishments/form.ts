@@ -40,16 +40,18 @@ export interface EstablishmentForm {
   updatedAt?: string;
   publishedAt?: string;
 
-  // 1 Basics
+  // 1 Basics (the kind is fixed by the "New clinic" / "New hospital" button)
   kind: EstablishmentKind;
   name: string;
   categoryId: string;
-  themeKey: ThemeKey;
   logo?: ImageValue;
   coverPhoto?: ImageValue;
   tagline: string;
   shortDescription: string;
   about: string; // sanitised HTML
+
+  // Design (as in the doctor editor)
+  themeKey: ThemeKey;
   siteTemplateId: string;
   cardTemplateId: string;
   /** Visiting card colour style code ("" = the specialty theme colours). */
@@ -78,7 +80,17 @@ export interface EstablishmentForm {
   equipment: NamedValue[];
 
   // 5 Doctors
-  doctors: { key: string; doctorProfileId: string; name: string; qualifications: string; specialty: string; role: string }[];
+  doctors: {
+    key: string;
+    doctorProfileId: string;
+    name: string;
+    qualifications: string;
+    specialty: string;
+    role: string;
+    /** Only for doctors without a linked portfolio (a portfolio brings its own photo). */
+    photo?: ImageValue;
+    profileUrl: string;
+  }[];
 
   // 6 Registration and hospital extras
   registration: { authority: string; number: string };
@@ -185,7 +197,7 @@ export const galleryMax = (kind: EstablishmentKind) => (kind === "hospital" ? LI
 // ---------------------------------------------------------------------------
 
 export const STEPS = [
-  { key: "basics", title: "Basics and design" },
+  { key: "basics", title: "Basics" },
   { key: "location", title: "Location and contact" },
   { key: "timings", title: "Timings" },
   { key: "services", title: "Services, facilities and equipment" },
@@ -194,6 +206,7 @@ export const STEPS = [
   { key: "gallery", title: "Gallery" },
   { key: "seo", title: "SEO" },
   { key: "business", title: "Business" },
+  { key: "design", title: "Design" },
   { key: "review", title: "Review and publish" },
 ] as const;
 
@@ -228,6 +241,8 @@ export function stepComplete(step: StepKey, f: EstablishmentForm): boolean {
       return Boolean(f.slug);
     case "business":
       return Boolean(f.source);
+    case "design":
+      return Boolean(f.themeKey && f.siteTemplateId && f.cardTemplateId);
     case "review":
       return f.status === "published";
   }
@@ -338,12 +353,14 @@ export const sectionSchemas = {
     kind: z.enum(ESTABLISHMENT_KINDS),
     name: z.string().trim().min(2, "Enter the name.").max(120),
     categoryId: optOid,
-    themeKey: z.enum(THEME_KEYS as [ThemeKey, ...ThemeKey[]]),
     logo: image.optional(),
     coverPhoto: image.optional(),
     tagline: t(120),
     shortDescription: t(LIMITS.shortBio),
     about: z.string().max(10_000),
+  }),
+  design: z.object({
+    themeKey: z.enum(THEME_KEYS as [ThemeKey, ...ThemeKey[]]),
     siteTemplateId: z.enum(TEMPLATE_KEYS),
     cardTemplateId: z.enum(TEMPLATE_KEYS),
     cardStyle: z.enum(["", ...SITE_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
@@ -392,6 +409,8 @@ export const sectionSchemas = {
             qualifications: t(160),
             specialty: t(80),
             role: t(80),
+            photo: image.optional(),
+            profileUrl: url,
           })
           .refine((d) => d.doctorProfileId || d.name, { message: "Pick a doctor or type a name.", path: ["name"] }),
       )
@@ -484,16 +503,14 @@ export function sectionPayload(step: StepKey, f: EstablishmentForm): unknown {
         kind: f.kind,
         name: f.name,
         categoryId: f.categoryId,
-        themeKey: f.themeKey,
         logo: f.logo,
         coverPhoto: f.coverPhoto,
         tagline: f.tagline,
         shortDescription: f.shortDescription,
         about: f.about,
-        siteTemplateId: f.siteTemplateId,
-        cardTemplateId: f.cardTemplateId,
-        cardStyle: f.cardStyle,
       };
+    case "design":
+      return { themeKey: f.themeKey, siteTemplateId: f.siteTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle };
     case "location":
       return {
         address: f.address,
@@ -512,7 +529,8 @@ export function sectionPayload(step: StepKey, f: EstablishmentForm): unknown {
     case "services":
       return { services: f.services, facilities: f.facilities, equipment: f.equipment };
     case "doctors":
-      return { doctors: f.doctors };
+      // A linked portfolio brings its own photo and page; the outside link and photo are for doctors added by name.
+      return { doctors: f.doctors.map((d) => (d.doctorProfileId ? { ...d, photo: undefined, profileUrl: "" } : d)) };
     case "extras":
       return { registration: f.registration, departments: f.departments, beds: f.beds, insurance: f.insurance, visitingHours: f.visitingHours };
     case "gallery":

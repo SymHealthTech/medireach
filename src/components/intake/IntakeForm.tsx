@@ -350,9 +350,9 @@ export function IntakeForm({
         </div>
       )}
 
-      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, cardFaces, errors }}>
+      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, cardFaces, errors, kind, data }}>
         <form onSubmit={(e) => e.preventDefault()} noValidate>
-          <fieldset disabled={!editable} className="space-y-5">
+          <fieldset disabled={!editable} className="min-w-0 space-y-5">
             <SectionCard id="section-email" title={admin ? "Applicant email" : "Your email"}>
               <div className="space-y-1.5">
                 <label htmlFor={fieldId("email")} className="block text-sm font-medium text-body">
