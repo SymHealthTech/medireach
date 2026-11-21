@@ -66,7 +66,7 @@ export function BasicsStep({ form: f, set, err, options, readOnly, hints }: ESte
             htmlFor="categoryId"
             required
             error={err("categoryId")}
-            help={`Used in the Google title, e.g. “${hospital ? "Hospital" : "Skin Clinic"} in Baner”. Not listed? Type it to add it.`}
+            help={`Used in the Google title, e.g. “${hospital ? "Maternity Hospital" : "Skin Clinic"} in Baner”. Not listed? Type it to add it.`}
           >
             <MasterSelect
               id="categoryId"

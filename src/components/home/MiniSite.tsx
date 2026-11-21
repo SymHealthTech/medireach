@@ -1,3 +1,4 @@
+import { siteTypeName } from "@/lib/seo/establishment";
 import { Clock, MapPin, MessageCircle, Phone, Siren } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { PublicEstablishment } from "@/templates/types";
@@ -37,7 +38,7 @@ export function toMiniSite(site: PublicEstablishment): MiniSiteData {
     themeName: theme.name,
     kind: site.kind,
     name: site.name,
-    category: site.kind === "hospital" ? "Hospital" : (site.category?.name ?? "Clinic"),
+    category: siteTypeName(site.kind, site.category?.name),
     area: `${site.address.area.name}, ${site.address.city.name}`,
     icon: theme.icon,
     palette: theme.palette,

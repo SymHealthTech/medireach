@@ -1,10 +1,11 @@
+import { siteTypeName } from "@/lib/seo/establishment";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import type { SiteCardData } from "@/templates/types";
 
 /** Compact clinic/hospital card for hubs. Factual only: no ratings, ever. */
 export function SiteCard({ site: s }: { site: SiteCardData }) {
-  const what = s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic");
+  const what = siteTypeName(s.kind, s.category?.name);
   const initials = s.name
     .split(/\s+/)
     .filter((w) => /^[A-Za-z]/.test(w))

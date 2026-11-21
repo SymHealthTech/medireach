@@ -17,7 +17,7 @@ const DESCRIPTION_MAX = 155;
 export interface EstablishmentSeoInput {
   kind: "clinic" | "hospital";
   name: string;
-  /** Category singular, e.g. "Skin Clinic"; hospitals use "Hospital". */
+  /** Category singular, e.g. "Skin Clinic" or "Maternity Hospital". */
   categoryName?: string;
   area?: string;
   city?: string;
@@ -26,10 +26,15 @@ export interface EstablishmentSeoInput {
   seo?: { titleOverride?: string; descriptionOverride?: string };
 }
 
-/** "Skin Clinic", or "Hospital" for hospitals (whatever their category). */
-function what(e: EstablishmentSeoInput): string {
-  return e.kind === "hospital" ? "Hospital" : (e.categoryName ?? "Clinic");
+/**
+ * The site's type as shown publicly: its category ("Skin Clinic",
+ * "Maternity Hospital"), else "Clinic" / "Hospital".
+ */
+export function siteTypeName(kind: "clinic" | "hospital", categoryName?: string): string {
+  return categoryName?.trim() || (kind === "hospital" ? "Hospital" : "Clinic");
 }
+
+const what = (e: EstablishmentSeoInput): string => siteTypeName(e.kind, e.categoryName);
 
 /**
  * `{Name} – {Category} in {Area}, {City} | MediReach`, e.g. "Shree Skin Clinic –
@@ -85,10 +90,9 @@ export function seoInputOf(s: PublicEstablishment): EstablishmentSeoInput {
   };
 }
 
-/** "Skin Clinic · Baner, Pune". */
+/** "Skin Clinic · Baner, Pune", "Maternity Hospital · Wakad, Pune". */
 export function establishmentSubheading(s: PublicEstablishment): string {
-  const what = s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic");
-  return `${what} · ${s.address.area.name}, ${s.address.city.name}`;
+  return `${siteTypeName(s.kind, s.category?.name)} · ${s.address.area.name}, ${s.address.city.name}`;
 }
 
 /**

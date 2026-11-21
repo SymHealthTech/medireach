@@ -237,7 +237,14 @@ describe("clinic/hospital editor (server)", () => {
   it("writes titles and intros in the spec's format", () => {
     const base = { kind: "clinic" as const, name: "Shree Skin Clinic", categoryName: "Skin Clinic", area: "Baner", city: "Pune" };
     expect(establishmentTitle(base)).toBe("Shree Skin Clinic – Skin Clinic in Baner, Pune | MediReach");
-    expect(establishmentTitle({ ...base, kind: "hospital", name: "Sai Hospital" })).toBe("Sai Hospital – Hospital in Baner, Pune | MediReach");
+    expect(establishmentTitle({ ...base, kind: "hospital", name: "Sai Hospital", categoryName: undefined })).toBe("Sai Hospital – Hospital in Baner, Pune | MediReach");
+    // Hospitals use their type too.
+    const sai = { ...base, kind: "hospital" as const, name: "Sai Care", categoryName: "Maternity Hospital" };
+    expect(establishmentTitle(sai)).toBe("Sai Care – Maternity Hospital in Baner, Pune | MediReach");
+    expect(establishmentDescription(sai)).toBe("Sai Care, maternity hospital in Baner, Pune. Doctors, services, timings, address and contact.");
+    expect(establishmentIntro({ ...sai, categoryName: "ENT Hospital" })).toBe("Sai Care is an ENT hospital in Baner, Pune.");
+    // Longer types still fit: "| MediReach" goes first.
+    expect(establishmentTitle({ ...sai, categoryName: "Multi-speciality Hospital" })).toBe("Sai Care – Multi-speciality Hospital in Baner, Pune");
     expect(establishmentDescription(base)).toBe("Shree Skin Clinic, skin clinic in Baner, Pune. Doctors, services, timings, address and contact.");
     expect(establishmentIntro({ ...base, doctorCount: 3 })).toBe("Shree Skin Clinic is a skin clinic in Baner, Pune, with 3 doctors.");
     expect(establishmentIntro({ ...base, categoryName: "ENT Clinic" })).toBe("Shree Skin Clinic is an ENT clinic in Baner, Pune.");

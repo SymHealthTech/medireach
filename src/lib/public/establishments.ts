@@ -11,6 +11,7 @@ import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
 import { Establishment, type EstablishmentDoc } from "@/models/Establishment";
 import type { PublicEstablishment, PublicSiteDoctor, SiteCardData } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
+import { siteTypeName } from "@/lib/seo/establishment";
 
 /**
  * Read-only data for public clinic and hospital sites. Cached with tags; the
@@ -108,7 +109,7 @@ export function toPublicEstablishment(
   const phones = (e.contact?.phones ?? []).map((p) => normalizeIndianPhone(p)).filter((p): p is string => Boolean(p));
   const links = Object.fromEntries(Object.entries(e.links ?? {}).filter(([, v]) => typeof v === "string" && v)) as PublicEstablishment["links"];
   const aboutHtml = sanitizeBioHtml(e.about);
-  const what = e.kind === "hospital" ? "hospital" : (category?.name.toLowerCase() ?? "clinic");
+  const what = siteTypeName(e.kind, category?.name).toLowerCase().replace(/\bent\b/, "ENT");
 
   return {
     id: String(e._id),

@@ -1,4 +1,5 @@
 import "server-only";
+import { siteTypeName } from "@/lib/seo/establishment";
 import { ImageResponse } from "next/og";
 import { cloudinaryJpg } from "@/lib/cards/photo";
 import { cardFonts } from "@/lib/cards/render";
@@ -28,7 +29,7 @@ export async function renderSiteOgImage(kind: "clinic" | "hospital", city: strin
   const theme = getTheme(s?.themeKey, kind);
   const { primary, accent, soft } = theme.palette;
   const name = s?.name ?? "MediReach";
-  const what = kind === "hospital" ? "Hospital" : (s?.category?.name ?? "Clinic");
+  const what = siteTypeName(kind, s?.category?.name);
   const place = s ? `${s.address.area.name}, ${s.address.city.name}` : "";
   const nameSize = name.length > 28 ? 58 : 70;
 
