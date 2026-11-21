@@ -29,9 +29,10 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const type = param(sp, "type");
   if (type === "clinic" || type === "hospital" || type === "sites") return <SiteCards sp={sp} kind={type === "hospital" ? "hospital" : "clinic"} />;
-  const filter: FilterQuery<DoctorProfileDoc> = {};
   const doctor = param(sp, "doctor");
-  if (isObjectId(doctor)) filter._id = doctor;
+  // Opened from the doctor editor ("Visiting card"): only this doctor's card.
+  if (isObjectId(doctor)) return <OneDoctorCard id={doctor} />;
+  const filter: FilterQuery<DoctorProfileDoc> = {};
   const re = searchRegex(param(sp, "q"));
   if (re) filter.$or = [{ firstName: re }, { lastName: re }, { displayName: re }];
   const page = pageOf(sp);
@@ -126,6 +127,66 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
         </ul>
       )}
       <Pagination page={page} pageCount={Math.ceil(total / PER_PAGE)} total={total} />
+    </div>
+  );
+}
+
+/** One doctor's card on its own: print and phone card, downloads, QR, contact file and the WhatsApp message. */
+async function OneDoctorCard({ id }: { id: string }) {
+  const [settings, d, publicDoctor, ready] = await Promise.all([
+    getSettings(),
+    DoctorProfile.findById(id).select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1 }).lean(),
+    loadDoctorForCard(id),
+    getReadyTemplates(),
+  ]);
+  if (!d) return <EmptyState icon={IdCard} title="Not found" description="This doctor no longer exists." />;
+  const name = d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`;
+  const shareUrl = d.subdomain ? subdomainUrl(d.subdomain) : d.shortSlug ? absUrl(paths.short(d.shortSlug)) : d.slug && d.citySlug ? absUrl(paths.doctor(d.citySlug, d.slug)) : undefined;
+  const qrSvg = shareUrl ? await QRCode.toString(shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0A3F3F", light: "#FFFFFF" } }) : undefined;
+  const published = d.status === "published" && d.slug && d.citySlug;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="font-display text-2xl font-semibold text-ink">Visiting card · {name}</h2>
+        <StatusBadge status={d.status} />
+        <a href={`/admin/doctors/${id}?step=review`} className="ml-auto text-sm font-medium text-ink underline underline-offset-2">
+          Back to the doctor
+        </a>
+      </div>
+      {publicDoctor && shareUrl ? (
+        <>
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-ink">Print card (85 × 55 mm)</p>
+              <CardView doctor={publicDoctor} variant="print" ready={ready} />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-ink">Phone card (WhatsApp)</p>
+              <CardView doctor={publicDoctor} variant="phone" ready={ready} />
+            </div>
+          </div>
+          <p className="break-all text-xs text-muted-foreground">QR opens {shareUrl}</p>
+          <div className="flex flex-wrap gap-2">
+            {(["print.pdf", "print.png", "phone.png"] as const).map((f) => (
+              <a key={f} className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${id}/${f}?download=1`}>
+                {f === "print.pdf" ? "PDF (print)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+              </a>
+            ))}
+          </div>
+          {qrSvg && (
+            <CardTools
+              qrSvg={qrSvg}
+              fileBase={d.shortSlug || id}
+              shareUrl={shareUrl}
+              message={fillShareTemplate(settings.whatsappShareTemplate, { name, link: shareUrl })}
+              vcfUrl={published ? absUrl(paths.doctorVcf(d.citySlug!, d.slug!)) : undefined}
+            />
+          )}
+        </>
+      ) : (
+        <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">Add the name and a clinic, and save, to generate the card.</p>
+      )}
+      {d.status !== "published" && <p className="text-xs text-amber-700 dark:text-amber-400">Not published yet. The QR link won&apos;t open until it is.</p>}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ExternalLink, Eye, Loader2, Monitor, Save, Send, ShieldCheck, Smartphone, Undo2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Eye, IdCard, Loader2, Monitor, Save, Send, ShieldCheck, Smartphone, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -238,13 +238,11 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
                 {/* eslint-disable-next-line @next/next/no-img-element -- the card as shared on WhatsApp */}
                 <img src={`/admin/cards/${f.id}/phone.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (phone)" className="w-44 rounded-xl border border-line shadow-soft" />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Downloads and the QR code are on{" "}
-                <a href={`/admin/cards?doctor=${f.id}`} target="_blank" rel="noopener" className="underline underline-offset-2">
-                  Visiting cards
+              <Button asChild variant="outline" className="mt-3">
+                <a href={`/admin/cards?doctor=${f.id}`} target="_blank" rel="noopener">
+                  <IdCard /> Visiting card: downloads, QR and WhatsApp message
                 </a>
-                .
-              </p>
+              </Button>
             </div>
           </div>
         ) : (
