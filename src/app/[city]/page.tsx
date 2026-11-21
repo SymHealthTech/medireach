@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HubPage } from "@/components/public/HubPage";
-import { allAreaLinks, categoryLinks, clinicsOf, hospitalsOf, loadCity, specialtyLinks, type CityContext } from "@/lib/public/hubs";
+import { allAreaLinks, categoryLinks, clinicsOf, hospitalsOf, hospitalTypeLinks, loadCity, specialtyLinks, type CityContext } from "@/lib/public/hubs";
 import { doctorsCount, hubMetadata, listedKinds } from "@/lib/seo/hub";
 import { listJoin } from "@/lib/seo/profile";
 import { absUrl, paths } from "@/lib/site";
@@ -61,7 +61,12 @@ export default async function CityHub({ params }: { params: Promise<Params> }) {
         { title: `Clinics in ${city.name}`, links: categoryLinks(ctx, clinics, (c) => absUrl(paths.clinicCategory(city.slug, c.slug))) },
         {
           title: `Hospitals in ${city.name}`,
-          links: hospitals.length ? [{ name: "Hospitals", url: absUrl(paths.hospitals(city.slug)), count: hospitals.length }] : [],
+          links: hospitals.length
+            ? [
+                { name: "All hospitals", url: absUrl(paths.hospitals(city.slug)), count: hospitals.length },
+                ...hospitalTypeLinks(ctx, hospitals, (t) => absUrl(paths.hospitalType(city.slug, t.slug))),
+              ]
+            : [],
         },
         { title: `Areas in ${city.name}`, links: allAreaLinks(ctx, (a) => absUrl(paths.area(city.slug, a.slug))) },
       ]}

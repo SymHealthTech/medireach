@@ -86,6 +86,11 @@ describe("public clinic/hospital sites", () => {
     const doc = (await Establishment.create(clinicAt({ name: "Sai Hospital", kind: "hospital", plan: "hospital", slug: "sai-hospital-baner", categoryId: ids.hosp, themeKey: "small-hospital", is24x7: true, beds: { total: 8, types: [{ type: "General", count: 6 }, { type: "ICU", count: 2 }] }, insurance: { cashless: true, providers: ["Star Health"] }, registration: { authority: "PMC", number: "NH-1" } }))).toObject();
     const site = (await buildPublicEstablishment(doc))!;
     expect(seo.establishmentBreadcrumbs(site).map((c) => c.name)).toEqual(["Home", "Pune", "Hospitals", "Baner", "Sai Hospital"]);
+    // A hospital with a specific type goes through its type hub.
+    const typed = { ...site, category: { name: "Maternity Hospital", slug: "maternity-hospital", plural: "Maternity Hospitals" } };
+    const crumbs = seo.establishmentBreadcrumbs(typed);
+    expect(crumbs.map((c) => c.name)).toEqual(["Home", "Pune", "Hospitals", "Maternity Hospitals", "Baner", "Sai Hospital"]);
+    expect(crumbs.map((c) => c.url.replace(/^https?:\/\/[^/]+/, ""))).toEqual(["/", "/pune", "/pune/hospitals", "/pune/hospitals/maternity-hospital", "/pune/hospitals/maternity-hospital/baner", "/pune/hospital/sai-hospital-baner"]);
     const facts = seo.establishmentQuickFacts(site).map((f) => f.answer).join(" ");
     expect(facts).toContain("open 24 hours, all 7 days");
     expect(facts).toContain("8 beds: 6 general and 2 ICU");

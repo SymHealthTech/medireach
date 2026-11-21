@@ -143,3 +143,10 @@ export const LIMITS = {
   subdomainMin: 3,
   subdomainMax: 40,
 } as const;
+
+/**
+ * The general hospital category ("Hospital"): new hospitals start on it,
+ * website forms without a known type fall back to it, and it has no type hub
+ * of its own (that is /[city]/hospitals).
+ */
+export const DEFAULT_HOSPITAL_CATEGORY = "small-hospital";

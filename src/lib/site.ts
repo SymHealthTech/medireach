@@ -50,6 +50,9 @@ export const paths = {
   clinicCategoryArea: (city: string, category: string, area: string) => `/${city}/clinics/${category}/${area}`,
   hospitals: (city: string) => `/${city}/hospitals`,
   hospitalsArea: (city: string, area: string) => `/${city}/hospitals/${area}`,
+  /** Hospital type hubs share the /hospitals/{slug} position with areas (type slugs end in "-hospital"). */
+  hospitalType: (city: string, type: string) => `/${city}/hospitals/${type}`,
+  hospitalTypeArea: (city: string, type: string, area: string) => `/${city}/hospitals/${type}/${area}`,
 };
 
 /** Any public site: a doctor portfolio, a clinic site or a hospital site. */

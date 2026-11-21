@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HubPage } from "@/components/public/HubPage";
-import { categoryLinks, clinicsOf, hospitalsOf, loadCity, siteAreaLinks } from "@/lib/public/hubs";
+import { categoryLinks, clinicsOf, hospitalsOf, hospitalTypeLinks, loadCity, siteAreaLinks } from "@/lib/public/hubs";
 import { hubMetadata } from "@/lib/seo/hub";
 import { absUrl, paths } from "@/lib/site";
 
@@ -50,6 +50,7 @@ export default async function HospitalsHub({ params }: { params: Promise<Params>
       emptyText="No hospitals are listed here yet."
       emptyCta="Run a hospital? Get your website on MediReach"
       linkGroups={[
+        { title: "Hospitals by type", links: hospitalTypeLinks(ctx, hospitals, (t) => absUrl(paths.hospitalType(city.slug, t.slug))) },
         { title: "Hospitals by area", links: siteAreaLinks(ctx, hospitals, (a) => absUrl(paths.hospitalsArea(city.slug, a.slug))) },
         { title: `Clinics in ${city.name}`, links: categoryLinks(ctx, clinicsOf(ctx.sites), (c) => absUrl(paths.clinicCategory(city.slug, c.slug))) },
       ]}

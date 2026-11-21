@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HubPage } from "@/components/public/HubPage";
-import { allAreaLinks, categoryLinks, clinicsOf, hospitalsOf, inArea, loadCity, siteInArea, specialtyLinks } from "@/lib/public/hubs";
+import { allAreaLinks, categoryLinks, clinicsOf, hospitalsOf, hospitalTypeLinks, inArea, loadCity, siteInArea, specialtyLinks } from "@/lib/public/hubs";
 import { hubMetadata, listedKinds } from "@/lib/seo/hub";
 import { absUrl, paths } from "@/lib/site";
 
@@ -89,7 +89,12 @@ export default async function AreaHub({ params }: { params: Promise<Params> }) {
         },
         {
           title: `Hospitals in ${area.name}`,
-          links: hospitals.length ? [{ name: `Hospitals in ${area.name}`, url: absUrl(paths.hospitalsArea(city.slug, area.slug)), count: hospitals.length }] : [],
+          links: hospitals.length
+            ? [
+                { name: `All hospitals in ${area.name}`, url: absUrl(paths.hospitalsArea(city.slug, area.slug)), count: hospitals.length },
+                ...hospitalTypeLinks(ctx, hospitals, (t) => absUrl(paths.hospitalTypeArea(city.slug, t.slug, area.slug))),
+              ]
+            : [],
         },
         {
           title: `Other areas in ${city.name}`,

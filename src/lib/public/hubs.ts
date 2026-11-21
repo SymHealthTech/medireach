@@ -2,6 +2,7 @@ import "server-only";
 import { getCityDoctorCards, getMasters, type AreaMaster, type CityMaster, type SpecialtyMaster } from "@/lib/public/data";
 import { getCitySiteCards, getClinicCategories, type CategoryMaster } from "@/lib/public/establishments";
 import { SLUG_RE } from "@/lib/slug";
+import { DEFAULT_HOSPITAL_CATEGORY } from "@/lib/constants";
 import { absUrl, paths } from "@/lib/site";
 import type { DoctorCardData, SiteCardData } from "@/templates/types";
 
@@ -26,6 +27,8 @@ export interface CityContext {
   doctors: DoctorCardData[];
   /** Clinic categories (the hospital category is left out: hospitals have their own hubs). */
   categories: CategoryMaster[];
+  /** Hospital types with their own hubs ("Maternity Hospitals"); the general "Hospital" type is the /hospitals hub itself. */
+  hospitalTypes: CategoryMaster[];
   /** Published clinics and hospitals in the city, alphabetical. */
   sites: SiteCardData[];
 }
@@ -42,9 +45,13 @@ export async function loadCity(citySlug: string): Promise<CityContext | null> {
     specialties: masters.specialties,
     doctors,
     categories: categories.filter((c) => c.kind === "clinic"),
+    hospitalTypes: hospitalTypesOf(categories),
     sites,
   };
 }
+
+/** Hospital categories that get a hub: all but the general "Hospital". */
+export const hospitalTypesOf = (categories: CategoryMaster[]) => categories.filter((c) => c.kind === "hospital" && c.slug !== DEFAULT_HOSPITAL_CATEGORY);
 
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "en");
 
@@ -92,6 +99,14 @@ export function categoryLinks(ctx: CityContext, sites: SiteCardData[], url: (c: 
     .sort(byName);
 }
 
+/** Hospital types that have ≥1 published hospital among the sites, with counts. */
+export function hospitalTypeLinks(ctx: CityContext, sites: SiteCardData[], url: (c: CategoryMaster) => string): HubLink[] {
+  return ctx.hospitalTypes
+    .map((c) => ({ name: c.plural, url: url(c), count: sites.filter(inCategory(c.slug)).length }))
+    .filter((l) => l.count > 0)
+    .sort(byName);
+}
+
 /** Areas that have ≥1 of the sites, with counts. */
 export function siteAreaLinks(ctx: CityContext, sites: SiteCardData[], url: (a: AreaMaster) => string): HubLink[] {
   return ctx.areas
@@ -103,7 +118,9 @@ export function siteAreaLinks(ctx: CityContext, sites: SiteCardData[], url: (a: 
 /** Every non-empty hub URL with its latest update (for the sitemap). Empty hubs are noindex and left out. */
 export async function nonEmptyHubs(): Promise<{ url: string; lastModified: string }[]> {
   const masters = await getMasters();
-  const categories = (await getClinicCategories()).filter((c) => c.kind === "clinic");
+  const allCategories = await getClinicCategories();
+  const categories = allCategories.filter((c) => c.kind === "clinic");
+  const hospitalTypes = hospitalTypesOf(allCategories);
   const out: { url: string; lastModified: string }[] = [];
   const latest = (items: { updatedAt: string }[]) => items.map((d) => d.updatedAt).sort().at(-1)!;
 
@@ -142,6 +159,15 @@ export async function nonEmptyHubs(): Promise<{ url: string; lastModified: strin
       for (const a of areas) {
         const inA = hospitals.filter(siteInArea(a.slug));
         if (inA.length > 0) out.push({ url: absUrl(paths.hospitalsArea(city.slug, a.slug)), lastModified: latest(inA) });
+      }
+      for (const t of hospitalTypes) {
+        const inT = hospitals.filter(inCategory(t.slug));
+        if (inT.length === 0) continue;
+        out.push({ url: absUrl(paths.hospitalType(city.slug, t.slug)), lastModified: latest(inT) });
+        for (const a of areas) {
+          const inTA = inT.filter(siteInArea(a.slug));
+          if (inTA.length > 0) out.push({ url: absUrl(paths.hospitalTypeArea(city.slug, t.slug, a.slug)), lastModified: latest(inTA) });
+        }
       }
     }
 

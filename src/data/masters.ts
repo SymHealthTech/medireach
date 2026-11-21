@@ -285,5 +285,4 @@ export const SEED_CLINIC_CATEGORIES: readonly {
   { name: "ENT Hospital", plural: "ENT Hospitals", slug: "ent-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "ear" },
 ];
 
-/** The general hospital category: new hospitals start on it, and forms without a known type fall back to it. */
-export const DEFAULT_HOSPITAL_CATEGORY = "small-hospital";
+export { DEFAULT_HOSPITAL_CATEGORY } from "@/lib/constants";

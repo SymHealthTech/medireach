@@ -1,4 +1,5 @@
 import { absUrl, paths, SITE_NAME } from "@/lib/site";
+import { DEFAULT_HOSPITAL_CATEGORY } from "@/lib/constants";
 import { breadcrumbJsonLd, compact, listJoin, siteNodeId, truncate, type Crumb, type QuickFact } from "@/lib/seo/profile";
 
 export { siteNodeId };
@@ -98,6 +99,7 @@ export function establishmentSubheading(s: PublicEstablishment): string {
 /**
  * Home › Pune › Skin Clinics › Baner › Shree Skin Clinic (clinics)
  * Home › Pune › Hospitals › Wakad › Sai Hospital (hospitals)
+ * Home › Pune › Hospitals › Maternity Hospitals › Wakad › Sai Care (hospitals with a type)
  */
 export function establishmentBreadcrumbs(s: PublicEstablishment): Crumb[] {
   const { city, area } = s.address;
@@ -107,7 +109,12 @@ export function establishmentBreadcrumbs(s: PublicEstablishment): Crumb[] {
   ];
   if (s.kind === "hospital") {
     crumbs.push({ name: "Hospitals", url: absUrl(paths.hospitals(city.slug)) });
-    crumbs.push({ name: area.name, url: absUrl(paths.hospitalsArea(city.slug, area.slug)) });
+    if (s.category && s.category.slug !== DEFAULT_HOSPITAL_CATEGORY) {
+      crumbs.push({ name: s.category.plural, url: absUrl(paths.hospitalType(city.slug, s.category.slug)) });
+      crumbs.push({ name: area.name, url: absUrl(paths.hospitalTypeArea(city.slug, s.category.slug, area.slug)) });
+    } else {
+      crumbs.push({ name: area.name, url: absUrl(paths.hospitalsArea(city.slug, area.slug)) });
+    }
   } else if (s.category) {
     crumbs.push({ name: s.category.plural, url: absUrl(paths.clinicCategory(city.slug, s.category.slug)) });
     crumbs.push({ name: area.name, url: absUrl(paths.clinicCategoryArea(city.slug, s.category.slug, area.slug)) });
