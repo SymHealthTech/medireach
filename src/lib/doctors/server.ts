@@ -163,6 +163,7 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
     },
     establishmentIds: linkedEstablishmentIds(d),
     salesExecutive: s(d.salesExecutive),
+    salesExecutiveId: s(d.salesExecutiveId),
     source: d.source ?? "",
     internalNotes: s(d.internalNotes),
     portfolioTemplateId: d.portfolioTemplateId,
@@ -313,6 +314,7 @@ export async function applySection<K extends StepKey>(
         establishmentIds: toOids(links),
         hospitalAccountId: undefined, // v1 link, replaced by establishmentIds
         salesExecutive: d.salesExecutive,
+        salesExecutiveId: d.salesExecutiveId,
         source: d.source,
         internalNotes: d.internalNotes,
       });

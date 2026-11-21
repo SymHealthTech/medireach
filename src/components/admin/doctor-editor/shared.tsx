@@ -4,14 +4,15 @@ import type { ReactNode } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AdminRole } from "@/lib/constants";
-import type { DoctorForm } from "@/lib/doctors/form";
+import type { DoctorForm, StepKey } from "@/lib/doctors/form";
 import type { EditorOptions } from "@/lib/doctors/options";
 import type { DoctorFormHints } from "@/lib/intake/hints";
 import type { CardFace } from "@/components/intake/IntakeContext";
 
 export interface StepProps {
   form: DoctorForm;
-  set: (patch: Partial<DoctorForm> | ((f: DoctorForm) => Partial<DoctorForm>)) => void;
+  /** Change fields; they save with the current step, or with `opts.step` (e.g. Business fields shown on Review). */
+  set: (patch: Partial<DoctorForm> | ((f: DoctorForm) => Partial<DoctorForm>), opts?: { step?: StepKey }) => void;
   /** Error for a field path: server validation error, else a compliance issue. */
   err: (path: string) => string | undefined;
   options: EditorOptions;

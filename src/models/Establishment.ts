@@ -131,6 +131,8 @@ export interface EstablishmentDoc {
   renewalRemindersSent: string[];
   ownDomain?: { name: string; status: (typeof DOMAIN_STATUSES)[number]; cost?: number; renewalDate?: Date };
   salesExecutive?: string;
+  /** The sales executive's staff ID. */
+  salesExecutiveId?: string;
   source?: (typeof ESTABLISHMENT_SOURCES)[number];
   contactPerson?: { name?: string; phone?: string; email?: string };
   internalNotes?: string;
@@ -288,6 +290,7 @@ const establishmentSchema = new Schema<EstablishmentDoc>(
       default: undefined,
     },
     salesExecutive: str,
+    salesExecutiveId: str,
     source: { type: String, enum: ESTABLISHMENT_SOURCES },
     contactPerson: {
       type: new Schema({ name: str, phone: str, email: { type: String, trim: true, lowercase: true } }, { _id: false }),

@@ -135,10 +135,10 @@ export function EstablishmentEditor({
   }, []);
 
   const set: EStepProps["set"] = useCallback(
-    (patch) => {
+    (patch, opts) => {
       if (readOnly) return;
       setForm((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) }));
-      dirty.current.add(stepRef.current);
+      dirty.current.add(opts?.step ?? stepRef.current);
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), AUTOSAVE_MS);
     },
@@ -345,6 +345,8 @@ export function EstablishmentEditor({
               busy,
               onSaveAll: saveAll,
               saving: save.status === "saving",
+              // A recorded payment moved the setup/renewal dates on the server: show them (not an unsaved change).
+              onBusinessDates: (d) => setForm((prev) => ({ ...prev, ...d })),
               ...(form.status === "published" && form.slug && form.citySlug
                 ? { liveUrl: absUrl(form.kind === "hospital" ? paths.hospital(form.citySlug, form.slug) : paths.clinic(form.citySlug, form.slug)) }
                 : {}),

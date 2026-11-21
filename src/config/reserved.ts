@@ -49,6 +49,7 @@ export const RESERVED_SLUGS = [
   "card",
   "go",
   "sample",
+  "preview",
   "sitemap_index.xml",
 ] as const;
 

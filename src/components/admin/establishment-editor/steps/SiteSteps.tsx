@@ -3,26 +3,36 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { AlertTriangle, Check, CheckCircle2, CreditCard, ExternalLink, Eye, IdCard, Loader2, Monitor, Save, Send, ShieldCheck, Smartphone, Undo2, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, CreditCard, ExternalLink, Loader2, Send, ShieldCheck, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
-import { Pill } from "@/components/admin/StatusBadge";
+import { Field, NativeSelect, SwitchField } from "@/components/admin/form/fields";
 import { Group, grid2 } from "@/components/admin/doctor-editor/shared";
 import { Highlighted } from "@/components/admin/doctor-editor/steps/ReviewStep";
 import { checkEstablishmentUrlKeyAction, sendEstablishmentLoginEmailAction } from "@/app/admin/(dash)/establishments/actions";
-import { RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
-import { APPROVAL_CHANNELS, DOMAIN_STATUSES, ESTABLISHMENT_SOURCES } from "@/lib/constants";
+import { APPROVAL_CHANNELS, ESTABLISHMENT_SOURCES } from "@/lib/constants";
 import type { EstablishmentForm, StepKey } from "@/lib/establishments/form";
 import { establishmentDescription, establishmentTitle } from "@/lib/seo/establishment";
 import { absUrl, paths, ROOT_HOSTNAME, subdomainUrl } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
+import {
+  BackToCheck,
+  OwnDomain,
+  Payments,
+  PhaseNav,
+  SalesExecutive,
+  SaveAndPreview,
+  SendPreviewLink,
+  SetupRenewal,
+  StepGroup,
+  useCloseToDashboard,
+  type BusinessDates,
+} from "@/components/admin/review/ReviewParts";
 import type { EStepProps } from "../shared";
 
-const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 // ---------------------------------------------------------------- SEO
 type KeyKind = "slug" | "shortSlug" | "subdomain";
@@ -206,97 +216,48 @@ const SOURCE_LABEL: Record<(typeof ESTABLISHMENT_SOURCES)[number], string> = {
   inbound: "Inbound (website / WhatsApp)",
 };
 
-export function BusinessStep({ form: f, set, err, options, readOnly, role }: EStepProps) {
+/**
+ * Business: contact person and source (hospitals), owner login, notes. Sales
+ * executive, payments, setup/renewal and own domain are on Review and publish.
+ */
+export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) {
   const isAdmin = role !== "sales";
   const hospital = f.kind === "hospital";
-  const listPrice = (founding: boolean) =>
-    hospital
-      ? founding
-        ? options.prices.foundingRenewalHospital
-        : options.prices.renewalHospital
-      : founding
-        ? options.prices.foundingRenewal
-        : options.prices.renewalClinic;
 
   return (
     <div className="space-y-5">
-      <Group title="Contact person and source" description="Internal. Never shown on the public site.">
+      {hospital && (
+        <Group title="Contact person and source" description="Internal. Never shown on the public site.">
+          <div className={grid2}>
+            <Field label="Contact person" htmlFor="contactPerson.name">
+              <Input id="contactPerson.name" value={f.contactPerson.name} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, name: e.target.value } }))} />
+            </Field>
+            <Field label="Their phone" htmlFor="contactPerson.phone" error={err("contactPerson.phone")}>
+              <Input id="contactPerson.phone" type="tel" inputMode="tel" value={f.contactPerson.phone} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, phone: e.target.value } }))} />
+            </Field>
+            <Field label="Their email" htmlFor="contactPerson.email" error={err("contactPerson.email")}>
+              <Input id="contactPerson.email" type="email" value={f.contactPerson.email} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, email: e.target.value } }))} />
+            </Field>
+            <Field label="Source" htmlFor="source">
+              <NativeSelect id="source" value={f.source} disabled={readOnly} onChange={(e) => set({ source: e.target.value as typeof f.source })}>
+                <option value="" />
+                {ESTABLISHMENT_SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {SOURCE_LABEL[s]}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+          </div>
+        </Group>
+      )}
+
+      <Group title="Owner login" description="Lets the owner log in at /login to update timings, phones and address. One email can own several sites.">
         <div className={grid2}>
-          <Field label="Contact person" htmlFor="contactPerson.name">
-            <Input id="contactPerson.name" value={f.contactPerson.name} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, name: e.target.value } }))} />
-          </Field>
-          <Field label="Their phone" htmlFor="contactPerson.phone" error={err("contactPerson.phone")}>
-            <Input id="contactPerson.phone" type="tel" inputMode="tel" value={f.contactPerson.phone} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, phone: e.target.value } }))} />
-          </Field>
-          <Field label="Their email" htmlFor="contactPerson.email" error={err("contactPerson.email")}>
-            <Input id="contactPerson.email" type="email" value={f.contactPerson.email} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, email: e.target.value } }))} />
-          </Field>
-          <Field
-            label="Owner login email"
-            htmlFor="ownerEmail"
-            error={err("ownerEmail")}
-            help="Lets the owner log in at /login to update timings, phones and address. One email can own several sites."
-          >
+          <Field label="Owner login email" htmlFor="ownerEmail" error={err("ownerEmail")}>
             <Input id="ownerEmail" type="email" value={f.ownerEmail} disabled={readOnly} onChange={(e) => set({ ownerEmail: e.target.value })} />
           </Field>
           <OwnerLoginEmailButton id={f.id} savedEmail={f.ownerEmail} />
-          <Field label="Source" htmlFor="source">
-            <NativeSelect id="source" value={f.source} disabled={readOnly} onChange={(e) => set({ source: e.target.value as typeof f.source })}>
-              <option value="" />
-              {ESTABLISHMENT_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {SOURCE_LABEL[s]}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Sales executive" htmlFor="salesExecutive">
-            <Input id="salesExecutive" value={f.salesExecutive} disabled={readOnly} onChange={(e) => set({ salesExecutive: e.target.value })} />
-          </Field>
-        </div>
-      </Group>
-
-      <Group title="Setup and renewal" description={isAdmin ? "Setup is paid once; the renewal is yearly from year 2." : "Only an admin can change these."}>
-        <div className={grid2}>
-          <Field label="Setup paid on" htmlFor="setupPaidAt" error={err("setupPaidAt")} help="Usually set by recording the setup payment.">
-            <Input id="setupPaidAt" type="date" value={f.setupPaidAt} disabled={readOnly || !isAdmin} onChange={(e) => set({ setupPaidAt: e.target.value })} />
-          </Field>
-          <Field label="Renewal price per year (₹)" htmlFor="renewalPrice" help={`Leave empty for ${rupees(listPrice(f.founding))} from Settings.`}>
-            <NumberInput id="renewalPrice" value={f.renewalPrice} disabled={readOnly || !isAdmin} onChange={(renewalPrice) => set({ renewalPrice })} />
-          </Field>
-          <Field label="Renewal due on" htmlFor="renewalDueDate" error={err("renewalDueDate")} help="Leave empty for one year after the setup date.">
-            <Input id="renewalDueDate" type="date" value={f.renewalDueDate} disabled={readOnly || !isAdmin} onChange={(e) => set({ renewalDueDate: e.target.value })} />
-          </Field>
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium">Renewal status</p>
-            <div className="flex min-h-11 items-center">
-              <Pill tone={RENEWAL_STATUS_TONE[f.renewalStatus]}>{RENEWAL_STATUS_LABEL[f.renewalStatus]}</Pill>
-            </div>
-            <p className="text-xs text-muted-foreground">Worked out from the due date when you save.</p>
-          </div>
-        </div>
-      </Group>
-
-      <Group title="Own domain (optional)" description="Charged at actual cost. This records the request.">
-        <div className={grid2}>
-          <Field label="Domain" htmlFor="ownDomain.name" error={err("ownDomain.name")}>
-            <Input id="ownDomain.name" placeholder="shreeclinic.in" value={f.ownDomain.name} disabled={readOnly || !isAdmin} onChange={(e) => set((p) => ({ ownDomain: { ...p.ownDomain, name: e.target.value } }))} />
-          </Field>
-          <Field label="Status" htmlFor="ownDomain.status">
-            <NativeSelect id="ownDomain.status" value={f.ownDomain.status} disabled={readOnly || !isAdmin} onChange={(e) => set((p) => ({ ownDomain: { ...p.ownDomain, status: e.target.value as typeof p.ownDomain.status } }))}>
-              {DOMAIN_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s[0]!.toUpperCase() + s.slice(1)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Cost (₹)" htmlFor="ownDomain.cost">
-            <NumberInput id="ownDomain.cost" value={f.ownDomain.cost} disabled={readOnly || !isAdmin} onChange={(cost) => set((p) => ({ ownDomain: { ...p.ownDomain, cost } }))} />
-          </Field>
-          <Field label="Renewal date" htmlFor="ownDomain.renewalDate">
-            <Input id="ownDomain.renewalDate" type="date" value={f.ownDomain.renewalDate} disabled={readOnly || !isAdmin} onChange={(e) => set((p) => ({ ownDomain: { ...p.ownDomain, renewalDate: e.target.value } }))} />
-          </Field>
         </div>
       </Group>
 
@@ -308,10 +269,11 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role }: ESt
           <Button asChild variant="outline">
             {/* A new tab, so nothing typed here is lost. */}
             <Link href={`/admin/payments?establishment=${f.id}`} target="_blank" rel="noopener">
-              <CreditCard /> Payments for this {f.kind} <ExternalLink className="size-3.5" aria-hidden />
+              <CreditCard /> All payments for this {f.kind} <ExternalLink className="size-3.5" aria-hidden />
             </Link>
           </Button>
         )}
+        <p className="text-xs text-muted-foreground">The sales executive, payment, setup and renewal, and own domain are on the last step, Review and publish.</p>
       </Group>
     </div>
   );
@@ -358,71 +320,125 @@ export interface EReviewProps {
   /** Saves every step; true when all of it saved. */
   onSaveAll: () => Promise<boolean>;
   saving: boolean;
+  /** Setup/renewal dates after a payment was recorded (applied without an unsaved change). */
+  onBusinessDates: (d: BusinessDates) => void;
 }
 
-export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProps & { review: EReviewProps }) {
-  const [savingAll, setSavingAll] = useState(false);
-  // Bumped after each "Save everything" so the preview and card images reload.
-  const [version, setVersion] = useState(0);
-  const [size, setSize] = useState<"desktop" | "phone">("desktop");
+export function ReviewStep({ form: f, set, err, options, readOnly, role, review: r }: EStepProps & { review: EReviewProps }) {
+  const [phase, setPhase] = useState<"check" | "publish">("check");
+  const { close, closing } = useCloseToDashboard(r.onSaveAll);
+  const isAdmin = role !== "sales";
+  const hospital = f.kind === "hospital";
+  const what = hospital ? "hospital" : "clinic";
   const issueFields = [...new Set(r.issues.map((i) => i.field))];
   const canGoLive = r.blockers.length === 0 && r.issues.length === 0;
   const reasons = [...r.blockers.map((b) => b.message), ...(r.issues.length ? [`${r.issues.length} compliance issue(s)`] : [])];
+  const target = { kind: "site" as const, id: f.id, name: f.name || `the ${what}` };
+  const listPrice = hospital
+    ? f.founding
+      ? options.prices.foundingRenewalHospital
+      : options.prices.renewalHospital
+    : f.founding
+      ? options.prices.foundingRenewal
+      : options.prices.renewalClinic;
+  const address = f.subdomain ? subdomainUrl(f.subdomain) : absUrl((hospital ? paths.hospital : paths.clinic)(f.citySlug || "city", f.slug || "…"));
+  const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  if (phase === "check") {
+    return (
+      <div className="space-y-5">
+        <StepGroup n={1} title="Review" description="Factual information only: no superlatives, guarantees, success rates, patient counts or comparisons.">
+          {issueFields.length === 0 ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
+              <ShieldCheck className="size-5" /> NMC check: no banned phrases found.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {issueFields.map((path) => (
+                <li key={path} className="rounded-lg border border-clay/30 bg-clay/5 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-ink">{fieldLabel(path)}</p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => r.onGoTo(path, r.stepForField(path))}>
+                      Fix
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-body">
+                    <Highlighted text={r.textFields[path] ?? ""} phrases={r.phrases} />
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {r.blockers.filter((b) => b.field !== "review").length === 0 ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
+              <CheckCircle2 className="size-5" /> Everything required is filled in.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {r.blockers
+                .filter((b) => b.field !== "review")
+                .map((b) => (
+                  <li key={b.message} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="flex items-center gap-2">
+                      <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
+                    </span>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => r.onGoTo("", b.field)}>
+                      Go
+                    </Button>
+                  </li>
+                ))}
+            </ul>
+          )}
+          {r.recommended.length > 0 && (
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              <p className="font-medium">Recommended (not required)</p>
+              <p className="mt-1 text-muted-foreground">{r.recommended.join(" · ")}</p>
+            </div>
+          )}
+        </StepGroup>
+
+        <StepGroup n={2} title="Sales executive" description="Internal. Never shown on the site.">
+          <SalesExecutive name={f.salesExecutive} staffId={f.salesExecutiveId} team={options.team} disabled={readOnly} onChange={(patch) => set(patch, { step: "business" })} />
+        </StepGroup>
+
+        <StepGroup n={3} title="Save everything and preview" description={`Saves every step, so the ${what} is a complete listing (page address, website and visiting card). Then check both.`}>
+          <SaveAndPreview
+            target={target}
+            readOnly={readOnly}
+            saving={r.saving}
+            onSaveAll={r.onSaveAll}
+            address={address}
+            previewSrc={`/admin/preview/site/${f.id}`}
+            cardSrc={`/admin/cards/site/${f.id}`}
+            cardPageHref={`/admin/cards?type=${f.kind}&establishment=${f.id}`}
+          />
+        </StepGroup>
+
+        <StepGroup n={4} title="Send the preview for approval" description={`Send ${f.name || `the ${what}`} a private link to their website and visiting card.`}>
+          <SendPreviewLink target={target} disabled={readOnly} />
+        </StepGroup>
+
+        <PhaseNav
+          closing={closing}
+          onClose={() => void close()}
+          onNext={() => {
+            setPhase("publish");
+            toTop();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      <Group title="NMC compliance" description="Factual information only: no superlatives, guarantees, success rates, patient counts or comparisons.">
-        {issueFields.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
-            <ShieldCheck className="size-5" /> No banned phrases found.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {issueFields.map((path) => (
-              <li key={path} className="rounded-lg border border-clay/30 bg-clay/5 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-ink">{fieldLabel(path)}</p>
-                  <Button type="button" size="sm" variant="outline" onClick={() => r.onGoTo(path, r.stepForField(path))}>
-                    Fix
-                  </Button>
-                </div>
-                <p className="mt-1 text-sm leading-relaxed text-body">
-                  <Highlighted text={r.textFields[path] ?? ""} phrases={r.phrases} />
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Group>
-
-      <Group title="Required to publish">
-        {r.blockers.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
-            <CheckCircle2 className="size-5" /> Everything required is filled in.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {r.blockers.map((b) => (
-              <li key={b.message} className="flex items-center justify-between gap-3 text-sm">
-                <span className="flex items-center gap-2">
-                  <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
-                </span>
-                <Button type="button" size="sm" variant="ghost" onClick={() => r.onGoTo("", b.field)}>
-                  Go
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {r.recommended.length > 0 && (
-          <div className="rounded-lg bg-muted p-3 text-sm">
-            <p className="font-medium">Recommended (not required)</p>
-            <p className="mt-1 text-muted-foreground">{r.recommended.join(" · ")}</p>
-          </div>
-        )}
-      </Group>
-
-      <Group title="Owner's approval" description="Record when and how the owner approved the final site. Required to publish.">
+      <BackToCheck
+        onBack={() => {
+          setPhase("check");
+          toTop();
+        }}
+      />
+      <StepGroup n={5} title="Owner's approval" description="When and how the owner approved the final site. Required to publish.">
         <div className={grid2}>
           <Field label="Approved on" htmlFor="approval.ownerApprovedAt" error={err("approval.ownerApprovedAt")}>
             <Input id="approval.ownerApprovedAt" type="date" value={f.approval.ownerApprovedAt} disabled={readOnly} onChange={(e) => set((p) => ({ approval: { ...p.approval, ownerApprovedAt: e.target.value } }))} />
@@ -438,102 +454,42 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProp
             </NativeSelect>
           </Field>
         </div>
-      </Group>
-
-      <Group title="1. Save everything" description={`Saves every step, so the ${f.kind} is a complete listing (page address, website and visiting card) before you check it.`}>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            disabled={readOnly || savingAll || r.saving}
-            onClick={async () => {
-              setSavingAll(true);
-              try {
-                if (await r.onSaveAll()) setVersion((v) => v + 1);
-              } finally {
-                setSavingAll(false);
-              }
-            }}
-          >
-            {savingAll ? <Loader2 className="animate-spin" /> : <Save />} Save everything
+        {!f.approval.ownerApprovedAt && (
+          <Button type="button" size="sm" variant="ghost" disabled={readOnly} onClick={() => set((p) => ({ approval: { ...p.approval, ownerApprovedAt: new Date().toISOString().slice(0, 10) } }))}>
+            Approved today
           </Button>
-          {version > 0 && (
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-leaf-text">
-              <CheckCircle2 className="size-4" /> Saved. Check the preview and the card below.
-            </span>
-          )}
-        </div>
-      </Group>
-
-      <Group title="2. Preview" description="The website exactly as patients will see it (a private preview until it is published).">
-        {f.id ? (
-          <>
-            <div className="overflow-hidden rounded-xl border border-line bg-white shadow-soft">
-              <div className="flex items-center gap-3 border-b border-line bg-muted px-3 py-2">
-                <span aria-hidden className="flex gap-1.5">
-                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
-                  <span className="size-2.5 rounded-full bg-[#28c840]" />
-                </span>
-                <span className="min-w-0 flex-1 truncate rounded-md bg-card px-3 py-1 text-xs text-muted-foreground">
-                  {(f.subdomain ? subdomainUrl(f.subdomain) : absUrl((f.kind === "hospital" ? paths.hospital : paths.clinic)(f.citySlug || "city", f.slug || "…"))).replace(/^https?:\/\//, "")}
-                </span>
-                <div role="tablist" aria-label="Preview size" className="flex gap-1">
-                  {(["desktop", "phone"] as const).map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      role="tab"
-                      aria-selected={size === k}
-                      aria-label={k === "desktop" ? "Computer" : "Phone"}
-                      onClick={() => setSize(k)}
-                      className={cn("rounded-md p-1.5", size === k ? "bg-card text-ink shadow-soft" : "text-muted-foreground hover:text-ink")}
-                    >
-                      {k === "desktop" ? <Monitor className="size-4" /> : <Smartphone className="size-4" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-center bg-muted/40">
-                <iframe
-                  key={`${version}-${size}`}
-                  src={`/admin/preview/site/${f.id}?v=${version}`}
-                  title="Website preview"
-                  className={cn("h-[680px] bg-white", size === "phone" ? "w-[390px] border-x border-line" : "w-full")}
-                />
-              </div>
-            </div>
-            <Button asChild variant="outline">
-              <a href={`/admin/preview/site/${f.id}`} target="_blank" rel="noopener">
-                <Eye /> Open full preview
-              </a>
-            </Button>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Enter the name (Basics) to create the draft first.</p>
         )}
-      </Group>
+      </StepGroup>
 
-      <Group title="3. Visiting card" description="This site's own card, in the colours chosen in Design.">
-        {f.id ? (
-          <>
-            <div className="flex flex-wrap items-start gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element -- the card as rendered for printing */}
-              <img src={`/admin/cards/site/${f.id}/print.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (print)" className="w-full max-w-md rounded-lg border border-line shadow-soft" />
-              {/* eslint-disable-next-line @next/next/no-img-element -- the card as shared on WhatsApp */}
-              <img src={`/admin/cards/site/${f.id}/phone.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (phone)" className="w-44 rounded-xl border border-line shadow-soft" />
-            </div>
-            <Button asChild variant="outline">
-              <a href={`/admin/cards?type=${f.kind}&establishment=${f.id}`} target="_blank" rel="noopener">
-                <IdCard /> Visiting card: downloads, QR and WhatsApp message
-              </a>
-            </Button>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">Enter the name (Basics) to create the draft first.</p>
+      <StepGroup n={6} title="Payment" description="Record the payment here; it is saved to Payments at once.">
+        <Payments target={target} canRecord={isAdmin} setupAmount={hospital ? options.prices.hospitalSetup : options.prices.clinicSetup} gstIncluded={options.gstIncluded} onDates={r.onBusinessDates} />
+      </StepGroup>
+
+      <StepGroup n={7} title="Setup and renewal" description="Setup is paid once; the renewal is yearly from year 2.">
+        <SetupRenewal
+          value={{ setupPaidAt: f.setupPaidAt, renewalDueDate: f.renewalDueDate, renewalStatus: f.renewalStatus, renewalPrice: f.renewalPrice }}
+          onChange={(patch) => set(patch, { step: "business" })}
+          listPrice={listPrice}
+          isAdmin={isAdmin}
+          readOnly={readOnly}
+          err={err}
+        />
+      </StepGroup>
+
+      <StepGroup n={8} title="Own domain (optional)">
+        <OwnDomain value={f.ownDomain} onChange={(ownDomain) => set({ ownDomain }, { step: "business" })} isAdmin={isAdmin} readOnly={readOnly} err={err} placeholder="shreeclinic.in" />
+      </StepGroup>
+
+      <StepGroup n={9} title="Publish">
+        {r.blockers.length > 0 && (
+          <ul className="space-y-1 text-sm">
+            {r.blockers.map((b) => (
+              <li key={b.message} className="flex items-center gap-2">
+                <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
+              </li>
+            ))}
+          </ul>
         )}
-      </Group>
-
-      <Group title="4. Publish">
         <div className="flex flex-wrap gap-2">
           {r.liveUrl && (
             <Button asChild variant="outline">
@@ -568,9 +524,12 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProp
               </Button>
             )
           )}
+          <Button type="button" variant="ghost" disabled={closing} onClick={() => void close()}>
+            {closing ? <Loader2 className="animate-spin" /> : null} Close
+          </Button>
         </div>
         {!r.canPublish && <p className="text-sm text-muted-foreground">An admin will check and publish this site.</p>}
-      </Group>
+      </StepGroup>
     </div>
   );
 }

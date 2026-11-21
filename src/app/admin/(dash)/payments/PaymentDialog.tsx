@@ -35,6 +35,7 @@ export function PaymentDialog({
   defaultEstablishmentId,
   gstIncludedDefault,
   trigger,
+  onRecorded,
 }: {
   doctors?: { id: string; name: string }[];
   establishments?: { id: string; name: string; kind: "clinic" | "hospital" }[];
@@ -44,6 +45,8 @@ export function PaymentDialog({
   defaultEstablishmentId?: string;
   gstIncludedDefault: boolean;
   trigger?: ReactNode;
+  /** After a payment is recorded (e.g. the editor's Review step refreshes its renewal dates). */
+  onRecorded?: () => void;
 }) {
   const blank = () => ({
     kind: (fixed?.kind ?? (defaultEstablishmentId ? "establishment" : "doctor")) as TargetKind,
@@ -88,6 +91,7 @@ export function PaymentDialog({
       onSuccess={(res) => {
         if (res.renewalDue) toast.success(`${res.restored ? "Site is live again. " : ""}Renewal now due on ${res.renewalDue}.`);
         setV(blank());
+        onRecorded?.();
       }}
     >
       {(errors) => (

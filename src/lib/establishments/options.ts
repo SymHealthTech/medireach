@@ -10,6 +10,7 @@ import { DoctorProfile } from "@/models/DoctorProfile";
 import { Specialty } from "@/models/Specialty";
 import { TemplateSlot } from "@/models/TemplateSlot";
 import type { ThemeKey } from "@/themes/specialty";
+import { salesTeam } from "@/lib/doctors/options";
 
 /** Everything the clinic/hospital editor's pickers need, as plain serialisable data. */
 export interface EstablishmentEditorOptions {
@@ -19,7 +20,19 @@ export interface EstablishmentEditorOptions {
   /** Doctor portfolios that can be linked (any status; drafts show as such). */
   doctors: { id: string; name: string; specialty?: string; status: string; degrees?: string }[];
   templates: { type: "clinic" | "hospital" | "card"; key: string; name: string; status: string }[];
-  prices: { doctorAddon: number; renewalClinic: number; renewalHospital: number; foundingRenewal: number; foundingRenewalHospital: number };
+  prices: {
+    doctorAddon: number;
+    renewalClinic: number;
+    renewalHospital: number;
+    foundingRenewal: number;
+    foundingRenewalHospital: number;
+    clinicSetup: number;
+    hospitalSetup: number;
+  };
+  /** GST included in recorded payments by default (Settings). */
+  gstIncluded: boolean;
+  /** Dashboard users, for the sales executive dropdown. */
+  team: string[];
   bannedPhrases: string[];
 }
 
@@ -39,6 +52,7 @@ export async function getEstablishmentEditorOptions(): Promise<EstablishmentEdit
     TemplateSlot.find({ type: { $in: ["clinic", "hospital", "card"] } }).sort({ type: 1, key: 1 }).lean(),
     getSettings(),
   ]);
+  const team = await salesTeam();
   const specName = new Map(specialties.map((s) => [String(s._id), s.name]));
   return {
     cities: cities.map((c) => ({ id: String(c._id), name: c.name, slug: c.slug, state: c.state })),
@@ -57,7 +71,11 @@ export async function getEstablishmentEditorOptions(): Promise<EstablishmentEdit
       renewalHospital: settings.prices.renewalHospital,
       foundingRenewal: settings.prices.foundingRenewal,
       foundingRenewalHospital: settings.prices.foundingRenewalHospital,
+      clinicSetup: settings.prices.clinicSetup,
+      hospitalSetup: settings.prices.hospitalSetup,
     },
+    gstIncluded: settings.gstMode !== "exclusive",
+    team,
     bannedPhrases: settings.bannedPhrases,
   };
 }

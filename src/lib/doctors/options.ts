@@ -10,6 +10,7 @@ import type { EstablishmentKind } from "@/lib/constants";
 import { Establishment } from "@/models/Establishment";
 import { Specialty } from "@/models/Specialty";
 import { TemplateSlot } from "@/models/TemplateSlot";
+import { Admin } from "@/models/Admin";
 
 /** Everything the doctor editor's dropdowns need, as plain serialisable data. */
 export interface EditorOptions {
@@ -30,8 +31,12 @@ export interface EditorOptions {
     pincode?: string;
     phone?: string;
   }[];
-  /** Renewal prices from Settings (the Business step pre-fills from these). */
-  prices: { renewalDoctor: number; foundingRenewal: number };
+  /** Prices from Settings (the Review step pre-fills payments and renewals from these). */
+  prices: { renewalDoctor: number; foundingRenewal: number; doctorSetup: number; doctorAddon: number };
+  /** GST included in recorded payments by default (Settings). */
+  gstIncluded: boolean;
+  /** Dashboard users, for the sales executive dropdown. */
+  team: string[];
   templates: { type: "portfolio" | "card"; key: string; name: string; status: string; previewUrl?: string }[];
   bannedPhrases: string[];
 }
@@ -49,6 +54,7 @@ export async function getEditorOptions(): Promise<EditorOptions> {
     TemplateSlot.find().sort({ type: 1, key: 1 }).lean(),
     getSettings(),
   ]);
+  const team = await salesTeam();
   return {
     cities: cities.map((c) => ({ id: String(c._id), name: c.name, slug: c.slug, state: c.state })),
     areas: areas.map((a) => ({ id: String(a._id), name: a.name, slug: a.slug, cityId: String(a.cityId) })),
@@ -66,7 +72,14 @@ export async function getEditorOptions(): Promise<EditorOptions> {
       ...(e.address?.pincode ? { pincode: e.address.pincode } : {}),
       ...(e.contact?.phones?.[0] ? { phone: e.contact.phones[0] } : {}),
     })),
-    prices: { renewalDoctor: settings.prices.renewalDoctor, foundingRenewal: settings.prices.foundingRenewal },
+    prices: {
+      renewalDoctor: settings.prices.renewalDoctor,
+      foundingRenewal: settings.prices.foundingRenewal,
+      doctorSetup: settings.prices.doctorSetup,
+      doctorAddon: settings.prices.doctorAddon,
+    },
+    gstIncluded: settings.gstMode !== "exclusive",
+    team,
     // Doctors only pick portfolio and card designs (clinic/hospital slots belong to establishments).
     templates: templates.flatMap((t) => (t.type === "portfolio" || t.type === "card" ? [t] : [])).map((t) => ({
       type: t.type as "portfolio" | "card",
@@ -77,4 +90,13 @@ export async function getEditorOptions(): Promise<EditorOptions> {
     })),
     bannedPhrases: settings.bannedPhrases,
   };
+}
+
+/** Dashboard users for the "Sales executive" dropdown: sales first, then A–Z. */
+export async function salesTeam(): Promise<string[]> {
+  const admins = await Admin.find({ active: true }).select({ name: 1, role: 1 }).lean();
+  return admins
+    .sort((a, b) => Number(b.role === "sales") - Number(a.role === "sales") || a.name.localeCompare(b.name, "en"))
+    .map((a) => a.name)
+    .filter((n, i, all) => n && all.indexOf(n) === i);
 }

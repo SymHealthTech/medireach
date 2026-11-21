@@ -1,17 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ExternalLink, Eye, IdCard, Loader2, Monitor, Save, Send, ShieldCheck, Smartphone, Undo2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Send, ShieldCheck, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Field, NativeSelect } from "@/components/admin/form/fields";
+import { Field, NativeSelect, SwitchField } from "@/components/admin/form/fields";
+import {
+  BackToCheck,
+  OwnDomain,
+  Payments,
+  PhaseNav,
+  SalesExecutive,
+  SaveAndPreview,
+  SendPreviewLink,
+  SetupRenewal,
+  StepGroup,
+  useCloseToDashboard,
+  type BusinessDates,
+} from "@/components/admin/review/ReviewParts";
 import { scanText } from "@/lib/compliance/scan";
 import { APPROVAL_CHANNELS } from "@/lib/constants";
 import type { StepKey } from "@/lib/doctors/form";
-import { cn } from "@/lib/cn";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
-import { Group, grid2, type StepProps } from "../shared";
+import { grid2, type StepProps } from "../shared";
 
 export interface ReviewProps {
   textFields: Record<string, string>;
@@ -29,6 +41,8 @@ export interface ReviewProps {
   /** Saves every unsaved change; true when all of it saved. */
   onSaveAll: () => Promise<boolean>;
   saving: boolean;
+  /** Setup/renewal dates after a payment was recorded (applied without an unsaved change). */
+  onBusinessDates: (d: BusinessDates) => void;
   stepForField: (path: string) => StepKey;
 }
 
@@ -79,70 +93,114 @@ function fieldLabel(path: string): string {
   return `${names[head!] ?? head}${n}${leaf && head !== "gallery" ? ` (${leaf.replace(/([A-Z])/g, " $1").toLowerCase()})` : ""}`;
 }
 
-export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps & { review: ReviewProps }) {
+export function ReviewStep({ form: f, set, err, options, readOnly, role, review: r }: StepProps & { review: ReviewProps }) {
+  const [phase, setPhase] = useState<"check" | "publish">("check");
+  const { close, closing } = useCloseToDashboard(r.onSaveAll);
+  const isAdmin = role !== "sales";
   const issueFields = [...new Set(r.issues.map((i) => i.field))];
   const canGoLive = r.blockers.length === 0 && r.issues.length === 0;
   const reasons = [...r.blockers.map((b) => b.message), ...(r.issues.length ? [`${r.issues.length} compliance issue(s)`] : [])];
-  const [saving, setSaving] = useState(false);
-  const [version, setVersion] = useState(0);
-  const [size, setSize] = useState<"desktop" | "phone">("desktop");
+  const name = f.displayName || [f.title || "Dr.", f.firstName, f.lastName].filter(Boolean).join(" ");
+  const target = { kind: "doctor" as const, id: f.id, name: name.trim() || "the doctor" };
   // The address the site will have: the doctor's own subdomain, else the MediReach page.
-  const siteAddress = f.subdomain ? subdomainUrl(f.subdomain) : f.slug && f.citySlug ? absUrl(paths.doctor(f.citySlug, f.slug)) : absUrl("/");
+  const address = f.subdomain ? subdomainUrl(f.subdomain) : f.slug && f.citySlug ? absUrl(paths.doctor(f.citySlug, f.slug)) : absUrl("/");
+  const listPrice = f.founding ? options.prices.foundingRenewal : options.prices.renewalDoctor;
+  const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+  const otherBlockers = r.blockers.filter((b) => b.field !== "review");
+
+  if (phase === "check") {
+    return (
+      <div className="space-y-5">
+        <StepGroup n={1} title="Review" description="Superlatives, guarantees, success rates and patient counts are not allowed.">
+          {issueFields.length === 0 ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
+              <ShieldCheck className="size-5" /> NMC check: no banned phrases found.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {issueFields.map((path) => (
+                <li key={path} className="rounded-lg border border-clay/30 bg-clay/5 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-ink">{fieldLabel(path)}</p>
+                    <Button type="button" size="sm" variant="outline" onClick={() => r.onGoTo(path, r.stepForField(path))}>
+                      Fix
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-body">
+                    <Highlighted text={r.textFields[path] ?? ""} phrases={r.phrases} />
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {otherBlockers.length === 0 ? (
+            <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
+              <CheckCircle2 className="size-5" /> Everything required is filled in.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {otherBlockers.map((b) => (
+                <li key={b.message} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
+                  </span>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => r.onGoTo("", b.field)}>
+                    Go
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {r.recommended.length > 0 && (
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              <p className="font-medium">Recommended (not required)</p>
+              <p className="mt-1 text-muted-foreground">{r.recommended.join(" · ")}</p>
+            </div>
+          )}
+        </StepGroup>
+
+        <StepGroup n={2} title="Sales executive" description="Internal. Never shown on the page.">
+          <SalesExecutive name={f.salesExecutive} staffId={f.salesExecutiveId} team={options.team} disabled={readOnly} onChange={(patch) => set(patch, { step: "business" })} />
+        </StepGroup>
+
+        <StepGroup n={3} title="Save everything and preview" description="Saves every change, then shows the website and the visiting card exactly as the doctor will see them.">
+          <SaveAndPreview
+            target={target}
+            readOnly={readOnly}
+            saving={r.saving}
+            onSaveAll={r.onSaveAll}
+            address={address}
+            previewSrc={`/admin/preview/${f.id}`}
+            cardSrc={`/admin/cards/${f.id}`}
+            cardPageHref={`/admin/cards?doctor=${f.id}`}
+          />
+        </StepGroup>
+
+        <StepGroup n={4} title="Send the preview for approval" description={`Send ${target.name} a private link to their website and visiting card.`}>
+          <SendPreviewLink target={target} disabled={readOnly} />
+        </StepGroup>
+
+        <PhaseNav
+          closing={closing}
+          onClose={() => void close()}
+          onNext={() => {
+            setPhase("publish");
+            toTop();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      <Group title="NMC compliance" description="Superlatives, guarantees, success rates and patient counts are not allowed.">
-        {issueFields.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
-            <ShieldCheck className="size-5" /> No banned phrases found.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {issueFields.map((path) => (
-              <li key={path} className="rounded-lg border border-clay/30 bg-clay/5 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-ink">{fieldLabel(path)}</p>
-                  <Button type="button" size="sm" variant="outline" onClick={() => r.onGoTo(path, r.stepForField(path))}>
-                    Fix
-                  </Button>
-                </div>
-                <p className="mt-1 text-sm leading-relaxed text-body">
-                  <Highlighted text={r.textFields[path] ?? ""} phrases={r.phrases} />
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Group>
-
-      <Group title="Required to publish">
-        {r.blockers.length === 0 ? (
-          <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
-            <CheckCircle2 className="size-5" /> Everything required is filled in.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {r.blockers.map((b) => (
-              <li key={b.message} className="flex items-center justify-between gap-3 text-sm">
-                <span className="flex items-center gap-2">
-                  <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
-                </span>
-                <Button type="button" size="sm" variant="ghost" onClick={() => r.onGoTo("", b.field)}>
-                  Go
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {r.recommended.length > 0 && (
-          <div className="rounded-lg bg-muted p-3 text-sm">
-            <p className="font-medium">Recommended (not required)</p>
-            <p className="mt-1 text-muted-foreground">{r.recommended.join(" · ")}</p>
-          </div>
-        )}
-      </Group>
-
-      <Group title="Doctor's approval" description="Record when and how the doctor approved the final page. Required to publish.">
+      <BackToCheck
+        onBack={() => {
+          setPhase("check");
+          toTop();
+        }}
+      />
+      <StepGroup n={5} title="Doctor's approval" description="When and how the doctor approved the final page. Required to publish.">
         <div className={grid2}>
           <Field label="Approved on" htmlFor="approval.doctorApprovedAt" error={err("approval.doctorApprovedAt")}>
             <Input
@@ -169,88 +227,56 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
             </NativeSelect>
           </Field>
         </div>
-      </Group>
-
-      <Group title="Save and preview" description="Save everything first, then check the website and the visiting card exactly as the doctor will see them.">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            disabled={readOnly || r.saving || saving}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                if (await r.onSaveAll()) setVersion((v) => v + 1);
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            {saving ? <Loader2 className="animate-spin" /> : <Save />} Save everything
+        {!f.approval.doctorApprovedAt && (
+          <Button type="button" size="sm" variant="ghost" disabled={readOnly} onClick={() => set((f) => ({ approval: { ...f.approval, doctorApprovedAt: new Date().toISOString().slice(0, 10) } }))}>
+            Approved today
           </Button>
-          {f.id && (
-            <Button asChild variant="outline">
-              <a href={`/admin/preview/${f.id}`} target="_blank" rel="noopener">
-                <Eye /> Open full preview
-              </a>
-            </Button>
-          )}
-        </div>
-        {f.id ? (
-          <div className="space-y-5">
-            <div className="overflow-hidden rounded-xl border border-line bg-white shadow-soft">
-              <div className="flex items-center gap-3 border-b border-line bg-muted px-3 py-2">
-                <span aria-hidden className="flex gap-1.5">
-                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
-                  <span className="size-2.5 rounded-full bg-[#28c840]" />
-                </span>
-                <span className="min-w-0 flex-1 truncate rounded-md bg-card px-3 py-1 text-xs text-muted-foreground">{siteAddress.replace(/^https?:\/\//, "")}</span>
-                <div role="tablist" aria-label="Preview size" className="flex gap-1">
-                  {(["desktop", "phone"] as const).map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      role="tab"
-                      aria-selected={size === k}
-                      aria-label={k === "desktop" ? "Computer" : "Phone"}
-                      onClick={() => setSize(k)}
-                      className={cn("rounded-md p-1.5", size === k ? "bg-card text-ink shadow-soft" : "text-muted-foreground hover:text-ink")}
-                    >
-                      {k === "desktop" ? <Monitor className="size-4" /> : <Smartphone className="size-4" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex justify-center bg-muted/40">
-                <iframe
-                  key={`${version}-${size}`}
-                  src={`/admin/preview/${f.id}?v=${version}`}
-                  title="Website preview"
-                  className={cn("h-[680px] bg-white", size === "phone" ? "w-[390px] border-x border-line" : "w-full")}
-                />
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-sm font-semibold text-ink">Digital visiting card</p>
-              <div className="flex flex-wrap items-start gap-4">
-                {/* eslint-disable-next-line @next/next/no-img-element -- the card as rendered for printing */}
-                <img src={`/admin/cards/${f.id}/print.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (print)" className="w-full max-w-md rounded-lg border border-line shadow-soft" />
-                {/* eslint-disable-next-line @next/next/no-img-element -- the card as shared on WhatsApp */}
-                <img src={`/admin/cards/${f.id}/phone.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (phone)" className="w-44 rounded-xl border border-line shadow-soft" />
-              </div>
-              <Button asChild variant="outline" className="mt-3">
-                <a href={`/admin/cards?doctor=${f.id}`} target="_blank" rel="noopener">
-                  <IdCard /> Visiting card: downloads, QR and WhatsApp message
-                </a>
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Enter the doctor&apos;s name (Basics) to create the draft first.</p>
         )}
-      </Group>
+      </StepGroup>
 
-      <Group title="Publish">
+      <StepGroup n={6} title="Payment" description="Record the payment here; it is saved to Payments at once.">
+        <Payments
+          target={target}
+          canRecord={isAdmin}
+          setupAmount={f.plan === "doctor_addon" ? options.prices.doctorAddon : options.prices.doctorSetup}
+          gstIncluded={options.gstIncluded}
+          onDates={r.onBusinessDates}
+        />
+      </StepGroup>
+
+      <StepGroup n={7} title="Setup and renewal" description="Setup is paid once; the renewal is yearly from year 2.">
+        <SetupRenewal
+          value={{ setupPaidAt: f.setupPaidAt, renewalDueDate: f.renewalDueDate, renewalStatus: f.renewalStatus, renewalPrice: f.renewalPrice }}
+          onChange={(patch) => set(patch, { step: "business" })}
+          listPrice={listPrice}
+          isAdmin={isAdmin}
+          readOnly={readOnly}
+          err={err}
+        >
+          <SwitchField
+            label="Free update already used"
+            description="The first done-for-you update is free."
+            checked={f.freeUpdateUsed}
+            disabled={readOnly}
+            onCheckedChange={(freeUpdateUsed) => set({ freeUpdateUsed }, { step: "business" })}
+          />
+        </SetupRenewal>
+      </StepGroup>
+
+      <StepGroup n={8} title="Own domain (optional)">
+        <OwnDomain value={f.ownDomain} onChange={(ownDomain) => set({ ownDomain }, { step: "business" })} isAdmin={isAdmin} readOnly={readOnly} err={err} placeholder="drshah.in" />
+      </StepGroup>
+
+      <StepGroup n={9} title="Publish">
+        {r.blockers.length > 0 && (
+          <ul className="space-y-1 text-sm">
+            {r.blockers.map((b) => (
+              <li key={b.message} className="flex items-center gap-2">
+                <AlertTriangle className="size-4 shrink-0 text-clay-text" /> {b.message}
+              </li>
+            ))}
+          </ul>
+        )}
         <div className="flex flex-wrap gap-2">
           {r.liveUrl && (
             <Button asChild variant="outline">
@@ -285,9 +311,12 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: StepProps
               </Button>
             )
           )}
+          <Button type="button" variant="ghost" disabled={closing} onClick={() => void close()}>
+            {closing ? <Loader2 className="animate-spin" /> : null} Close
+          </Button>
         </div>
         {!r.canPublish && <p className="text-sm text-muted-foreground">An admin will check and publish this page.</p>}
-      </Group>
+      </StepGroup>
     </div>
   );
 }

@@ -147,10 +147,10 @@ export function DoctorEditor({
   }, [leadId]);
 
   const set: StepProps["set"] = useCallback(
-    (patch) => {
+    (patch, opts) => {
       if (readOnly) return;
       setForm((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) }));
-      dirty.current.add(stepRef.current);
+      dirty.current.add(opts?.step ?? stepRef.current);
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), AUTOSAVE_MS);
     },
@@ -352,6 +352,8 @@ export function DoctorEditor({
               onGoTo: (path, s) => void goTo(s, path || undefined),
               onSaveAll: saveAll,
               saving: save.status === "saving",
+              // A recorded payment moved the setup/renewal dates on the server: show them (not an unsaved change).
+              onBusinessDates: (d) => setForm((prev) => ({ ...prev, ...d })),
               onPublish: () => void runStatus(publishDoctorAction, "Published — the page is live"),
               onUnpublish: () => void runStatus(unpublishDoctorAction, "Unpublished"),
               onSubmitReview: () => void runStatus(submitForReviewAction, "Sent to an admin for review"),

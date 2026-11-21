@@ -132,6 +132,7 @@ export interface DoctorForm {
   /** Clinics/hospitals this doctor belongs to (clinic links are added automatically). */
   establishmentIds: string[];
   salesExecutive: string;
+  salesExecutiveId: string;
   source: "" | (typeof DOCTOR_SOURCES)[number];
   internalNotes: string;
 
@@ -219,6 +220,7 @@ export function emptyDoctorForm(): DoctorForm {
     ownDomain: { name: "", status: "requested", cost: undefined, renewalDate: "" },
     establishmentIds: [],
     salesExecutive: "",
+    salesExecutiveId: "",
     source: "",
     internalNotes: "",
     portfolioTemplateId: "classic",
@@ -244,8 +246,8 @@ export const STEPS = [
   { key: "contact", title: "Contact and links" },
   { key: "about", title: "About, awards and gallery" },
   { key: "seo", title: "SEO" },
-  { key: "business", title: "Business" },
   { key: "templates", title: "Design" },
+  { key: "business", title: "Business" },
   { key: "review", title: "Review and publish" },
 ] as const;
 
@@ -269,7 +271,7 @@ export function stepComplete(step: StepKey, f: DoctorForm): boolean {
     case "seo":
       return Boolean(f.slug && f.shortSlug);
     case "business":
-      return Boolean(f.plan && f.source);
+      return Boolean(f.plan);
     case "templates":
       return Boolean(f.portfolioTemplateId && f.cardTemplateId);
     case "review":
@@ -580,6 +582,7 @@ export const sectionSchemas = {
     }),
     establishmentIds: z.array(z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.")).max(20),
     salesExecutive: t(80),
+    salesExecutiveId: t(40),
     source: z.enum(["", ...DOCTOR_SOURCES]).transform((s) => s || undefined),
     internalNotes: t(2000),
   }),
@@ -614,7 +617,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "seo":
       return { slug: f.slug, shortSlug: f.shortSlug, subdomain: f.subdomain, seo: f.seo };
     case "business":
-      return { plan: f.plan, founding: f.founding, setupPaidAt: f.setupPaidAt, renewalPrice: f.renewalPrice, renewalDueDate: f.renewalDueDate, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, establishmentIds: f.establishmentIds, salesExecutive: f.salesExecutive, source: f.source, internalNotes: f.internalNotes };
+      return { plan: f.plan, founding: f.founding, setupPaidAt: f.setupPaidAt, renewalPrice: f.renewalPrice, renewalDueDate: f.renewalDueDate, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, establishmentIds: f.establishmentIds, salesExecutive: f.salesExecutive, salesExecutiveId: f.salesExecutiveId, source: f.source, internalNotes: f.internalNotes };
     case "templates":
       return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle };
     case "review":

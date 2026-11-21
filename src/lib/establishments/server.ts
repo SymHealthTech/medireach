@@ -132,6 +132,7 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
       renewalDate: date(d.ownDomain?.renewalDate),
     },
     salesExecutive: s(d.salesExecutive),
+    salesExecutiveId: s(d.salesExecutiveId),
     source: d.source ?? "",
     contactPerson: { name: s(d.contactPerson?.name), phone: s(d.contactPerson?.phone), email: s(d.contactPerson?.email) },
     ownerEmail: s(d.ownerEmail),
@@ -286,6 +287,7 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
       const d = input as SectionData<"business">;
       doc.set({
         salesExecutive: d.salesExecutive,
+        salesExecutiveId: d.salesExecutiveId,
         source: d.source,
         contactPerson: d.contactPerson.name || d.contactPerson.phone || d.contactPerson.email ? d.contactPerson : undefined,
         ownerEmail: d.ownerEmail,

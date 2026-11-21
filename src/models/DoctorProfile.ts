@@ -188,6 +188,8 @@ export interface DoctorProfileDoc {
   /** Clinics/hospitals this doctor belongs to (two-way with Establishment.doctors). */
   establishmentIds: Types.ObjectId[];
   salesExecutive?: string;
+  /** The sales executive's staff ID. */
+  salesExecutiveId?: string;
   source?: (typeof DOCTOR_SOURCES)[number];
   internalNotes?: string;
 
@@ -394,6 +396,7 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
     hospitalAccountId: { type: Schema.Types.ObjectId, ref: "Establishment" },
     establishmentIds: { type: [{ type: Schema.Types.ObjectId, ref: "Establishment" }], default: [] },
     salesExecutive: { type: String, trim: true },
+    salesExecutiveId: { type: String, trim: true },
     source: { type: String, enum: DOCTOR_SOURCES },
     internalNotes: { type: String },
 

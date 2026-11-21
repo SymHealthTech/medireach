@@ -118,6 +118,7 @@ export interface EstablishmentForm {
   renewalStatus: RenewalStatus;
   ownDomain: { name: string; status: (typeof DOMAIN_STATUSES)[number]; cost: number | undefined; renewalDate: string };
   salesExecutive: string;
+  salesExecutiveId: string;
   source: "" | (typeof ESTABLISHMENT_SOURCES)[number];
   contactPerson: { name: string; phone: string; email: string };
   ownerEmail: string;
@@ -182,6 +183,7 @@ export function emptyEstablishmentForm(kind: EstablishmentKind = "clinic"): Esta
     renewalStatus: "active",
     ownDomain: { name: "", status: "requested", cost: undefined, renewalDate: "" },
     salesExecutive: "",
+    salesExecutiveId: "",
     source: "",
     contactPerson: { name: "", phone: "", email: "" },
     ownerEmail: "",
@@ -205,8 +207,8 @@ export const STEPS = [
   { key: "extras", title: "Registration and hospital details" },
   { key: "gallery", title: "Gallery" },
   { key: "seo", title: "SEO" },
-  { key: "business", title: "Business" },
   { key: "design", title: "Design" },
+  { key: "business", title: "Business" },
   { key: "review", title: "Review and publish" },
 ] as const;
 
@@ -240,7 +242,7 @@ export function stepComplete(step: StepKey, f: EstablishmentForm): boolean {
     case "seo":
       return Boolean(f.slug);
     case "business":
-      return Boolean(f.source);
+      return f.kind === "hospital" ? Boolean(f.source) : true;
     case "design":
       return Boolean(f.themeKey && f.siteTemplateId && f.cardTemplateId);
     case "review":
@@ -480,6 +482,7 @@ export const sectionSchemas = {
       renewalDate: dateStr,
     }),
     salesExecutive: t(80),
+    salesExecutiveId: t(40),
     source: z.enum(["", ...ESTABLISHMENT_SOURCES]).transform((s) => s || undefined),
     contactPerson: z.object({ name: t(80), phone, email }),
     ownerEmail: email,
@@ -545,6 +548,7 @@ export function sectionPayload(step: StepKey, f: EstablishmentForm): unknown {
         renewalDueDate: f.renewalDueDate,
         ownDomain: f.ownDomain,
         salesExecutive: f.salesExecutive,
+        salesExecutiveId: f.salesExecutiveId,
         source: f.source,
         contactPerson: f.contactPerson,
         ownerEmail: f.ownerEmail,
