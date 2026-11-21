@@ -274,4 +274,16 @@ export const SEED_CLINIC_CATEGORIES: readonly {
   { name: "Multispecialty Clinic", plural: "Multispecialty Clinics", slug: "multispecialty", kind: "clinic", defaultThemeKey: "general-opd", icon: "stethoscope" },
   { name: "Diagnostic Centre", plural: "Diagnostic Centres", slug: "diagnostic-centre", kind: "clinic", defaultThemeKey: "general-opd", icon: "activity" },
   { name: "Hospital", plural: "Hospitals", slug: "small-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "hospital" },
+  // Hospital types (the same list as "Type of hospital" on the website form). All start on the hospital design.
+  { name: "Multi-speciality Hospital", plural: "Multi-speciality Hospitals", slug: "multispecialty-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "hospital" },
+  { name: "General Hospital", plural: "General Hospitals", slug: "general-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "hospital" },
+  { name: "Maternity Hospital", plural: "Maternity Hospitals", slug: "maternity-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "flower-2" },
+  { name: "Children's Hospital", plural: "Children's Hospitals", slug: "childrens-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "baby" },
+  { name: "Orthopaedic Hospital", plural: "Orthopaedic Hospitals", slug: "orthopaedic-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "bone" },
+  { name: "Surgical Hospital", plural: "Surgical Hospitals", slug: "surgical-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "activity" },
+  { name: "Eye Hospital", plural: "Eye Hospitals", slug: "eye-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "eye" },
+  { name: "ENT Hospital", plural: "ENT Hospitals", slug: "ent-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "ear" },
 ];
+
+/** The general hospital category: new hospitals start on it, and forms without a known type fall back to it. */
+export const DEFAULT_HOSPITAL_CATEGORY = "small-hospital";

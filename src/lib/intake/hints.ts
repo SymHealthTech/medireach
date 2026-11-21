@@ -1,4 +1,5 @@
-import { DESIGN_GROUPS, doctorEntries, doctorRoleLabel, str, splitLines, type IntakeData, type RepeatItem } from "./form";
+import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
+import { DESIGN_GROUPS, doctorEntries, doctorRoleLabel, hospitalCategoryFor, str, splitLines, type IntakeData, type RepeatItem } from "./form";
 
 /**
  * What a website form ("Get started") said, for fields the admin editor keeps
@@ -159,7 +160,8 @@ export function doctorHints(ref: string, data: IntakeData, intakeId?: string): D
 export function siteHints(ref: string, kind: "clinic" | "hospital", data: IntakeData, intakeId?: string): SiteFormHints {
   const typeKey = kind === "clinic" ? "clinicType" : "hospitalType";
   const type = str(data[typeKey]);
-  const category = type === "other" ? str(data[`${typeKey}Other`]) : (DESIGN_GROUPS[kind].find((g) => g.value === type)?.label ?? type);
+  const hospitalCategory = kind === "hospital" ? SEED_CLINIC_CATEGORIES.find((c) => c.slug === hospitalCategoryFor(type))?.name : undefined;
+  const category = type === "other" ? str(data[`${typeKey}Other`]) : (hospitalCategory ?? DESIGN_GROUPS[kind].find((g) => g.value === type)?.label ?? type);
   const opt = (k: string, v: unknown) => (str(v) ? { [k]: str(v) } : {});
   return {
     ref,

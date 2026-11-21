@@ -4,6 +4,7 @@ import { escapeRegExp } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
 import { revalidateMasters } from "@/lib/public/revalidate";
 import { seedMasterLists } from "@/lib/seed/masters";
+import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
 import { masterSlugError, slugify } from "@/lib/slug";
 import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME, isThemeKey, type ThemeKey } from "@/themes/specialty";
 import { Area } from "@/models/Area";
@@ -31,7 +32,9 @@ export function ensureMasterLists(): Promise<void> {
   ensured ??= (async () => {
     await connectToDatabase();
     const counts = await Promise.all([Council, Degree, Specialty, City, ClinicCategory, TemplateSlot].map((m) => (m as typeof Council).estimatedDocumentCount()));
-    if (counts.some((n) => n === 0)) {
+    // Standard categories added later (e.g. the hospital types) reach older databases too.
+    const seededCategories = await ClinicCategory.countDocuments({ slug: { $in: SEED_CLINIC_CATEGORIES.map((c) => c.slug) } });
+    if (counts.some((n) => n === 0) || seededCategories < SEED_CLINIC_CATEGORIES.length) {
       await seedMasterLists();
       // Pages cached while the lists were empty would keep missing degrees, councils and areas.
       try {

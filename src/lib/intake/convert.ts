@@ -3,6 +3,7 @@ import mongoose, { type Types } from "mongoose";
 import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
 import { isThemeKey } from "@/themes/specialty";
+import { DEFAULT_HOSPITAL_CATEGORY } from "@/data/masters";
 import { escapeRegExp } from "@/lib/admin/list";
 import { ensureUrlKeys as ensureDoctorUrlKeys } from "@/lib/doctors/server";
 import { ensureUrlKeys as ensureSiteUrlKeys } from "@/lib/establishments/server";
@@ -12,6 +13,7 @@ import {
   doctorEntries,
   doctorRoleLabel,
   doctorText,
+  hospitalCategoryFor,
   isRepeatValue,
   mapsLinkFor,
   parseLocation,
@@ -293,13 +295,13 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   if (!city || !area) skipped.push("area / city");
 
   // Clinic type is a category slug from the form; "Other" (or an older free-text answer) is matched by name.
-  const typeSlug = kind === "clinic" ? str(d.clinicType) : "";
+  const typeSlug = kind === "clinic" ? str(d.clinicType) : hospitalCategoryFor(str(d.hospitalType));
   const typeText = (kind === "clinic" ? str(d.clinicTypeOther) || (typeSlug === "other" ? "" : typeSlug) : str(d.hospitalTypeOther)).toLowerCase();
   const categories = await ClinicCategory.find({ kind }).select({ name: 1, slug: 1, defaultThemeKey: 1 }).lean();
   const category =
     categories.find((c) => typeSlug && c.slug === typeSlug) ??
     categories.find((c) => typeText && (typeText.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(typeText))) ??
-    (kind === "hospital" ? categories[0] : undefined);
+    (kind === "hospital" ? (categories.find((c) => c.slug === DEFAULT_HOSPITAL_CATEGORY) ?? categories[0]) : undefined);
   if (!category) skipped.push("category");
 
   const pincode = str(d.pincode);

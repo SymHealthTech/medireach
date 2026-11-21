@@ -9,6 +9,7 @@ import { createSessionToken } from "@/lib/auth/session";
 import { seedMasters } from "@/lib/seed/masters";
 import { checkIntakeCode, createIntakeCode, INTAKE_CODE_MAX_ATTEMPTS } from "@/lib/intake/code";
 import { createSiteFromIntake, splitDoctorName } from "@/lib/intake/convert";
+import { ClinicCategory } from "@/models/ClinicCategory";
 import { intakeCodeEmail, intakeSavedEmail } from "@/lib/intake/emails";
 import {
   allPhotos,
@@ -513,6 +514,19 @@ describe("creating the website draft", () => {
     expect(e!.doctors[0]).toMatchObject({ specialty: "Orthopaedic Surgeon", role: "Consultant" });
     expect(e!.internalNotes).toContain("which doctors are in which department");
     expect(e!.internalNotes).toContain("Department 2:");
+  });
+
+  it("puts a hospital in the category for its type (or the general Hospital one)", async () => {
+    const make = async (email: string, hospitalType: string) => {
+      const r = await saveIntake({ kind: "hospital", email, data: { ...emptyIntakeData("hospital"), name: `Type ${hospitalType || "none"} Hospital`, hospitalType }, photos: {} }, null);
+      const made = await createSiteFromIntake((await Intake.findById(r.ok ? r.intake.id : "").lean())!);
+      const e = await Establishment.findById(made.id).lean();
+      return (await ClinicCategory.findById(e!.categoryId).lean())!;
+    };
+    expect(await make("maternity@example.com", "maternity")).toMatchObject({ slug: "maternity-hospital", kind: "hospital", name: "Maternity Hospital" });
+    expect((await make("ent@example.com", "ent")).slug).toBe("ent-hospital");
+    expect((await make("notype@example.com", "")).slug).toBe("small-hospital");
+    expect(siteHints("MR-9", "hospital", { ...emptyIntakeData("hospital"), hospitalType: "children" }).category).toBe("Children's Hospital");
   });
 
   it("refuses a doctor form without a full name", async () => {

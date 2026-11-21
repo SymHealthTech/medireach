@@ -34,7 +34,7 @@ describe("seedMasters", () => {
     expect(first.specialties).toBeGreaterThanOrEqual(40);
     expect(first.degrees).toBeGreaterThanOrEqual(30);
     expect(first.councils).toBeGreaterThanOrEqual(30);
-    expect(first.clinicCategories).toBe(15);
+    expect(first.clinicCategories).toBe(23); // 14 clinic types + Hospital + 8 hospital types
     expect(first.templateSlots).toBe(20);
     expect(first.settings).toBe(1);
 
@@ -73,10 +73,13 @@ describe("seedMasters", () => {
     });
   });
 
-  it("gives every clinic category a real theme, and one hospital category", async () => {
+  it("gives every category a real theme, and hospital types as hospital categories", async () => {
     const cats = await ClinicCategory.find().lean();
     for (const c of cats) expect(isThemeKey(c.defaultThemeKey), c.slug).toBe(true);
-    expect(cats.filter((c) => c.kind === "hospital").map((c) => c.slug)).toEqual(["small-hospital"]);
+    expect(cats.filter((c) => c.kind === "hospital").map((c) => c.slug).sort()).toEqual(
+      ["small-hospital", "multispecialty-hospital", "general-hospital", "maternity-hospital", "childrens-hospital", "orthopaedic-hospital", "surgical-hospital", "eye-hospital", "ent-hospital"].sort(),
+    );
+    expect(cats.filter((c) => c.kind === "hospital").every((c) => c.defaultThemeKey === "small-hospital")).toBe(true);
     expect(cats.find((c) => c.slug === "skin")).toMatchObject({ name: "Skin Clinic", plural: "Skin Clinics", defaultThemeKey: "skin" });
   });
 });

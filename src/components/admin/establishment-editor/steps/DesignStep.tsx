@@ -6,7 +6,7 @@ import { Field, NativeSelect } from "@/components/admin/form/fields";
 import { CardStylePicker, DesignPicker } from "@/components/intake/DesignPickers";
 import { Group } from "@/components/admin/doctor-editor/shared";
 import { CARD_STYLES_BY_GROUP, findCardStyle } from "@/lib/cards/styles";
-import { DESIGN_GROUPS, DESIGN_TYPE_FIELD, INTAKE_SECTIONS } from "@/lib/intake/form";
+import { DESIGN_TYPE_FIELD, INTAKE_SECTIONS, hospitalTypeFor } from "@/lib/intake/form";
 import { getTheme, isThemeKey, type ThemeKey } from "@/themes/specialty";
 import { ThemePicker } from "../ThemePicker";
 import type { EStepProps } from "../shared";
@@ -71,8 +71,8 @@ export function DesignStep({ form: f, set, options, readOnly, hints, cardFaces }
           id="themeKey"
           field={website}
           value={f.themeKey}
-          // The picker opens on the type: the clinic's category, or the hospital type from the website form.
-          context={{ [DESIGN_TYPE_FIELD[kind]]: kind === "clinic" ? (category?.slug ?? "") : (DESIGN_GROUPS.hospital.find((g) => g.label === hints?.category)?.value ?? "") }}
+          // The picker opens on the type: the clinic's or hospital's category.
+          context={{ [DESIGN_TYPE_FIELD[kind]]: kind === "clinic" ? (category?.slug ?? "") : hospitalTypeFor(category?.slug ?? "") }}
           onChange={(v) => v && isThemeKey(v) && set({ themeKey: v })}
           undecided={false}
         />

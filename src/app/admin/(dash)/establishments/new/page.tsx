@@ -10,6 +10,7 @@ import { getEstablishmentEditorOptions } from "@/lib/establishments/options";
 import { siteFormHints } from "@/lib/intake/hints-server";
 import { docToForm } from "@/lib/establishments/server";
 import { Establishment } from "@/models/Establishment";
+import { DEFAULT_HOSPITAL_CATEGORY } from "@/data/masters";
 
 export const metadata: Metadata = { title: "New clinic or hospital" };
 
@@ -35,7 +36,7 @@ export default async function NewEstablishmentPage({ searchParams }: { searchPar
   const pune = options.cities.find((c) => c.slug === "pune");
   if (pune) form.address = { ...form.address, cityId: pune.id, state: pune.state };
   if (form.kind === "hospital") {
-    const hospitalCategory = options.categories.find((c) => c.kind === "hospital");
+    const hospitalCategory = options.categories.find((c) => c.slug === DEFAULT_HOSPITAL_CATEGORY) ?? options.categories.find((c) => c.kind === "hospital");
     if (hospitalCategory) form.categoryId = hospitalCategory.id;
   }
   return <EstablishmentEditor initial={form} options={options} role={admin.role} cardFaces={sampleCardFaces(form.kind)} />;

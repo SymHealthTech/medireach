@@ -441,16 +441,20 @@ const CLINIC_TYPES = [
 ] as const;
 
 const HOSPITAL_TYPES = [
-  { value: "multispecialty", label: "Multi-speciality" },
-  { value: "general", label: "General hospital" },
-  { value: "maternity", label: "Maternity and women's" },
-  { value: "children", label: "Children's" },
-  { value: "orthopaedic", label: "Orthopaedic" },
-  { value: "surgical", label: "Surgical" },
-  { value: "eye", label: "Eye" },
-  { value: "ent", label: "ENT" },
-  { value: "other", label: "Other" },
+  { value: "multispecialty", label: "Multi-speciality", category: "multispecialty-hospital" },
+  { value: "general", label: "General hospital", category: "general-hospital" },
+  { value: "maternity", label: "Maternity and women's", category: "maternity-hospital" },
+  { value: "children", label: "Children's", category: "childrens-hospital" },
+  { value: "orthopaedic", label: "Orthopaedic", category: "orthopaedic-hospital" },
+  { value: "surgical", label: "Surgical", category: "surgical-hospital" },
+  { value: "eye", label: "Eye", category: "eye-hospital" },
+  { value: "ent", label: "ENT", category: "ent-hospital" },
+  { value: "other", label: "Other", category: "" },
 ] as const;
+
+/** Website-form hospital type ("maternity") → hospital category slug ("maternity-hospital"), and back. */
+export const hospitalCategoryFor = (type: string): string => HOSPITAL_TYPES.find((t) => t.value === type)?.category ?? "";
+export const hospitalTypeFor = (categorySlug: string): string => HOSPITAL_TYPES.find((t) => t.category && t.category === categorySlug)?.value ?? "";
 
 const HOSPITAL_TYPE_ICON: Record<string, ThemeIconKey> = {
   maternity: "flower-2",
