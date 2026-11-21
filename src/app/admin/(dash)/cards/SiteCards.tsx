@@ -49,9 +49,10 @@ export function CardStyleCodes({ kind }: { kind: ProductKind }) {
 
 /** Clinic/hospital visiting cards: preview, downloads, QR and share message. */
 export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic" | "hospital" }) {
-  const filter: FilterQuery<EstablishmentDoc> = { kind };
   const id = param(sp, "establishment");
-  if (isObjectId(id)) filter._id = id;
+  // Opened from the editor ("Visiting card"): only this site's card.
+  if (isObjectId(id)) return <OneSiteCard id={id} />;
+  const filter: FilterQuery<EstablishmentDoc> = { kind };
   const re = searchRegex(param(sp, "q"));
   if (re) filter.name = re;
   const page = pageOf(sp);
@@ -129,6 +130,51 @@ export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic"
         </ul>
       )}
       <Pagination page={page} pageCount={Math.ceil(total / PER_PAGE)} total={total} />
+    </div>
+  );
+}
+
+/** One clinic's or hospital's card on its own: phone and print card, downloads, QR and the WhatsApp message. */
+async function OneSiteCard({ id }: { id: string }) {
+  const [settings, doc, site] = await Promise.all([getSettings(), Establishment.findById(id).select({ name: 1, kind: 1, status: 1 }).lean(), loadSiteForCard(id)]);
+  if (!doc) return <EmptyState icon={IdCard} title="Not found" description="This clinic or hospital no longer exists." />;
+  const what = doc.kind === "hospital" ? "hospital" : "clinic";
+  const qrSvg = site ? await QRCode.toString(site.shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0A3F3F", light: "#FFFFFF" } }) : undefined;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="font-display text-2xl font-semibold text-ink">Visiting card · {doc.name}</h2>
+        <StatusBadge status={doc.status} />
+        <a href={`/admin/establishments/${id}?step=review`} className="ml-auto text-sm font-medium text-ink underline underline-offset-2">
+          Back to the {what}
+        </a>
+      </div>
+      {site ? (
+        <>
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-ink">Print card (85 × 55 mm)</p>
+              <SiteCardView site={site} variant="print" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-ink">Phone card (WhatsApp)</p>
+              <SiteCardView site={site} variant="phone" />
+            </div>
+          </div>
+          <p className="break-all text-xs text-muted-foreground">QR opens {site.shareUrl}</p>
+          <div className="flex flex-wrap gap-2">
+            {(["print.pdf", "print.png", "phone.png"] as const).map((f) => (
+              <a key={f} className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/site/${id}/${f}?download=1`}>
+                {f === "print.pdf" ? "PDF (print)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+              </a>
+            ))}
+          </div>
+          {qrSvg && <CardTools qrSvg={qrSvg} fileBase={site.slug} shareUrl={site.shareUrl} message={fillShareTemplate(settings.whatsappShareTemplate, { name: doc.name, link: site.shareUrl })} />}
+        </>
+      ) : (
+        <p className="rounded-lg bg-muted p-4 text-sm text-muted-foreground">Add the city and area (Location step) and save, to generate the card.</p>
+      )}
+      {doc.status !== "published" && <p className="text-xs text-amber-700 dark:text-amber-400">Not published yet. The QR link won&apos;t open until it is.</p>}
     </div>
   );
 }

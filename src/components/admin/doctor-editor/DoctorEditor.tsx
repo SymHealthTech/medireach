@@ -192,6 +192,14 @@ export function DoctorEditor({
     return phrases ? `Not allowed (NMC): “${phrases.join("”, “")}”. Rephrase factually.` : undefined;
   };
 
+  // Leaving through an in-app link (sidebar, "Payments"…) skips beforeunload: save what is pending on the way out.
+  useEffect(
+    () => () => {
+      if (dirty.current.size > 0) void flush();
+    },
+    [flush],
+  );
+
   /** The final "Save everything" (Review step): saves every unsaved change; true when all of it saved. */
   async function saveAll(): Promise<boolean> {
     dirty.current.add(stepRef.current);

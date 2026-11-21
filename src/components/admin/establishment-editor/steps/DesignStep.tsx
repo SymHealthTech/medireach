@@ -8,7 +8,6 @@ import { Group } from "@/components/admin/doctor-editor/shared";
 import { CARD_STYLES_BY_GROUP, findCardStyle } from "@/lib/cards/styles";
 import { DESIGN_TYPE_FIELD, INTAKE_SECTIONS, hospitalTypeFor } from "@/lib/intake/form";
 import { getTheme, isThemeKey, type ThemeKey } from "@/themes/specialty";
-import { ThemePicker } from "../ThemePicker";
 import type { EStepProps } from "../shared";
 
 // The same pickers as the website forms and the homepage (Get started → Clinic / Hospital).
@@ -80,12 +79,6 @@ export function DesignStep({ form: f, set, options, readOnly, hints, cardFaces }
           Chosen: <strong className="text-ink">{theme.name}</strong>
           {category && category.defaultThemeKey === f.themeKey && " (the design for this type)"}
         </p>
-        <details className="rounded-lg border border-line bg-background p-3">
-          <summary className="cursor-pointer text-sm font-medium">All specialty designs</summary>
-          <div className="mt-3">
-            <ThemePicker value={f.themeKey} onChange={(themeKey) => set({ themeKey })} disabled={readOnly} siteName={f.name} {...(category ? { recommended: category.defaultThemeKey } : {})} />
-          </div>
-        </details>
         {layouts.length > 1 ? (
           <Field label="Layout" htmlFor="siteTemplateId">
             <NativeSelect id="siteTemplateId" value={f.siteTemplateId} onChange={(e) => set({ siteTemplateId: e.target.value })}>

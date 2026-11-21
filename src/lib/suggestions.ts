@@ -114,7 +114,7 @@ export const SPECIALTY_SUGGESTIONS = SEED_SPECIALTIES.map((s) => s.name);
 export const DEGREE_SUGGESTIONS = SEED_DEGREES.map((d) => d.name);
 export const COUNCIL_SUGGESTIONS = SEED_COUNCILS.map((c) => c.name);
 
-/** Designations for doctors at a clinic or hospital ("Consultant Dermatologist"). */
+/** Designations for doctors at a clinic or hospital ("Consultant Dermatologist"), A–Z for the dropdown. */
 export const DESIGNATION_SUGGESTIONS = uniq([
   "General Physician",
   "Consultant Physician",
@@ -134,7 +134,7 @@ export const DESIGNATION_SUGGESTIONS = uniq([
   "Pathologist",
   "Dietitian",
   ...SPECIALTY_SUGGESTIONS,
-]);
+]).sort((a, b) => a.localeCompare(b, "en"));
 
 // --- Facilities and equipment -------------------------------------------------
 

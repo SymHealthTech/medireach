@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { AlertTriangle, Check, CheckCircle2, CreditCard, ExternalLink, Eye, IdCard, Loader2, Send, ShieldCheck, Undo2, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, CreditCard, ExternalLink, Eye, IdCard, Loader2, Monitor, Save, Send, ShieldCheck, Smartphone, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -306,8 +306,9 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role }: ESt
         </Field>
         {isAdmin && f.id && (
           <Button asChild variant="outline">
-            <Link href={`/admin/payments?establishment=${f.id}`}>
-              <CreditCard /> Payments for this {f.kind}
+            {/* A new tab, so nothing typed here is lost. */}
+            <Link href={`/admin/payments?establishment=${f.id}`} target="_blank" rel="noopener">
+              <CreditCard /> Payments for this {f.kind} <ExternalLink className="size-3.5" aria-hidden />
             </Link>
           </Button>
         )}
@@ -354,9 +355,16 @@ export interface EReviewProps {
   onSubmitReview: () => void;
   onGoTo: (path: string, step: StepKey) => void;
   stepForField: (path: string) => StepKey;
+  /** Saves every step; true when all of it saved. */
+  onSaveAll: () => Promise<boolean>;
+  saving: boolean;
 }
 
 export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProps & { review: EReviewProps }) {
+  const [savingAll, setSavingAll] = useState(false);
+  // Bumped after each "Save everything" so the preview and card images reload.
+  const [version, setVersion] = useState(0);
+  const [size, setSize] = useState<"desktop" | "phone">("desktop");
   const issueFields = [...new Set(r.issues.map((i) => i.field))];
   const canGoLive = r.blockers.length === 0 && r.issues.length === 0;
   const reasons = [...r.blockers.map((b) => b.message), ...(r.issues.length ? [`${r.issues.length} compliance issue(s)`] : [])];
@@ -432,26 +440,105 @@ export function ReviewStep({ form: f, set, err, readOnly, review: r }: EStepProp
         </div>
       </Group>
 
-      <Group title="Publish">
-        <div className="flex flex-wrap gap-2">
-          {f.id && (
+      <Group title="1. Save everything" description={`Saves every step, so the ${f.kind} is a complete listing (page address, website and visiting card) before you check it.`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            disabled={readOnly || savingAll || r.saving}
+            onClick={async () => {
+              setSavingAll(true);
+              try {
+                if (await r.onSaveAll()) setVersion((v) => v + 1);
+              } finally {
+                setSavingAll(false);
+              }
+            }}
+          >
+            {savingAll ? <Loader2 className="animate-spin" /> : <Save />} Save everything
+          </Button>
+          {version > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-leaf-text">
+              <CheckCircle2 className="size-4" /> Saved. Check the preview and the card below.
+            </span>
+          )}
+        </div>
+      </Group>
+
+      <Group title="2. Preview" description="The website exactly as patients will see it (a private preview until it is published).">
+        {f.id ? (
+          <>
+            <div className="overflow-hidden rounded-xl border border-line bg-white shadow-soft">
+              <div className="flex items-center gap-3 border-b border-line bg-muted px-3 py-2">
+                <span aria-hidden className="flex gap-1.5">
+                  <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                  <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                  <span className="size-2.5 rounded-full bg-[#28c840]" />
+                </span>
+                <span className="min-w-0 flex-1 truncate rounded-md bg-card px-3 py-1 text-xs text-muted-foreground">
+                  {(f.subdomain ? subdomainUrl(f.subdomain) : absUrl((f.kind === "hospital" ? paths.hospital : paths.clinic)(f.citySlug || "city", f.slug || "…"))).replace(/^https?:\/\//, "")}
+                </span>
+                <div role="tablist" aria-label="Preview size" className="flex gap-1">
+                  {(["desktop", "phone"] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="tab"
+                      aria-selected={size === k}
+                      aria-label={k === "desktop" ? "Computer" : "Phone"}
+                      onClick={() => setSize(k)}
+                      className={cn("rounded-md p-1.5", size === k ? "bg-card text-ink shadow-soft" : "text-muted-foreground hover:text-ink")}
+                    >
+                      {k === "desktop" ? <Monitor className="size-4" /> : <Smartphone className="size-4" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-center bg-muted/40">
+                <iframe
+                  key={`${version}-${size}`}
+                  src={`/admin/preview/site/${f.id}?v=${version}`}
+                  title="Website preview"
+                  className={cn("h-[680px] bg-white", size === "phone" ? "w-[390px] border-x border-line" : "w-full")}
+                />
+              </div>
+            </div>
             <Button asChild variant="outline">
               <a href={`/admin/preview/site/${f.id}`} target="_blank" rel="noopener">
-                <Eye /> Preview
+                <Eye /> Open full preview
               </a>
             </Button>
-          )}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Enter the name (Basics) to create the draft first.</p>
+        )}
+      </Group>
+
+      <Group title="3. Visiting card" description="This site's own card, in the colours chosen in Design.">
+        {f.id ? (
+          <>
+            <div className="flex flex-wrap items-start gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- the card as rendered for printing */}
+              <img src={`/admin/cards/site/${f.id}/print.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (print)" className="w-full max-w-md rounded-lg border border-line shadow-soft" />
+              {/* eslint-disable-next-line @next/next/no-img-element -- the card as shared on WhatsApp */}
+              <img src={`/admin/cards/site/${f.id}/phone.png?v=${f.updatedAt ?? ""}-${version}`} alt="Visiting card (phone)" className="w-44 rounded-xl border border-line shadow-soft" />
+            </div>
+            <Button asChild variant="outline">
+              <a href={`/admin/cards?type=${f.kind}&establishment=${f.id}`} target="_blank" rel="noopener">
+                <IdCard /> Visiting card: downloads, QR and WhatsApp message
+              </a>
+            </Button>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Enter the name (Basics) to create the draft first.</p>
+        )}
+      </Group>
+
+      <Group title="4. Publish">
+        <div className="flex flex-wrap gap-2">
           {r.liveUrl && (
             <Button asChild variant="outline">
               <a href={r.liveUrl} target="_blank" rel="noopener">
                 <ExternalLink /> Open live site
-              </a>
-            </Button>
-          )}
-          {f.id && (
-            <Button asChild variant="outline">
-              <a href={`/admin/cards?type=${f.kind}&establishment=${f.id}`} target="_blank" rel="noopener">
-                <IdCard /> Visiting card
               </a>
             </Button>
           )}

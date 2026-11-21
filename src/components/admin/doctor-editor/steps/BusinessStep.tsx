@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CreditCard } from "lucide-react";
+import { CreditCard, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -143,8 +143,9 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
         </Field>
         {isAdmin && doctorId && (
           <Button asChild variant="outline">
-            <Link href={`/admin/payments?doctor=${doctorId}`}>
-              <CreditCard /> Payments for this doctor
+            {/* A new tab, so nothing typed here is lost. */}
+            <Link href={`/admin/payments?doctor=${doctorId}`} target="_blank" rel="noopener">
+              <CreditCard /> Payments for this doctor <ExternalLink className="size-3.5" aria-hidden />
             </Link>
           </Button>
         )}

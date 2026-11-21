@@ -10,7 +10,7 @@ import { Pill } from "@/components/admin/StatusBadge";
 import { ChipInput, Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { AddButton, Group, grid2, removeAt, RepeatItem, updateAt } from "@/components/admin/doctor-editor/shared";
 import { PhotoCropUpload } from "@/components/admin/doctor-editor/PhotoCropUpload";
-import { RoleSelect, SuggestionChips } from "@/components/admin/form/Suggestions";
+import { RoleSelect, SelectOther, SuggestionChips } from "@/components/admin/form/Suggestions";
 import { LIMITS } from "@/lib/constants";
 import { randomKey, type EstablishmentForm } from "@/lib/establishments/form";
 import type { FormSiteDoctor } from "@/lib/intake/hints";
@@ -51,11 +51,6 @@ export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: ESt
     <div className="space-y-5">
       <datalist id="dl-degrees">
         {DEGREE_SUGGESTIONS.map((x) => (
-          <option key={x} value={x} />
-        ))}
-      </datalist>
-      <datalist id="dl-designations">
-        {DESIGNATION_SUGGESTIONS.map((x) => (
           <option key={x} value={x} />
         ))}
       </datalist>
@@ -136,7 +131,14 @@ export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: ESt
                       <Input id={`${p}.name`} value={d.name} placeholder="Dr. …" disabled={readOnly} onChange={(e) => setDoctor(i, { name: e.target.value })} />
                     </Field>
                     <Field label="Designation / specialty" htmlFor={`${p}.specialty`} error={err(`${p}.specialty`)}>
-                      <Input id={`${p}.specialty`} list="dl-designations" value={d.specialty} placeholder="Consultant Dermatologist" disabled={readOnly} onChange={(e) => setDoctor(i, { specialty: e.target.value })} />
+                      <SelectOther
+                        id={`${p}.specialty`}
+                        value={d.specialty}
+                        options={DESIGNATION_SUGGESTIONS}
+                        disabled={readOnly}
+                        otherPlaceholder="Please specify, e.g. Sleep Medicine Specialist"
+                        onChange={(specialty) => setDoctor(i, { specialty })}
+                      />
                     </Field>
                     <Field label="Qualifications" htmlFor={`${p}.qualifications`} error={err(`${p}.qualifications`)}>
                       <Input id={`${p}.qualifications`} list="dl-degrees" value={d.qualifications} placeholder="MBBS, MD (Dermatology)" disabled={readOnly} onChange={(e) => setDoctor(i, { qualifications: e.target.value })} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { inputClass } from "./input-class";
 import { Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { splitLines, splitList, type FieldDef } from "@/lib/intake/form";
@@ -8,17 +9,20 @@ import { fieldSuggestions, type SuggestKey } from "@/lib/suggestions";
 import { useOptionalIntakeContext } from "./IntakeContext";
 
 /** Long single-value lists are a type-ahead list (datalist) instead of chips. */
-const TYPE_AHEAD: readonly SuggestKey[] = ["designation", "education", "specialty", "council"];
+const TYPE_AHEAD: readonly SuggestKey[] = ["education", "specialty", "council"];
+/** A dropdown with "Other" and "Please specify" (the answer is stored as text). */
+const SELECT_OTHER: readonly SuggestKey[] = ["designation"];
 /** Text fields holding a comma-separated list. */
 const COMMA_LISTS: readonly SuggestKey[] = ["languages", "interests"];
 const SHOWN = 10;
 
-export type SuggestMode = "lines" | "comma" | "single" | "typeahead";
+export type SuggestMode = "lines" | "comma" | "single" | "typeahead" | "selectOther";
 
 export function suggestMode(f: FieldDef): SuggestMode | null {
   if (!f.suggest) return null;
   if (f.type === "lines") return "lines";
   if (COMMA_LISTS.includes(f.suggest)) return "comma";
+  if (SELECT_OTHER.includes(f.suggest)) return "selectOther";
   return TYPE_AHEAD.includes(f.suggest) ? "typeahead" : "single";
 }
 
@@ -89,6 +93,67 @@ export function SuggestionChips({ mode, items, value, onChange, label }: { mode:
         >
           Add all {left.length}
         </button>
+      )}
+    </div>
+  );
+}
+
+/** A list of choices plus "Other" → "Please specify" (website-form style). Older free-text answers show as "Other". */
+export function SelectOtherInput({
+  id,
+  value,
+  onChange,
+  items,
+  describedBy,
+  invalid,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  items: string[];
+  describedBy?: string;
+  invalid?: boolean;
+}) {
+  const known = items.find((x) => x.toLowerCase() === value.trim().toLowerCase());
+  const [other, setOther] = useState(Boolean(value.trim()) && !known);
+  const showOther = other || (Boolean(value.trim()) && !known);
+  return (
+    <div className="space-y-2">
+      <select
+        id={id}
+        value={showOther ? "__other" : (known ?? "")}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy}
+        onChange={(e) => {
+          if (e.target.value === "__other") {
+            setOther(true);
+            if (known) onChange("");
+          } else {
+            setOther(false);
+            onChange(e.target.value);
+          }
+        }}
+        className={cn(inputClass, "h-11")}
+      >
+        <option value="">Choose…</option>
+        {items.map((x) => (
+          <option key={x} value={x}>
+            {x}
+          </option>
+        ))}
+        <option value="__other">Other</option>
+      </select>
+      {showOther && (
+        <input
+          id={`${id}-other`}
+          aria-label="Please specify"
+          value={value}
+          maxLength={200}
+          placeholder="Please specify"
+          autoComplete="off"
+          onChange={(e) => onChange(e.target.value)}
+          className={cn(inputClass, "h-11")}
+        />
       )}
     </div>
   );

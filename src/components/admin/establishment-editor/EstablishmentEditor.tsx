@@ -153,6 +153,38 @@ export function EstablishmentEditor({
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [save.status]);
 
+
+  // Leaving through an in-app link (sidebar, "Payments"…) skips beforeunload: save what is pending on the way out.
+  useEffect(
+    () => () => {
+      if (dirty.current.size > 0) void flush();
+    },
+    [flush],
+  );
+
+  /**
+   * "Save everything" (Review step): saves every step, so the draft is a
+   * complete listing (addresses, card and preview) before publishing.
+   * True when all of it saved.
+   */
+  async function saveAll(): Promise<boolean> {
+    if (!formRef.current.id && formRef.current.name.trim().length < 2) {
+      toast.error("Enter the name (Basics) first.");
+      return false;
+    }
+    for (const s of STEPS) dirty.current.add(s.key);
+    await flush();
+    // A brand-new draft is created by Basics first; the other steps save on the second pass.
+    if (dirty.current.size > 0 && formRef.current.id) await flush();
+    if (dirty.current.size > 0) {
+      const failed = STEPS.filter((s) => dirty.current.has(s.key)).map((s) => stepTitle(s.key, formRef.current.kind));
+      toast.error(`Not saved: ${failed.join(", ")}. Open the step to see what to fix.`);
+      return false;
+    }
+    toast.success("Everything is saved");
+    return true;
+  }
+
   async function goTo(next: StepKey, focusPath?: string) {
     await flush();
     setStep(next);
@@ -311,6 +343,8 @@ export function EstablishmentEditor({
               phrases: options.bannedPhrases,
               canPublish,
               busy,
+              onSaveAll: saveAll,
+              saving: save.status === "saving",
               ...(form.status === "published" && form.slug && form.citySlug
                 ? { liveUrl: absUrl(form.kind === "hospital" ? paths.hospital(form.citySlug, form.slug) : paths.clinic(form.citySlug, form.slug)) }
                 : {}),

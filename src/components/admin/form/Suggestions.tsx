@@ -74,11 +74,27 @@ export function SuggestionChips({
 const ROLE_LABELS = DOCTOR_ROLES.filter((r) => r.value !== "other").map((r) => r.label);
 
 /**
- * A doctor's role at a clinic or hospital: the same list as the website form,
- * plus "Other" with their own words. Stored as the label text.
+ * A list of choices plus "Other…" with their own words (stored as the text
+ * itself, so older free-text answers still show, as "Other").
  */
-export function RoleSelect({ id, value, onChange, disabled }: { id: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  const known = ROLE_LABELS.find((l) => l.toLowerCase() === value.trim().toLowerCase());
+export function SelectOther({
+  id,
+  value,
+  onChange,
+  options,
+  disabled,
+  emptyLabel = "Not specified",
+  otherPlaceholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: readonly string[];
+  disabled?: boolean;
+  emptyLabel?: string;
+  otherPlaceholder?: string;
+}) {
+  const known = options.find((l) => l.toLowerCase() === value.trim().toLowerCase());
   const [other, setOther] = useState(Boolean(value.trim()) && !known);
   const showOther = other || (Boolean(value.trim()) && !known);
   return (
@@ -97,17 +113,27 @@ export function RoleSelect({ id, value, onChange, disabled }: { id: string; valu
           }
         }}
       >
-        <option value="">Not specified</option>
-        {ROLE_LABELS.map((l) => (
+        <option value="">{emptyLabel}</option>
+        {options.map((l) => (
           <option key={l} value={l}>
             {l}
           </option>
         ))}
         <option value="__other">Other…</option>
       </NativeSelect>
-      {showOther && <Input id={`${id}.other`} aria-label="Role in your words" value={value} maxLength={80} disabled={disabled} placeholder="e.g. Anaesthetist, Dietitian" onChange={(e) => onChange(e.target.value)} />}
+      {showOther && (
+        <Input id={`${id}.other`} aria-label="Please specify" value={value} maxLength={80} disabled={disabled} placeholder={otherPlaceholder ?? "Please specify"} onChange={(e) => onChange(e.target.value)} />
+      )}
     </div>
   );
+}
+
+/**
+ * A doctor's role at a clinic or hospital: the same list as the website form,
+ * plus "Other" with their own words. Stored as the label text.
+ */
+export function RoleSelect({ id, value, onChange, disabled }: { id: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  return <SelectOther id={id} value={value} onChange={onChange} options={ROLE_LABELS} disabled={disabled} otherPlaceholder="Please specify, e.g. Anaesthetist, Dietitian" />;
 }
 
 /** "Website form REF: …" note with an optional action, as in the doctor editor. */
