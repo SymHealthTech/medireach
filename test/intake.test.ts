@@ -512,7 +512,10 @@ describe("creating the website draft", () => {
     expect(e!.departments.map((d) => d.name)).toEqual(["Orthopaedics", "Emergency"]);
     expect(e!.doctors.map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao"]); // each doctor once
     expect(e!.doctors[0]).toMatchObject({ specialty: "Orthopaedic Surgeon", role: "Consultant" });
-    expect(e!.internalNotes).toContain("which doctors are in which department");
+    // Each department keeps its doctors (by key: none has a portfolio yet).
+    const key = (n: string) => e!.doctors.find((d) => d.name === n)!.key;
+    expect(e!.departments.map((d) => d.doctorKeys)).toEqual([[key("Dr. A Patil"), key("Dr. S Rao")], [key("Dr. A Patil")]]);
+    expect(e!.internalNotes).not.toContain("which doctors are in which department");
     expect(e!.internalNotes).toContain("Department 2:");
   });
 

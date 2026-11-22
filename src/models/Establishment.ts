@@ -89,11 +89,14 @@ export interface EstablishmentDoc {
   services: (NamedItem & { group?: string })[];
   facilities: NamedItem[];
   equipment: NamedItem[];
-  departments: (NamedItem & { doctorIds: Types.ObjectId[] })[];
+  /** `doctorIds`: doctors with a MediReach portfolio. `doctorKeys`: doctors without one (their `doctors[].key`). */
+  departments: (NamedItem & { doctorIds: Types.ObjectId[]; doctorKeys: string[] })[];
   beds?: { total: number; types: { type: string; count: number }[] };
   insurance?: { cashless: boolean; providers: string[] };
   doctors: {
     doctorProfileId?: Types.ObjectId;
+    /** Doctors without a portfolio: a short id so departments can list them. */
+    key?: string;
     name?: string;
     qualifications?: string;
     specialty?: string;
@@ -212,7 +215,7 @@ const establishmentSchema = new Schema<EstablishmentDoc>(
     facilities: { type: [namedItem()], default: [] },
     equipment: { type: [namedItem()], default: [] },
     departments: {
-      type: [namedItem({ doctorIds: { type: [{ type: Schema.Types.ObjectId, ref: "DoctorProfile" }], default: [] } })],
+      type: [namedItem({ doctorIds: { type: [{ type: Schema.Types.ObjectId, ref: "DoctorProfile" }], default: [] }, doctorKeys: { type: [String], default: [] } })],
       default: [],
     },
     beds: {
@@ -237,6 +240,7 @@ const establishmentSchema = new Schema<EstablishmentDoc>(
         new Schema(
           {
             doctorProfileId: { type: Schema.Types.ObjectId, ref: "DoctorProfile" },
+            key: str,
             name: str,
             qualifications: str,
             specialty: str,

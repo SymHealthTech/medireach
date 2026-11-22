@@ -82,6 +82,26 @@ describe("public clinic/hospital sites", () => {
     expect(await getPublishedEstablishment("hospital", "pune", "shree-skin-clinic-baner")).toBeNull(); // wrong kind
   });
 
+  it("lists department doctors with and without a portfolio, in Doctors-step order", async () => {
+    const live = await DoctorProfile.create({ firstName: "Kiran", lastName: "Joshi", status: "published", citySlug: "pune", slug: "dr-kiran-joshi" });
+    const doc = (
+      await Establishment.create(
+        clinicAt({
+          name: "Dept Hospital",
+          kind: "hospital",
+          plan: "hospital",
+          slug: "dept-hospital-baner",
+          categoryId: ids.hosp,
+          themeKey: "small-hospital",
+          doctors: [{ key: "a1", name: "Dr. Plain", specialty: "Surgeon" }, { doctorProfileId: live._id }, { name: "Dr. Older" }],
+          departments: [{ name: "Surgery", doctorIds: [live._id], doctorKeys: ["a1", "n2", "gone"] }],
+        }),
+      )
+    ).toObject();
+    const site = (await buildPublicEstablishment(doc))!;
+    expect(site.departments[0]!.doctors.map((d) => d.name)).toEqual(["Dr. Plain", "Dr. Kiran Joshi", "Dr. Older"]);
+  });
+
   it("builds breadcrumbs, quick facts and JSON-LD without ratings", async () => {
     const doc = (await Establishment.create(clinicAt({ name: "Sai Hospital", kind: "hospital", plan: "hospital", slug: "sai-hospital-baner", categoryId: ids.hosp, themeKey: "small-hospital", is24x7: true, beds: { total: 8, types: [{ type: "General", count: 6 }, { type: "ICU", count: 2 }] }, insurance: { cashless: true, providers: ["Star Health"] }, registration: { authority: "PMC", number: "NH-1" } }))).toObject();
     const site = (await buildPublicEstablishment(doc))!;

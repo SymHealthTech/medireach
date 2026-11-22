@@ -21,8 +21,11 @@ import { TemplateSlot } from "@/models/TemplateSlot";
 import {
   ALL_DAYS,
   complianceTextFields,
+  departmentMemberKeys,
   galleryMax,
   publishBlockers,
+  randomKey,
+  siteDoctorKey,
   type EstablishmentForm,
   type SectionData,
   type StepKey,
@@ -34,6 +37,20 @@ export type EstablishmentDocument = HydratedDocument<EstablishmentDoc>;
 
 const s = (v: unknown) => (v === undefined || v === null ? "" : String(v));
 const toOid = (v: string | undefined) => (v ? new Types.ObjectId(v) : undefined);
+
+type TeamDoctor = { key?: string | null; doctorProfileId?: Types.ObjectId | null };
+/** Is this department member (a doctor's key, or a portfolio id) this doctor? */
+const isMember = (want: Set<string>, x: TeamDoctor, i: number) => want.has(siteDoctorKey(x, i)) || (Boolean(x.doctorProfileId) && want.has(String(x.doctorProfileId)));
+
+/** Doctor keys (or portfolio ids) → how a department stores them: portfolio ids, and keys for doctors without one (in Doctors-step order). */
+function departmentMembers(keys: string[], doctors: TeamDoctor[]) {
+  const want = new Set(keys);
+  const team = doctors.map((x, i) => ({ x, key: siteDoctorKey(x, i) })).filter((t, i) => isMember(want, t.x, i));
+  return {
+    doctorIds: team.flatMap(({ x }) => (x.doctorProfileId ? [x.doctorProfileId] : [])),
+    doctorKeys: team.flatMap(({ x, key }) => (x.doctorProfileId ? [] : [key])),
+  };
+}
 const date = (d?: Date | null) => (d ? toDateInput(d) : "");
 const named = (list: { name: string; description?: string }[] = []) => list.map((x) => ({ name: x.name, description: s(x.description) }));
 
@@ -91,7 +108,7 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
     facilities: named(d.facilities),
     equipment: named(d.equipment),
     doctors: (d.doctors ?? []).map((x, i) => ({
-      key: x.doctorProfileId ? String(x.doctorProfileId) : `n${i}`,
+      key: siteDoctorKey(x, i),
       doctorProfileId: s(x.doctorProfileId),
       name: s(x.name),
       qualifications: s(x.qualifications),
@@ -105,7 +122,8 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
       key: `d${i}`,
       name: x.name,
       description: s(x.description),
-      doctorIds: (x.doctorIds ?? []).map(String),
+      // The editor ticks doctors by their key (with or without a portfolio).
+      doctorIds: departmentMemberKeys(x, d.doctors ?? []),
     })),
     beds: {
       total: d.beds?.total ?? undefined,
@@ -227,19 +245,27 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
       if (ids.length && (await DoctorProfile.countDocuments({ _id: { $in: ids } })) !== new Set(ids).size) {
         throw new ActionError("A linked doctor no longer exists. Pick them again.", { doctors: "Not found." });
       }
+      // Department members by key, before the list changes (keys stay with a doctor when a portfolio is linked or unlinked).
+      const members = doc.departments.map((dep) => departmentMemberKeys(dep, doc.doctors));
+      const used = new Set<string>();
       doc.set({
-        doctors: d.doctors.map((x) => ({
-          doctorProfileId: toOid(x.doctorProfileId),
-          name: x.name,
-          qualifications: x.qualifications,
-          specialty: x.specialty,
-          role: x.role,
-          ...(x.doctorProfileId ? {} : { photo: x.photo, profileUrl: x.profileUrl }),
-        })),
+        doctors: d.doctors.map((x) => {
+          let key = x.key && !used.has(x.key) ? x.key : randomKey();
+          while (used.has(key)) key = randomKey();
+          used.add(key);
+          return {
+            doctorProfileId: toOid(x.doctorProfileId),
+            key,
+            name: x.name,
+            qualifications: x.qualifications,
+            specialty: x.specialty,
+            role: x.role,
+            ...(x.doctorProfileId ? {} : { photo: x.photo, profileUrl: x.profileUrl }),
+          };
+        }),
       });
       // Departments can only list doctors who are on the team.
-      const team = new Set(ids);
-      for (const dep of doc.departments) dep.doctorIds = dep.doctorIds.filter((x) => team.has(String(x)));
+      doc.departments.forEach((dep, i) => Object.assign(dep, departmentMembers(members[i]!, doc.doctors)));
       break;
     }
     case "extras": {
@@ -251,13 +277,16 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
         doc.set({ registration, insurance, departments: [], beds: undefined, visitingHours: undefined });
         break;
       }
-      const team = new Set(doc.doctors.map((x) => String(x.doctorProfileId ?? "")).filter(Boolean));
-      const outside = d.departments.flatMap((dep) => dep.doctorIds).filter((x) => !team.has(x));
+      // Older sites: doctors saved before keys existed get theirs now, so departments can point at them.
+      doc.doctors.forEach((x, i) => {
+        if (!x.key) x.key = siteDoctorKey(x, i);
+      });
+      const outside = d.departments.flatMap((dep) => dep.doctorIds).filter((m) => !doc.doctors.some((x, i) => isMember(new Set([m]), x, i)));
       if (outside.length) throw new ActionError("A department lists a doctor who isn't on the Doctors step.", { departments: "Add them to Doctors first." });
       doc.set({
         registration,
         insurance,
-        departments: d.departments.map((dep) => ({ name: dep.name, description: dep.description, doctorIds: dep.doctorIds.map((x) => new Types.ObjectId(x)) })),
+        departments: d.departments.map((dep) => ({ name: dep.name, description: dep.description, ...departmentMembers(dep.doctorIds, doc.doctors) })),
         beds:
           d.beds.total === undefined && d.beds.types.length === 0
             ? undefined

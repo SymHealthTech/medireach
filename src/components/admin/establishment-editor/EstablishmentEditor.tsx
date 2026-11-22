@@ -94,7 +94,8 @@ export function EstablishmentEditor({
   const flush = useCallback((): Promise<void> => {
     if (timer.current) clearTimeout(timer.current);
     queue.current = queue.current.then(async () => {
-      for (const s of [...dirty.current]) {
+      // In step order, so Doctors saves before a department that lists a newly added doctor.
+      for (const s of STEPS.map((x) => x.key).filter((k) => dirty.current.has(k))) {
         const current = formRef.current;
         if (!current.id && (s !== "basics" || current.name.trim().length < 2)) continue;
         dirty.current.delete(s);

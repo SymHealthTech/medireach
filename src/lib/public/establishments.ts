@@ -4,6 +4,7 @@ import type { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db";
 import { getMasters, indexMasters, normalizeIndianPhone, PUBLISHED_LIVE, PUBLISHED_ROUTABLE, toCard, type Masters } from "@/lib/public/data";
 import { CACHE_TAGS } from "@/lib/public/tags";
+import { departmentMemberKeys, siteDoctorKey } from "@/lib/establishments/form";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { absUrl, sitePath, subdomainUrl } from "@/lib/site";
 import { ClinicCategory } from "@/models/ClinicCategory";
@@ -75,12 +76,15 @@ export function toPublicEstablishment(
   const geo = e.geo && typeof e.geo.lat === "number" ? { lat: e.geo.lat, lng: e.geo.lng } : undefined;
 
   const cards = new Map(linkedDoctors.map((d) => [String(d._id), toCard(d, mi)]));
-  const siteDoctors: PublicSiteDoctor[] = (e.doctors ?? []).flatMap((x): PublicSiteDoctor[] => {
+  // Each shown doctor with its key, so departments can list doctors with or without a portfolio.
+  const keyed = (e.doctors ?? []).flatMap((x, i): { key: string; doctor: PublicSiteDoctor }[] => {
     if (x.doctorProfileId) {
       const card = cards.get(String(x.doctorProfileId));
       if (!card) return []; // linked portfolio not published: not shown
       return [
         {
+          key: siteDoctorKey(x, i),
+          doctor: {
           id: card.id,
           name: card.fullName,
           ...(card.degreesLine ? { qualifications: card.degreesLine } : {}),
@@ -88,23 +92,32 @@ export function toPublicEstablishment(
           ...(x.role ? { role: x.role } : {}),
           url: card.url,
           ...(card.photo ? { photo: card.photo } : {}),
+          },
         },
       ];
     }
     return x.name
       ? [
           {
+            key: siteDoctorKey(x, i),
+            doctor: {
             name: x.name,
             ...(x.qualifications ? { qualifications: x.qualifications } : {}),
             ...(x.specialty ? { specialty: x.specialty } : {}),
             ...(x.role ? { role: x.role } : {}),
             ...(x.profileUrl && /^https?:\/\//i.test(x.profileUrl) ? { url: x.profileUrl, external: true } : {}),
             ...(x.photo?.url ? { photo: { url: x.photo.url, alt: x.photo.alt || x.name } } : {}),
+            },
           },
         ]
       : [];
   });
-  const byId = new Map(siteDoctors.filter((d) => d.id).map((d) => [d.id!, d]));
+  const siteDoctors = keyed.map((k) => k.doctor);
+  /** A department's doctors (with or without a portfolio), in Doctors-step order. */
+  const departmentDoctors = (dep: EstablishmentDoc["departments"][number]) => {
+    const members = new Set(departmentMemberKeys(dep, e.doctors ?? []));
+    return keyed.filter((k) => members.has(k.key)).map((k) => k.doctor);
+  };
 
   const phones = (e.contact?.phones ?? []).map((p) => normalizeIndianPhone(p)).filter((p): p is string => Boolean(p));
   const links = Object.fromEntries(Object.entries(e.links ?? {}).filter(([, v]) => typeof v === "string" && v)) as PublicEstablishment["links"];
@@ -159,7 +172,7 @@ export function toPublicEstablishment(
         ? (e.departments ?? []).map((d) => ({
             name: d.name,
             ...(d.description ? { description: d.description } : {}),
-            doctors: (d.doctorIds ?? []).map((id) => byId.get(String(id))).filter((x): x is PublicSiteDoctor => Boolean(x)),
+            doctors: departmentDoctors(d),
           }))
         : [],
     ...(e.kind === "hospital" && e.beds && e.beds.total > 0 ? { beds: { total: e.beds.total, types: e.beds.types.filter((b) => b.count > 0) } } : {}),

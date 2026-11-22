@@ -96,7 +96,13 @@ export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: ESt
           const p = `doctors.${i}`;
           const profile = d.doctorProfileId ? doctorById.get(d.doctorProfileId) : undefined;
           return (
-            <RepeatItem key={d.key} title={profile?.name || d.name || `Doctor ${i + 1}`} disabled={readOnly} onRemove={() => set((prev) => ({ doctors: removeAt(prev.doctors, i) }))}>
+            <RepeatItem key={d.key} title={profile?.name || d.name || `Doctor ${i + 1}`} disabled={readOnly} onRemove={() =>
+                set((prev) => ({
+                  doctors: removeAt(prev.doctors, i),
+                  // They leave their departments too (the server does the same when Doctors saves).
+                  departments: prev.departments.map((dep) => ({ ...dep, doctorIds: dep.doctorIds.filter((k) => k !== prev.doctors[i]?.key) })),
+                }))
+              }>
               <div className={grid2}>
                 <Field label="MediReach portfolio" htmlFor={`${p}.doctorProfileId`} error={err(`${p}.doctorProfileId`)}>
                   <NativeSelect id={`${p}.doctorProfileId`} value={d.doctorProfileId} disabled={readOnly} onChange={(e) => setDoctor(i, { doctorProfileId: e.target.value })}>
@@ -247,8 +253,12 @@ function DegreesInput({ id, value, onChange, disabled }: { id: string; value: st
 // ---------------------------------------------------------------- Registration + hospital extras
 export function ExtrasStep({ form: f, set, err, options, readOnly, hints }: EStepProps) {
   const hospital = f.kind === "hospital";
-  const team = f.doctors.filter((d) => d.doctorProfileId);
-  const doctorName = (id: string) => options.doctors.find((d) => d.id === id)?.name ?? "Doctor";
+  // Every doctor on the Doctors step, with or without a portfolio (ticked by key).
+  const team = f.doctors.map((d, i) => ({
+    key: d.key,
+    name: (d.doctorProfileId ? options.doctors.find((x) => x.id === d.doctorProfileId)?.name : d.name)?.trim() || `Doctor ${i + 1}`,
+    portfolio: Boolean(d.doctorProfileId),
+  }));
   const bedSum = f.beds.types.reduce((n, b) => n + (b.count ?? 0), 0);
 
   return (
@@ -315,7 +325,7 @@ export function ExtrasStep({ form: f, set, err, options, readOnly, hints }: ESte
             </AddButton>
           </Group>
 
-          <Group title="Departments" description="Each department lists its doctors (from the Doctors step, with a portfolio).">
+          <Group title="Departments" description="Each department lists its doctors from the Doctors step, with or without a MediReach portfolio.">
             {f.departments.map((dep, i) => (
               <RepeatItem key={dep.key} title={dep.name || `Department ${i + 1}`} disabled={readOnly} onRemove={() => set((p) => ({ departments: removeAt(p.departments, i) }))}>
                 <div className={grid2}>
@@ -327,24 +337,25 @@ export function ExtrasStep({ form: f, set, err, options, readOnly, hints }: ESte
                   </Field>
                 </div>
                 {team.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Link doctors with portfolios in the Doctors step to list them here.</p>
+                  <p className="text-xs text-muted-foreground">Add doctors in the Doctors step to list them here.</p>
                 ) : (
                   <ul className="grid gap-1 sm:grid-cols-2">
                     {team.map((d) => (
-                      <li key={d.doctorProfileId}>
+                      <li key={d.key}>
                         <label className="flex min-h-10 items-center gap-2 rounded-md px-2 text-sm hover:bg-accent">
                           <Checkbox
-                            checked={dep.doctorIds.includes(d.doctorProfileId)}
+                            checked={dep.doctorIds.includes(d.key)}
                             disabled={readOnly}
                             onCheckedChange={(on) =>
                               set((p) => ({
                                 departments: updateAt(p.departments, i, {
-                                  doctorIds: on ? [...dep.doctorIds, d.doctorProfileId] : dep.doctorIds.filter((x) => x !== d.doctorProfileId),
+                                  doctorIds: on ? [...dep.doctorIds, d.key] : dep.doctorIds.filter((x) => x !== d.key),
                                 }),
                               }))
                             }
                           />
-                          {doctorName(d.doctorProfileId)}
+                          <span className="min-w-0 truncate">{d.name}</span>
+                          {d.portfolio && <span className="shrink-0 text-xs text-muted-foreground">Portfolio</span>}
                         </label>
                       </li>
                     ))}

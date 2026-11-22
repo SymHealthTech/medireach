@@ -208,6 +208,43 @@ describe("clinic/hospital editor (server)", () => {
     await expect(save(doc, "extras", f)).rejects.toThrow(/isn't on the Doctors step/);
   });
 
+  it("lets departments list doctors without a portfolio, and keeps them through linking and removal", async () => {
+    const x = await ids();
+    const ravi = await DoctorProfile.create({ firstName: "Ravi", lastName: "Kale" });
+    const f = emptyEstablishmentForm("hospital");
+    f.name = "Sai Hospital Three";
+    f.categoryId = x.hosp;
+    const doc = new Establishment({ kind: "hospital", plan: "hospital", name: "x" });
+    await save(doc, "basics", f);
+    const plain = { doctorProfileId: "", qualifications: "", specialty: "", role: "", profileUrl: "" };
+    f.doctors = [
+      { ...plain, key: "k1", name: "Dr. One" },
+      { ...plain, key: "k2", name: "Dr. Two" },
+    ];
+    await save(doc, "doctors", f);
+    f.departments = [{ key: "d", name: "Surgery", description: "", doctorIds: ["k1", "k2"] }];
+    await save(doc, "extras", f);
+    expect(doc.departments[0]!.doctorKeys).toEqual(["k1", "k2"]);
+    expect(docToForm(doc.toObject()).departments[0]!.doctorIds).toEqual(["k1", "k2"]);
+
+    // Dr. One gets a portfolio: still in Surgery, now by portfolio id. Dr. Two leaves: out of Surgery.
+    f.doctors = [{ ...f.doctors[0]!, doctorProfileId: String(ravi._id) }];
+    await save(doc, "doctors", f);
+    expect(doc.departments[0]!.doctorIds.map(String)).toEqual([String(ravi._id)]);
+    expect(doc.departments[0]!.doctorKeys).toEqual([]);
+    expect(docToForm(doc.toObject()).departments[0]!.doctorIds).toEqual(["k1"]);
+
+    // Older sites: doctors saved without a key are listed by their place, and get the key when departments save.
+    await Establishment.collection.updateOne({ _id: doc._id }, { $push: { doctors: { name: "Dr. Old" } } as never });
+    const old = (await Establishment.findById(doc._id))!;
+    const of = docToForm(old.toObject());
+    expect(of.doctors.map((d) => d.key)).toEqual(["k1", "n1"]);
+    of.departments = [{ key: "d", name: "Surgery", description: "", doctorIds: ["k1", "n1"] }];
+    await save(old, "extras", of);
+    expect(old.doctors[1]!.key).toBe("n1");
+    expect(old.departments[0]!.doctorKeys).toEqual(["n1"]);
+  });
+
   it("caps the gallery by type, prices renewals by type, and only admins set founding", async () => {
     const { doc, f } = await clinicReady("Gallery Clinic");
     const photo = { publicId: "p", url: "https://res.cloudinary.com/x/p.jpg", caption: "Reception" };

@@ -285,7 +285,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   return { kind: "doctor" as const, id: doc._id, href: `/admin/doctors/${doc._id}` };
 }
 
-/** Form doctors → the site's doctor list (each doctor once, even if in two departments). */
+/** Form doctors → the site's doctor list (each doctor once, even if in two departments), keyed so departments can list them. */
 function siteDoctors(kind: IntakeKind, d: IntakeData) {
   const seen = new Set<string>();
   return doctorEntries(kind, d)
@@ -297,7 +297,8 @@ function siteDoctors(kind: IntakeKind, d: IntakeData) {
       ...(url(e.portfolioUrl) ? { profileUrl: url(e.portfolioUrl)!.slice(0, 500) } : {}),
       ...(e.photo ? { photo: image(e.photo, str(e.name) || undefined) } : {}),
     }))
-    .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()));
+    .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()))
+    .map((x, i) => ({ ...x, key: `f${i + 1}` }));
 }
 
 async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
@@ -325,9 +326,16 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
 
   const pincode = str(d.pincode);
   const beds = /^\d+$/.test(str(d.beds)) ? Number(str(d.beds)) : undefined;
-  const departments = (isRepeatValue(d.departments) ? (d.departments as RepeatItem[]) : []).filter((dep) => str(dep.name)).map((dep) => ({ name: str(dep.name).slice(0, 120), doctorIds: [] }));
-  const formDoctors = doctorEntries(kind, d);
-  if (departments.length && formDoctors.some((x) => x.department)) skipped.push("which doctors are in which department");
+  const doctors = siteDoctors(kind, d);
+  // Each department lists its form doctors (none has a portfolio yet, so by key).
+  const keyByName = new Map(doctors.map((x) => [x.name.toLowerCase(), x.key]));
+  const departments = (isRepeatValue(d.departments) ? (d.departments as RepeatItem[]) : [])
+    .filter((dep) => str(dep.name))
+    .map((dep) => ({
+      name: str(dep.name).slice(0, 120),
+      doctorIds: [],
+      doctorKeys: [...new Set((Array.isArray(dep.doctors) ? (dep.doctors as DoctorEntry[]) : []).flatMap((e) => keyByName.get(str(e?.name).slice(0, 120).toLowerCase()) ?? []))],
+    }));
   if (beds !== undefined && beds > LIMITS.hospitalBedsMax) skipped.push(`beds (form says ${beds})`);
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
@@ -369,7 +377,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     departments,
     ...(beds !== undefined && beds <= LIMITS.hospitalBedsMax && kind === "hospital" ? { beds: { total: beds, types: [] } } : {}),
     ...(insurance.length || d.cashless === true ? { insurance: { cashless: d.cashless === true, providers: insurance } } : {}),
-    doctors: siteDoctors(kind, d),
+    doctors,
     languages: splitList(d.languages),
     gallery: gallery(intake.photos?.gallery ?? [], kind === "clinic" ? LIMITS.clinicGalleryMax : LIMITS.hospitalGalleryMax),
     links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "youtube", "website"]),

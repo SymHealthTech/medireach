@@ -94,6 +94,7 @@ export interface EstablishmentForm {
 
   // 6 Registration and hospital extras
   registration: { authority: string; number: string };
+  /** `doctorIds`: keys of the doctors (from the Doctors step, with or without a portfolio) in the department. */
   departments: { key: string; name: string; description: string; doctorIds: string[] }[];
   beds: { total: number | undefined; types: { type: string; count: number | undefined }[] };
   insurance: { cashless: boolean; providers: string[] };
@@ -132,6 +133,27 @@ export const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6] as const;
 
 export function randomKey(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/** A site doctor's key: the saved one, else (older sites) the portfolio id, else its place in the list. */
+export function siteDoctorKey(x: { key?: string | null; doctorProfileId?: unknown }, i: number): string {
+  return x.key || (x.doctorProfileId ? String(x.doctorProfileId) : `n${i}`);
+}
+
+/**
+ * Department members as stored (`doctorIds`: portfolio ids, `doctorKeys`:
+ * doctors without a portfolio) → the keys of those doctors in `doctors`.
+ * Members no longer on the list are dropped.
+ */
+export function departmentMemberKeys(dep: { doctorIds?: unknown[]; doctorKeys?: string[] }, doctors: { key?: string | null; doctorProfileId?: unknown }[]): string[] {
+  const keys = doctors.map(siteDoctorKey);
+  const out = new Set<string>();
+  for (const id of dep.doctorIds ?? []) {
+    const i = doctors.findIndex((x) => x.doctorProfileId && String(x.doctorProfileId) === String(id));
+    if (i >= 0) out.add(keys[i]!);
+  }
+  for (const k of dep.doctorKeys ?? []) if (keys.includes(k)) out.add(k);
+  return [...out];
 }
 
 export function emptyEstablishmentForm(kind: EstablishmentKind = "clinic"): EstablishmentForm {
@@ -435,7 +457,7 @@ export const sectionSchemas = {
   extras: z.object({
     registration: z.object({ authority: t(120), number: t(60) }),
     departments: z
-      .array(z.object({ key: z.string().max(40), name: z.string().trim().min(1, "Add a name.").max(80), description: t(300), doctorIds: z.array(z.string().regex(/^[a-f0-9]{24}$/i)).max(30) }))
+      .array(z.object({ key: z.string().max(40), name: z.string().trim().min(1, "Add a name.").max(80), description: t(300), doctorIds: z.array(z.string().regex(/^[\w-]{1,40}$/)).max(60) }))
       .max(30),
     beds: z
       .object({
