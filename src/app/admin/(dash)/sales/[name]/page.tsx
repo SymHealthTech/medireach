@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Briefcase } from "lucide-react";
 import { EmptyState } from "@/components/admin/EmptyState";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { formatDate, formatINR } from "@/lib/format";
-import { findSalesExecutive, salesBusiness, type SalesItem } from "@/lib/sales/server";
+import { findSalesExecutive, isSameExecutive, salesBusiness, type SalesItem } from "@/lib/sales/server";
 
 export const metadata: Metadata = { title: "Sales executive" };
 
@@ -15,8 +15,11 @@ const KIND_LABEL: Record<SalesItem["kind"], string> = { doctor: "Doctor", clinic
 
 /** All business done by one sales executive: their doctors, clinics and hospitals, with payments. */
 export default async function SalesExecutivePage({ params }: { params: Promise<{ name: string }> }) {
-  await requireAdminPage(rolesFor("/admin/sales"));
+  const admin = await requireAdminPage(rolesFor("/admin/sales"));
   const raw = decodeURIComponent((await params).name);
+  // Sales users only see their own business.
+  const own = admin.role === "sales";
+  if (own && !isSameExecutive(raw, admin.name)) redirect(`/admin/sales/${encodeURIComponent(admin.name)}`);
   const name = await findSalesExecutive(raw);
   if (!name) notFound();
   const items = await salesBusiness(name);
@@ -35,9 +38,11 @@ export default async function SalesExecutivePage({ params }: { params: Promise<{
 
   return (
     <div className="space-y-5">
-      <Link href="/admin/sales" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-ink">
-        <ArrowLeft className="size-4" /> All sales executives
-      </Link>
+      {!own && (
+        <Link href="/admin/sales" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-ink">
+          <ArrowLeft className="size-4" /> All sales executives
+        </Link>
+      )}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2 className="font-display text-2xl font-semibold text-ink">{name}</h2>
         {staffId && <span className="text-sm text-muted-foreground">ID {staffId}</span>}

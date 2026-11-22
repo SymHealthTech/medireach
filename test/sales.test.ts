@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { connectToDatabase } from "@/lib/db";
-import { findSalesExecutive, salesBusiness, salesExecutiveNames, salesSummary } from "@/lib/sales/server";
+import { findSalesExecutive, isSameExecutive, salesBusiness, salesExecutiveNames, salesSummary } from "@/lib/sales/server";
 import { Admin } from "@/models/Admin";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
@@ -36,6 +36,9 @@ describe("sales executives", () => {
     expect(await salesExecutiveNames()).toEqual(["Priya Shah", "Rahul More"]);
     expect(await findSalesExecutive("rahul more")).toBe("Rahul More");
     expect(await findSalesExecutive("Nobody")).toBeNull();
+    // A sales user's own page: their login name, any case or spacing.
+    expect(isSameExecutive(" priya  SHAH", "Priya Shah")).toBe(true);
+    expect(isSameExecutive("Rahul More", "Priya Shah")).toBe(false);
 
     const rows = await salesSummary();
     expect(rows[0]).toMatchObject({ name: "Rahul More", staffId: "MR-S-7", isUser: false, doctors: 1, clinics: 1, hospitals: 1, published: 1, collected: 7999 });

@@ -162,6 +162,9 @@ export async function salesBusiness(name: string): Promise<SalesItem[]> {
   return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/** Same person: names compared ignoring case and spacing. */
+export const isSameExecutive = (a: string, b: string) => key(a) === key(b);
+
 /** The name as listed (canonical spelling), or null when nobody has it. */
 export async function findSalesExecutive(name: string): Promise<string | null> {
   const names = await salesExecutiveNames();

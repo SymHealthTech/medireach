@@ -44,7 +44,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/cards", label: "Visiting cards", icon: IdCard, roles: ALL },
   { href: "/admin/templates", label: "Designs & themes", icon: Palette, roles: ADMINS },
   { href: "/admin/payments", label: "Payments & renewals", icon: CreditCard, roles: ADMINS },
-  { href: "/admin/sales", label: "Sales executives", short: "Sales", icon: TrendingUp, roles: ADMINS },
+  // Sales users see only their own page here ("My sales").
+  { href: "/admin/sales", label: "Sales executives", short: "Sales", icon: TrendingUp, roles: ALL },
   { href: "/admin/update-requests", label: "Update requests", icon: Wrench, roles: ADMINS },
   { href: "/admin/intakes", label: "Website forms", short: "Forms", icon: ClipboardList, roles: ALL },
   { href: "/admin/leads", label: "Leads", icon: Users, roles: ALL },
@@ -78,7 +79,7 @@ export function newItemsFor(active: NavItem | undefined): readonly (typeof NEW_I
 }
 
 export function navForRole(role: AdminRole): NavItem[] {
-  return NAV_ITEMS.filter((i) => i.roles.includes(role));
+  return NAV_ITEMS.filter((i) => i.roles.includes(role)).map((i) => (role === "sales" && i.href === "/admin/sales" ? { ...i, label: "My sales" } : i));
 }
 
 const pathOf = (href: string) => href.split("?")[0]!;

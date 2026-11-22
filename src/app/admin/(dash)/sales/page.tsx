@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ChevronRight, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/admin/EmptyState";
 import { Pill } from "@/components/admin/StatusBadge";
@@ -10,9 +11,10 @@ import { salesSummary } from "@/lib/sales/server";
 
 export const metadata: Metadata = { title: "Sales executives" };
 
-/** Every sales executive and the business recorded under their name (set on each Review step). */
+/** Every sales executive and the business recorded under their name (set on each Review step). Sales users go to their own page. */
 export default async function SalesPage() {
-  await requireAdminPage(rolesFor("/admin/sales"));
+  const admin = await requireAdminPage(rolesFor("/admin/sales"));
+  if (admin.role === "sales") redirect(`/admin/sales/${encodeURIComponent(admin.name)}`);
   const rows = await salesSummary();
   const href = (name: string) => `/admin/sales/${encodeURIComponent(name)}`;
 
