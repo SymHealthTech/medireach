@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Copy, Eye, IdCard, Link2, Loader2, Mail, Monitor, Plus, Save, Smartphone, X } from "lucide-react";
+import { Check, CheckCircle2, Copy, Eye, ExternalLink, IdCard, Link2, Loader2, Mail, Monitor, Plus, Save, Send, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { SelectOther } from "@/components/admin/form/Suggestions";
 import { Pill } from "@/components/admin/StatusBadge";
 import { Group, grid2 } from "@/components/admin/doctor-editor/shared";
 import { PaymentDialog } from "@/app/admin/(dash)/payments/PaymentDialog";
-import { createPreviewLinkAction, emailPreviewLinkAction, reviewPaymentsAction } from "@/app/admin/(dash)/review-actions";
+import { createLiveLinkAction, createPreviewLinkAction, emailLiveLinkAction, emailPreviewLinkAction, reviewPaymentsAction } from "@/app/admin/(dash)/review-actions";
 import { PAYMENT_MODE_LABEL, PAYMENT_PURPOSE_LABEL, RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
 import { DOMAIN_STATUSES, type PaymentPurpose, type RenewalStatus } from "@/lib/constants";
 import { cn } from "@/lib/cn";
@@ -249,28 +249,88 @@ export function SendPreviewLink({ target, disabled }: { target: ReviewTarget; di
   );
 }
 
-// ---------------------------------------------------------------- Close / Next
-export function PhaseNav({ onClose, onNext, closing }: { onClose: () => void; onNext: () => void; closing?: boolean }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-card p-4 shadow-soft">
-      <p className="text-sm text-muted-foreground">Waiting for their approval? Close for now: everything is saved. Approved? Go on to approval, payment and publishing.</p>
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" disabled={closing} onClick={onClose}>
-          {closing ? <Loader2 className="animate-spin" /> : <X />} Close
-        </Button>
-        <Button type="button" onClick={onNext}>
-          Next: Publish <ArrowRight />
-        </Button>
-      </div>
-    </div>
-  );
-}
+// ---------------------------------------------------------------- Live site (after publishing)
+/**
+ * Once published: open the live site to check it, and send its link to the
+ * doctor or owner (WhatsApp, email or copy).
+ */
+export function LiveSite({ target, live, liveUrl, disabled }: { target: ReviewTarget; live: boolean; liveUrl?: string; disabled?: boolean }) {
+  const [link, setLink] = useState<{ url: string; phone: string; email: string; message: string } | null>(null);
+  const [busy, setBusy] = useState<"make" | "email" | null>(null);
+  const [email, setEmail] = useState("");
+  const [copied, setCopied] = useState(false);
+  if (!live || !target.id) return <p className="text-sm text-muted-foreground">Publish first. Then open the live site to check it, and send its link to {target.name}.</p>;
+  const id = target.id;
 
-export function BackToCheck({ onBack }: { onBack: () => void }) {
+  async function make() {
+    setBusy("make");
+    const res = await createLiveLinkAction({ kind: target.kind, id });
+    setBusy(null);
+    if (!res.ok) return toast.error(res.error);
+    setLink(res.data);
+    setEmail(res.data.email);
+  }
+  const wa = link ? `https://wa.me/${link.phone ? `91${link.phone}` : ""}?text=${encodeURIComponent(link.message)}` : "";
+
   return (
-    <Button type="button" variant="ghost" onClick={onBack}>
-      <ArrowLeft /> Back to Review
-    </Button>
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {liveUrl && (
+          <Button asChild>
+            <a href={liveUrl} target="_blank" rel="noopener">
+              <ExternalLink /> Go to live site
+            </a>
+          </Button>
+        )}
+        {!link && (
+          <Button type="button" variant="outline" disabled={disabled || busy !== null} onClick={() => void make()}>
+            {busy ? <Loader2 className="animate-spin" /> : <Send />} Send live link to {target.kind === "doctor" ? "the doctor" : "the owner"}
+          </Button>
+        )}
+      </div>
+      {link && (
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input readOnly value={link.url} aria-label="Live link" onFocus={(e) => e.currentTarget.select()} />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                await navigator.clipboard.writeText(link.url);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+            >
+              {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <Button asChild className="bg-[#1f8f4e] text-white hover:bg-[#187a42]">
+              <a href={wa} target="_blank" rel="noopener">
+                Send on WhatsApp{link.phone ? ` (${link.phone})` : ""}
+              </a>
+            </Button>
+            <div className="flex min-w-[16rem] flex-1 gap-2">
+              <Input type="email" value={email} placeholder="Their email" aria-label="Email to send the live link to" onChange={(e) => setEmail(e.target.value)} />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy !== null || !email.trim()}
+                onClick={async () => {
+                  setBusy("email");
+                  const res = await emailLiveLinkAction({ kind: target.kind, id, to: email });
+                  setBusy(null);
+                  if (res.ok) toast.success(`Live link emailed to ${res.data.to}`);
+                  else toast.error(res.error);
+                }}
+              >
+                {busy === "email" ? <Loader2 className="animate-spin" /> : <Mail />} Email
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

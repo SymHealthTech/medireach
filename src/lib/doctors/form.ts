@@ -150,6 +150,9 @@ export interface DoctorForm {
 
 export const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0] as const;
 
+/** Clinics and visiting-consultant hospitals together. */
+export const MAX_CLINICS = 10;
+
 export function emptyClinic(cityId = "", key = randomKey()): ClinicForm {
   return {
     key,
@@ -510,7 +513,7 @@ export const sectionSchemas = {
           establishmentId: optOid,
         }),
       )
-      .max(6),
+      .max(MAX_CLINICS, `Up to ${MAX_CLINICS} clinics and hospitals.`),
   }),
   contact: z.object({
     mobile,

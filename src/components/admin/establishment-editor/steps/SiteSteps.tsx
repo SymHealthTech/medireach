@@ -19,10 +19,9 @@ import { absUrl, paths, ROOT_HOSTNAME, subdomainUrl } from "@/lib/site";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/cn";
 import {
-  BackToCheck,
   OwnDomain,
   Payments,
-  PhaseNav,
+  LiveSite,
   SalesExecutive,
   SaveAndPreview,
   SendPreviewLink,
@@ -416,19 +415,12 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         <StepGroup n={4} title="Send the preview for approval" description={`Send ${f.name || `the ${what}`} a private link to their website and visiting card.`}>
           <SendPreviewLink target={target} disabled={readOnly} />
         </StepGroup>
-
-        <PhaseNav
-          closing={closing}
-          onClose={() => void close()}
-          onNext={() => r.onGoTo("", "publish")}
-        />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <BackToCheck onBack={() => r.onGoTo("", "review")} />
       <StepGroup n={1} title="Owner's approval" description="When and how the owner approved the final site. Required to publish.">
         <div className={grid2}>
           <Field label="Approved on" htmlFor="approval.ownerApprovedAt" error={err("approval.ownerApprovedAt")}>
@@ -482,13 +474,6 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
           </ul>
         )}
         <div className="flex flex-wrap gap-2">
-          {r.liveUrl && (
-            <Button asChild variant="outline">
-              <a href={r.liveUrl} target="_blank" rel="noopener">
-                <ExternalLink /> Open live site
-              </a>
-            </Button>
-          )}
           {r.canPublish ? (
             <>
               <Tooltip>
@@ -520,6 +505,10 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
           </Button>
         </div>
         {!r.canPublish && <p className="text-sm text-muted-foreground">An admin will check and publish this site.</p>}
+      </StepGroup>
+
+      <StepGroup n={6} title="Live site" description="After publishing: check the live site, then send its link to the owner.">
+        <LiveSite target={target} live={f.status === "published"} liveUrl={r.liveUrl} disabled={readOnly} />
       </StepGroup>
     </div>
   );

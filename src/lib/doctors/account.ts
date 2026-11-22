@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { sectionSchemas, type ClinicForm, type DoctorForm } from "@/lib/doctors/form";
+import { MAX_CLINICS, sectionSchemas, type ClinicForm, type DoctorForm } from "@/lib/doctors/form";
 
 /**
  * Doctor self-edit (/account). Doctors may change ONLY: clinic timings, clinic
@@ -44,7 +44,7 @@ export const ACCOUNT_CLINIC_FIELDS = {
 export const accountSchema = z.object({
   mobile: sectionSchemas.contact.shape.mobile,
   whatsapp: sectionSchemas.contact.shape.whatsapp,
-  clinics: z.array(sectionSchemas.clinics.shape.clinics.element.pick(ACCOUNT_CLINIC_FIELDS)).max(6),
+  clinics: z.array(sectionSchemas.clinics.shape.clinics.element.pick(ACCOUNT_CLINIC_FIELDS)).max(MAX_CLINICS),
   // Optional so a save that leaves them out never wipes them; null removes the photo.
   interestsStory: about.interestsStory.optional(),
   interestsPhoto: about.interestsPhoto.nullable(),

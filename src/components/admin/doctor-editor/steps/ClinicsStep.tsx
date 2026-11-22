@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
 import { addMaster, MasterSelect } from "@/components/admin/form/MasterSelect";
-import { emptyClinic, type ClinicForm } from "@/lib/doctors/form";
+import { emptyClinic, MAX_CLINICS, type ClinicForm } from "@/lib/doctors/form";
 import type { FormClinic } from "@/lib/intake/hints";
 import { coordsFromMapsUrl, mapsLinkFor, parseLocation } from "@/lib/intake/form";
 import { parseTimingsText } from "@/lib/timings";
@@ -16,6 +16,10 @@ import { TimingEditor } from "../TimingEditor";
 import { AddButton, Group, grid2, RepeatItem, removeAt, updateAt, type StepProps } from "../shared";
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const isVisiting = (c: Pick<ClinicForm, "type">) => c.type === "hospital_visiting";
+
+/** Own clinics first, hospitals where they visit after (the first clinic sets the page's city and area). */
+const ordered = (list: ClinicForm[]) => [...list.filter((c) => !isVisiting(c)), ...list.filter(isVisiting)];
 
 export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: StepProps) {
   const defaultCity = options.cities.find((c) => c.slug === "pune")?.id ?? options.cities[0]?.id ?? "";
@@ -54,7 +58,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
     setImporting(i);
     try {
       const clinic = await fromForm(fc);
-      set((prev) => ({ clinics: [...prev.clinics, clinic].slice(0, 6) }));
+      set((prev) => ({ clinics: ordered([...prev.clinics, clinic]).slice(0, MAX_CLINICS) }));
     } finally {
       setImporting(null);
     }
@@ -94,13 +98,16 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
     }
   }
   const setClinic = (i: number, patch: Partial<ClinicForm>) => set((f) => ({ clinics: updateAt(f.clinics, i, patch) }));
-  const move = (i: number, dir: -1 | 1) =>
+  /** Swap two entries (neighbours in the same group). */
+  const swap = (i: number, j: number) =>
     set((prev) => {
       const next = [...prev.clinics];
-      const [item] = next.splice(i, 1);
-      next.splice(i + dir, 0, item!);
+      [next[i], next[j]] = [next[j]!, next[i]!];
       return { clinics: next };
     });
+  const own = f.clinics.map((c, i) => ({ c, i })).filter(({ c }) => !isVisiting(c));
+  const visiting = f.clinics.map((c, i) => ({ c, i })).filter(({ c }) => isVisiting(c));
+  const full = f.clinics.length >= MAX_CLINICS;
 
   return (
     <div className="space-y-5">
@@ -117,34 +124,58 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                   {c.type === "visiting" && " (visiting consultant)"}
                   {[c.address, c.area, c.city, c.pincode].filter(Boolean).length > 0 && ` · ${[c.address, c.area, c.city, c.pincode].filter(Boolean).join(", ")}`}
                 </span>
-                <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={readOnly || importing !== null || f.clinics.length >= 6} onClick={() => void importClinic(c, i)}>
-                  {importing === i ? <Loader2 className="animate-spin" /> : <Plus />} Add this clinic
+                <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={readOnly || importing !== null || full} onClick={() => void importClinic(c, i)}>
+                  {importing === i ? <Loader2 className="animate-spin" /> : <Plus />} Add this {c.type === "visiting" ? "hospital" : "clinic"}
                 </Button>
               </li>
             ))}
           </ul>
         </div>
       )}
-      {f.clinics.length === 0 && (
+      {own.length === 0 && (
         <p className="rounded-lg border border-dashed border-line bg-card p-4 text-sm text-muted-foreground">
           Add the doctor&apos;s clinic. The first clinic is the primary one: it sets the city and area in the page address and Google title.
         </p>
       )}
-      {f.clinics.map((c, i) => {
+      {own.map(({ c, i }, k) => renderClinic(c, i, k, own))}
+      <AddButton
+        disabled={readOnly || full}
+        onClick={() => set((f) => ({ clinics: ordered([...f.clinics, emptyClinic(defaultCity)]) }))}
+      >
+        Add clinic
+      </AddButton>
+
+      <Group
+        title="Visiting consultant at"
+        description="Hospitals where the doctor consults on fixed days or on call. The page lists them as “Visiting consultant at …”, with the days and timings."
+      >
+        {visiting.length === 0 && <p className="text-sm text-muted-foreground">No hospitals added.</p>}
+        {visiting.map(({ c, i }, k) => renderClinic(c, i, k, visiting))}
+        <AddButton disabled={readOnly || full} onClick={() => set((f) => ({ clinics: [...f.clinics, { ...emptyClinic(defaultCity), type: "hospital_visiting" }] }))}>
+          Add hospital
+        </AddButton>
+      </Group>
+      {full && <p className="text-xs text-muted-foreground">Up to {MAX_CLINICS} clinics and hospitals in all.</p>}
+    </div>
+  );
+
+  /** One clinic or visiting hospital (`k` = its place in its group). */
+  function renderClinic(c: ClinicForm, i: number, k: number, group: { i: number }[]) {
         const p = `clinics.${i}`;
         const areas = options.areas.filter((a) => a.cityId === c.cityId);
         // The website-form clinic for this one: same name, else the same position.
         const fc = hints?.clinics.find((x) => x.name && same(x.name, c.name)) ?? hints?.clinics[i];
         const sites = options.establishments.filter((e) => !e.cityId || e.cityId === c.cityId);
-        return (
-          <Group key={c.key} title={i === 0 ? "Primary clinic" : `Clinic ${i + 1}`}>
-            <RepeatItem title={c.name || "New clinic"} disabled={readOnly} onRemove={() => set((f) => ({ clinics: removeAt(f.clinics, i) }))}>
-              {f.clinics.length > 1 && (
+        const hospital = isVisiting(c);
+        const noun = hospital ? "Hospital" : "Clinic";
+        const card = (
+            <RepeatItem title={c.name || `New ${noun.toLowerCase()}`} disabled={readOnly} onRemove={() => set((f) => ({ clinics: removeAt(f.clinics, i) }))}>
+              {group.length > 1 && (
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="ghost" disabled={readOnly || i === 0} onClick={() => move(i, -1)}>
+                  <Button type="button" size="sm" variant="ghost" disabled={readOnly || k === 0} onClick={() => swap(i, group[k - 1]!.i)}>
                     <ArrowUp /> Move up
                   </Button>
-                  <Button type="button" size="sm" variant="ghost" disabled={readOnly || i === f.clinics.length - 1} onClick={() => move(i, 1)}>
+                  <Button type="button" size="sm" variant="ghost" disabled={readOnly || k === group.length - 1} onClick={() => swap(i, group[k + 1]!.i)}>
                     <ArrowDown /> Move down
                   </Button>
                 </div>
@@ -167,12 +198,12 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                 </div>
               )}
               <div className={grid2}>
-                <Field label="Clinic type" htmlFor={`${p}.type`}>
+                <Field label="Type" htmlFor={`${p}.type`}>
                   <NativeSelect
                     id={`${p}.type`}
                     value={c.type}
                     disabled={readOnly}
-                    onChange={(e) => setClinic(i, { type: e.target.value as ClinicForm["type"] })}
+                    onChange={(e) => set((f) => ({ clinics: ordered(updateAt(f.clinics, i, { type: e.target.value as ClinicForm["type"] })) }))}
                   >
                     <option value="own_clinic">Own clinic</option>
                     <option value="hospital_visiting">Visiting consultant at a hospital</option>
@@ -216,7 +247,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                     </NativeSelect>
                   </Field>
                 )}
-                <Field label="Clinic name" htmlFor={`${p}.name`} required error={err(`${p}.name`)}>
+                <Field label={`${noun} name`} htmlFor={`${p}.name`} required error={err(`${p}.name`)}>
                   <Input id={`${p}.name`} value={c.name} disabled={readOnly} onChange={(e) => setClinic(i, { name: e.target.value })} />
                 </Field>
                 <Field label="Phone" htmlFor={`${p}.phone`} error={err(`${p}.phone`)}>
@@ -320,7 +351,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
               )}
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Timings</p>
+                <p className="text-sm font-medium">{hospital ? "Days and timings they visit" : "Timings"}</p>
                 <TimingEditor idPrefix={p} value={c.timings} disabled={readOnly} onChange={(timings) => setClinic(i, { timings })} />
                 {err(`${p}.timings`) && <p className="text-sm text-clay-text">{err(`${p}.timings`)}</p>}
               </div>
@@ -335,12 +366,14 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                 <SwitchField label="Show fee on the page" checked={c.showFee} disabled={readOnly} onCheckedChange={(showFee) => setClinic(i, { showFee })} />
               </div>
             </RepeatItem>
+        );
+        // Visiting hospitals sit inside their own group; clinics get a group each.
+        return hospital ? (
+          <div key={c.key}>{card}</div>
+        ) : (
+          <Group key={c.key} title={i === 0 ? "Primary clinic" : `Clinic ${k + 1}`}>
+            {card}
           </Group>
         );
-      })}
-      <AddButton disabled={readOnly || f.clinics.length >= 6} onClick={() => set((f) => ({ clinics: [...f.clinics, emptyClinic(defaultCity)] }))}>
-        Add clinic
-      </AddButton>
-    </div>
-  );
+  }
 }

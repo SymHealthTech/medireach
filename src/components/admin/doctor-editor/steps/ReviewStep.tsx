@@ -1,15 +1,14 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Send, ShieldCheck, Undo2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Send, ShieldCheck, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Field, NativeSelect, SwitchField } from "@/components/admin/form/fields";
 import {
-  BackToCheck,
   OwnDomain,
   Payments,
-  PhaseNav,
+  LiveSite,
   SalesExecutive,
   SaveAndPreview,
   SendPreviewLink,
@@ -178,18 +177,12 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
           <SendPreviewLink target={target} disabled={readOnly} />
         </StepGroup>
 
-        <PhaseNav
-          closing={closing}
-          onClose={() => void close()}
-          onNext={() => r.onGoTo("", "publish")}
-        />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      <BackToCheck onBack={() => r.onGoTo("", "review")} />
       <StepGroup n={1} title="Doctor's approval" description="When and how the doctor approved the final page. Required to publish.">
         <div className={grid2}>
           <Field label="Approved on" htmlFor="approval.doctorApprovedAt" error={err("approval.doctorApprovedAt")}>
@@ -268,13 +261,6 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
           </ul>
         )}
         <div className="flex flex-wrap gap-2">
-          {r.liveUrl && (
-            <Button asChild variant="outline">
-              <a href={r.liveUrl} target="_blank" rel="noopener">
-                <ExternalLink /> Open live page
-              </a>
-            </Button>
-          )}
           {r.canPublish ? (
             <>
               <Tooltip>
@@ -306,6 +292,10 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
           </Button>
         </div>
         {!r.canPublish && <p className="text-sm text-muted-foreground">An admin will check and publish this page.</p>}
+      </StepGroup>
+
+      <StepGroup n={6} title="Live site" description="After publishing: check the live site, then send its link to the doctor.">
+        <LiveSite target={target} live={f.status === "published"} liveUrl={r.liveUrl} disabled={readOnly} />
       </StepGroup>
     </div>
   );
