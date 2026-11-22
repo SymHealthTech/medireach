@@ -242,7 +242,20 @@ export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) 
               <Input id="contactPerson.phone" type="tel" inputMode="tel" value={f.contactPerson.phone} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, phone: e.target.value } }))} />
             </Field>
             <Field label="Their email" htmlFor="contactPerson.email" error={err("contactPerson.email")}>
-              <Input id="contactPerson.email" type="email" value={f.contactPerson.email} disabled={readOnly} onChange={(e) => set((p) => ({ contactPerson: { ...p.contactPerson, email: e.target.value } }))} />
+              <Input
+                id="contactPerson.email"
+                type="email"
+                value={f.contactPerson.email}
+                disabled={readOnly}
+                onChange={(e) => {
+                  const email = e.target.value;
+                  set((p) => ({
+                    contactPerson: { ...p.contactPerson, email },
+                    // The owner login email follows it until it is changed by hand.
+                    ...(!p.ownerEmail.trim() || p.ownerEmail.trim() === p.contactPerson.email.trim() ? { ownerEmail: email.trim() } : {}),
+                  }));
+                }}
+              />
             </Field>
             <Field label="Source" htmlFor="source">
               <NativeSelect id="source" value={f.source} disabled={readOnly} onChange={(e) => set({ source: e.target.value as typeof f.source })}>
