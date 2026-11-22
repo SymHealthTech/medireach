@@ -50,3 +50,21 @@ describe("visiting consultant hospitals", () => {
     expect(h.systemOther).toBe("Naturopathy");
   });
 });
+
+describe("clinic / hospital doctor degrees", () => {
+  const def = ROWS.degrees;
+  it("keeps the one-line site format and reads it back as rows", () => {
+    const rows = textToRows(def, "MBBS, MD (Dermatology, Venereology), DNB");
+    expect(rows).toEqual([
+      { degree: "MBBS", specialization: "" },
+      { degree: "MD", specialization: "Dermatology, Venereology" },
+      { degree: "DNB", specialization: "" },
+    ]);
+    expect(rowsToText(def, rows)).toBe("MBBS, MD (Dermatology, Venereology), DNB");
+  });
+  it("drops empty rows and upgrades one-per-line text", () => {
+    expect(rowsToText(def, [{ degree: "BAMS", specialization: "" }, { degree: "", specialization: "" }])).toBe("BAMS");
+    expect(rowsToText(def, textToRows(def, "BAMS\nMD (Ayurveda)"))).toBe("BAMS, MD (Ayurveda)");
+    expect(textToRows(def, "")).toEqual([{ degree: "", specialization: "" }]);
+  });
+});

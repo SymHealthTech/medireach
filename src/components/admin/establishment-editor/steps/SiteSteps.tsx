@@ -222,6 +222,13 @@ const SOURCE_LABEL: Record<(typeof ESTABLISHMENT_SOURCES)[number], string> = {
 export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) {
   const isAdmin = role !== "sales";
   const hospital = f.kind === "hospital";
+  // The owner usually logs in with the email given earlier (contact person, or the site's email in Location and contact).
+  const earlierEmail = (f.contactPerson.email || f.email).trim();
+  useEffect(() => {
+    if (!readOnly && !f.ownerEmail.trim() && earlierEmail) set({ ownerEmail: earlierEmail });
+    // Only when the step opens: clearing the box afterwards keeps it empty.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-5">
@@ -253,7 +260,12 @@ export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) 
 
       <Group title="Owner login" description="Lets the owner log in at /login to update timings, phones and address. One email can own several sites.">
         <div className={grid2}>
-          <Field label="Owner login email" htmlFor="ownerEmail" error={err("ownerEmail")}>
+          <Field
+            label="Owner login email"
+            htmlFor="ownerEmail"
+            error={err("ownerEmail")}
+            help={earlierEmail && f.ownerEmail.trim().toLowerCase() === earlierEmail.toLowerCase() ? "Filled in from the email added earlier. Change it if the owner logs in with another email." : undefined}
+          >
             <Input id="ownerEmail" type="email" value={f.ownerEmail} disabled={readOnly} onChange={(e) => set({ ownerEmail: e.target.value })} />
           </Field>
           <OwnerLoginEmailButton id={f.id} savedEmail={f.ownerEmail} />

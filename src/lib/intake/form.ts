@@ -202,7 +202,8 @@ export const DOCTOR_FIELDS: FieldDef[] = [
   // Role and "Please specify" share a row.
   { key: "role", label: "Role", type: "select", options: DOCTOR_ROLES },
   text("roleOther", "Please specify the role", { required: true, placeholder: "e.g. Anaesthetist, Dietitian", showIf: { key: "role", equals: "other" } }),
-  text("education", "Education", { placeholder: "MBBS, MD (Dermatology)", suggest: "education" }),
+  // One row per degree; stored (and shown on the site) as one line, e.g. "MBBS, MD (Dermatology)".
+  text("education", "Education", { rows: "degrees", wide: true, max: 160, help: "Add each degree. Pick Other if one is not listed." }),
   { key: "portfolioUrl", label: "Portfolio / profile link", type: "url", wide: true, help: "Optional. Their own website, MediReach page or Practo profile." },
 ];
 
@@ -551,7 +552,7 @@ const CLINIC: SectionDef[] = [
       text("name", "Clinic name", { required: true }),
       { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES },
       text("clinicTypeOther", "Please specify", { required: true, placeholder: "e.g. Sleep clinic, IVF centre", showIf: { key: "clinicType", equals: "other" } }),
-      text("tagline", "One-line description", { wide: true, placeholder: "Skin, hair and nail care in Kothrud" }),
+      text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "Skin, hair and nail care in Kothrud", help: "Optional. Shown under the clinic name on your website. Facts only, no claims like “best”." }),
       aboutStory("clinic"),
       { key: "yearStarted", label: "Year started", type: "year" },
       text("languages", "Languages spoken", { placeholder: "English, Hindi, Marathi", suggest: "languages" }),
@@ -593,7 +594,7 @@ const HOSPITAL: SectionDef[] = [
       text("name", "Hospital name", { required: true }),
       { key: "hospitalType", label: "Type of hospital", type: "select", options: HOSPITAL_TYPES },
       text("hospitalTypeOther", "Please specify", { required: true, placeholder: "e.g. Cancer care, De-addiction", showIf: { key: "hospitalType", equals: "other" } }),
-      text("tagline", "One-line description", { wide: true, placeholder: "A 10-bed multi-speciality hospital in Wakad" }),
+      text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "A 10-bed multi-speciality hospital in Wakad", help: "Optional. Shown under the hospital name on your website. Facts only, no claims like “best”." }),
       aboutStory("hospital"),
       { key: "beds", label: "Number of beds", type: "number", help: `For hospitals up to ${LIMITS.hospitalBedsMax} beds.` },
       { key: "yearStarted", label: "Year started", type: "year" },

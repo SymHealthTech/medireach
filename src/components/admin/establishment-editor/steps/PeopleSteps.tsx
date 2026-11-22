@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ClipboardList, ExternalLink, Plus, UserPlus, UserRound } from "lucide-react";
+import { ClipboardList, ExternalLink, Plus, Trash2, UserPlus, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ import { RoleSelect, SelectOther, SuggestionChips } from "@/components/admin/for
 import { LIMITS } from "@/lib/constants";
 import { randomKey, type EstablishmentForm } from "@/lib/establishments/form";
 import type { FormSiteDoctor } from "@/lib/intake/hints";
+import { blankRow, rowHasContent, ROWS, rowsToText, textToRows, type Row } from "@/lib/intake/rows";
 import {
   BED_TYPE_SUGGESTIONS,
   DEGREE_SUGGESTIONS,
@@ -49,12 +51,6 @@ export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: ESt
 
   return (
     <div className="space-y-5">
-      <datalist id="dl-degrees">
-        {DEGREE_SUGGESTIONS.map((x) => (
-          <option key={x} value={x} />
-        ))}
-      </datalist>
-
       {formDoctors.length > 0 && (
         <div className="space-y-2 rounded-lg bg-sage/60 p-3 text-sm text-ink">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -140,8 +136,14 @@ export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: ESt
                         onChange={(specialty) => setDoctor(i, { specialty })}
                       />
                     </Field>
-                    <Field label="Qualifications" htmlFor={`${p}.qualifications`} error={err(`${p}.qualifications`)}>
-                      <Input id={`${p}.qualifications`} list="dl-degrees" value={d.qualifications} placeholder="MBBS, MD (Dermatology)" disabled={readOnly} onChange={(e) => setDoctor(i, { qualifications: e.target.value })} />
+                    <Field
+                      label="Qualifications"
+                      htmlFor={`${p}.qualifications`}
+                      error={err(`${p}.qualifications`)}
+                      help="One row per degree. Shown on the site as one line, e.g. “MBBS, MD (Dermatology)”."
+                      className="sm:col-span-2"
+                    >
+                      <DegreesInput id={`${p}.qualifications`} value={d.qualifications} disabled={readOnly} onChange={(qualifications) => setDoctor(i, { qualifications })} />
                     </Field>
                     <Field label="Profile link (optional)" htmlFor={`${p}.profileUrl`} error={err(`${p}.profileUrl`)} help="Their own website or Practo profile. The card links to it.">
                       <Input id={`${p}.profileUrl`} type="url" inputMode="url" value={d.profileUrl} placeholder="https://…" disabled={readOnly} onChange={(e) => setDoctor(i, { profileUrl: e.target.value })} />
@@ -178,6 +180,66 @@ export function DoctorsStep({ form: f, set, err, options, readOnly, hints }: ESt
         </AddButton>
         {!f.id && <p className="text-xs text-muted-foreground">Save the name first to create portfolios from here.</p>}
       </Group>
+    </div>
+  );
+}
+
+/**
+ * A doctor's degrees as rows (degree dropdown + specialization), like the
+ * Get started form. Stored as the one line the site shows ("MBBS, MD (Dermatology)").
+ * Keeps its own rows so a half-filled row stays put.
+ */
+function DegreesInput({ id, value, onChange, disabled }: { id: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const def = ROWS.degrees;
+  const [rows, setRows] = useState<Row[]>(() => textToRows(def, value));
+  const [written, setWritten] = useState(value);
+  if (value !== written) {
+    // Changed from outside (e.g. added from the website form).
+    setWritten(value);
+    setRows(textToRows(def, value));
+  }
+  const write = (next: Row[]) => {
+    const text = rowsToText(def, next);
+    setRows(next);
+    setWritten(text);
+    onChange(text);
+  };
+  const setCell = (i: number, key: string, v: string) => write(rows.map((r, j) => (j === i ? { ...r, [key]: v } : r)));
+
+  return (
+    <div className="space-y-2">
+      {rows.map((r, i) => (
+        <div key={i} role="group" aria-label={`Degree ${i + 1}`} className="grid items-start gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <SelectOther
+            id={i === 0 ? id : `${id}.${i}.degree`}
+            value={r.degree ?? ""}
+            options={DEGREE_SUGGESTIONS}
+            disabled={disabled}
+            emptyLabel="Degree…"
+            otherPlaceholder="Please specify, e.g. DNB"
+            onChange={(v) => setCell(i, "degree", v)}
+          />
+          <Input
+            aria-label={`Degree ${i + 1} specialization`}
+            value={r.specialization ?? ""}
+            placeholder="Specialization (optional), e.g. Dermatology"
+            disabled={disabled}
+            onChange={(e) => setCell(i, "specialization", e.target.value)}
+          />
+          {rows.length > 1 || rowHasContent(r) ? (
+            <Button type="button" variant="ghost" size="icon" aria-label={`Remove degree ${i + 1}`} className="text-clay-text" disabled={disabled} onClick={() => write(rows.length > 1 ? rows.filter((_, j) => j !== i) : [blankRow(def)])}>
+              <Trash2 />
+            </Button>
+          ) : (
+            <span className="hidden size-9 sm:block" aria-hidden />
+          )}
+        </div>
+      ))}
+      {rows.length < def.max && (
+        <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => setRows([...rows, blankRow(def)])}>
+          <Plus /> Add degree
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, ChevronRight, CreditCard, Hospital, Plus, UserPlus } from "lucide-react";
+import { Building2, ChevronRight, CreditCard, Hospital, UserPlus } from "lucide-react";
 import type { FilterQuery } from "mongoose";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/admin/EmptyState";
-import { KindTabs } from "@/components/admin/KindTabs";
 import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { FoundingBadge, Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
@@ -82,27 +81,12 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   const filtered = Object.keys(filter).length > 1 || Boolean(renewal);
   const pune = options.cities.find((c) => c.slug === "pune")?.id;
   const showMoney = can.seePaymentTotals(admin.role);
-  const kindCounts = Object.fromEntries((await Establishment.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$kind", n: { $sum: 1 } } }])).map((c) => [c._id, c.n]));
   const label = kind === "hospital" ? "hospital" : "clinic";
   const Icon = kind === "hospital" ? Hospital : Building2;
 
   return (
     <div className="space-y-5">
-      <KindTabs
-        label="Clinics or hospitals"
-        kinds={["clinic", "hospital"]}
-        active={kind}
-        counts={{ clinic: kindCounts.clinic ?? 0, hospital: kindCounts.hospital ?? 0 }}
-        hrefFor={(k) => `/admin/establishments?kind=${k}`}
-      />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">{kind === "hospital" ? "Small hospital websites (up to 10 beds) and their visiting cards." : "Clinic websites and their visiting cards."}</p>
-        <Button asChild>
-          <Link href={`/admin/establishments/new?kind=${kind}`}>
-            <Plus /> New {label}
-          </Link>
-        </Button>
-      </div>
+      <p className="text-muted-foreground">{kind === "hospital" ? "Small hospital websites (up to 10 beds) and their visiting cards." : "Clinic websites and their visiting cards."}</p>
 
       <ListToolbar
         placeholder="Search name, phone, contact person…"
