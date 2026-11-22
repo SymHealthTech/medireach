@@ -308,8 +308,9 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
       if (doc.renewalStatus !== "lapsed") doc.renewalStatus = computeRenewalStatus(doc.renewalDueDate);
       break;
     }
-    case "review": {
-      const d = input as SectionData<"review">;
+    case "review":
+    case "publish": {
+      const d = input as SectionData<"publish">;
       doc.set({ "compliance.ownerApprovedAt": d.approval.ownerApprovedAt, "compliance.approvedVia": d.approval.approvedVia });
       break;
     }

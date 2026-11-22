@@ -21,8 +21,8 @@ import {
   activeNavItem,
   MOBILE_TABS,
   NEW_DOCTOR_HREF,
-  NEW_ITEMS,
   navForRole,
+  newItemsFor,
   ROLE_LABEL,
   type NavItem,
 } from "@/components/admin/nav";
@@ -100,6 +100,8 @@ export function AdminShell({
   }, [pathname]);
 
   const active = activeNavItem(pathname, nav, search);
+  const newItems = newItemsFor(active);
+  const single = newItems.length === 1 ? newItems[0]! : null;
   const title =
     pathname === NEW_DOCTOR_HREF ? "New doctor" : pathname === "/admin/establishments/new" ? (active?.label === "Hospitals" ? "New hospital" : "New clinic") : (active?.label ?? "Dashboard");
 
@@ -207,6 +209,13 @@ export function AdminShell({
                 <Search className="size-5" strokeWidth={1.75} />
               </Button>
 
+              {single ? (
+                <Button asChild className="hidden md:inline-flex">
+                  <Link href={single.href}>
+                    <Plus /> New {single.label.toLowerCase()}
+                  </Link>
+                </Button>
+              ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button className="hidden md:inline-flex">
@@ -214,7 +223,7 @@ export function AdminShell({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
-                  {NEW_ITEMS.map((n) => (
+                  {newItems.map((n) => (
                     <DropdownMenuItem key={n.href} asChild>
                       <Link href={n.href} className="flex flex-col items-start gap-0">
                         <span className="font-semibold">New {n.label.toLowerCase()}</span>
@@ -224,6 +233,7 @@ export function AdminShell({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -275,14 +285,24 @@ export function AdminShell({
               <TabLink key={t.href} item={t} active={active?.href === t.href} />
             ))}
             <li className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => setNewOpen(true)}
-                aria-label="New doctor, clinic or hospital"
-                className="-mt-7 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft ring-4 ring-background active:scale-[.98]"
-              >
-                <Plus className="size-6" strokeWidth={2} />
-              </button>
+              {single ? (
+                <Link
+                  href={single.href}
+                  aria-label={`New ${single.label.toLowerCase()}`}
+                  className="-mt-7 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft ring-4 ring-background active:scale-[.98]"
+                >
+                  <Plus className="size-6" strokeWidth={2} />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setNewOpen(true)}
+                  aria-label="New doctor, clinic or hospital"
+                  className="-mt-7 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-soft ring-4 ring-background active:scale-[.98]"
+                >
+                  <Plus className="size-6" strokeWidth={2} />
+                </button>
+              )}
             </li>
             {tabs.slice(2).map((t) => (
               <TabLink key={t.href} item={t} active={active?.href === t.href} />
@@ -310,7 +330,7 @@ export function AdminShell({
               <SheetDescription className="sr-only">Start a doctor, clinic or hospital</SheetDescription>
             </SheetHeader>
             <ul className="grid gap-1 px-4 pb-6">
-              {NEW_ITEMS.map((n) => (
+              {newItems.map((n) => (
                 <li key={n.href}>
                   <Link href={n.href} className="flex min-h-14 flex-col justify-center rounded-lg px-3 hover:bg-accent">
                     <span className="font-semibold text-ink">New {n.label.toLowerCase()}</span>

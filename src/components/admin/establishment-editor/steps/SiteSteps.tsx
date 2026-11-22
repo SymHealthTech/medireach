@@ -218,7 +218,7 @@ const SOURCE_LABEL: Record<(typeof ESTABLISHMENT_SOURCES)[number], string> = {
 
 /**
  * Business: contact person and source (hospitals), owner login, notes. Sales
- * executive, payments, setup/renewal and own domain are on Review and publish.
+ * executive is on Review; payments, setup/renewal and own domain are on Publish.
  */
 export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) {
   const isAdmin = role !== "sales";
@@ -273,7 +273,7 @@ export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) 
             </Link>
           </Button>
         )}
-        <p className="text-xs text-muted-foreground">The sales executive, payment, setup and renewal, and own domain are on the last step, Review and publish.</p>
+        <p className="text-xs text-muted-foreground">The sales executive is on the Review step; payment, setup and renewal, and own domain are on the last step, Publish.</p>
       </Group>
     </div>
   );
@@ -324,8 +324,8 @@ export interface EReviewProps {
   onBusinessDates: (d: BusinessDates) => void;
 }
 
-export function ReviewStep({ form: f, set, err, options, readOnly, role, review: r }: EStepProps & { review: EReviewProps }) {
-  const [phase, setPhase] = useState<"check" | "publish">("check");
+/** Step 11 "Review" (phase "check") and step 12 "Publish" (phase "publish"). */
+export function ReviewStep({ form: f, set, err, options, readOnly, role, review: r, phase }: EStepProps & { review: EReviewProps; phase: "check" | "publish" }) {
   const { close, closing } = useCloseToDashboard(r.onSaveAll);
   const isAdmin = role !== "sales";
   const hospital = f.kind === "hospital";
@@ -342,7 +342,6 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
       ? options.prices.foundingRenewal
       : options.prices.renewalClinic;
   const address = f.subdomain ? subdomainUrl(f.subdomain) : absUrl((hospital ? paths.hospital : paths.clinic)(f.citySlug || "city", f.slug || "…"));
-  const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
   if (phase === "check") {
     return (
@@ -369,14 +368,14 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
               ))}
             </ul>
           )}
-          {r.blockers.filter((b) => b.field !== "review").length === 0 ? (
+          {r.blockers.filter((b) => b.field !== "publish").length === 0 ? (
             <p className="flex items-center gap-2 text-sm font-medium text-leaf-text">
               <CheckCircle2 className="size-5" /> Everything required is filled in.
             </p>
           ) : (
             <ul className="space-y-2">
               {r.blockers
-                .filter((b) => b.field !== "review")
+                .filter((b) => b.field !== "publish")
                 .map((b) => (
                   <li key={b.message} className="flex items-center justify-between gap-3 text-sm">
                     <span className="flex items-center gap-2">
@@ -421,10 +420,7 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         <PhaseNav
           closing={closing}
           onClose={() => void close()}
-          onNext={() => {
-            setPhase("publish");
-            toTop();
-          }}
+          onNext={() => r.onGoTo("", "publish")}
         />
       </div>
     );
@@ -432,13 +428,8 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
 
   return (
     <div className="space-y-5">
-      <BackToCheck
-        onBack={() => {
-          setPhase("check");
-          toTop();
-        }}
-      />
-      <StepGroup n={5} title="Owner's approval" description="When and how the owner approved the final site. Required to publish.">
+      <BackToCheck onBack={() => r.onGoTo("", "review")} />
+      <StepGroup n={1} title="Owner's approval" description="When and how the owner approved the final site. Required to publish.">
         <div className={grid2}>
           <Field label="Approved on" htmlFor="approval.ownerApprovedAt" error={err("approval.ownerApprovedAt")}>
             <Input id="approval.ownerApprovedAt" type="date" value={f.approval.ownerApprovedAt} disabled={readOnly} onChange={(e) => set((p) => ({ approval: { ...p.approval, ownerApprovedAt: e.target.value } }))} />
@@ -461,11 +452,11 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         )}
       </StepGroup>
 
-      <StepGroup n={6} title="Payment" description="Record the payment here; it is saved to Payments at once.">
+      <StepGroup n={2} title="Payment" description="Record the payment here; it is saved to Payments at once.">
         <Payments target={target} canRecord={isAdmin} setupAmount={hospital ? options.prices.hospitalSetup : options.prices.clinicSetup} gstIncluded={options.gstIncluded} onDates={r.onBusinessDates} />
       </StepGroup>
 
-      <StepGroup n={7} title="Setup and renewal" description="Setup is paid once; the renewal is yearly from year 2.">
+      <StepGroup n={3} title="Setup and renewal" description="Setup is paid once; the renewal is yearly from year 2.">
         <SetupRenewal
           value={{ setupPaidAt: f.setupPaidAt, renewalDueDate: f.renewalDueDate, renewalStatus: f.renewalStatus, renewalPrice: f.renewalPrice }}
           onChange={(patch) => set(patch, { step: "business" })}
@@ -476,11 +467,11 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         />
       </StepGroup>
 
-      <StepGroup n={8} title="Own domain (optional)">
+      <StepGroup n={4} title="Own domain (optional)">
         <OwnDomain value={f.ownDomain} onChange={(ownDomain) => set({ ownDomain }, { step: "business" })} isAdmin={isAdmin} readOnly={readOnly} err={err} placeholder="shreeclinic.in" />
       </StepGroup>
 
-      <StepGroup n={9} title="Publish">
+      <StepGroup n={5} title="Publish">
         {r.blockers.length > 0 && (
           <ul className="space-y-1 text-sm">
             {r.blockers.map((b) => (

@@ -1,0 +1,52 @@
+import { describe, expect, it } from "vitest";
+import { intakeDataSchema, withDefaults, type RepeatItem } from "@/lib/intake/form";
+import { doctorHints } from "@/lib/intake/hints";
+import { ROWS, rowsToText, textToRows } from "@/lib/intake/rows";
+
+describe("website-form rows (qualifications, services, awards, memberships)", () => {
+  it("writes text that reads back into the same rows", () => {
+    const cases: Record<"qualifications" | "services" | "awards" | "memberships", Record<string, string>[]> = {
+      qualifications: [
+        { degree: "MBBS", specialization: "", institute: "BJ Medical College, Pune", year: "2008" },
+        { degree: "MD", specialization: "Medicine", institute: "KEM Hospital", year: "2012" },
+      ],
+      services: [
+        { name: "Diabetes care", description: "Check-ups and diet advice" },
+        { name: "Vaccination", description: "" },
+      ],
+      awards: [{ title: "Best paper award", awardingBody: "Indian Medical Association", year: "2019" }],
+      memberships: [{ name: "Indian Medical Association", since: "2010" }],
+    };
+    for (const [kind, rows] of Object.entries(cases) as [keyof typeof ROWS, Record<string, string>[]][]) {
+      const text = rowsToText(ROWS[kind], rows);
+      expect(textToRows(ROWS[kind], text)).toEqual(rows);
+    }
+    expect(rowsToText(ROWS.qualifications, cases.qualifications)).toBe("MBBS – BJ Medical College, Pune – 2008\nMD (Medicine) – KEM Hospital – 2012");
+  });
+
+  it("leaves empty rows out, and still shows one box for an empty answer", () => {
+    expect(rowsToText(ROWS.services, [{ name: "", description: "" }, { name: "ECG", description: "" }])).toBe("ECG");
+    expect(textToRows(ROWS.awards, "")).toEqual([{ title: "", awardingBody: "", year: "" }]);
+  });
+
+  it("reads older free-text answers", () => {
+    expect(textToRows(ROWS.qualifications, "MBBS – BJ Medical College, Pune – 2008")[0]).toEqual({ degree: "MBBS", specialization: "", institute: "BJ Medical College, Pune", year: "2008" });
+    expect(textToRows(ROWS.memberships, "Indian Medical Association – 2010")[0]).toEqual({ name: "Indian Medical Association", since: "2010" });
+  });
+});
+
+describe("visiting consultant hospitals", () => {
+  it("upgrades the older one-name-per-line answer into hospital entries", () => {
+    const d = withDefaults("doctor", { visitingAt: "Ruby Hall Clinic, Pune\nJehangir Hospital" });
+    expect((d.visiting as RepeatItem[]).map((v) => v.name)).toEqual(["Ruby Hall Clinic, Pune", "Jehangir Hospital"]);
+    expect(d.visitingAt).toBeUndefined();
+    const parsed = intakeDataSchema("doctor").parse({ visitingAt: "Ruby Hall Clinic" });
+    expect((parsed.visiting as RepeatItem[])[0]?.name).toBe("Ruby Hall Clinic");
+  });
+
+  it("offers them to the admin Clinics step as visiting-consultant entries", () => {
+    const h = doctorHints("MR-1", withDefaults("doctor", { visiting: [{ name: "Ruby Hall Clinic", area: "Sangamwadi", city: "Pune" }], systemOfMedicine: "other", systemOther: "Naturopathy" }));
+    expect(h.clinics.find((c) => c.name === "Ruby Hall Clinic")).toMatchObject({ type: "visiting", area: "Sangamwadi" });
+    expect(h.systemOther).toBe("Naturopathy");
+  });
+});

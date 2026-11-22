@@ -17,7 +17,7 @@ import { DOMAIN_STATUSES, type PaymentPurpose, type RenewalStatus } from "@/lib/
 import { cn } from "@/lib/cn";
 
 /**
- * The Review and publish step, shared by the doctor, clinic and hospital
+ * The Review and Publish steps, shared by the doctor, clinic and hospital
  * editors. Part 1 (check): review, sales executive, save everything, preview,
  * send the preview link, then Close or Next. Part 2 (approve and publish):
  * approval, payment, setup and renewal, own domain, publish.
@@ -47,7 +47,19 @@ export function SalesExecutive({
 }) {
   return (
     <div className={grid2}>
-      <Field label="Sales executive" htmlFor="salesExecutive" help="Who brought this in. Pick a team member, or Other to type a name.">
+      <Field
+        label="Sales executive"
+        htmlFor="salesExecutive"
+        help={
+          <>
+            Who brought this in. Pick a name, or Other to type a new one: once saved, it is added to the list and to their page under{" "}
+            <a href={name.trim() ? `/admin/sales/${encodeURIComponent(name.trim())}` : "/admin/sales"} target="_blank" rel="noopener" className="font-medium text-ink underline underline-offset-2">
+              Sales executives
+            </a>
+            .
+          </>
+        }
+      >
         <SelectOther id="salesExecutive" value={name} options={team} disabled={disabled} emptyLabel="Not set" otherPlaceholder="Name" onChange={(salesExecutive) => onChange({ salesExecutive })} />
       </Field>
       <Field label="Sales executive ID" htmlFor="salesExecutiveId" help="Their staff or employee ID.">
@@ -247,7 +259,7 @@ export function PhaseNav({ onClose, onNext, closing }: { onClose: () => void; on
           {closing ? <Loader2 className="animate-spin" /> : <X />} Close
         </Button>
         <Button type="button" onClick={onNext}>
-          Next <ArrowRight />
+          Next: Publish <ArrowRight />
         </Button>
       </div>
     </div>
@@ -257,7 +269,7 @@ export function PhaseNav({ onClose, onNext, closing }: { onClose: () => void; on
 export function BackToCheck({ onBack }: { onBack: () => void }) {
   return (
     <Button type="button" variant="ghost" onClick={onBack}>
-      <ArrowLeft /> Back to review and preview
+      <ArrowLeft /> Back to Review
     </Button>
   );
 }

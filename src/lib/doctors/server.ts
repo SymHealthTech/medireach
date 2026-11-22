@@ -71,6 +71,7 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
     languages: [...d.languages],
     practiceSinceYear: d.practiceSinceYear ?? undefined,
     systemOfMedicine: d.systemOfMedicine,
+    systemOther: s(d.systemOther),
     registration: {
       councilId: s(d.registration?.councilId),
       number: s(d.registration?.number),
@@ -210,6 +211,7 @@ export async function applySection<K extends StepKey>(
       const d = input as SectionData<"registration">;
       doc.set({
         systemOfMedicine: d.systemOfMedicine,
+        systemOther: d.systemOfMedicine === "other" ? d.systemOther : undefined,
         registration: {
           councilId: toOid(d.registration.councilId),
           number: d.registration.number,
@@ -348,8 +350,9 @@ export async function applySection<K extends StepKey>(
       doc.set({ portfolioTemplateId: d.portfolioTemplateId, cardTemplateId: d.cardTemplateId, cardStyle: d.cardStyle });
       break;
     }
-    case "review": {
-      const d = input as SectionData<"review">;
+    case "review":
+    case "publish": {
+      const d = input as SectionData<"publish">;
       doc.set({
         "compliance.doctorApprovedAt": d.approval.doctorApprovedAt,
         "compliance.approvedVia": d.approval.approvedVia,

@@ -7,7 +7,7 @@ import { safeAdminNext } from "@/lib/auth/redirect";
 import { verifyPassword } from "@/lib/auth/password";
 import { createSessionToken, verifySessionToken } from "@/lib/auth/session";
 import { seedSuperadmin } from "@/lib/seed/admin";
-import { activeNavItem, MOBILE_TABS, navForRole, NAV_ITEMS, NEW_ITEMS, rolesFor } from "@/components/admin/nav";
+import { activeNavItem, MOBILE_TABS, navForRole, NAV_ITEMS, NEW_ITEMS, newItemsFor, rolesFor } from "@/components/admin/nav";
 import { Admin } from "@/models/Admin";
 
 let mongod: MongoMemoryServer;
@@ -115,6 +115,7 @@ describe("sessions and roles", () => {
       "Visiting cards",
       "Designs & themes",
       "Payments & renewals",
+      "Sales executives",
       "Update requests",
       "Website forms",
       "Leads",
@@ -124,5 +125,11 @@ describe("sessions and roles", () => {
     ]);
     expect(MOBILE_TABS.map((h) => NAV_ITEMS.find((n) => n.href === h)!.short ?? NAV_ITEMS.find((n) => n.href === h)!.label)).toEqual(["Overview", "Doctors", "Clinics"]);
     expect(NEW_ITEMS.map((n) => n.label)).toEqual(["Doctor", "Clinic", "Hospital"]);
+    // "+ New" inside Doctors / Clinics / Hospitals offers only that kind; elsewhere all three.
+    const newFor = (href: string) => newItemsFor(NAV_ITEMS.find((n) => n.href === href)).map((n) => n.label);
+    expect(newFor("/admin/doctors")).toEqual(["Doctor"]);
+    expect(newFor("/admin/establishments?kind=clinic")).toEqual(["Clinic"]);
+    expect(newFor("/admin/establishments?kind=hospital")).toEqual(["Hospital"]);
+    expect(newFor("/admin")).toEqual(["Doctor", "Clinic", "Hospital"]);
   });
 });

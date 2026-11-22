@@ -65,6 +65,18 @@ export function RegistrationStep({ form: f, set, err, options, readOnly, hints }
               ))}
             </NativeSelect>
           </Field>
+          {f.systemOfMedicine === "other" && (
+            <Field label="Please specify" htmlFor="systemOther" required help={hints?.systemOther ? `Website form: ${hints.systemOther}` : undefined}>
+              <Input
+                id="systemOther"
+                value={f.systemOther}
+                maxLength={80}
+                placeholder="e.g. Naturopathy, Yoga, Sowa-Rigpa"
+                disabled={readOnly}
+                onChange={(e) => set({ systemOther: e.target.value })}
+              />
+            </Field>
+          )}
           <Field label="Council / board" htmlFor="registration.councilId" required error={err("registration.councilId")}>
             <MasterSelect
               id="registration.councilId"

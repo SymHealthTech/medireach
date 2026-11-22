@@ -332,9 +332,10 @@ export function EstablishmentEditor({
         {step === "seo" && <SeoStep {...stepProps} />}
         {step === "business" && <BusinessStep {...stepProps} />}
         {step === "design" && <DesignStep {...stepProps} />}
-        {step === "review" && (
+        {(step === "review" || step === "publish") && (
           <ReviewStep
             {...stepProps}
+            phase={step === "review" ? "check" : "publish"}
             review={{
               textFields,
               issues,

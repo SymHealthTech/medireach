@@ -4,6 +4,7 @@ import { LIMITS, type IntakeKind } from "@/lib/constants";
 import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
 import type { SuggestKey } from "@/lib/suggestions";
+import type { RowsKind } from "./rows";
 import { DEFAULT_HOSPITAL_THEME, SPECIALTY_THEMES, type ThemeIconKey } from "@/themes/specialty";
 
 /**
@@ -77,6 +78,8 @@ export interface FieldDef {
    * comma lists ("languages") add an item, other text fields take the value.
    */
   suggest?: SuggestKey;
+  /** "lines" fields shown as rows of boxes like the admin editor (still stored one line per row). */
+  rows?: RowsKind;
 }
 
 export interface SectionDef {
@@ -318,16 +321,17 @@ const DOCTOR: SectionDef[] = [
       { key: "mobile", label: "Mobile number", type: "mobile", required: true, autoComplete: "tel", help: "We call you on this number if anything is missing." },
       { key: "whatsapp", label: "WhatsApp number", type: "mobile", help: "Leave empty if it is the same as the mobile number." },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
-      text("specialty", "Specialty", { required: true, placeholder: "General Physician, Dermatologist…", suggest: "specialty" }),
+      text("specialty", "Specialty", { required: true, suggest: "specialty", help: "Not in the list? Choose “Other” and type it." }),
       { key: "systemOfMedicine", label: "System of medicine", type: "select", options: SYSTEMS },
       text("systemOther", "Please specify", { required: true, placeholder: "e.g. Naturopathy, Yoga, Sowa-Rigpa", showIf: { key: "systemOfMedicine", equals: "other" } }),
       {
         key: "qualifications",
         label: "Qualifications",
         type: "lines",
+        rows: "qualifications",
         required: true,
         wide: true,
-        placeholder: "One per line\nMBBS – BJ Medical College, Pune – 2008\nMD (Medicine) – KEM Hospital, Mumbai – 2012",
+        help: "Degrees in the order you want them shown. Degree not in the list? Choose “Other” and type it.",
       },
       { key: "practiceSince", label: "Practising since (year)", type: "year", placeholder: "2012" },
       text("languages", "Languages you speak", { placeholder: "English, Hindi, Marathi", suggest: "languages" }),
@@ -338,9 +342,10 @@ const DOCTOR: SectionDef[] = [
     title: "Registration",
     description: "The NMC guidelines ask for your registration number on your website.",
     fields: [
-      text("council", "Medical council", { placeholder: "Maharashtra Medical Council", suggest: "council" }),
+      text("council", "Medical council / board", { suggest: "council", help: "Not in the list? Choose “Other” and type it." }),
       text("registrationNumber", "Registration number", { required: true }),
       { key: "registrationYear", label: "Registration year", type: "year" },
+      text("nmrId", "NMR ID (optional)", { help: "National Medical Register ID, if you have one." }),
     ],
   },
   {
@@ -363,16 +368,18 @@ const DOCTOR: SectionDef[] = [
   },
   {
     key: "visiting",
-    title: "Visiting consultant",
-    description: "Hospitals where you consult on fixed days or on call. Names only: your website shows them as “Visiting consultant at …”.",
+    title: "Visiting consultant at",
+    description: "Optional. Hospitals where you consult on fixed days or on call. Your website shows them as “Visiting consultant at …”.",
+    repeat: { max: 4, itemLabel: "Hospital", addLabel: "Add another hospital", minToSubmit: 0 },
     fields: [
-      {
-        key: "visitingAt",
-        label: "Visiting consultant at",
-        type: "lines",
-        wide: true,
-        placeholder: "One hospital per line\nRuby Hall Clinic, Pune\nJehangir Hospital, Pune",
-      },
+      text("name", "Hospital name", { required: true, placeholder: "Ruby Hall Clinic" }),
+      { key: "phone", label: "Hospital phone", type: "phone" },
+      { key: "address", label: "Address", type: "textarea", wide: true, placeholder: "40 Sassoon Road" },
+      text("area", "Area", { placeholder: "Sangamwadi" }),
+      text("city", "City", { placeholder: "Pune" }),
+      { key: "pincode", label: "Pincode", type: "pincode" },
+      { ...timingsField("Days and timings you visit"), required: false, help: "Optional. Tap a common pattern, or type them, e.g. “Tuesday and Friday: 4 pm – 6 pm” or “On call”." },
+      text("appointmentNote", "Appointment note", { placeholder: "Appointments through the hospital desk", suggest: "appointmentNote" }),
     ],
   },
   {
@@ -386,14 +393,14 @@ const DOCTOR: SectionDef[] = [
         key: "services",
         label: "Services you offer",
         type: "lines",
+        rows: "services",
         wide: true,
-        placeholder: "One per line\nDiabetes care\nHealth check-ups",
         suggest: "doctorServices",
         help: "Suggestions follow your specialty. Tap to add, or type your own.",
       },
       { key: "conditions", label: "Conditions you treat", type: "lines", wide: true, placeholder: "One per line\nThyroid disorders\nFever and infections", suggest: "conditions" },
-      { key: "awards", label: "Awards", type: "lines", placeholder: "Award – Given by – Year" },
-      { key: "memberships", label: "Memberships", type: "lines", placeholder: "Indian Medical Association – 2010", suggest: "memberships" },
+      { key: "awards", label: "Awards", type: "lines", rows: "awards", wide: true },
+      { key: "memberships", label: "Memberships", type: "lines", rows: "memberships", wide: true, suggest: "memberships" },
     ],
   },
   {
@@ -728,6 +735,13 @@ function doctorFromLine(line: string, role = ""): DoctorEntry {
 function upgradeLegacy(kind: IntakeKind, data: Record<string, unknown>): Record<string, unknown> {
   const visiting = splitLines(data.visitingDoctors).map((l) => doctorFromLine(l, "visiting"));
   const d = { ...data };
+  if (kind === "doctor" && typeof data.visitingAt === "string") {
+    // Older forms: one hospital name per line. Added after any hospital already typed in the new boxes.
+    const typed = (Array.isArray(data.visiting) ? data.visiting : []).filter((it) => isObj(it) && str(it.name));
+    const names = splitLines(data.visitingAt).filter((n) => !typed.some((it) => str((it as Record<string, unknown>).name).toLowerCase() === n.toLowerCase()));
+    if (names.length || typed.length) d.visiting = [...typed, ...names.map((name) => ({ name }))];
+    delete d.visitingAt;
+  }
   delete d.visitingDoctors;
   if (kind === "clinic" && (typeof data.doctors === "string" || visiting.length)) {
     d.doctors = [...(typeof data.doctors === "string" ? splitLines(data.doctors).map((l) => doctorFromLine(l)) : Array.isArray(data.doctors) ? data.doctors : []), ...visiting];

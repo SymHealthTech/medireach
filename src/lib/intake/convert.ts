@@ -28,6 +28,7 @@ import {
   type RepeatItem,
 } from "@/lib/intake/form";
 import { parseQualificationLine } from "@/lib/intake/hints";
+import { ROWS } from "@/lib/intake/rows";
 import { ensureMasterLists, findOrCreateMaster } from "@/lib/masters/server";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { parseTimingsText } from "@/lib/timings";
@@ -121,6 +122,8 @@ export function intakeAsText(kind: IntakeKind, data: IntakeData): string {
     if (s.repeat) {
       const items = isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : [];
       items.forEach((it, i) => {
+        // Only the city filled (it defaults to Pune) is a blank item.
+        if (s.fields.every((f) => f.key === "city" || answerLines(f, it[f.key]).length === 0)) return;
         const rows = s.fields.flatMap((f) => answerLines(f, it[f.key], "  "));
         if (rows.length) out.push(`${s.repeat!.itemLabel} ${i + 1}:`, ...rows);
       });
@@ -190,18 +193,23 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   }
 
   const clinics = [];
-  for (const c of isRepeatValue(d.clinics) ? (d.clinics as RepeatItem[]) : []) {
+  // Own clinics first, then hospitals where they are a visiting consultant.
+  const places = [
+    ...(isRepeatValue(d.clinics) ? (d.clinics as RepeatItem[]) : []).map((c) => ({ c, type: "own_clinic" as const })),
+    ...(isRepeatValue(d.visiting) ? (d.visiting as RepeatItem[]) : []).filter((c) => str(c.name)).map((c) => ({ c, type: "hospital_visiting" as const })),
+  ];
+  for (const { c, type } of places) {
     const city = await matchByName((f) => City.findOne(f).select({ _id: 1, state: 1 }).lean(), str(c.city) || "Pune");
     const area = city ? ((await matchByName((f) => Area.findOne(f).select({ _id: 1 }).lean(), str(c.area), { cityId: city._id })) ?? (await areaIn(city._id, str(c.area)))) : null;
     const pincode = str(c.pincode);
     if (!city || !area || !str(c.name) || !str(c.address) || !/^\d{6}$/.test(pincode)) {
-      if (str(c.name)) skipped.push(`clinic "${str(c.name)}" (area, city or pincode not matched)`);
+      if (str(c.name)) skipped.push(`${type === "own_clinic" ? "clinic" : "visiting hospital"} "${str(c.name)}" (area, city or pincode not matched)`);
       continue;
     }
     const fee = /^\d+$/.test(str(c.fee)) ? Number(str(c.fee)) : undefined;
     clinics.push({
       name: str(c.name),
-      type: "own_clinic" as const,
+      type,
       addressLine1: str(c.address).replace(/\s*\n\s*/g, ", "),
       areaId: area._id,
       cityId: city._id,
@@ -215,9 +223,14 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       showFee: false,
     });
   }
-  if (splitLines(d.awards).length) skipped.push("awards");
-  if (splitLines(d.visitingAt).length) skipped.push("visiting consultant hospitals");
-  if (str(d.systemOther)) skipped.push(`system of medicine ("${str(d.systemOther)}")`);
+  // Awards need a title, who gave it and the year; incomplete ones are left in the notes.
+  const awards = [];
+  for (const line of splitLines(d.awards).slice(0, 15)) {
+    const a = ROWS.awards.parse(line);
+    const y = Number(a.year);
+    if (a.title && a.awardingBody && y && y <= new Date().getFullYear()) awards.push({ title: a.title.slice(0, 120), awardingBody: a.awardingBody.slice(0, 120), year: y });
+    else skipped.push(`award "${line}"`);
+  }
   const allGallery = intake.photos?.gallery ?? [];
   const story = str(d.beyondStory);
 
@@ -232,13 +245,17 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     ...name,
     ...(gender ? { gender } : {}),
     ...(system ? { systemOfMedicine: system } : {}),
+    ...(system === "other" && str(d.systemOther) ? { systemOther: str(d.systemOther).slice(0, 80) } : {}),
     photo: image(intake.photos?.profile, fullName),
     languages: splitList(d.languages),
     practiceSinceYear: year(d.practiceSince),
-    registration: { ...(council ? { councilId: new mongoose.Types.ObjectId(council.id) } : {}), ...(str(d.registrationNumber) ? { number: str(d.registrationNumber) } : {}), ...(year(d.registrationYear) ? { year: year(d.registrationYear) } : {}) },
+    registration: { ...(council ? { councilId: new mongoose.Types.ObjectId(council.id) } : {}), ...(str(d.registrationNumber) ? { number: str(d.registrationNumber) } : {}), ...(year(d.registrationYear) ? { year: year(d.registrationYear) } : {}), ...(str(d.nmrId) ? { nmrId: str(d.nmrId).slice(0, 40) } : {}) },
     qualifications,
     ...(specialty ? { primarySpecialtyId: specialty._id } : {}),
-    services: splitLines(d.services).map((s) => ({ name: s.slice(0, 200) })),
+    services: splitLines(d.services).map((line) => {
+      const s = ROWS.services.parse(line);
+      return { name: (s.name || line).slice(0, 80), ...(s.description ? { description: s.description.slice(0, 200) } : {}) };
+    }),
     conditionsTreated: splitLines(d.conditions).map((s) => s.slice(0, 200)),
     clinics,
     mobile: mobile(d.mobile),
@@ -246,9 +263,11 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "linkedin", "youtube", "website"]),
     shortBio: str(d.shortBio).slice(0, LIMITS.shortBio) || undefined,
     fullBio: paragraphs(d.aboutMe),
-    memberships: splitLines(d.memberships).map((m) => {
-      const y = m.match(/\b(19|20)\d{2}\b/)?.[0];
-      return { name: m.replace(/[–-]?\s*\b(19|20)\d{2}\b\s*$/, "").trim() || m, ...(y && +y <= new Date().getFullYear() ? { since: +y } : {}) };
+    awards,
+    memberships: splitLines(d.memberships).map((line) => {
+      const m = ROWS.memberships.parse(line);
+      const y = Number(m.since);
+      return { name: (m.name || line).slice(0, 120), ...(y && y <= new Date().getFullYear() ? { since: y } : {}) };
     }),
     interests: splitList(d.interests).slice(0, 20),
     ...(intake.photos?.beyond ? { interestsPhoto: { ...image(intake.photos.beyond, str(d.beyondTitle) || "Beyond medicine")!, caption: str(d.beyondTitle).slice(0, 120) || undefined } } : {}),

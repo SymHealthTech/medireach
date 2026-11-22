@@ -35,10 +35,11 @@ describe("preview links", () => {
 });
 
 describe("editor steps", () => {
-  it("puts Design before Business, and Review last, for doctors and sites", () => {
-    const order = (steps: readonly { key: string }[]) => steps.map((s) => s.key).slice(-3);
-    expect(order(doctorForm.STEPS)).toEqual(["templates", "business", "review"]);
-    expect(order(siteForm.STEPS)).toEqual(["design", "business", "review"]);
+  it("puts Design before Business, then Review and Publish as separate last steps, for doctors and sites", () => {
+    const order = (steps: readonly { key: string }[]) => steps.map((s) => s.key).slice(-4);
+    expect(order(doctorForm.STEPS)).toEqual(["templates", "business", "review", "publish"]);
+    expect(order(siteForm.STEPS)).toEqual(["design", "business", "review", "publish"]);
+    expect(doctorForm.STEPS).toHaveLength(11);
   });
 
   it("asks for the source on hospitals only, and saves the sales executive ID with Business", () => {

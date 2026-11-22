@@ -10,7 +10,7 @@ import type { EstablishmentKind } from "@/lib/constants";
 import { Establishment } from "@/models/Establishment";
 import { Specialty } from "@/models/Specialty";
 import { TemplateSlot } from "@/models/TemplateSlot";
-import { Admin } from "@/models/Admin";
+import { salesExecutiveNames } from "@/lib/sales/server";
 
 /** Everything the doctor editor's dropdowns need, as plain serialisable data. */
 export interface EditorOptions {
@@ -92,11 +92,10 @@ export async function getEditorOptions(): Promise<EditorOptions> {
   };
 }
 
-/** Dashboard users for the "Sales executive" dropdown: sales first, then A–Z. */
+/**
+ * Names for the "Sales executive" dropdown: dashboard users (sales first),
+ * then every name typed as "Other" on a saved doctor, clinic or hospital.
+ */
 export async function salesTeam(): Promise<string[]> {
-  const admins = await Admin.find({ active: true }).select({ name: 1, role: 1 }).lean();
-  return admins
-    .sort((a, b) => Number(b.role === "sales") - Number(a.role === "sales") || a.name.localeCompare(b.name, "en"))
-    .map((a) => a.name)
-    .filter((n, i, all) => n && all.indexOf(n) === i);
+  return salesExecutiveNames();
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, Send, ShieldCheck, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,8 +92,8 @@ function fieldLabel(path: string): string {
   return `${names[head!] ?? head}${n}${leaf && head !== "gallery" ? ` (${leaf.replace(/([A-Z])/g, " $1").toLowerCase()})` : ""}`;
 }
 
-export function ReviewStep({ form: f, set, err, options, readOnly, role, review: r }: StepProps & { review: ReviewProps }) {
-  const [phase, setPhase] = useState<"check" | "publish">("check");
+/** Step 10 "Review" (phase "check") and step 11 "Publish" (phase "publish"). */
+export function ReviewStep({ form: f, set, err, options, readOnly, role, review: r, phase }: StepProps & { review: ReviewProps; phase: "check" | "publish" }) {
   const { close, closing } = useCloseToDashboard(r.onSaveAll);
   const isAdmin = role !== "sales";
   const issueFields = [...new Set(r.issues.map((i) => i.field))];
@@ -105,8 +104,7 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
   // The address the site will have: the doctor's own subdomain, else the MediReach page.
   const address = f.subdomain ? subdomainUrl(f.subdomain) : f.slug && f.citySlug ? absUrl(paths.doctor(f.citySlug, f.slug)) : absUrl("/");
   const listPrice = f.founding ? options.prices.foundingRenewal : options.prices.renewalDoctor;
-  const toTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
-  const otherBlockers = r.blockers.filter((b) => b.field !== "review");
+  const otherBlockers = r.blockers.filter((b) => b.field !== "publish");
 
   if (phase === "check") {
     return (
@@ -183,10 +181,7 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         <PhaseNav
           closing={closing}
           onClose={() => void close()}
-          onNext={() => {
-            setPhase("publish");
-            toTop();
-          }}
+          onNext={() => r.onGoTo("", "publish")}
         />
       </div>
     );
@@ -194,13 +189,8 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
 
   return (
     <div className="space-y-5">
-      <BackToCheck
-        onBack={() => {
-          setPhase("check");
-          toTop();
-        }}
-      />
-      <StepGroup n={5} title="Doctor's approval" description="When and how the doctor approved the final page. Required to publish.">
+      <BackToCheck onBack={() => r.onGoTo("", "review")} />
+      <StepGroup n={1} title="Doctor's approval" description="When and how the doctor approved the final page. Required to publish.">
         <div className={grid2}>
           <Field label="Approved on" htmlFor="approval.doctorApprovedAt" error={err("approval.doctorApprovedAt")}>
             <Input
@@ -234,7 +224,7 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         )}
       </StepGroup>
 
-      <StepGroup n={6} title="Payment" description="Record the payment here; it is saved to Payments at once.">
+      <StepGroup n={2} title="Payment" description="Record the payment here; it is saved to Payments at once.">
         <Payments
           target={target}
           canRecord={isAdmin}
@@ -244,7 +234,7 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         />
       </StepGroup>
 
-      <StepGroup n={7} title="Setup and renewal" description="Setup is paid once; the renewal is yearly from year 2.">
+      <StepGroup n={3} title="Setup and renewal" description="Setup is paid once; the renewal is yearly from year 2.">
         <SetupRenewal
           value={{ setupPaidAt: f.setupPaidAt, renewalDueDate: f.renewalDueDate, renewalStatus: f.renewalStatus, renewalPrice: f.renewalPrice }}
           onChange={(patch) => set(patch, { step: "business" })}
@@ -263,11 +253,11 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         </SetupRenewal>
       </StepGroup>
 
-      <StepGroup n={8} title="Own domain (optional)">
+      <StepGroup n={4} title="Own domain (optional)">
         <OwnDomain value={f.ownDomain} onChange={(ownDomain) => set({ ownDomain }, { step: "business" })} isAdmin={isAdmin} readOnly={readOnly} err={err} placeholder="drshah.in" />
       </StepGroup>
 
-      <StepGroup n={9} title="Publish">
+      <StepGroup n={5} title="Publish">
         {r.blockers.length > 0 && (
           <ul className="space-y-1 text-sm">
             {r.blockers.map((b) => (

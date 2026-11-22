@@ -22,10 +22,12 @@ export interface DoctorFormHints {
   intakeId?: string;
   council?: string;
   specialty?: string;
+  /** System of medicine in their words (when they chose Other). */
+  systemOther?: string;
   /** The applicant's lines, as typed. */
   qualificationLines: string[];
   qualifications: ParsedQualification[];
-  /** Per clinic, in form order. */
+  /** Per clinic, in form order; hospitals they visit as a consultant come last (type "visiting"). */
   clinics: FormClinic[];
   /** Design choices: website design key, card style code, "final" / "discuss". */
   websiteDesign?: string;
@@ -34,6 +36,8 @@ export interface DoctorFormHints {
 }
 
 export interface FormClinic {
+  /** "visiting": a hospital where they are a visiting consultant. */
+  type?: "visiting";
   name: string;
   address: string;
   area: string;
@@ -129,31 +133,32 @@ export function parseQualificationLine(line: string): ParsedQualification | null
 export function doctorHints(ref: string, data: IntakeData, intakeId?: string): DoctorFormHints {
   const lines = splitLines(data.qualifications);
   const clinics = Array.isArray(data.clinics) ? (data.clinics as RepeatItem[]) : [];
+  const visiting = Array.isArray(data.visiting) ? (data.visiting as RepeatItem[]) : [];
+  const asClinic = (c: RepeatItem) => ({
+    name: str(c.name),
+    address: str(c.address),
+    area: str(c.area),
+    city: str(c.city),
+    pincode: str(c.pincode),
+    phone: str(c.phone),
+    location: str(c.location),
+    mapsUrl: str(c.mapsUrl),
+    appointmentNote: str(c.appointmentNote),
+    fee: str(c.fee),
+    timings: str(c.timings),
+  });
   return {
     ref,
     ...(intakeId ? { intakeId } : {}),
     ...(str(data.council) ? { council: str(data.council) } : {}),
     ...(str(data.specialty) ? { specialty: str(data.specialty) } : {}),
+    ...(str(data.systemOfMedicine) === "other" && str(data.systemOther) ? { systemOther: str(data.systemOther) } : {}),
     ...(str(data.websiteDesign) ? { websiteDesign: str(data.websiteDesign) } : {}),
     ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
     ...(str(data.designDecision) ? { designDecision: str(data.designDecision) } : {}),
     qualificationLines: lines,
     qualifications: lines.map(parseQualificationLine).filter((q): q is ParsedQualification => q !== null),
-    clinics: clinics
-      .map((c) => ({
-        name: str(c.name),
-        address: str(c.address),
-        area: str(c.area),
-        city: str(c.city),
-        pincode: str(c.pincode),
-        phone: str(c.phone),
-        location: str(c.location),
-        mapsUrl: str(c.mapsUrl),
-        appointmentNote: str(c.appointmentNote),
-        fee: str(c.fee),
-        timings: str(c.timings),
-      }))
-      .filter((c) => c.name || c.address || c.area),
+    clinics: [...clinics.map(asClinic), ...visiting.map((c) => ({ type: "visiting" as const, ...asClinic(c) }))].filter((c) => c.name || c.address || c.area),
   };
 }
 

@@ -33,8 +33,6 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
   if (plan) filter.plan = plan;
   const source = oneOf(param(sp, "source"), DOCTOR_SOURCES);
   if (source) filter.source = source;
-  const founding = oneOf(param(sp, "founding"), ["yes", "no"] as const);
-  if (founding) filter.founding = founding === "yes" ? true : { $ne: true };
   const city = param(sp, "city");
   if (isObjectId(city)) filter["clinics.cityId"] = city;
   const area = param(sp, "area");
@@ -102,7 +100,6 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
           { name: "city", label: "City", options: options.cities.map((c) => ({ value: c.id, label: c.name })) },
           { name: "area", label: "Area", options: options.areas.filter((a) => a.cityId === cityId).map((a) => ({ value: a.id, label: a.name })) },
           { name: "plan", label: "Plan", options: DOCTOR_PLANS.map((p) => ({ value: p, label: DOCTOR_PLAN_LABEL[p] })) },
-          { name: "founding", label: "Founding", options: [{ value: "yes", label: "Founding only" }, { value: "no", label: "Not founding" }] },
           { name: "source", label: "Source", options: DOCTOR_SOURCES.map((s) => ({ value: s, label: s[0]!.toUpperCase() + s.slice(1) })) },
         ]}
         sorts={[

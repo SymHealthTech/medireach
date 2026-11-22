@@ -53,7 +53,7 @@ type SaveState =
   | { status: "error"; message: string };
 
 /**
- * The 10-step doctor editor (MEDIREACH_BUILD_PROMPT.md Phase 4.2):
+ * The 11-step doctor editor (MEDIREACH_BUILD_PROMPT.md Phase 4.2):
  * autosaves the current step as a draft, shows completion ticks, runs the NMC
  * scanner live, and publishes from the last step. The server re-validates
  * everything; this component only makes it pleasant.
@@ -336,9 +336,10 @@ export function DoctorEditor({
         {step === "seo" && <SeoStep {...stepProps} />}
         {step === "business" && <BusinessStep {...stepProps} />}
         {step === "templates" && <TemplatesStep {...stepProps} />}
-        {step === "review" && (
+        {(step === "review" || step === "publish") && (
           <ReviewStep
             {...stepProps}
+            phase={step === "review" ? "check" : "publish"}
             review={{
               textFields,
               issues,

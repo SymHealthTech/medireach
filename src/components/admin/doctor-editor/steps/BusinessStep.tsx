@@ -4,8 +4,8 @@ import Link from "next/link";
 import { CreditCard, ExternalLink } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field, NativeSelect } from "@/components/admin/form/fields";
+import { SitePicker } from "@/components/admin/form/SitePicker";
 import { DOCTOR_PLAN_LABEL } from "@/lib/admin/labels";
 import { DOCTOR_PLANS } from "@/lib/constants";
 import { Group, grid2, type StepProps } from "../shared";
@@ -13,7 +13,6 @@ import { Group, grid2, type StepProps } from "../shared";
 
 export function BusinessStep({ form: f, set, err, options, readOnly, role, doctorId }: StepProps) {
   const isAdmin = role !== "sales";
-  const linked = new Set(f.establishmentIds);
   const clinicLinked = new Set(f.clinics.map((c) => c.establishmentId).filter(Boolean));
 
   return (
@@ -32,27 +31,17 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
         </div>
       </Group>
 
-      <Group title="Clinics and hospitals" description="Sites on MediReach this doctor belongs to. Clinics linked in the Clinics step are included automatically.">
+      <Group title="Clinics and hospitals" description="Search for the clinic or hospital sites on MediReach this doctor belongs to, and select them. Clinics linked in the Clinics step are included automatically.">
         {options.establishments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No clinic or hospital sites yet.</p>
         ) : (
-          <ul className="grid max-h-64 gap-1 overflow-y-auto sm:grid-cols-2">
-            {options.establishments.map((e) => (
-              <li key={e.id}>
-                <label className="flex min-h-10 items-center gap-2 rounded-md px-2 text-sm hover:bg-accent">
-                  <Checkbox
-                    checked={linked.has(e.id) || clinicLinked.has(e.id)}
-                    disabled={readOnly || clinicLinked.has(e.id)}
-                    onCheckedChange={(on) =>
-                      set((f) => ({ establishmentIds: on ? [...f.establishmentIds, e.id] : f.establishmentIds.filter((x) => x !== e.id) }))
-                    }
-                  />
-                  {e.name}
-                  <span className="text-xs text-muted-foreground">{e.kind === "hospital" ? "Hospital" : "Clinic"}</span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          <SitePicker
+            options={options.establishments}
+            value={f.establishmentIds.filter((x) => !clinicLinked.has(x))}
+            locked={[...clinicLinked]}
+            disabled={readOnly}
+            onChange={(ids) => set({ establishmentIds: ids })}
+          />
         )}
         {err("establishmentIds") && <p className="text-sm text-clay-text">{err("establishmentIds")}</p>}
       </Group>
@@ -69,7 +58,7 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
             </Link>
           </Button>
         )}
-        <p className="text-xs text-muted-foreground">The sales executive, payment, setup and renewal, and own domain are on the last step, Review and publish.</p>
+        <p className="text-xs text-muted-foreground">The sales executive is on the Review step; payment, setup and renewal, and own domain are on the last step, Publish.</p>
       </Group>
     </div>
   );

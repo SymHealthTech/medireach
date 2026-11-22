@@ -9,9 +9,9 @@ import { fieldSuggestions, type SuggestKey } from "@/lib/suggestions";
 import { useOptionalIntakeContext } from "./IntakeContext";
 
 /** Long single-value lists are a type-ahead list (datalist) instead of chips. */
-const TYPE_AHEAD: readonly SuggestKey[] = ["education", "specialty", "council"];
-/** A dropdown with "Other" and "Please specify" (the answer is stored as text). */
-const SELECT_OTHER: readonly SuggestKey[] = ["designation"];
+const TYPE_AHEAD: readonly SuggestKey[] = ["education"];
+/** A dropdown with "Other" and "Please specify" (the answer is stored as text), like the admin editor's lists. */
+const SELECT_OTHER: readonly SuggestKey[] = ["designation", "specialty", "council"];
 /** Text fields holding a comma-separated list. */
 const COMMA_LISTS: readonly SuggestKey[] = ["languages", "interests"];
 const SHOWN = 10;

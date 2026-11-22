@@ -33,6 +33,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
     const timings = fc.timings ? parseTimingsText(fc.timings) : null;
     return {
       ...emptyClinic(cityId),
+      ...(fc.type === "visiting" ? { type: "hospital_visiting" as const } : {}),
       name: fc.name,
       addressLine1: fc.address.replace(/\s*\n\s*/g, ", "),
       areaId: area?.id ?? "",
@@ -113,6 +114,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
               <li key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-muted-foreground">
                   <strong className="text-ink">{c.name || `Clinic ${i + 1}`}</strong>
+                  {c.type === "visiting" && " (visiting consultant)"}
                   {[c.address, c.area, c.city, c.pincode].filter(Boolean).length > 0 && ` · ${[c.address, c.area, c.city, c.pincode].filter(Boolean).join(", ")}`}
                 </span>
                 <Button type="button" size="sm" variant="outline" className="shrink-0" disabled={readOnly || importing !== null || f.clinics.length >= 6} onClick={() => void importClinic(c, i)}>

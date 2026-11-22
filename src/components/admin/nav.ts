@@ -10,6 +10,7 @@ import {
   Palette,
   Search,
   Settings,
+  TrendingUp,
   UserRound,
   Users,
   Wrench,
@@ -43,6 +44,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/cards", label: "Visiting cards", icon: IdCard, roles: ALL },
   { href: "/admin/templates", label: "Designs & themes", icon: Palette, roles: ADMINS },
   { href: "/admin/payments", label: "Payments & renewals", icon: CreditCard, roles: ADMINS },
+  { href: "/admin/sales", label: "Sales executives", short: "Sales", icon: TrendingUp, roles: ADMINS },
   { href: "/admin/update-requests", label: "Update requests", icon: Wrench, roles: ADMINS },
   { href: "/admin/intakes", label: "Website forms", short: "Forms", icon: ClipboardList, roles: ALL },
   { href: "/admin/leads", label: "Leads", icon: Users, roles: ALL },
@@ -62,6 +64,18 @@ export const NEW_ITEMS = [
   { href: "/admin/establishments/new?kind=clinic", label: "Clinic", description: "Clinic website and card" },
   { href: "/admin/establishments/new?kind=hospital", label: "Hospital", description: "Small hospital website and card" },
 ] as const;
+
+/**
+ * What "+ New" offers on a page: inside Doctors only a new doctor, inside
+ * Clinics only a clinic, inside Hospitals only a hospital; elsewhere all three.
+ */
+export function newItemsFor(active: NavItem | undefined): readonly (typeof NEW_ITEMS)[number][] {
+  const only = (label: (typeof NEW_ITEMS)[number]["label"]) => NEW_ITEMS.filter((n) => n.label === label);
+  if (active?.href === "/admin/doctors") return only("Doctor");
+  if (active?.href === "/admin/establishments?kind=clinic") return only("Clinic");
+  if (active?.href === "/admin/establishments?kind=hospital") return only("Hospital");
+  return NEW_ITEMS;
+}
 
 export function navForRole(role: AdminRole): NavItem[] {
   return NAV_ITEMS.filter((i) => i.roles.includes(role));

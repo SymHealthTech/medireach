@@ -7,6 +7,8 @@ import { cleanPastedText, emptyItem, fieldId, isRepeatValue, isShown, type Docto
 import { CardStylePicker, ChoiceCards, DesignPicker } from "./DesignPickers";
 import { DoctorsField } from "./DoctorsField";
 import { LocationField } from "./LocationField";
+import { RowsField } from "./RowsField";
+import { ROWS } from "@/lib/intake/rows";
 import { SelectOtherInput, SuggestionChips, SuggestionDatalist, datalistId, suggestMode, useFieldSuggestions } from "./Suggestions";
 import { TimingsField } from "./TimingsField";
 
@@ -100,6 +102,8 @@ export function IntakeField({
         <ChoiceCards id={id} field={f} value={v} onChange={onChange} />
       ) : f.type === "location" ? (
         <LocationField id={id} value={v} onChange={onChange} hint={[context.name, context.address, context.area, context.city].filter((x) => typeof x === "string" && x.trim()).join(", ")} />
+      ) : f.rows ? (
+        <RowsField id={id} def={ROWS[f.rows]} value={v} onChange={onChange} label={f.label} suggestions={suggestions} describedBy={describedBy} invalid={Boolean(error)} />
       ) : mode === "selectOther" ? (
         <SelectOtherInput id={id} value={v} onChange={onChange} items={suggestions} describedBy={describedBy} invalid={Boolean(error)} />
       ) : f.type === "timings" ? (
@@ -128,7 +132,7 @@ export function IntakeField({
         />
       )}
       {mode === "typeahead" && suggestions.length > 0 && <SuggestionDatalist id={datalistId(id)} items={suggestions} />}
-      {mode && mode !== "typeahead" && mode !== "selectOther" && suggestions.length > 0 && <SuggestionChips mode={mode} items={suggestions} value={v} onChange={onChange} label={f.label} />}
+      {mode && !f.rows && mode !== "typeahead" && mode !== "selectOther" && suggestions.length > 0 && <SuggestionChips mode={mode} items={suggestions} value={v} onChange={onChange} label={f.label} />}
       {error ? (
         <p id={`${id}-error`} className="text-sm text-clay-text">
           {error}

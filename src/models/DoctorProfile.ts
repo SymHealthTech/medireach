@@ -100,6 +100,8 @@ export interface DoctorProfileDoc {
 
   // Registration
   systemOfMedicine: SystemOfMedicine;
+  /** The system in their own words, when systemOfMedicine is "other". */
+  systemOther?: string;
   registration: {
     councilId?: Types.ObjectId;
     number?: string;
@@ -255,6 +257,7 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
     practiceSinceYear: yearField,
 
     systemOfMedicine: { type: String, enum: SYSTEMS_OF_MEDICINE, default: "allopathy" },
+    systemOther: { type: String, trim: true, maxlength: 80 },
     registration: {
       councilId: { type: Schema.Types.ObjectId, ref: "Council" },
       number: { type: String, trim: true },

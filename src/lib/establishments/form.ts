@@ -209,7 +209,8 @@ export const STEPS = [
   { key: "seo", title: "SEO" },
   { key: "design", title: "Design" },
   { key: "business", title: "Business" },
-  { key: "review", title: "Review and publish" },
+  { key: "review", title: "Review" },
+  { key: "publish", title: "Publish" },
 ] as const;
 
 export type StepKey = (typeof STEPS)[number]["key"];
@@ -246,6 +247,8 @@ export function stepComplete(step: StepKey, f: EstablishmentForm): boolean {
     case "design":
       return Boolean(f.themeKey && f.siteTemplateId && f.cardTemplateId);
     case "review":
+      return publishBlockers(f).every((b) => b.field === "publish");
+    case "publish":
       return f.status === "published";
   }
 }
@@ -264,7 +267,7 @@ export function publishBlockers(f: EstablishmentForm): { field: StepKey; message
   }
   if (f.doctors.some((d) => !d.doctorProfileId && !d.name.trim())) out.push({ field: "doctors", message: "Every doctor needs a name or a linked portfolio" });
   if (!f.approval.ownerApprovedAt || !f.approval.approvedVia) {
-    out.push({ field: "review", message: "Owner's approval (date and how they approved)" });
+    out.push({ field: "publish", message: "Owner's approval (date and how they approved)" });
   }
   return out;
 }
@@ -349,6 +352,13 @@ const latLng = (lo: number, hi: number) =>
     .string()
     .trim()
     .refine((s) => s === "" || (!Number.isNaN(Number(s)) && Number(s) >= lo && Number(s) <= hi), "Enter a valid coordinate.");
+
+const approvalSchema = z.object({
+  approval: z.object({
+    ownerApprovedAt: dateStr,
+    approvedVia: z.enum(["", ...APPROVAL_CHANNELS]).transform((s) => s || undefined),
+  }),
+});
 
 export const sectionSchemas = {
   basics: z.object({
@@ -488,12 +498,9 @@ export const sectionSchemas = {
     ownerEmail: email,
     internalNotes: t(2000),
   }),
-  review: z.object({
-    approval: z.object({
-      ownerApprovedAt: dateStr,
-      approvedVia: z.enum(["", ...APPROVAL_CHANNELS]).transform((s) => s || undefined),
-    }),
-  }),
+  // The owner's approval: saved from the Publish step (Review sends the same, harmlessly).
+  review: approvalSchema,
+  publish: approvalSchema,
 } satisfies Record<StepKey, z.ZodTypeAny>;
 
 export type SectionData<K extends StepKey> = z.output<(typeof sectionSchemas)[K]>;
@@ -555,6 +562,7 @@ export function sectionPayload(step: StepKey, f: EstablishmentForm): unknown {
         internalNotes: f.internalNotes,
       };
     case "review":
+    case "publish":
       return { approval: f.approval };
   }
 }

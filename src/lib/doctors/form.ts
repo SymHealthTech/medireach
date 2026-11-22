@@ -84,6 +84,8 @@ export interface DoctorForm {
 
   // 2 Registration and qualifications
   systemOfMedicine: (typeof SYSTEMS_OF_MEDICINE)[number];
+  /** "Please specify" when the system is Other. */
+  systemOther: string;
   registration: { councilId: string; number: string; year: number | undefined; nmrId: string };
   qualifications: { degreeId: string; specialization: string; institute: string; year: number | undefined }[];
 
@@ -187,6 +189,7 @@ export function emptyDoctorForm(): DoctorForm {
     languages: ["English", "Hindi", "Marathi"],
     practiceSinceYear: undefined,
     systemOfMedicine: "allopathy",
+    systemOther: "",
     registration: { councilId: "", number: "", year: undefined, nmrId: "" },
     qualifications: [],
     practitionerType: "gp",
@@ -248,7 +251,8 @@ export const STEPS = [
   { key: "seo", title: "SEO" },
   { key: "templates", title: "Design" },
   { key: "business", title: "Business" },
-  { key: "review", title: "Review and publish" },
+  { key: "review", title: "Review" },
+  { key: "publish", title: "Publish" },
 ] as const;
 
 export type StepKey = (typeof STEPS)[number]["key"];
@@ -275,6 +279,8 @@ export function stepComplete(step: StepKey, f: DoctorForm): boolean {
     case "templates":
       return Boolean(f.portfolioTemplateId && f.cardTemplateId);
     case "review":
+      return publishBlockers(f).every((b) => b.field === "publish");
+    case "publish":
       return f.status === "published";
   }
 }
@@ -293,7 +299,7 @@ export function publishBlockers(f: DoctorForm): { field: StepKey; message: strin
     }
   });
   if (!f.approval.doctorApprovedAt || !f.approval.approvedVia) {
-    out.push({ field: "review", message: "Doctor's approval (date and how they approved)" });
+    out.push({ field: "publish", message: "Doctor's approval (date and how they approved)" });
   }
   return out;
 }
@@ -416,6 +422,14 @@ export const dateStr = z
   .refine((s) => s === "" || /^\d{4}-\d{2}-\d{2}$/.test(s), "Enter a valid date.")
   .transform((s) => (s ? new Date(`${s}T00:00:00+05:30`) : undefined));
 
+/** The doctor's approval: saved from the Publish step (Review sends the same, harmlessly). */
+const approvalSchema = z.object({
+  approval: z.object({
+    doctorApprovedAt: dateStr,
+    approvedVia: z.enum(["", ...APPROVAL_CHANNELS]).transform((s) => s || undefined),
+  }),
+});
+
 export const sectionSchemas = {
   basics: z.object({
     title: z.string().trim().max(10).default("Dr."),
@@ -432,6 +446,7 @@ export const sectionSchemas = {
   }),
   registration: z.object({
     systemOfMedicine: z.enum(SYSTEMS_OF_MEDICINE),
+    systemOther: t(80),
     registration: z.object({
       councilId: optOid,
       number: t(40),
@@ -591,12 +606,8 @@ export const sectionSchemas = {
     cardTemplateId: z.enum(TEMPLATE_KEYS),
     cardStyle: z.enum(["", ...DOCTOR_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
   }),
-  review: z.object({
-    approval: z.object({
-      doctorApprovedAt: dateStr,
-      approvedVia: z.enum(["", ...APPROVAL_CHANNELS]).transform((s) => s || undefined),
-    }),
-  }),
+  review: approvalSchema,
+  publish: approvalSchema,
 } satisfies Record<StepKey, z.ZodTypeAny>;
 
 /** Pick a section's fields out of the full form (what the client sends). */
@@ -605,7 +616,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "basics":
       return { title: f.title, firstName: f.firstName, middleName: f.middleName, lastName: f.lastName, displayName: f.displayName, gender: f.gender, photo: f.photo, languages: f.languages, practiceSinceYear: f.practiceSinceYear };
     case "registration":
-      return { systemOfMedicine: f.systemOfMedicine, registration: f.registration, qualifications: f.qualifications };
+      return { systemOfMedicine: f.systemOfMedicine, systemOther: f.systemOther, registration: f.registration, qualifications: f.qualifications };
     case "practice":
       return { practitionerType: f.practitionerType, primarySpecialtyId: f.primarySpecialtyId, secondarySpecialtyIds: f.secondarySpecialtyIds, services: f.services, conditionsTreated: f.conditionsTreated };
     case "clinics":
@@ -621,6 +632,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "templates":
       return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle };
     case "review":
+    case "publish":
       return { approval: f.approval };
   }
 }
