@@ -652,6 +652,12 @@ describe("creating the website draft", () => {
     expect(e!.appointmentNote).toBe("Call ahead. OPD: Mon–Sat: 9 am – 1 pm; Sunday: closed");
     const cat = await ClinicCategory.findById(e!.categoryId).lean();
     expect(cat!.slug).toBe("cancer-hospital");
+    // Clinics say "Consultation hours" instead of OPD.
+    const c = await saveIntake({ kind: "clinic", email: "allday@example.com", data: { ...emptyIntakeData("clinic"), name: "All Day Clinic", is24x7: true, timings: "Mon–Sat: 10 am – 1 pm" }, photos: {} }, null);
+    const cm = await createSiteFromIntake((await Intake.findById(c.ok ? c.intake.id : "").lean())!);
+    expect((await Establishment.findById(cm.id).lean())!.appointmentNote).toBe("Consultation hours: Mon–Sat: 10 am – 1 pm");
+    const field = INTAKE_SECTIONS.clinic.flatMap((s) => s.fields).find((f) => f.key === "timings")!;
+    expect(field.whenChecked?.label).toBe("Consultation hours (optional)");
   });
 
   it("maps hospital departments and their doctors", async () => {

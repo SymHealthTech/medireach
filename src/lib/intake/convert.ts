@@ -436,8 +436,8 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
   const label = kind === "clinic" ? "clinic" : "hospital";
-  // Open 24×7: the site shows "Open 24 hours", not the week, so OPD hours typed in the form go in the appointment note.
-  const opd = d.is24x7 === true && str(d.timings) ? `OPD: ${splitLines(d.timings).join("; ")}` : "";
+  // Open 24×7: the site shows "Open 24 hours", not the week, so hours typed in the form (OPD, or a clinic's consultation hours) go in the appointment note.
+  const opd = d.is24x7 === true && str(d.timings) ? `${kind === "hospital" ? "OPD" : "Consultation hours"}: ${splitLines(d.timings).join("; ")}` : "";
   const noteParts = [str(d.appointmentNote), opd].filter(Boolean).join(" ");
   const appointmentNote = noteParts.slice(0, 200) || undefined;
   if (noteParts.length > 200) skipped.push(`appointment note / OPD hours (too long: "${noteParts}")`);

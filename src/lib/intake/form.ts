@@ -625,7 +625,15 @@ const CLINIC: SectionDef[] = [
     title: "Timings",
     fields: [
       { key: "is24x7", label: "Open 24×7", type: "checkbox", wide: true, help: "Only if the clinic never closes." },
-      { ...timingsField(), optionalIf: "is24x7" },
+      {
+        ...timingsField(),
+        optionalIf: "is24x7",
+        whenChecked: {
+          key: "is24x7",
+          label: "Consultation hours (optional)",
+          help: "Your website shows “Open 24 hours, all 7 days”. Consultation hours you add here are shown in the appointment note.",
+        },
+      },
       text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" }),
     ],
   },
