@@ -458,7 +458,8 @@ export function IntakeForm({
                     </p>
                     <ul className="mt-3 flex flex-wrap gap-2">
                       {missing.map((m) => (
-                        <li key={m.key}>
+                        // Several awards can point at the same field, so the label is part of the key.
+                        <li key={`${m.key}:${m.label}`}>
                           <button type="button" onClick={() => focusField(m.key)} className="rounded-full border border-marigold/40 bg-marigold/10 px-3 py-1 text-sm text-ink hover:bg-marigold/20">
                             {m.label}
                           </button>

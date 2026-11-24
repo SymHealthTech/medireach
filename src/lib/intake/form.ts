@@ -400,7 +400,7 @@ const DOCTOR: SectionDef[] = [
       text("name", "Clinic or hospital name", { required: true }),
       { key: "phone", label: "Clinic phone", type: "phone" },
       ...placeFields(true),
-      { key: "pincode", label: "Pincode", type: "pincode" },
+      { key: "pincode", label: "Pincode", type: "pincode", required: true },
       ...locationFields("clinic"),
       timingsField(),
       ...feeFields(),
@@ -415,8 +415,9 @@ const DOCTOR: SectionDef[] = [
     fields: [
       text("name", "Hospital name", { required: true, placeholder: "Ruby Hall Clinic" }),
       { key: "phone", label: "Hospital phone", type: "phone" },
-      ...placeFields(false, "40 Sassoon Road"),
-      { key: "pincode", label: "Pincode", type: "pincode" },
+      // Once a hospital is added, its address is needed like a clinic's (the editor needs it to list the place).
+      ...placeFields(true, "40 Sassoon Road"),
+      { key: "pincode", label: "Pincode", type: "pincode", required: true },
       { ...timingsField("Days and timings you visit"), required: false, help: "Optional. Tap a common pattern, or type them, e.g. “Tuesday and Friday: 4 pm – 6 pm” or “On call”." },
       ...feeFields(),
       text("appointmentNote", "Appointment note", { placeholder: "Appointments through the hospital desk", suggest: "appointmentNote" }),
@@ -1233,10 +1234,29 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
       for (const f of s.fields) {
         if (isRequired(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
         if (f.type === "doctors") missingDoctorFields(f, data, "", s.title, out);
+        if (f.rows === "awards") {
+          for (const line of splitLines(data[f.key])) {
+            const a = awardParts(line);
+            const need = [!a.body && "given by", !a.year && "year"].filter(Boolean).join(" and ");
+            if (need) out.push({ key: f.key, label: `Award “${a.title || line}”: ${need}`, section: s.title });
+          }
+        }
       }
     }
   }
   return out;
+}
+
+/**
+ * An award line ("Best paper award – IMA Pune – 2019") in parts, the way the
+ * rows field writes it (lib/intake/rows.ts). The editor needs all three, so
+ * the form asks for them before sending.
+ */
+function awardParts(line: string): { title: string; body: string; year: string } {
+  const m = line.match(/[\s–—,(-]*\(?\b(19[4-9]\d|20\d{2})\)?\s*$/);
+  const rest = m ? line.slice(0, m.index).trim() : line.trim();
+  const [title = "", ...body] = rest.split(/\s+[–—-]\s+/);
+  return { title: title.trim(), body: body.join(" – ").trim(), year: m ? m[1]! : "" };
 }
 
 /** How many required fields are filled, for the progress bar. */
@@ -1250,6 +1270,8 @@ export function requiredProgress(kind: IntakeKind, data: IntakeData): { done: nu
     } else total += s.fields.filter((f) => isRequired(f, data)).length;
   }
   for (const { doctor } of doctorEntries(kind, data)) total += requiredDoctorFields(doctor as unknown as Record<string, unknown>).length; // a name, and the role for "Other"
+  // Each award typed needs who gave it and the year.
+  for (const s of INTAKE_SECTIONS[kind]) for (const f of s.fields) if (f.rows === "awards" && !s.repeat) total += splitLines(data[f.key]).length;
   const missing = missingForSubmit(kind, data).length;
   return { done: Math.max(0, total - missing), total };
 }

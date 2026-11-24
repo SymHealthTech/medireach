@@ -390,7 +390,10 @@ describe("saving and ownership", () => {
     if (!r.ok) expect(Object.keys((r as { fieldErrors?: object }).fieldErrors ?? {})).toContain("registrationNumber");
     expect(await Intake.countDocuments()).toBe(0); // a refused send saves nothing
 
-    const sent = await saveIntake({ kind: "doctor", email: "s@example.com", data: fullDoctor(), photos: {}, submit: true }, null);
+    // A visiting hospital with only its name can't be sent yet (the editor needs its address).
+    const nameOnly = await saveIntake({ kind: "doctor", email: "s@example.com", data: fullDoctor(), photos: {}, submit: true }, null);
+    expect(nameOnly.ok).toBe(false);
+    const sent = await saveIntake({ kind: "doctor", email: "s@example.com", data: { ...fullDoctor(), visitingAt: "" }, photos: {}, submit: true }, null);
     expect(sent.ok).toBe(true);
     if (!sent.ok) return;
     expect(sent.intake.status).toBe("submitted");
@@ -462,6 +465,7 @@ describe("creating the website draft", () => {
     expect(made.href).toBe(`/admin/doctors/${made.id}`);
     const doc = await DoctorProfile.findById(made.id).lean();
     expect(doc).toMatchObject({ status: "draft", firstName: "Asha", middleName: "R", lastName: "Kulkarni", mobile: "9876543210", ownerEmail: "conv@example.com", source: "inbound" });
+    expect(doc!.displayName).toBe("Dr. Asha R Kulkarni"); // the middle name typed is shown
     expect(doc!.primarySpecialtyId).toBeDefined();
     expect(doc!.registration.councilId).toBeDefined();
     expect(doc!.clinics).toHaveLength(1);
@@ -491,6 +495,18 @@ describe("creating the website draft", () => {
       ["MD", "KEM", 2012],
     ]);
     expect(doc!.internalNotes).not.toContain("Please enter in the editor: qualifications");
+  });
+
+  it("asks for what the editor needs: clinic pincode, visiting hospital address, award given-by and year", () => {
+    const base = { ...withDefaults("doctor", { ...fullDoctor(), visitingAt: "" }) };
+    expect(missingForSubmit("doctor", base)).toEqual([]);
+    const clinics = base.clinics as RepeatItem[];
+    expect(missingForSubmit("doctor", { ...base, clinics: [{ ...clinics[0]!, pincode: "" }] }).map((m) => m.key)).toContain("clinics.0.pincode");
+    const visiting = missingForSubmit("doctor", { ...base, visiting: [{ name: "Ruby Hall Clinic", city: "Pune" }] }).map((m) => m.key);
+    expect(visiting).toEqual(expect.arrayContaining(["visiting.0.area", "visiting.0.address", "visiting.0.pincode"]));
+    const awards = missingForSubmit("doctor", { ...base, awards: "Best paper award – IMA – 2019\nYoung doctor award\nService award – 2020" });
+    expect(awards.map((m) => m.label)).toEqual(["Award “Young doctor award”: given by and year", "Award “Service award”: given by"]);
+    expect(requiredProgress("doctor", { ...base, awards: "Best paper award – IMA – 2019" })).toMatchObject({ done: expect.any(Number) });
   });
 
   it("imports what only the admin editor asked before: practitioner type, other specialties, public email, publications, award photos, fee display", async () => {

@@ -159,8 +159,8 @@ export const ROWS: Record<RowsKind, RowsDef> = {
     max: 15,
     columns: [
       { key: "title", label: "Award", placeholder: "Best paper award", required: true },
-      { key: "awardingBody", label: "Given by", placeholder: "Indian Medical Association" },
-      { key: "year", label: "Year", type: "year", placeholder: "2019" },
+      { key: "awardingBody", label: "Given by", placeholder: "Indian Medical Association", required: true },
+      { key: "year", label: "Year", type: "year", placeholder: "2019", required: true },
     ],
     format: (r) => join([r.title, r.awardingBody, r.year]),
     parse: (line) => {

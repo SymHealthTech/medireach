@@ -274,6 +274,8 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   const doc = new DoctorProfile({
     status: "draft",
     ...name,
+    // A middle name typed in the form is shown, like the admin editor's display name ("Dr. Asha R Kulkarni").
+    ...(name.middleName ? { displayName: [name.title, name.firstName, name.middleName, name.lastName].join(" ").slice(0, 120) } : {}),
     ...(gender ? { gender } : {}),
     ...(system ? { systemOfMedicine: system } : {}),
     ...(system === "other" && str(d.systemOther) ? { systemOther: str(d.systemOther).slice(0, 80) } : {}),

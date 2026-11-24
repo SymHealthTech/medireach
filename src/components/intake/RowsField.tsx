@@ -75,6 +75,12 @@ export function RowsField({
                 <div key={c.key} className="min-w-0 space-y-1">
                   <label htmlFor={cid} className="block text-xs font-medium text-body/80">
                     {c.label}
+                    {c.required && (
+                      <span className="text-clay-text" aria-hidden>
+                        {" "}
+                        *
+                      </span>
+                    )}
                   </label>
                   {c.type === "choice" ? (
                     <SelectOtherInput id={cid} value={v} onChange={set} items={[...(c.choices ?? [])]} describedBy={describedBy} invalid={invalid && ci === 0} />
