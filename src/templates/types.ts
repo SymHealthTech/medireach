@@ -75,6 +75,8 @@ export interface PublicDoctor {
   practiceSinceYear?: number;
 
   systemOfMedicine: string;
+  /** The system in words for anything but allopathy ("Ayurveda", or their own words for Other); absent for allopathy. */
+  systemLabel?: string;
   registration: { council?: string; number?: string; year?: number; nmrId?: string };
   qualifications: { degree: string; specialization?: string; institute: string; year?: number }[];
   /** "MBBS, MD (Medicine)". */

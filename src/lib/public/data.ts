@@ -110,6 +110,15 @@ export function normalizeIndianPhone(raw?: string): string | undefined {
   return digits.length >= 8 ? digits : undefined;
 }
 
+const SYSTEM_LABEL: Record<string, string> = { ayurveda: "Ayurveda", homeopathy: "Homeopathy", unani: "Unani", siddha: "Siddha", dental: "Dentistry" };
+
+/** "Ayurveda", their own words for Other, nothing for allopathy (the usual case). */
+export function systemLabelOf(system: string | undefined, other?: string): string | undefined {
+  if (!system || system === "allopathy") return undefined;
+  if (system === "other") return other?.trim() || undefined;
+  return SYSTEM_LABEL[system] ?? system[0]!.toUpperCase() + system.slice(1);
+}
+
 function fullNameOf(d: Pick<LeanDoctor, "title" | "firstName" | "lastName" | "displayName">): string {
   if (d.displayName) return d.displayName;
   return [d.title || "Dr.", d.firstName, d.lastName].filter(Boolean).join(" ");
@@ -227,6 +236,7 @@ export function toPublicDoctor(d: LeanDoctor, masters: Masters, sites?: SiteLink
     ...(d.practiceSinceYear ? { practiceSinceYear: d.practiceSinceYear } : {}),
 
     systemOfMedicine: d.systemOfMedicine,
+    ...(systemLabelOf(d.systemOfMedicine, d.systemOther) ? { systemLabel: systemLabelOf(d.systemOfMedicine, d.systemOther) } : {}),
     registration: {
       ...(d.registration?.councilId ? { council: mi.councils.get(idStr(d.registration.councilId))?.name } : {}),
       ...(d.registration?.number ? { number: d.registration.number } : {}),

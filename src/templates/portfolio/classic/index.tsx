@@ -9,6 +9,7 @@ import {
   IdCard,
   IndianRupee,
   Languages,
+  Leaf,
   Mail,
   MapPin,
   MessageCircle,
@@ -280,6 +281,9 @@ function ClinicCard({ clinic }: { clinic: PublicClinic }) {
 
 export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
+  // Year registered and NMR ID, under the registration (and in the footer).
+  const regMore = [d.registration.year ? `Registered in ${d.registration.year}` : "", d.registration.nmrId ? `NMR ID ${d.registration.nmrId}` : ""].filter(Boolean).join(" · ");
+  const practice = d.practitionerType === "consultant" ? "Consultant / specialist" : "General practitioner";
   const years = d.practiceSinceYear ? new Date().getFullYear() - d.practiceSinceYear : undefined;
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
@@ -324,7 +328,14 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
 
             <div className="min-w-0 space-y-6">
               {seo.heading}
-              {d.degreesLine && <p className="text-lg font-semibold text-ink/85">{d.degreesLine}</p>}
+              {(d.degreesLine || d.systemLabel) && (
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-lg font-semibold text-ink/85">
+                  {d.degreesLine && <span>{d.degreesLine}</span>}
+                  {d.systemLabel && <span className="rounded-full bg-sage px-3 py-1 text-sm font-semibold text-ink">{d.systemLabel}</span>}
+                </p>
+              )}
+              {/* With a full bio below, the short bio is a one-line intro here (without one, it is the bio). */}
+              {d.shortBio && d.fullBioHtml && <p className="max-w-xl text-[17px] leading-relaxed text-body/85">{d.shortBio}</p>}
 
               {stats.length > 0 && (
                 <dl className="grid max-w-lg grid-cols-3 divide-x divide-ink/10 rounded-2xl bg-surface/80 py-4 shadow-soft ring-1 ring-ink/5">
@@ -369,6 +380,32 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
                     <span>
                       <span className="block text-xs text-muted-foreground">Registration</span>
                       <span className="font-semibold text-ink">{reg}</span>
+                      {regMore && <span className="block text-xs text-body/75">{regMore}</span>}
+                    </span>
+                  </li>
+                )}
+                {!reg && regMore && (
+                  <li className="flex items-center gap-3 rounded-xl bg-paper px-4 py-3">
+                    <BadgeCheck aria-hidden className="size-5 shrink-0 text-leaf-text" strokeWidth={1.75} />
+                    <span>
+                      <span className="block text-xs text-muted-foreground">Registration</span>
+                      <span className="font-semibold text-ink">{regMore}</span>
+                    </span>
+                  </li>
+                )}
+                <li className="flex items-center gap-3 rounded-xl bg-paper px-4 py-3">
+                  <Stethoscope aria-hidden className="size-5 shrink-0 text-lagoon" strokeWidth={1.75} />
+                  <span>
+                    <span className="block text-xs text-muted-foreground">Practice</span>
+                    <span className="font-semibold text-ink">{practice}</span>
+                  </span>
+                </li>
+                {d.systemLabel && (
+                  <li className="flex items-center gap-3 rounded-xl bg-paper px-4 py-3">
+                    <Leaf aria-hidden className="size-5 shrink-0 text-leaf-text" strokeWidth={1.75} />
+                    <span>
+                      <span className="block text-xs text-muted-foreground">System of medicine</span>
+                      <span className="font-semibold text-ink">{d.systemLabel}</span>
                     </span>
                   </li>
                 )}
@@ -787,6 +824,7 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
             <p>
               Information provided by the doctor.
               {d.registration.number && <> Registration: {reg}.</>}
+              {regMore && <> {regMore}.</>}
             </p>
             <p className="flex flex-wrap gap-x-4 gap-y-1">
               <span>
