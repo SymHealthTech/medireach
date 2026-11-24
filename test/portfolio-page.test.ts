@@ -86,6 +86,15 @@ describe("doctor visiting card shows what the admin editor asks", () => {
     expect(phone).toContain("by appointment only");
     for (const v of ["print", "phone"] as const) expect(card(d, v), v).toContain("· ayurveda");
   });
+
+  it("shows the main clinic's street on the phone card, unless the card is full", () => {
+    const street = { ...c0, addressLine1: "Shop 4, Karve Road", addressLine2: "First floor", appointmentNote: undefined };
+    expect(card({ ...base, clinics: [street] }, "phone")).toContain("shop 4, karve road, first floor");
+    const full = { ...base, phone: "919800000001", whatsapp: "919800000002", clinics: [street, { ...c0, id: "x2", name: "Ruby Hall Clinic" }] };
+    const html = card(full, "phone");
+    expect(html).not.toContain("shop 4, karve road");
+    expect(html).toContain(`${c0.area.name.toLowerCase()}, ${c0.city.name.toLowerCase()}`);
+  });
 });
 
 describe("doctor page: name and map", () => {

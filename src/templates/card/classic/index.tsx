@@ -111,6 +111,13 @@ function doctorNumbers(d: CardTemplateProps["doctor"]): { icon: "phone" | "chat"
   ];
 }
 
+/** The clinic's street, area and city ("Shop 4, Karve Road, Kothrud, Pune"); the area once if the street names it. */
+function placeLine(c: CardTemplateProps["doctor"]["clinics"][number]): string {
+  const street = [c.addressLine1, c.addressLine2].filter(Boolean).join(", ");
+  const withArea = street.toLowerCase().includes(c.area.name.toLowerCase()) ? street : [street, c.area.name].filter(Boolean).join(", ");
+  return [withArea, c.city.name].filter(Boolean).join(", ");
+}
+
 /** "General Physician", with the system for anyone not practising allopathy ("Physician · Ayurveda"). */
 function specialtyLine(d: CardTemplateProps["doctor"]): string {
   const spec = d.primarySpecialty?.name ?? "";
@@ -226,16 +233,19 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
   const more = d.clinics.length > 2 ? ` +${d.clinics.length - 2} more` : "";
   const hours = clinic ? openDaysSummary(clinic.timings) : "";
   const note = clinic?.appointmentNote ? clip(clinic.appointmentNote, 48) : undefined;
-  const rows: { icon: keyof typeof ICONS; label: string; value: string; note?: string }[] = [
+  const rows: { icon: keyof typeof ICONS; label: string; value: string; note?: string; place?: boolean }[] = [
     ...doctorNumbers(d).map((n) => ({ icon: n.icon, label: n.label, value: formatPhone(n.value) })),
-    ...(clinic ? [{ icon: "pin" as const, label: clip(clinic.name, 40), value: `${clinic.area.name}, ${clinic.city.name}` }] : []),
+    ...(clinic ? [{ icon: "pin" as const, label: clip(clinic.name, 40), value: placeLine(clinic), place: true }] : []),
     ...(also ? [{ icon: "pin" as const, label: "Also at", value: clip(`${also.name}, ${also.area.name}`, 40 - more.length) + more }] : []),
     ...(hours || note ? [{ icon: "clock" as const, label: "Timings", value: hours ? (hours.length > 70 ? "See my website for timings" : hours) : "Please call for timings", ...(note ? { note } : {}) }] : []),
   ];
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
   const spec = specialtyLine(d);
-  // A full card (five rows, or four with a note): tighter rows, a smaller photo and QR so everything fits.
-  const tight = rows.length > 4 || (rows.length > 3 && Boolean(note));
+  // A full card (five rows, or four with a note) keeps the clinic to its area and city; otherwise the street is shown too.
+  const full = rows.length > 4 || (rows.length > 3 && Boolean(note));
+  if (full) for (const r of rows) if (r.place && clinic) r.value = `${clinic.area.name}, ${clinic.city.name}`;
+  // Tighter rows and a smaller photo and QR when full, or when four rows include a street that wraps.
+  const tight = full || (rows.length > 3 && rows.some((r) => r.place && r.value.length > 40));
   const p = doctorCardPalette(d.cardStyle);
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: p.paper, color: p.ink, fontFamily: fonts.body }}>
