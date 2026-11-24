@@ -98,3 +98,27 @@ describe("hospital visiting card shows what the admin editor asks", () => {
   });
 });
 
+describe("clinic visiting card", () => {
+  const c = SAMPLE_SITES.skin;
+  const card = (s: PublicEstablishment, variant: "print" | "phone") => renderToStaticMarkup(createElement(ClassicSiteCard, siteCardProps(s, variant, "html")));
+
+  it("names up to 2 doctors and adds the appointment note on the phone card", () => {
+    const doctors = [
+      { name: "Dr. Riya Joshi", specialty: "Dermatologist" },
+      { name: "Dr. Kunal Rao", specialty: "Trichologist" },
+      { name: "Dr. A Shah" },
+      { name: "Dr. B Mehta" },
+    ];
+    const html = card({ ...c, doctors, appointmentNote: "By appointment only" }, "phone");
+    expect(html).toContain("Dr. Riya Joshi · Dermatologist");
+    expect(html).toContain("+2 more");
+    expect(html).not.toContain("Dr. A Shah");
+    expect(html).toContain("By appointment only");
+    // A long note is shortened to one line.
+    expect(card({ ...c, appointmentNote: "x".repeat(120) }, "phone")).toContain("…");
+    // Not on the print card, and not on hospital cards.
+    expect(card({ ...c, doctors, appointmentNote: "By appointment only" }, "print")).not.toContain("Dr. Riya Joshi");
+    expect(card({ ...SAMPLE_SITES["small-hospital"], doctors, appointmentNote: "OPD: Mon–Sat" }, "phone")).not.toContain("Dr. Riya Joshi");
+  });
+});
+

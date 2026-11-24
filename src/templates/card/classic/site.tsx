@@ -70,6 +70,9 @@ function cardNumbers(s: SiteCardTemplateProps["site"]): { icon: "phone" | "chat"
   return out;
 }
 
+/** Shortened to `max` characters with "…" (card rows have a fixed width). */
+const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
+
 function hoursText(s: SiteCardTemplateProps["site"]): string {
   if (s.is24x7) return "Open 24×7";
   const summary = openDaysSummary(s.timings);
@@ -143,7 +146,26 @@ function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
 // Phone: 1080 × 1920
 // ---------------------------------------------------------------------------
 
-function PhoneRow({ icon, label, value, last, soft, primary, tight }: { icon: keyof typeof ICONS; label: string; value: string; last?: boolean; soft: string; primary: string; tight?: boolean }) {
+/** A row's value: one line of text, or several short lines (the clinic's doctors). `note` is a smaller line under it. */
+function PhoneRow({
+  icon,
+  label,
+  value,
+  note,
+  last,
+  soft,
+  primary,
+  tight,
+}: {
+  icon: keyof typeof ICONS;
+  label: string;
+  value: string | string[];
+  note?: string;
+  last?: boolean;
+  soft: string;
+  primary: string;
+  tight?: boolean;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", padding: tight ? "18px 0" : "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: 999, background: soft, marginRight: 28 }}>
@@ -151,7 +173,16 @@ function PhoneRow({ icon, label, value, last, soft, primary, tight }: { icon: ke
       </div>
       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ display: "flex", fontSize: 24, fontWeight: 600, letterSpacing: 3, color: MUTED }}>{label.toUpperCase()}</div>
-        <div style={{ display: "flex", fontSize: 36, fontWeight: 600, color: TEXT, marginTop: 4, lineHeight: 1.25 }}>{value}</div>
+        {typeof value === "string" ? (
+          <div style={{ display: "flex", fontSize: 36, fontWeight: 600, color: TEXT, marginTop: 4, lineHeight: 1.25 }}>{value}</div>
+        ) : (
+          value.map((line) => (
+            <div key={line} style={{ display: "flex", fontSize: 32, fontWeight: 600, color: TEXT, marginTop: 4, lineHeight: 1.25 }}>
+              {line}
+            </div>
+          ))
+        )}
+        {note && <div style={{ display: "flex", fontSize: 28, color: MUTED, marginTop: 6, lineHeight: 1.3 }}>{note}</div>}
       </div>
     </div>
   );
@@ -162,28 +193,42 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
   const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
   const what = typeName(s);
   const street = [s.address.line1, s.address.line2].filter(Boolean).join(", ");
-  const rows: { icon: keyof typeof ICONS; label: string; value: string }[] = [
+  // Clinics: the doctors (up to 2 named, then "and N more") and the appointment note, so the card says who you will see and how.
+  const clinic = s.kind === "clinic";
+  const doctors = clinic ? s.doctors.filter((d) => d.name.trim()) : [];
+  // One line per doctor: name and specialty, or the name alone when both don't fit.
+  const doctorLines = doctors.slice(0, 2).map((d, i) => {
+    const more = i === 1 && doctors.length > 2 ? ` +${doctors.length - 2} more` : "";
+    const room = 40 - more.length;
+    const full = [d.name, d.specialty].filter(Boolean).join(" · ");
+    return (full.length <= room ? full : clip(d.name, room)) + more;
+  });
+  const note = clinic && s.appointmentNote ? clip(s.appointmentNote, 48) : undefined;
+  const rows: { icon: keyof typeof ICONS; label: string; value: string | string[]; note?: string }[] = [
     ...cardNumbers(s).map((n) => ({ icon: n.icon, label: n.label, value: formatPhone(n.value) })),
+    ...(doctorLines.length ? [{ icon: "user" as const, label: doctors.length > 1 ? "Doctors" : "Doctor", value: doctorLines }] : []),
     {
       icon: "pin",
       label: "Address",
       // Skip the area when the address lines already name it ("Sample Road, Wakad").
       value: street.toLowerCase().includes(s.address.area.name.toLowerCase()) ? street : [street, s.address.area.name].filter(Boolean).join(", "),
     },
-    { icon: "clock", label: "Timings", value: hoursText(s) },
+    { icon: "clock", label: "Timings", value: hoursText(s), ...(note ? { note } : {}) },
   ];
   // Five rows (emergency, call, WhatsApp, address, timings): tighter rows and a smaller QR so it all fits.
   const tight = rows.length > 4;
+  // A full clinic card (doctors and an appointment note, or five rows plus doctors): a shorter header too.
+  const compact = (tight && doctorLines.length > 0) || (doctorLines.length > 1 && Boolean(note));
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body }}>
       {devBanner && <DevBanner name={devBanner} />}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: 900, paddingTop: 96, background: primary, position: "relative", overflow: "hidden", textAlign: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: compact ? 780 : 900, paddingTop: compact ? 64 : 96, background: primary, position: "relative", overflow: "hidden", textAlign: "center" }}>
         <div style={{ display: "flex", position: "absolute", top: -220, right: -200, width: 640, height: 640, borderRadius: 999, border: "3px solid rgba(255,255,255,0.08)" }} />
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: accent }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: 56 }}>
-          <Logo url={logoUrl} name={s.name} size={280} primary={primary} soft={soft} fonts={fonts} />
+        <div style={{ display: "flex", marginTop: compact ? 36 : 56 }}>
+          <Logo url={logoUrl} name={s.name} size={compact ? 220 : 280} primary={primary} soft={soft} fonts={fonts} />
         </div>
-        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(s.name, 80), lineHeight: 1.08, color: "#FFFFFF", marginTop: 48, padding: "0 60px" }}>{s.name}</div>
+        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(s.name, 80), lineHeight: 1.08, color: "#FFFFFF", marginTop: compact ? 32 : 48, padding: "0 60px" }}>{s.name}</div>
         <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: accent, marginTop: 18 }}>{what}</div>
         <div style={{ display: "flex", fontSize: 32, color: "rgba(255,255,255,0.82)", marginTop: 10 }}>
           {s.address.area.name}, {s.address.city.name}
@@ -193,7 +238,7 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
       <div style={{ display: "flex", padding: "0 72px", marginTop: -110, position: "relative" }}>
         <div style={{ display: "flex", flexDirection: "column", width: "100%", background: "#FFFFFF", borderRadius: 40, padding: "18px 48px", boxShadow: "0 30px 60px -20px rgba(0,0,0,0.25)" }}>
           {rows.map((r, i) => (
-            <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} last={i === rows.length - 1} soft={soft} primary={primary} tight={tight} />
+            <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} note={r.note} last={i === rows.length - 1} soft={soft} primary={primary} tight={tight} />
           ))}
         </div>
       </div>
