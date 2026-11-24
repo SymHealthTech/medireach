@@ -51,8 +51,9 @@ export const HERO_ILLUSTRATIONS = [
 export type HeroIllustration = (typeof HERO_ILLUSTRATIONS)[number];
 
 /** Body sections of the Classic clinic/hospital page (header, hero and footer are fixed). */
-export const CLINIC_SECTIONS = ["about", "services", "doctors", "timings", "facilities", "gallery", "location", "faq"] as const;
-export const HOSPITAL_SECTIONS = ["departments", "beds", "insurance", "visitingHours"] as const;
+/** Insurance shows on clinic sites too (insurers and cashless are asked for both). Each section hides itself when empty. */
+export const CLINIC_SECTIONS = ["about", "services", "doctors", "timings", "facilities", "insurance", "gallery", "location", "faq"] as const;
+export const HOSPITAL_SECTIONS = ["departments", "beds", "visitingHours"] as const;
 export const SITE_SECTIONS = [...CLINIC_SECTIONS, ...HOSPITAL_SECTIONS] as const;
 export type SiteSection = (typeof SITE_SECTIONS)[number];
 
@@ -104,9 +105,9 @@ export interface SpecialtyTheme {
   points: [string, string, string];
 }
 
-const CLINIC_ORDER: SiteSection[] = ["about", "services", "doctors", "timings", "facilities", "gallery", "location", "faq"];
-const TIMINGS_FIRST: SiteSection[] = ["timings", "services", "about", "doctors", "facilities", "gallery", "location", "faq"];
-const FACILITIES_EARLY: SiteSection[] = ["about", "services", "facilities", "doctors", "timings", "gallery", "location", "faq"];
+const CLINIC_ORDER: SiteSection[] = ["about", "services", "doctors", "timings", "facilities", "insurance", "gallery", "location", "faq"];
+const TIMINGS_FIRST: SiteSection[] = ["timings", "services", "about", "doctors", "facilities", "insurance", "gallery", "location", "faq"];
+const FACILITIES_EARLY: SiteSection[] = ["about", "services", "facilities", "insurance", "doctors", "timings", "gallery", "location", "faq"];
 const HOSPITAL_ORDER: SiteSection[] = [
   "about",
   "services",
@@ -234,7 +235,7 @@ export const SPECIALTY_THEMES = [
       ...s("Consultation", "Heart consultation", "Blood pressure management", "Cholesterol management"),
       ...s("Tests", "ECG", "2D Echo", "TMT (stress test)", "Holter monitoring"),
     ],
-    sectionOrder: ["about", "services", "timings", "doctors", "facilities", "gallery", "location", "faq"],
+    sectionOrder: ["about", "services", "timings", "doctors", "facilities", "insurance", "gallery", "location", "faq"],
     sectionLabels: { services: "Consultation and tests", timings: "Consultation hours" },
     emphasis: "Tests (ECG, Echo, TMT), consultation hours",
     points: ["Tests like ECG, Echo and TMT listed", "Consultation hours up front", "Doctors with registration shown"],

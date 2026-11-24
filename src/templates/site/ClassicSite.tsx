@@ -30,8 +30,9 @@ import { getTheme, sectionLabel, sectionsFor, themeCssVars, type SiteSection } f
 /**
  * Classic clinic / small-hospital site (design 1), skinned by the specialty
  * theme (DESIGN_BRIEF.md §5 and §8): colours come from CSS variables, the
- * section order and labels from the theme. Hospitals add the sticky 24×7 bar,
- * departments, beds, insurance and visiting hours. Every section hides itself
+ * section order and labels from the theme. Clinics and hospitals show
+ * insurance; hospitals add the sticky 24×7 bar, departments, beds and
+ * visiting hours. Every section hides itself
  * when empty.
  *
  * Presentation only: H1, intro, breadcrumbs, quick facts and JSON-LD come from
@@ -165,7 +166,7 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
     faq: true,
     departments: s.departments.length > 0,
     beds: Boolean(s.beds),
-    insurance: Boolean(s.insurance),
+    insurance: Boolean(s.insurance && (s.insurance.cashless || s.insurance.providers.length > 0)),
     visitingHours: Boolean(s.visitingHours),
   };
   const sections = sectionsFor(theme, s.kind).filter((x) => has[x]);
@@ -187,7 +188,8 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
             <div className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-14">
               <div className="space-y-4 text-[17px] leading-relaxed text-body">
                 <div>{seo.intro}</div>
-                {s.aboutHtml ? <div className="prose-bio" dangerouslySetInnerHTML={{ __html: s.aboutHtml }} /> : s.shortDescription && <p>{s.shortDescription}</p>}
+                {/* The short description is under the name at the top, so it isn't repeated here. */}
+                {s.aboutHtml && <div className="prose-bio" dangerouslySetInnerHTML={{ __html: s.aboutHtml }} />}
               </div>
               <ul className="space-y-3 self-start text-sm">
                 {s.registration?.number && (
@@ -455,7 +457,9 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
                   {s.is24x7 && <span className="rounded-full bg-leaf px-3 py-1 text-sm font-semibold text-white">Open 24×7</span>}
                 </div>
                 {seo.heading}
-                {(s.tagline || s.shortDescription) && <p className="max-w-2xl text-lg leading-relaxed text-body">{s.tagline ?? s.shortDescription}</p>}
+                {s.tagline && <p className="max-w-2xl text-lg leading-relaxed text-body">{s.tagline}</p>}
+                {/* Under the tagline when there is one, else in its place. */}
+                {s.shortDescription && <p className={cn("max-w-2xl leading-relaxed", s.tagline ? "text-[17px] text-body/80" : "text-lg text-body")}>{s.shortDescription}</p>}
                 {!s.is24x7 && s.timings.length > 0 && (
                   <div className="max-w-md rounded-2xl bg-white/80 p-4 shadow-soft">
                     <ClinicHours timings={s.timings} />
