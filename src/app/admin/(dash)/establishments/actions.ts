@@ -185,3 +185,35 @@ export const sendEstablishmentLoginEmailAction = adminAction({ schema: z.object(
   await audit(auditCtx(admin), "establishment.send_login_email", { entity: "Establishment", entityId: establishmentId, diff: { to: doc.ownerEmail } });
   return { to: doc.ownerEmail };
 });
+
+/** Copy a clinic or hospital as a new draft: no URL keys, owner login, payments or renewal data. */
+export const duplicateEstablishmentAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
+  const src = await Establishment.findById(establishmentId).lean();
+  if (!src) throw new ActionError("Clinic or hospital not found.");
+  const {
+    _id: _ignoredId,
+    slug: _s,
+    shortSlug: _ss,
+    subdomain: _sd,
+    ownerEmail: _oe,
+    founding: _f,
+    foundingNumber: _fn,
+    setupPaidAt: _sp,
+    renewalPrice: _rp,
+    renewalDueDate: _rd,
+    renewalStatus: _rs,
+    renewalRemindersSent: _rr,
+    ownDomain: _od,
+    publishedAt: _pa,
+    createdAt: _ca,
+    updatedAt: _ua,
+    compliance: _c,
+    ...rest
+  } = src;
+  const copy = new Establishment({ ...rest, name: `${src.name} (copy)`, status: "draft" });
+  await copy.save();
+  const linked = copy.doctors.map((d) => d.doctorProfileId).filter(Boolean).map(String);
+  await syncDoctorLinksFromEstablishment(copy._id, [], linked);
+  await audit(auditCtx(admin), `${copy.kind}.duplicate`, { entity: "Establishment", entityId: copy._id, diff: { from: establishmentId } });
+  return { id: String(copy._id), kind: copy.kind };
+});

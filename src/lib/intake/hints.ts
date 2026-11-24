@@ -1,4 +1,5 @@
 import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
+import { ROWS } from "./rows";
 import { DESIGN_GROUPS, doctorEntries, doctorRoleLabel, hospitalCategoryFor, str, splitLines, type IntakeData, type RepeatItem } from "./form";
 
 /**
@@ -40,6 +41,7 @@ export interface FormClinic {
   type?: "visiting";
   name: string;
   address: string;
+  address2: string;
   area: string;
   city: string;
   pincode: string;
@@ -70,6 +72,7 @@ export interface SiteFormHints {
   city?: string;
   /** Answers the editor offers to copy in ("Use this"), as typed. */
   tagline?: string;
+  shortDescription?: string;
   yearStarted?: string;
   awards: string[];
   timings?: string;
@@ -137,6 +140,7 @@ export function doctorHints(ref: string, data: IntakeData, intakeId?: string): D
   const asClinic = (c: RepeatItem) => ({
     name: str(c.name),
     address: str(c.address),
+    address2: str(c.address2),
     area: str(c.area),
     city: str(c.city),
     pincode: str(c.pincode),
@@ -162,6 +166,8 @@ export function doctorHints(ref: string, data: IntakeData, intakeId?: string): D
   };
 }
 
+const rowNames = (kind: "services" | "facilities" | "equipment", v: unknown) => splitLines(v).map((line) => ROWS[kind].parse(line).name || line);
+
 export function siteHints(ref: string, kind: "clinic" | "hospital", data: IntakeData, intakeId?: string): SiteFormHints {
   const typeKey = kind === "clinic" ? "clinicType" : "hospitalType";
   const type = str(data[typeKey]);
@@ -175,6 +181,7 @@ export function siteHints(ref: string, kind: "clinic" | "hospital", data: Intake
     ...opt("area", data.area),
     ...opt("city", data.city),
     ...opt("tagline", data.tagline),
+    ...opt("shortDescription", data.shortDescription),
     ...opt("yearStarted", data.yearStarted),
     ...opt("timings", data.timings),
     ...opt("appointmentNote", data.appointmentNote),
@@ -185,9 +192,10 @@ export function siteHints(ref: string, kind: "clinic" | "hospital", data: Intake
     ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
     ...opt("designDecision", data.designDecision),
     awards: splitLines(data.awards),
-    services: splitLines(data.services),
-    facilities: splitLines(data.facilities),
-    equipment: splitLines(data.equipment),
+    // Names only ("Name – short description" rows); the import copies the descriptions too.
+    services: rowNames("services", data.services),
+    facilities: rowNames("facilities", data.facilities),
+    equipment: rowNames("equipment", data.equipment),
     insurance: splitLines(data.insurance),
     doctors: doctorEntries(kind, data).map(({ doctor: e, department }) => ({
       name: str(e.name),

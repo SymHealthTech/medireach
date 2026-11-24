@@ -11,7 +11,7 @@ import { useOptionalIntakeContext } from "./IntakeContext";
 /** Long single-value lists are a type-ahead list (datalist) instead of chips. */
 const TYPE_AHEAD: readonly SuggestKey[] = ["education"];
 /** A dropdown with "Other" and "Please specify" (the answer is stored as text), like the admin editor's lists. */
-const SELECT_OTHER: readonly SuggestKey[] = ["designation", "specialty", "council"];
+const SELECT_OTHER: readonly SuggestKey[] = ["designation", "specialty", "council", "city", "area"];
 /** Text fields holding a comma-separated list. */
 const COMMA_LISTS: readonly SuggestKey[] = ["languages", "interests"];
 const SHOWN = 10;
@@ -30,7 +30,15 @@ export function suggestMode(f: FieldDef): SuggestMode | null {
 export function useFieldSuggestions(f: FieldDef, context: Record<string, unknown>): string[] {
   const ctx = useOptionalIntakeContext();
   if (!f.suggest) return [];
-  return fieldSuggestions(ctx?.kind ?? "clinic", f.suggest, { ...(ctx?.data ?? {}), ...context });
+  const data = { ...(ctx?.data ?? {}), ...context };
+  // Cities and areas: the live master lists when the page passed them (areas follow the city picked).
+  const places = ctx?.places;
+  if (places && f.suggest === "city") return Object.keys(places);
+  if (places && f.suggest === "area") {
+    const city = typeof data.city === "string" ? data.city.trim().toLowerCase() : "";
+    return Object.entries(places).find(([name]) => name.toLowerCase() === (city || "pune"))?.[1] ?? [];
+  }
+  return fieldSuggestions(ctx?.kind ?? "clinic", f.suggest, data);
 }
 
 /** The datalist id for a type-ahead field. */

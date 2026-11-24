@@ -16,8 +16,10 @@ import {
   DESIGN_GROUPS,
   DESIGNS_PER_TYPE,
   cleanPastedText,
+  doctorEntries,
   doctorRoleLabel,
   emptyIntakeData,
+  INTAKE_SECTIONS,
   parseDoctorLine,
   parseLocation,
   intakeDataSchema,
@@ -183,8 +185,8 @@ describe("form definitions", () => {
     expect(missingForSubmit("clinic", { ...base, doctors: [doc("other")] }).map((m) => m.key)).toEqual(["doctors.0.roleOther"]);
     expect(missingForSubmit("clinic", { ...base, doctors: [doc("other", "Dietitian")] })).toEqual([]);
     expect(requiredProgress("clinic", { ...base, doctors: [doc("other")] }).total).toBe(requiredProgress("clinic", { ...base, doctors: [doc("consultant")] }).total + 1);
-    const hosp = { ...emptyIntakeData("hospital"), departments: [{ name: "Medicine", doctors: [doc("other")] }] };
-    expect(missingForSubmit("hospital", hosp).map((m) => m.key)).toContain("departments.0.doctors.0.roleOther");
+    const hosp = { ...emptyIntakeData("hospital"), doctors: [doc("other")] };
+    expect(missingForSubmit("hospital", hosp).map((m) => m.key)).toContain("doctors.0.roleOther");
     // Kept only with "Other".
     const parsed = intakeDataSchema("clinic").parse({ doctors: [doc("other", "Dietitian"), doc("consultant", "left over")] }).doctors as DoctorEntry[];
     expect(parsed.map((d) => d.roleOther)).toEqual(["Dietitian", ""]);
@@ -210,16 +212,48 @@ describe("form definitions", () => {
     }
   });
 
-  it("hospital departments: many departments, each with its own doctors", () => {
+  it("hospital: one doctor list, and departments tick their doctors (like the admin editor)", () => {
     const blank = emptyIntakeData("hospital");
-    expect(blank.doctors).toBeUndefined();
+    expect(blank.doctors).toHaveLength(1); // one blank doctor card to start
     expect(missingForSubmit("hospital", blank).map((m) => m.key)).not.toContain("departments.0.name"); // empty department is ignored
     const doc = (name: string): DoctorEntry => ({ name, designation: "", education: "", role: "", portfolioUrl: "" });
-    const data = { ...blank, departments: [{ name: "Orthopaedics", doctors: [doc("Dr. A Patil"), doc("Dr. S Rao")] }, { name: "", doctors: [doc("Dr. C")] }, { name: "Medicine", doctors: [doc("")] }] };
+    const data = {
+      ...blank,
+      doctors: [doc("Dr. A Patil"), doc("Dr. S Rao")],
+      departments: [
+        { name: "Orthopaedics", description: "Fractures and joints", doctorNames: "Dr. A Patil\nDr. S Rao" },
+        { name: "", description: "", doctorNames: "Dr. A Patil" },
+      ],
+    };
     expect(missingForSubmit("hospital", data).map((m) => m.key)).toContain("departments.1.name");
     const parsed = intakeDataSchema("hospital").parse(data);
-    expect((parsed.departments as RepeatItem[])[0]!.doctors).toHaveLength(2);
-    expect((parsed.departments as RepeatItem[])[2]!.doctors).toEqual([]);
+    expect((parsed.departments as RepeatItem[])[0]).toMatchObject({ description: "Fractures and joints", doctorNames: "Dr. A Patil\nDr. S Rao" });
+    expect(doctorEntries("hospital", parsed).map((e) => [e.doctor.name, e.department ?? ""])).toEqual([["Dr. A Patil", "Orthopaedics"], ["Dr. S Rao", "Orthopaedics"]]);
+  });
+
+  it("moves doctors saved inside hospital departments to the hospital's doctor list", () => {
+    const doc = (name: string, designation = ""): DoctorEntry => ({ name, designation, education: "", role: "", portfolioUrl: "" });
+    const old = { name: "H", departments: [{ name: "Orthopaedics", doctors: [doc("Dr. A Patil", "Ortho"), doc("Dr. S Rao")] }, { name: "Emergency", doctors: [doc("Dr. A Patil")] }] };
+    const h = withDefaults("hospital", old as unknown as IntakeData);
+    expect((h.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao"]); // each doctor once
+    expect((h.doctors as DoctorEntry[])[0]!.designation).toBe("Ortho");
+    expect((h.departments as RepeatItem[]).map((d) => d.doctorNames)).toEqual(["Dr. A Patil\nDr. S Rao", "Dr. A Patil"]);
+    expect((h.departments as RepeatItem[])[0]!.doctors).toBeUndefined();
+    // A page opened before the change still saves.
+    const parsed = intakeDataSchema("hospital").parse(old);
+    expect((parsed.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao"]);
+  });
+
+  it("asks clinics and hospitals what the admin editor asks", () => {
+    const keys = (k: "clinic" | "hospital") => INTAKE_SECTIONS[k].flatMap((s) => s.fields.map((f) => f.key));
+    for (const k of ["clinic", "hospital"] as const) expect(keys(k)).toEqual(expect.arrayContaining(["shortDescription", "city", "area", "address", "address2", "appointmentNote", "services", "facilities", "equipment", "insurance", "cashless"]));
+    expect(keys("hospital")).toEqual(expect.arrayContaining(["doctors", "beds", "bedTypes", "visitingHours", "emergencyPhone", "is24x7", "description", "doctorNames"]));
+    // OPD timings are not needed when the hospital is open 24×7.
+    expect(missingForSubmit("hospital", emptyIntakeData("hospital")).map((m) => m.key)).toContain("timings");
+    expect(missingForSubmit("hospital", { ...emptyIntakeData("hospital"), is24x7: true }).map((m) => m.key)).not.toContain("timings");
+    // City and area are dropdowns from the master lists (Pune areas when no list is passed).
+    const area = INTAKE_SECTIONS.doctor.find((s) => s.key === "clinics")!.fields.find((f) => f.key === "area")!;
+    expect(area.suggest).toBe("area");
   });
 
   it("upgrades older doctor lists typed as text lines", () => {
@@ -231,8 +265,9 @@ describe("form definitions", () => {
     const hospital = withDefaults("hospital", { departments: "Orthopaedics – Dr. A Patil, Dr. S Rao\nGeneral Medicine", doctors: "Dr. X – MBBS – Physician" });
     const deps = hospital.departments as RepeatItem[];
     expect(deps.map((d) => d.name)).toEqual(["Orthopaedics", "General Medicine", ""]);
-    expect((deps[0]!.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao"]);
-    expect((deps[2]!.doctors as DoctorEntry[])[0]).toMatchObject({ name: "Dr. X", designation: "Physician" });
+    expect(deps.map((d) => d.doctorNames)).toEqual(["Dr. A Patil\nDr. S Rao", "", "Dr. X"]);
+    expect((hospital.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A Patil", "Dr. S Rao", "Dr. X"]);
+    expect((hospital.doctors as DoctorEntry[])[2]).toMatchObject({ name: "Dr. X", designation: "Physician" });
     // A page opened before the change still saves.
     expect((intakeDataSchema("clinic").parse({ doctors: "Dr. Neha Joshi – MBBS" }).doctors as DoctorEntry[])[0]!.name).toBe("Dr. Neha Joshi");
   });
@@ -493,6 +528,33 @@ describe("creating the website draft", () => {
     expect(e!.internalNotes).toContain(photo(21).url);
     expect(e!.logo?.publicId).toBe(photo(20).publicId);
     expect(e!.slug).toBeTruthy();
+  });
+
+  it("imports what the hospital form asks like the admin editor (short description, address line 2, descriptions, bed types)", async () => {
+    const data = {
+      ...emptyIntakeData("hospital"),
+      name: "Bed Types Hospital",
+      shortDescription: "A 10-bed hospital in Wakad.",
+      address: "12 Main Road",
+      address2: "2nd floor",
+      area: "Wakad",
+      pincode: "411057",
+      services: "OPD – Daily consultations\nICU care",
+      facilities: "Lift – To all floors",
+      beds: "",
+      bedTypes: "General ward – 6\nICU – 2",
+      doctors: [{ name: "Dr. A Patil", designation: "", education: "", role: "", portfolioUrl: "" }],
+      departments: [{ name: "Orthopaedics", description: "Fractures and joints", doctorNames: "Dr. A Patil" }],
+    };
+    const r = await saveIntake({ kind: "hospital", email: "beds@example.com", data, photos: {} }, null);
+    const made = await createSiteFromIntake((await Intake.findById(r.ok ? r.intake.id : "").lean())!);
+    const e = await Establishment.findById(made.id).lean();
+    expect(e!.shortDescription).toBe("A 10-bed hospital in Wakad.");
+    expect(e!.address).toMatchObject({ line1: "12 Main Road", line2: "2nd floor" });
+    expect(e!.services.map((s) => [s.name, s.description ?? ""])).toEqual([["OPD", "Daily consultations"], ["ICU care", ""]]);
+    expect(e!.facilities[0]).toMatchObject({ name: "Lift", description: "To all floors" });
+    expect(e!.beds).toMatchObject({ total: 8, types: [{ type: "General ward", count: 6 }, { type: "ICU", count: 2 }] });
+    expect(e!.departments[0]).toMatchObject({ name: "Orthopaedics", description: "Fractures and joints", doctorKeys: [e!.doctors[0]!.key] });
   });
 
   it("maps hospital departments and their doctors", async () => {

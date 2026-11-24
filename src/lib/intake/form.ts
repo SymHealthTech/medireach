@@ -52,7 +52,9 @@ export type FieldType =
   /** A list of doctors (name, designation, education, role, portfolio link, photo). `max` = how many. */
   | "doctors"
   /** Weekly timings picked day by day (presets, copy Monday), stored as text like "Mon–Sat: 10 am – 1 pm". */
-  | "timings";
+  | "timings"
+  /** Tick doctors from the form's own doctor list (a hospital department's doctors), stored one name per line. */
+  | "doctorPick";
 
 export interface FieldDef {
   key: string;
@@ -69,6 +71,8 @@ export interface FieldDef {
   autoComplete?: string;
   /** Only shown (and only required) when another field has this value. */
   showIf?: { key: string; equals: string };
+  /** A required field that is not needed while this checkbox is ticked (OPD timings when open 24×7). */
+  optionalIf?: string;
   /** Step-by-step instructions, shown under the field on request. */
   steps?: readonly string[];
   /** Design pickers: which kind of site the choices are for. */
@@ -168,6 +172,17 @@ const locationFields = (what: string): FieldDef[] => [
     help: `Tap “Pick on map” and place the pin on your ${what}. At the ${what} right now? Use your current location.`,
   },
   { key: "mapsUrl", label: "Or paste a Google Maps link", type: "url", wide: true, help: "Not needed if you pinned it on the map.", steps: MAPS_LINK_STEPS },
+];
+
+/**
+ * City and area dropdowns (the master lists, with Other → type it) and two
+ * address lines, laid out like the admin editors' address.
+ */
+const placeFields = (required: boolean, line1Placeholder = "Shop 4, Shanti Complex, Karve Road"): FieldDef[] => [
+  text("city", "City", { required, suggest: "city", help: "Not in the list? Choose “Other” and type it." }),
+  text("area", "Area", { required, suggest: "area", help: "Not in the list? Choose “Other” and type it." }),
+  text("address", "Address line 1", { required, placeholder: line1Placeholder, autoComplete: "address-line1" }),
+  text("address2", "Address line 2", { placeholder: "Floor, wing or road (optional)", autoComplete: "address-line2" }),
 ];
 
 const TIMINGS_PLACEHOLDER = "Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm\nSunday: closed";
@@ -297,13 +312,13 @@ const servicesFields = (): FieldDef[] => [
     key: "services",
     label: "Services / treatments",
     type: "lines",
+    rows: "services",
     wide: true,
-    placeholder: "One per line\nSkin allergy treatment\nAcne treatment",
     suggest: "services",
-    help: "Tap the suggestions to add them, or type your own (one per line).",
+    help: "Tap the suggestions to add them, or type your own. A short description is optional.",
   },
-  { key: "facilities", label: "Facilities", type: "lines", wide: true, placeholder: "One per line\nWheelchair access\nParking", suggest: "facilities" },
-  { key: "equipment", label: "Equipment", type: "lines", wide: true, placeholder: "One per line\nDigital X-ray", suggest: "equipment" },
+  { key: "facilities", label: "Facilities", type: "lines", rows: "facilities", wide: true, suggest: "facilities", help: "Factual list: lab, pharmacy, X-ray, parking, lift, wheelchair access…" },
+  { key: "equipment", label: "Equipment", type: "lines", rows: "equipment", wide: true, suggest: "equipment", help: "What you have, never how it compares." },
 ];
 
 const insuranceFields = (): FieldDef[] => [
@@ -357,9 +372,7 @@ const DOCTOR: SectionDef[] = [
     fields: [
       text("name", "Clinic or hospital name", { required: true }),
       { key: "phone", label: "Clinic phone", type: "phone" },
-      { key: "address", label: "Address", type: "textarea", required: true, wide: true, placeholder: "Shop 4, Shanti Complex, Karve Road" },
-      text("area", "Area", { required: true, placeholder: "Kothrud" }),
-      text("city", "City", { required: true, placeholder: "Pune" }),
+      ...placeFields(true),
       { key: "pincode", label: "Pincode", type: "pincode" },
       ...locationFields("clinic"),
       timingsField(),
@@ -375,9 +388,7 @@ const DOCTOR: SectionDef[] = [
     fields: [
       text("name", "Hospital name", { required: true, placeholder: "Ruby Hall Clinic" }),
       { key: "phone", label: "Hospital phone", type: "phone" },
-      { key: "address", label: "Address", type: "textarea", wide: true, placeholder: "40 Sassoon Road" },
-      text("area", "Area", { placeholder: "Sangamwadi" }),
-      text("city", "City", { placeholder: "Pune" }),
+      ...placeFields(false, "40 Sassoon Road"),
       { key: "pincode", label: "Pincode", type: "pincode" },
       { ...timingsField("Days and timings you visit"), required: false, help: "Optional. Tap a common pattern, or type them, e.g. “Tuesday and Friday: 4 pm – 6 pm” or “On call”." },
       text("appointmentNote", "Appointment note", { placeholder: "Appointments through the hospital desk", suggest: "appointmentNote" }),
@@ -430,14 +441,12 @@ const DOCTOR: SectionDef[] = [
 // --- Clinic / hospital ------------------------------------------------------
 
 const addressFields = (what: string): FieldDef[] => [
-  { key: "address", label: "Address", type: "textarea", required: true, wide: true, placeholder: "Shop 4, Shanti Complex, Karve Road" },
-  text("area", "Area", { required: true, placeholder: "Kothrud" }),
-  text("city", "City", { required: true, placeholder: "Pune" }),
+  ...placeFields(true),
   { key: "pincode", label: "Pincode", type: "pincode", required: true },
   text("landmark", "Landmark", { placeholder: "Opposite City Pride" }),
-  text("parkingNote", "Parking", { placeholder: "Two-wheeler parking in the basement" }),
+  text("parkingNote", "Parking note", { wide: true, placeholder: "Two-wheeler parking in the basement" }),
   ...locationFields(what),
-  { key: "phones", label: "Phone numbers", type: "phone", required: true, help: "Separate several numbers with commas." },
+  { key: "phones", label: "Phone numbers", type: "phone", required: true, help: "Up to 4, separated by commas. The first one is used for the Call button." },
   { key: "siteWhatsapp", label: "WhatsApp number for patients", type: "mobile" },
   { key: "siteEmail", label: "Email for patients", type: "email", wide: true },
 ];
@@ -535,6 +544,27 @@ const aboutStory = (what: string): FieldDef => ({
   help: "Write here, or copy from your current website, a brochure, Word or WhatsApp and paste it. Formatting is removed; paragraphs are kept.",
 });
 
+const shortDescriptionField = (what: string, placeholder: string): FieldDef => ({
+  key: "shortDescription",
+  label: "Short description",
+  type: "textarea",
+  wide: true,
+  max: LIMITS.shortBio,
+  placeholder,
+  help: `One or two lines about the ${what}. Shown in Google results. Facts only.`,
+});
+
+const insuranceRegistration = (what: "clinic" | "hospital"): SectionDef => ({
+  key: "registration",
+  title: "Registration and insurance",
+  description: what === "hospital" ? "Hospitals must show their registration or licence number." : "Registration is optional for clinics. Shown in the footer if given.",
+  fields: [
+    text("regAuthority", "Registered with", { required: what === "hospital", placeholder: "Pune Municipal Corporation", suggest: "regAuthority" }),
+    text("regNumber", what === "hospital" ? "Registration / licence number" : "Registration number", { required: what === "hospital" }),
+    ...insuranceFields(),
+  ],
+});
+
 const awardsField = (what: string): FieldDef => ({
   key: "awards",
   label: "Accreditations and awards",
@@ -553,34 +583,27 @@ const CLINIC: SectionDef[] = [
       { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES },
       text("clinicTypeOther", "Please specify", { required: true, placeholder: "e.g. Sleep clinic, IVF centre", showIf: { key: "clinicType", equals: "other" } }),
       text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "Skin, hair and nail care in Kothrud", help: "Optional. Shown under the clinic name on your website. Facts only, no claims like “best”." }),
+      shortDescriptionField("clinic", "A skin and hair clinic in Kothrud, Pune. See timings, services, doctors and directions."),
       aboutStory("clinic"),
       { key: "yearStarted", label: "Year started", type: "year" },
       text("languages", "Languages spoken", { placeholder: "English, Hindi, Marathi", suggest: "languages" }),
     ],
   },
   contactPersonSection,
+  { key: "address", title: "Address and contact", fields: addressFields("clinic") },
   {
-    key: "address",
-    title: "Address and timings",
-    fields: [
-      ...addressFields("clinic"),
-      timingsField(),
-      text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" }),
-    ],
+    key: "timings",
+    title: "Timings",
+    fields: [timingsField(), text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" })],
   },
+  { key: "services", title: "Services, facilities and equipment", fields: [...servicesFields(), awardsField("clinic")] },
   {
     key: "doctors",
     title: "Doctors at the clinic",
     description: `Add each doctor who sees patients here, including visiting consultants (up to ${LIMITS.clinicDoctorsMax}). Each doctor can also get their own portfolio page. Ask us.`,
     fields: [{ key: "doctors", label: "Doctors", type: "doctors", max: LIMITS.clinicDoctorsMax, wide: true }],
   },
-  { key: "services", title: "Services, facilities and insurance", fields: [...servicesFields(), ...insuranceFields(), awardsField("clinic")] },
-  {
-    key: "registration",
-    title: "Registration",
-    description: "Optional for clinics.",
-    fields: [text("regAuthority", "Registered with", { placeholder: "Pune Municipal Corporation", suggest: "regAuthority" }), text("regNumber", "Registration number")],
-  },
+  insuranceRegistration("clinic"),
   linksSection,
   designSection("clinic"),
   preferencesSection("shreeskin"),
@@ -595,8 +618,8 @@ const HOSPITAL: SectionDef[] = [
       { key: "hospitalType", label: "Type of hospital", type: "select", options: HOSPITAL_TYPES },
       text("hospitalTypeOther", "Please specify", { required: true, placeholder: "e.g. Cancer care, De-addiction", showIf: { key: "hospitalType", equals: "other" } }),
       text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "A 10-bed multi-speciality hospital in Wakad", help: "Optional. Shown under the hospital name on your website. Facts only, no claims like “best”." }),
+      shortDescriptionField("hospital", "A 10-bed multi-speciality hospital in Wakad, Pune. See OPD timings, departments, doctors and directions."),
       aboutStory("hospital"),
-      { key: "beds", label: "Number of beds", type: "number", help: `For hospitals up to ${LIMITS.hospitalBedsMax} beds.` },
       { key: "yearStarted", label: "Year started", type: "year" },
       text("languages", "Languages spoken", { wide: true, placeholder: "English, Hindi, Marathi", suggest: "languages" }),
     ],
@@ -604,41 +627,45 @@ const HOSPITAL: SectionDef[] = [
   contactPersonSection,
   {
     key: "address",
-    title: "Address, timings and emergency",
+    title: "Address and contact",
+    fields: [...addressFields("hospital"), { key: "emergencyPhone", label: "24×7 emergency number", type: "phone", wide: true, help: "Shown in the sticky 24×7 bar on your website." }],
+  },
+  {
+    key: "timings",
+    title: "Timings",
     fields: [
-      ...addressFields("hospital"),
-      { key: "emergencyPhone", label: "24×7 emergency number", type: "phone" },
-      { key: "is24x7", label: "Open 24×7", type: "checkbox" },
-      timingsField("OPD timings"),
-      text("visitingHours", "Visiting hours", { wide: true, placeholder: "11 am – 1 pm, 5 pm – 8 pm", suggest: "visitingHours" }),
+      { key: "is24x7", label: "Open 24×7", type: "checkbox", wide: true },
+      { ...timingsField("OPD timings"), optionalIf: "is24x7" },
+      text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments through the hospital desk", suggest: "appointmentNote" }),
+    ],
+  },
+  { key: "services", title: "Services, facilities and equipment", fields: [...servicesFields(), awardsField("hospital")] },
+  {
+    key: "doctors",
+    title: "Doctors at the hospital",
+    description: `Add each doctor who sees patients here, including visiting consultants (up to ${LIMITS.hospitalDoctorsMax}). Then tick them under their department below.`,
+    fields: [{ key: "doctors", label: "Doctors", type: "doctors", max: LIMITS.hospitalDoctorsMax, wide: true }],
+  },
+  insuranceRegistration("hospital"),
+  {
+    key: "beds",
+    title: "Beds and visiting hours",
+    description: `Number and types, factual. For hospitals up to ${LIMITS.hospitalBedsMax} beds.`,
+    fields: [
+      { key: "beds", label: "Total beds", type: "number" },
+      { key: "bedTypes", label: "Bed types", type: "lines", rows: "bedTypes", wide: true, help: "Optional. E.g. General ward 6, ICU 2." },
+      text("visitingHours", "Visiting hours for patients' families", { wide: true, placeholder: "11 am – 1 pm, 5 pm – 8 pm", suggest: "visitingHours" }),
     ],
   },
   {
     key: "departments",
-    title: "Departments and doctors",
-    description: "Add each department and the doctors in it, including visiting consultants.",
+    title: "Departments",
+    description: "Add each department and tick its doctors from the list above.",
     repeat: { max: LIMITS.hospitalDepartmentsMax, itemLabel: "Department", addLabel: "Add another department", minToSubmit: 0 },
     fields: [
-      text("name", "Department name", { required: true, wide: true, placeholder: "Orthopaedics", suggest: "department" }),
-      { key: "doctors", label: "Doctors in this department", type: "doctors", max: LIMITS.departmentDoctorsMax, wide: true },
-    ],
-  },
-  {
-    key: "services",
-    title: "Services, facilities and insurance",
-    fields: [
-      ...servicesFields(),
-      ...insuranceFields(),
-      awardsField("hospital"),
-    ],
-  },
-  {
-    key: "registration",
-    title: "Registration",
-    description: "Hospitals must show their registration or licence number.",
-    fields: [
-      text("regAuthority", "Registered with", { required: true, placeholder: "Pune Municipal Corporation", suggest: "regAuthority" }),
-      text("regNumber", "Registration / licence number", { required: true }),
+      text("name", "Department name", { required: true, placeholder: "Orthopaedics", suggest: "department" }),
+      { key: "description", label: "Description (optional)", type: "textarea", max: 300, placeholder: "Fractures, joint replacement and sports injuries" },
+      { key: "doctorNames", label: "Doctors in this department", type: "doctorPick", wide: true },
     ],
   },
   linksSection,
@@ -758,9 +785,37 @@ function upgradeLegacy(kind: IntakeKind, data: Record<string, unknown>): Record<
     // Doctors without a department: one unnamed department, so the applicant is asked to name it.
     if (loose.length) deps.push({ name: "", doctors: loose });
     d.departments = deps;
-    delete d.doctors;
+    if (typeof data.doctors === "string") delete d.doctors;
   }
+  if (kind === "hospital") Object.assign(d, hospitalDoctorsUpgrade(d));
   return d;
+}
+
+/**
+ * Hospital forms before 2026-11-24 kept each department's doctors inside the
+ * department. Now (like the admin editor) the hospital has one doctor list and
+ * each department ticks its doctors by name. Moves them over, each doctor once.
+ */
+function hospitalDoctorsUpgrade(d: Record<string, unknown>): Record<string, unknown> {
+  const deps = Array.isArray(d.departments) ? d.departments : [];
+  if (!deps.some((dep) => isObj(dep) && Array.isArray(dep.doctors))) return {};
+  const doctors: Record<string, unknown>[] = (Array.isArray(d.doctors) ? d.doctors : []).filter(isObj);
+  const named = (e: Record<string, unknown>) => str(e.name).toLowerCase();
+  const departments = deps.map((dep) => {
+    if (!isObj(dep) || !Array.isArray(dep.doctors)) return dep;
+    const { doctors: list, ...rest } = dep;
+    const names: string[] = splitLines(rest.doctorNames);
+    for (const e of (list as unknown[]).filter(isObj)) {
+      if (!doctorHasContent(e)) continue;
+      const same = named(e) ? doctors.find((x) => named(x) === named(e)) : undefined;
+      if (!same) doctors.push(e);
+      if (str(e.name) && !names.some((n) => n.toLowerCase() === named(e))) names.push(str(e.name));
+    }
+    return { ...rest, doctorNames: names.join("\n") };
+  });
+  // Drop the blank card a new form starts with, now that real doctors are listed.
+  const real = doctors.filter((e) => doctorHasContent(e));
+  return { departments, doctors: real.length ? real : doctors };
 }
 
 export function emptyIntakeData(kind: IntakeKind): IntakeData {
@@ -814,9 +869,25 @@ export function mergeIntake(kind: IntakeKind, typed: IntakeData, saved: IntakeDa
   return out;
 }
 
-/** Every doctor entry in a form (clinic doctors, or the doctors of each hospital department), with its department. */
-export function doctorEntries(kind: IntakeKind, data: IntakeData): { doctor: DoctorEntry; department?: string; key: string }[] {
+/** The hospital departments that tick this doctor (by name), comma-separated. */
+function departmentsOf(data: IntakeData, name: string): string {
+  const n = name.trim().toLowerCase();
+  if (!n || !isRepeatValue(data.departments)) return "";
+  return (data.departments as RepeatItem[])
+    .filter((dep) => str(dep.name) && splitLines(dep.doctorNames).some((x) => x.toLowerCase() === n))
+    .map((dep) => str(dep.name))
+    .join(", ");
+}
+
+/** Every doctor entry in a form (clinic or hospital doctors), with the hospital departments that list them. */
+export function doctorEntries(kind: IntakeKind, input: IntakeData): { doctor: DoctorEntry; department?: string; key: string }[] {
+  // Saved hospital forms from before the shared doctor list still count their department doctors.
+  const data = kind === "hospital" ? ({ ...input, ...hospitalDoctorsUpgrade(input) } as IntakeData) : input;
   const out: { doctor: DoctorEntry; department?: string; key: string }[] = [];
+  const dept = (doctor: DoctorEntry, own?: string) => {
+    const d = own ?? (kind === "hospital" ? departmentsOf(data, str(doctor.name)) : "");
+    return d ? { department: d } : {};
+  };
   for (const s of INTAKE_SECTIONS[kind]) {
     const groups: { values: Record<string, unknown>; prefix: string }[] = s.repeat
       ? (isRepeatValue(data[s.key]) ? (data[s.key] as RepeatItem[]) : []).map((it, i) => ({ values: it, prefix: `${s.key}.${i}.` }))
@@ -825,7 +896,7 @@ export function doctorEntries(kind: IntakeKind, data: IntakeData): { doctor: Doc
       for (const f of s.fields) {
         if (f.type !== "doctors" || !Array.isArray(g.values[f.key])) continue;
         (g.values[f.key] as DoctorEntry[]).forEach((doctor, j) => {
-          if (isObj(doctor) && doctorHasContent(doctor)) out.push({ doctor, key: `${g.prefix}${f.key}.${j}`, ...(s.repeat ? { department: str(g.values.name) } : {}) });
+          if (isObj(doctor) && doctorHasContent(doctor)) out.push({ doctor, key: `${g.prefix}${f.key}.${j}`, ...dept(doctor, s.repeat ? str(g.values.name) : undefined) });
         });
       }
     }
@@ -890,6 +961,7 @@ const MAX: Record<FieldType, number> = {
   card: 40,
   choice: 40,
   doctors: 0,
+  doctorPick: 3000,
   timings: 3000,
   lines: 3000,
   year: 4,
@@ -944,6 +1016,9 @@ export function coordsFromMapsUrl(url: string): { lat: string; lng: string } | n
 
 /** Google Maps link for a pinned location. */
 export const mapsLinkFor = (loc: { lat: number; lng: number }) => `https://www.google.com/maps/search/?api=1&query=${loc.lat.toFixed(6)},${loc.lng.toFixed(6)}`;
+
+/** Is this field needed to send the form, given the other answers? */
+export const isRequired = (f: FieldDef, values: Record<string, unknown>) => Boolean(f.required) && isShown(f, values) && !(f.optionalIf && values[f.optionalIf] === true);
 
 /** Is this field shown, given the other answers (in the same repeat item, or the form)? */
 export const isShown = (f: FieldDef, values: Record<string, unknown>) => !f.showIf || values[f.showIf.key] === f.showIf.equals;
@@ -1072,7 +1147,7 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
       if (items.length < s.repeat.minToSubmit) out.push({ key: s.key, label: `At least one ${s.repeat.itemLabel.toLowerCase()}`, section: s.title });
       for (const { it, i } of activeItems(s, data)) {
         for (const f of s.fields) {
-          if (f.required && isShown(f, it) && !filled(it[f.key])) {
+          if (isRequired(f, it) && !filled(it[f.key])) {
             out.push({ key: `${s.key}.${i}.${f.key}`, label: items.length > 1 ? `${s.repeat!.itemLabel} ${i + 1}: ${f.label}` : f.label, section: s.title });
           }
           if (f.type === "doctors") missingDoctorFields(f, it, `${s.key}.${i}.`, s.title, out);
@@ -1080,7 +1155,7 @@ export function missingForSubmit(kind: IntakeKind, data: IntakeData): MissingIte
       }
     } else {
       for (const f of s.fields) {
-        if (f.required && isShown(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
+        if (isRequired(f, data) && !filled(data[f.key])) out.push({ key: f.key, label: f.label, section: s.title });
         if (f.type === "doctors") missingDoctorFields(f, data, "", s.title, out);
       }
     }
@@ -1093,10 +1168,10 @@ export function requiredProgress(kind: IntakeKind, data: IntakeData): { done: nu
   let total = 0;
   for (const s of INTAKE_SECTIONS[kind]) {
     if (s.repeat) {
-      const req = s.fields.filter((f) => f.required && !f.showIf).length;
+      const req = s.fields.filter((f) => f.required && !f.showIf && !f.optionalIf).length;
       const n = Math.max(s.repeat.minToSubmit, activeItems(s, data).length);
       total += req * n;
-    } else total += s.fields.filter((f) => f.required && isShown(f, data)).length;
+    } else total += s.fields.filter((f) => isRequired(f, data)).length;
   }
   for (const { doctor } of doctorEntries(kind, data)) total += requiredDoctorFields(doctor as unknown as Record<string, unknown>).length; // a name, and the role for "Other"
   const missing = missingForSubmit(kind, data).length;

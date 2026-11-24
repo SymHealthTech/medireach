@@ -9,7 +9,7 @@ import { inputClass } from "./input-class";
 import { SelectOtherInput, SuggestionChips } from "./Suggestions";
 
 /**
- * Qualifications, services, awards or memberships as rows of boxes (like the
+ * Qualifications, services, facilities, bed types, awards or memberships as rows of boxes (like the
  * admin editor). Keeps its own rows (a half-typed row stays put) and writes
  * the text answer, one line per row. `suggestions` add rows (first column).
  */
@@ -84,11 +84,11 @@ export function RowsField({
                       value={v}
                       placeholder={c.placeholder}
                       autoComplete="off"
-                      inputMode={c.type === "year" ? "numeric" : undefined}
-                      maxLength={c.type === "year" ? 4 : 150}
+                      inputMode={c.type === "year" || c.type === "number" ? "numeric" : undefined}
+                      maxLength={c.type === "year" ? 4 : c.type === "number" ? 3 : 150}
                       aria-invalid={invalid && ci === 0 ? true : undefined}
                       aria-describedby={ci === 0 ? describedBy : undefined}
-                      onChange={(e) => set(c.type === "year" ? e.target.value.replace(/\D/g, "") : e.target.value)}
+                      onChange={(e) => set(c.type === "year" || c.type === "number" ? e.target.value.replace(/\D/g, "") : e.target.value)}
                       className={cn(inputClass, "h-11")}
                     />
                   )}

@@ -1,4 +1,4 @@
-import { SEED_CLINIC_CATEGORIES, SEED_COUNCILS, SEED_DEGREES, SEED_SPECIALTIES } from "@/data/masters";
+import { PUNE_AREAS, SEED_CITIES, SEED_CLINIC_CATEGORIES, SEED_COUNCILS, SEED_DEGREES, SEED_SPECIALTIES } from "@/data/masters";
 import { getTheme, isThemeKey } from "@/themes/specialty";
 
 /**
@@ -303,7 +303,10 @@ export type SuggestKey =
   | "doctorServices"
   | "conditions"
   | "memberships"
-  | "interests";
+  | "interests"
+  /** City and area dropdowns (the website form passes the live master lists; these are the fallback). */
+  | "city"
+  | "area";
 
 /**
  * The suggestions for a website-form field. `data` is the whole form (the
@@ -350,5 +353,11 @@ export function fieldSuggestions(kind: "doctor" | "clinic" | "hospital", key: Su
       return MEMBERSHIP_SUGGESTIONS;
     case "interests":
       return INTEREST_SUGGESTIONS;
+    case "city":
+      return SEED_CITIES.map((c) => c.name);
+    case "area": {
+      const city = typeof data.city === "string" ? data.city.trim().toLowerCase() : "";
+      return !city || city === "pune" ? [...PUNE_AREAS].sort((a, b) => a.localeCompare(b)) : [];
+    }
   }
 }

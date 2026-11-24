@@ -23,6 +23,8 @@ export interface IntakeContextValue {
   kind?: IntakeKind;
   /** The whole form's answers (suggestions inside a doctor card follow the clinic type or specialty). */
   data?: Record<string, unknown>;
+  /** City name → its area names (the admin master lists), for the city and area dropdowns. */
+  places?: Record<string, string[]>;
 }
 
 const Ctx = createContext<IntakeContextValue | null>(null);

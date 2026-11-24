@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, Trash2, UserRound } from "lucide-react";
 import { uploadImage } from "@/lib/client/upload-image";
-import { blankDoctor, DOCTOR_FIELDS, fieldId, isShown, type DoctorEntry, type FieldDef } from "@/lib/intake/form";
+import { blankDoctor, DOCTOR_FIELDS, fieldId, isShown, splitLines, str, type DoctorEntry, type FieldDef } from "@/lib/intake/form";
 import { IntakeField } from "./IntakeFields";
 import { useIntakeContext } from "./IntakeContext";
 import { PhotoCropDialog } from "./PhotoCropDialog";
@@ -53,6 +53,48 @@ export function DoctorsField({ field, value, onChange, errKey }: { field: FieldD
   );
 }
 
+/**
+ * A hospital department's doctors: tick them from the form's doctor list
+ * (like the admin editor's Departments). Stored one name per line; names no
+ * longer on the list are dropped on the next tick.
+ */
+export function DoctorPickField({ id, value, onChange, describedBy }: { id: string; value: string; onChange: (v: string) => void; describedBy?: string }) {
+  const { data } = useIntakeContext();
+  const team = (Array.isArray(data?.doctors) ? (data.doctors as DoctorEntry[]) : []).map((d) => str(d?.name)).filter((n, i, all) => n && all.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i);
+  const picked = new Set(splitLines(value).map((n) => n.toLowerCase()));
+  if (team.length === 0) {
+    return (
+      <p id={id} className="rounded-lg border border-dashed border-line px-3 py-2.5 text-sm text-body/70">
+        Add doctors in “Doctors at the hospital” above, then tick them here.
+      </p>
+    );
+  }
+  return (
+    <ul id={id} aria-describedby={describedBy} className="grid gap-1.5 sm:grid-cols-2">
+      {team.map((name, i) => {
+        const cid = `${id}-${i}`;
+        return (
+          <li key={name} className="min-w-0">
+            <label htmlFor={cid} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-[10px] border border-line bg-surface px-3">
+              <input
+                id={cid}
+                type="checkbox"
+                checked={picked.has(name.toLowerCase())}
+                onChange={(e) => {
+                  const next = team.filter((n) => (n === name ? e.target.checked : picked.has(n.toLowerCase())));
+                  onChange(next.join("\n"));
+                }}
+                className="size-5 shrink-0 accent-[#0E7C7B]"
+              />
+              <span className="min-w-0 truncate text-sm text-body">{name}</span>
+            </label>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function DoctorCard({ index, doctor, errKey, onChange, onRemove }: { index: number; doctor: DoctorEntry; errKey: string; onChange: (patch: Partial<DoctorEntry>) => void; onRemove?: () => void }) {
   const { errors } = useIntakeContext();
   return (
@@ -80,6 +122,7 @@ function DoctorCard({ index, doctor, errKey, onChange, onRemove }: { index: numb
                 errKey={key}
                 value={doctor[f.key as keyof DoctorEntry] as string}
                 error={errors[key]}
+                context={doctor as unknown as Record<string, unknown>}
                 // Leaving "Other" clears what was typed for it.
                 onChange={(v) => onChange(f.key === "role" && v !== "other" ? { role: v as string, roleOther: "" } : { [f.key]: v as string })}
               />

@@ -77,10 +77,11 @@ describe("website forms match the editors", () => {
       yearStarted: "2015",
       awards: "NABH – 2022",
       timings: "Mon–Sat: 9 am – 9 pm",
-      services: "OPD\nICU care",
+      services: "OPD – Daily consultations\nICU care",
       insurance: "Star Health",
       websiteName: "saicare",
-      departments: [{ name: "Orthopaedics", doctors: [{ name: "Dr. A Rao", designation: "Ortho", education: "MS", role: "consultant", roleOther: "", portfolioUrl: "https://practo.com/x", photo: { publicId: "p", url: "https://res.cloudinary.com/x/image/upload/p.jpg" } }] }],
+      doctors: [{ name: "Dr. A Rao", designation: "Ortho", education: "MS", role: "consultant", roleOther: "", portfolioUrl: "https://practo.com/x", photo: { publicId: "p", url: "https://res.cloudinary.com/x/image/upload/p.jpg" } }],
+      departments: [{ name: "Orthopaedics", description: "", doctorNames: "Dr. A Rao" }],
     };
     const h = siteHints("MR-1", "hospital", data, "abc");
     expect(h).toMatchObject({ intakeId: "abc", tagline: "10-bed hospital in Wakad", yearStarted: "2015", awards: ["NABH – 2022"], services: ["OPD", "ICU care"], insurance: ["Star Health"], websiteName: "saicare", departments: ["Orthopaedics"] });

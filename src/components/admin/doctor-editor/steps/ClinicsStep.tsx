@@ -40,6 +40,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
       ...(fc.type === "visiting" ? { type: "hospital_visiting" as const } : {}),
       name: fc.name,
       addressLine1: fc.address.replace(/\s*\n\s*/g, ", "),
+      ...(fc.address2 ? { addressLine2: fc.address2 } : {}),
       areaId: area?.id ?? "",
       state: city?.state ?? "Maharashtra",
       pincode: /^\d{6}$/.test(fc.pincode) ? fc.pincode : "",
@@ -188,7 +189,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
                       <p className="font-semibold">
                         Website form {hints?.ref}: {fc.name || `clinic ${i + 1}`}
                       </p>
-                      <p className="text-muted-foreground">{[fc.address, fc.area, fc.city, fc.pincode].filter(Boolean).join(", ")}</p>
+                      <p className="text-muted-foreground">{[fc.address, fc.address2, fc.area, fc.city, fc.pincode].filter(Boolean).join(", ")}</p>
                       {fc.timings && <p className="whitespace-pre-line text-muted-foreground">Timings: {fc.timings}</p>}
                     </div>
                   </div>

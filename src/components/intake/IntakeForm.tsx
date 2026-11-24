@@ -62,6 +62,7 @@ export function IntakeForm({
   savedRef,
   cardFaces,
   prefill,
+  places,
 }: {
   kind: IntakeKind;
   initial: IntakeView | null;
@@ -74,6 +75,8 @@ export function IntakeForm({
   cardFaces?: Record<string, CardFace>;
   /** A new form's answers picked before it opened (the designs chosen on a product page). */
   prefill?: Partial<Record<"websiteDesign" | "cardStyle", string>>;
+  /** City name → area names (master lists) for the city and area dropdowns. */
+  places?: Record<string, string[]>;
 }) {
   const admin = mode === "admin";
   const sections = INTAKE_SECTIONS[kind];
@@ -350,7 +353,7 @@ export function IntakeForm({
         </div>
       )}
 
-      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, cardFaces, errors, kind, data }}>
+      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, cardFaces, errors, kind, data, places }}>
         <form onSubmit={(e) => e.preventDefault()} noValidate>
           <fieldset disabled={!editable} className="min-w-0 space-y-5">
             <SectionCard id="section-email" title={admin ? "Applicant email" : "Your email"}>

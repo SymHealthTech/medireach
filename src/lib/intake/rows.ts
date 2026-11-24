@@ -1,5 +1,5 @@
 import { parseQualificationLine } from "./hints";
-import { DEGREE_SUGGESTIONS } from "@/lib/suggestions";
+import { BED_TYPE_SUGGESTIONS, DEGREE_SUGGESTIONS } from "@/lib/suggestions";
 
 /**
  * Table-style answers in the doctor's website form (qualifications, services,
@@ -11,14 +11,14 @@ import { DEGREE_SUGGESTIONS } from "@/lib/suggestions";
  * Pure module: used by the browser and the server.
  */
 
-export type RowsKind = "qualifications" | "degrees" | "services" | "awards" | "memberships";
+export type RowsKind = "qualifications" | "degrees" | "services" | "facilities" | "equipment" | "bedTypes" | "awards" | "memberships";
 
 export interface RowColumn {
   key: string;
   label: string;
   placeholder?: string;
-  /** "year": 4 digits. "choice": a dropdown (`choices`) with Other → Please specify. */
-  type?: "text" | "year" | "choice";
+  /** "year": 4 digits. "number": a small count. "choice": a dropdown (`choices`) with Other → Please specify. */
+  type?: "text" | "year" | "number" | "choice";
   choices?: readonly string[];
   required?: boolean;
 }
@@ -67,6 +67,23 @@ export function splitDegrees(text: string): string[] {
 
 /** Degrees → the one line the site shows ("MBBS, MD (Dermatology)"). */
 export const joinDegrees = (items: string[]) => items.map(clean).filter(Boolean).join(", ");
+
+/** Name + short description rows (clinic and hospital facilities, equipment), like the admin editor's lists. */
+function named(item: string, max: number, namePlaceholder: string, descPlaceholder: string): RowsDef {
+  return {
+    item,
+    max,
+    columns: [
+      { key: "name", label: "Name", placeholder: namePlaceholder, required: true },
+      { key: "description", label: "Short description (optional)", placeholder: descPlaceholder },
+    ],
+    format: (r) => join([r.name, r.description]),
+    parse: (line) => {
+      const [name = "", ...rest] = line.split(DASH);
+      return { name: name.trim(), description: rest.join(" – ").trim() };
+    },
+  };
+}
 
 export const ROWS: Record<RowsKind, RowsDef> = {
   qualifications: {
@@ -119,6 +136,22 @@ export const ROWS: Record<RowsKind, RowsDef> = {
     parse: (line) => {
       const [name = "", ...rest] = line.split(DASH);
       return { name: name.trim(), description: rest.join(" – ").trim() };
+    },
+  },
+  facilities: named("Facility", 40, "Wheelchair access", "Ramp at the entrance and a lift"),
+  equipment: named("Equipment", 40, "Digital X-ray", "Reports in 30 minutes"),
+  // Hospital beds by type ("ICU – 2"), like the admin editor's bed types.
+  bedTypes: {
+    item: "Bed type",
+    max: 10,
+    columns: [
+      { key: "type", label: "Bed type", type: "choice", choices: BED_TYPE_SUGGESTIONS, required: true },
+      { key: "count", label: "Number of beds", type: "number", placeholder: "2" },
+    ],
+    format: (r) => join([r.type, r.count]),
+    parse: (line) => {
+      const m = line.match(/^(.+?)\s*(?:[–—:x×-]\s*)?(\d{1,3})\s*(?:beds?)?$/i);
+      return m ? { type: m[1]!.replace(/[\s–—:-]+$/, "").trim(), count: m[2]! } : { type: line.trim(), count: "" };
     },
   },
   awards: {

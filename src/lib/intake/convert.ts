@@ -211,6 +211,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       name: str(c.name),
       type,
       addressLine1: str(c.address).replace(/\s*\n\s*/g, ", "),
+      ...(str(c.address2) ? { addressLine2: str(c.address2).slice(0, 200) } : {}),
       areaId: area._id,
       cityId: city._id,
       state: city.state,
@@ -285,6 +286,14 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   return { kind: "doctor" as const, id: doc._id, href: `/admin/doctors/${doc._id}` };
 }
 
+/** "Name – short description" rows (services, facilities, equipment) → named items. */
+function namedRows(kind: "services" | "facilities" | "equipment", v: unknown, maxName: number) {
+  return splitLines(v).map((line) => {
+    const r = ROWS[kind].parse(line);
+    return { name: (r.name || line).slice(0, maxName), ...(r.description ? { description: r.description.slice(0, 300) } : {}) };
+  });
+}
+
 /** Form doctors → the site's doctor list (each doctor once, even if in two departments), keyed so departments can list them. */
 function siteDoctors(kind: IntakeKind, d: IntakeData) {
   const seen = new Set<string>();
@@ -325,17 +334,25 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   if (!category) skipped.push("category");
 
   const pincode = str(d.pincode);
-  const beds = /^\d+$/.test(str(d.beds)) ? Number(str(d.beds)) : undefined;
   const doctors = siteDoctors(kind, d);
-  // Each department lists its form doctors (none has a portfolio yet, so by key).
+  // Each department lists the doctors ticked for it (none has a portfolio yet, so by key).
   const keyByName = new Map(doctors.map((x) => [x.name.toLowerCase(), x.key]));
   const departments = (isRepeatValue(d.departments) ? (d.departments as RepeatItem[]) : [])
     .filter((dep) => str(dep.name))
     .map((dep) => ({
-      name: str(dep.name).slice(0, 120),
+      name: str(dep.name).slice(0, 80),
+      ...(str(dep.description) ? { description: str(dep.description).slice(0, 300) } : {}),
       doctorIds: [],
-      doctorKeys: [...new Set((Array.isArray(dep.doctors) ? (dep.doctors as DoctorEntry[]) : []).flatMap((e) => keyByName.get(str(e?.name).slice(0, 120).toLowerCase()) ?? []))],
+      doctorKeys: [...new Set(splitLines(dep.doctorNames).flatMap((n) => keyByName.get(n.slice(0, 120).toLowerCase()) ?? []))],
     }));
+  // Beds: the total, and the types ("ICU – 2"). A missing total is the sum of the types.
+  const bedTypes = splitLines(d.bedTypes)
+    .map((line) => ROWS.bedTypes.parse(line))
+    .filter((b) => b.type)
+    .slice(0, 10)
+    .map((b) => ({ type: b.type!.slice(0, 60), ...(/^\d{1,3}$/.test(b.count ?? "") ? { count: Number(b.count) } : {}) }));
+  const bedSum = bedTypes.reduce((n, b) => n + (b.count ?? 0), 0);
+  const beds = /^\d+$/.test(str(d.beds)) ? Math.max(Number(str(d.beds)), bedSum) : bedSum || undefined;
   if (beds !== undefined && beds > LIMITS.hospitalBedsMax) skipped.push(`beds (form says ${beds})`);
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
@@ -351,10 +368,12 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     logo: image(intake.photos?.logo, `${name} logo`),
     coverPhoto: image(intake.photos?.cover, name),
     tagline: str(d.tagline).slice(0, 200) || undefined,
+    shortDescription: str(d.shortDescription).slice(0, LIMITS.shortBio) || undefined,
     about: paragraphs(d.about),
     ...(str(d.regNumber) || str(d.regAuthority) ? { registration: { authority: str(d.regAuthority) || undefined, number: str(d.regNumber) || undefined } } : {}),
     address: {
       line1: str(d.address).replace(/\s*\n\s*/g, ", ") || undefined,
+      line2: str(d.address2).slice(0, 200) || undefined,
       ...(area && city ? { areaId: area._id, cityId: city._id, state: city.state } : {}),
       ...(/^\d{6}$/.test(pincode) ? { pincode } : {}),
       landmark: str(d.landmark) || undefined,
@@ -371,11 +390,11 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     ...(timings ? { timings } : {}),
     appointmentNote: str(d.appointmentNote) || undefined,
     visitingHours: str(d.visitingHours) || undefined,
-    services: splitLines(d.services).map((s) => ({ name: s.slice(0, 200) })),
-    facilities: splitLines(d.facilities).map((s) => ({ name: s.slice(0, 200) })),
-    equipment: splitLines(d.equipment).map((s) => ({ name: s.slice(0, 200) })),
+    services: namedRows("services", d.services, 120),
+    facilities: namedRows("facilities", d.facilities, 200),
+    equipment: namedRows("equipment", d.equipment, 200),
     departments,
-    ...(beds !== undefined && beds <= LIMITS.hospitalBedsMax && kind === "hospital" ? { beds: { total: beds, types: [] } } : {}),
+    ...(beds !== undefined && beds <= LIMITS.hospitalBedsMax && kind === "hospital" ? { beds: { total: beds, types: bedTypes } } : {}),
     ...(insurance.length || d.cashless === true ? { insurance: { cashless: d.cashless === true, providers: insurance } } : {}),
     doctors,
     languages: splitList(d.languages),

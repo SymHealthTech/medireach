@@ -47,6 +47,7 @@ export function BasicsStep({ form: f, set, err, options, readOnly, hints }: ESte
   const since = hints?.yearStarted && /^\d{4}$/.test(hints.yearStarted) ? hints.yearStarted : "";
   const taglineIdeas = [hints?.tagline ?? "", place ? `${typeName} in ${place}${since ? ` since ${since}` : ""}` : "", since ? `Caring for patients since ${since}` : ""].filter(Boolean);
   const descIdeas = [
+    hints?.shortDescription ?? "",
     hints?.tagline && place ? `${hints.tagline}. ${f.name ? `${f.name}, ` : ""}${place}.` : "",
     place ? `${f.name || typeName} is a ${typeName.toLowerCase()} in ${place}${since ? `, open since ${since}` : ""}. See timings, services, doctors and directions.` : "",
   ]

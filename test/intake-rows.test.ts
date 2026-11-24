@@ -67,4 +67,14 @@ describe("clinic / hospital doctor degrees", () => {
     expect(rowsToText(def, textToRows(def, "BAMS\nMD (Ayurveda)"))).toBe("BAMS, MD (Ayurveda)");
     expect(textToRows(def, "")).toEqual([{ degree: "", specialization: "" }]);
   });
+
+  it("facilities, equipment and bed types (clinic and hospital forms)", () => {
+    for (const kind of ["facilities", "equipment", "bedTypes"] as const) {
+      const def = ROWS[kind];
+      const rows = kind === "bedTypes" ? [{ type: "General ward", count: "6" }, { type: "ICU", count: "" }] : [{ name: "Lift", description: "To all floors" }, { name: "Parking", description: "" }];
+      expect(textToRows(def, rowsToText(def, rows))).toEqual(rows);
+    }
+    expect(ROWS.bedTypes.parse("ICU 2")).toEqual({ type: "ICU", count: "2" });
+    expect(ROWS.bedTypes.parse("Private room: 3 beds")).toEqual({ type: "Private room", count: "3" });
+  });
 });

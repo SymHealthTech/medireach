@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { ClipboardPaste, HelpCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { cleanPastedText, emptyItem, fieldId, isRepeatValue, isShown, type DoctorEntry, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
+import { cleanPastedText, emptyItem, fieldId, isRepeatValue, isRequired, isShown, type DoctorEntry, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
 import { CardStylePicker, ChoiceCards, DesignPicker } from "./DesignPickers";
-import { DoctorsField } from "./DoctorsField";
+import { DoctorPickField, DoctorsField } from "./DoctorsField";
 import { LocationField } from "./LocationField";
 import { RowsField } from "./RowsField";
 import { ROWS } from "@/lib/intake/rows";
@@ -86,15 +86,17 @@ export function IntakeField({
     <div className={cn("min-w-0 space-y-1.5", f.wide && "sm:col-span-2")}>
       <label htmlFor={id} className="block text-sm font-medium text-body">
         {f.label}
-        {f.required && (
+        {isRequired(f, context) && (
           <span className="text-clay-text" aria-hidden>
             {" "}
             *
           </span>
         )}
-        {f.required && <span className="sr-only"> (required to send)</span>}
+        {isRequired(f, context) && <span className="sr-only"> (required to send)</span>}
       </label>
-      {f.type === "design" ? (
+      {f.type === "doctorPick" ? (
+        <DoctorPickField id={id} value={v} onChange={onChange} describedBy={describedBy} />
+      ) : f.type === "design" ? (
         <DesignPicker id={id} field={f} value={v} onChange={onChange} context={context} />
       ) : f.type === "card" ? (
         <CardStylePicker id={id} field={f} value={v} onChange={onChange} />
@@ -104,7 +106,7 @@ export function IntakeField({
         <LocationField id={id} value={v} onChange={onChange} hint={[context.name, context.address, context.area, context.city].filter((x) => typeof x === "string" && x.trim()).join(", ")} />
       ) : f.rows ? (
         <RowsField id={id} def={ROWS[f.rows]} value={v} onChange={onChange} label={f.label} suggestions={suggestions} describedBy={describedBy} invalid={Boolean(error)} />
-      ) : mode === "selectOther" ? (
+      ) : mode === "selectOther" && suggestions.length > 0 ? (
         <SelectOtherInput id={id} value={v} onChange={onChange} items={suggestions} describedBy={describedBy} invalid={Boolean(error)} />
       ) : f.type === "timings" ? (
         <TimingsField id={id} value={v} onChange={onChange} placeholder={f.placeholder} describedBy={describedBy} invalid={Boolean(error)} />

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, ChevronRight, CreditCard, Hospital, UserPlus } from "lucide-react";
+import { Building2, Hospital } from "lucide-react";
 import type { FilterQuery } from "mongoose";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/admin/EmptyState";
+import { EstablishmentRowActions } from "@/components/admin/EstablishmentRowActions";
 import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { FoundingBadge, Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
@@ -15,6 +15,7 @@ import { DOCTOR_STATUSES, ESTABLISHMENT_KINDS, RENEWAL_STATUSES } from "@/lib/co
 import { getEstablishmentEditorOptions } from "@/lib/establishments/options";
 import { timeAgo } from "@/lib/format";
 import { displayRenewalStatus } from "@/lib/renewals";
+import { absUrl, paths, subdomainUrl } from "@/lib/site";
 import { Establishment, type EstablishmentDoc } from "@/models/Establishment";
 import { getTheme } from "@/themes/specialty";
 
@@ -52,7 +53,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   // Renewal status is worked out live (see Payments & renewals), so filter on it after the query.
   const docs = await Establishment.find(filter)
     .sort(SORTS[sortKey])
-    .select({ name: 1, kind: 1, status: 1, categoryId: 1, themeKey: 1, logo: 1, address: 1, founding: 1, foundingNumber: 1, renewalDueDate: 1, renewalStatus: 1, doctors: 1, updatedAt: 1, "compliance.issues": 1 })
+    .select({ name: 1, kind: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, categoryId: 1, themeKey: 1, logo: 1, address: 1, founding: 1, foundingNumber: 1, renewalDueDate: 1, renewalStatus: 1, doctors: 1, updatedAt: 1, "compliance.issues": 1 })
     .limit(5000)
     .lean();
   const now = new Date();
@@ -63,24 +64,30 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
 
   const catName = new Map(options.categories.map((c) => [c.id, c.name]));
   const areaName = new Map(options.areas.map((a) => [a.id, a.name]));
-  const rows = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(({ d, renewal: r }) => ({
-    id: String(d._id),
-    name: d.name,
-    kind: d.kind,
-    status: d.status,
-    logo: d.logo?.url,
-    color: getTheme(d.themeKey, d.kind).palette.primary,
-    meta: [catName.get(String(d.categoryId)), areaName.get(String(d.address?.areaId))].filter(Boolean).join(" · "),
-    founding: d.founding ? (d.foundingNumber ?? 0) : null,
-    doctors: d.doctors?.length ?? 0,
-    issues: d.compliance?.issues?.length ?? 0,
-    renewal: r,
-    hasDue: Boolean(d.renewalDueDate),
-    updatedAt: d.updatedAt,
-  }));
+  const rows = all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(({ d, renewal: r }) => {
+    const live = d.status === "published" && d.slug && d.citySlug;
+    return {
+      id: String(d._id),
+      name: d.name,
+      kind: d.kind,
+      status: d.status,
+      logo: d.logo?.url,
+      color: getTheme(d.themeKey, d.kind).palette.primary,
+      meta: [catName.get(String(d.categoryId)), areaName.get(String(d.address?.areaId))].filter(Boolean).join(" · "),
+      founding: d.founding ? (d.foundingNumber ?? 0) : null,
+      doctors: d.doctors?.length ?? 0,
+      issues: d.compliance?.issues?.length ?? 0,
+      renewal: r,
+      hasDue: Boolean(d.renewalDueDate),
+      updatedAt: d.updatedAt,
+      liveUrl: live ? absUrl(d.kind === "hospital" ? paths.hospital(d.citySlug!, d.slug!) : paths.clinic(d.citySlug!, d.slug!)) : undefined,
+      shareUrl: live ? (d.subdomain ? subdomainUrl(d.subdomain) : d.shortSlug ? absUrl(paths.short(d.shortSlug)) : undefined) : undefined,
+    };
+  });
   const filtered = Object.keys(filter).length > 1 || Boolean(renewal);
   const pune = options.cities.find((c) => c.slug === "pune")?.id;
   const showMoney = can.seePaymentTotals(admin.role);
+  const canPublish = can.publish(admin.role);
   const label = kind === "hospital" ? "hospital" : "clinic";
   const Icon = kind === "hospital" ? Hospital : Building2;
 
@@ -113,7 +120,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
       ) : (
         <ul className="divide-y divide-line rounded-xl border border-line bg-card shadow-soft">
           {rows.map((r) => (
-            <li key={r.id} className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+            <li key={r.id} className="flex items-center gap-2 px-4 py-3">
               <Link href={`/admin/establishments/${r.id}?kind=${r.kind}`} className="flex min-w-0 flex-1 items-center gap-3">
                 {r.logo ? (
                   // eslint-disable-next-line @next/next/no-img-element -- admin thumbnail
@@ -137,22 +144,8 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
                     {r.issues > 0 && <span className="text-xs font-semibold text-clay-text">{r.issues} issue{r.issues > 1 ? "s" : ""}</span>}
                   </span>
                 </span>
-                <ChevronRight className="size-5 shrink-0 text-muted-foreground md:hidden" />
               </Link>
-              <div className="flex flex-wrap gap-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/admin/doctors/new?establishment=${r.id}`}>
-                    <UserPlus /> Add doctor portfolio
-                  </Link>
-                </Button>
-                {showMoney && (
-                  <Button asChild size="sm" variant="ghost">
-                    <Link href={`/admin/payments?establishment=${r.id}`}>
-                      <CreditCard /> Payments
-                    </Link>
-                  </Button>
-                )}
-              </div>
+              <EstablishmentRowActions site={{ id: r.id, kind: r.kind, status: r.status, liveUrl: r.liveUrl, shareUrl: r.shareUrl }} canPublish={canPublish} showMoney={showMoney} />
             </li>
           ))}
         </ul>
