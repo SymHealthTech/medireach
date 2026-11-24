@@ -190,7 +190,7 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
   const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
   const what = typeName(s);
   const street = [s.address.line1, s.address.line2].filter(Boolean).join(", ");
-  // Clinics: the doctors (up to 2 named, then "and N more") and the appointment note, so the card says who you will see and how.
+  // Clinics: the doctors (up to 2 named, then "+N more"), so the card says who you will see.
   const clinic = s.kind === "clinic";
   const doctors = clinic ? s.doctors.filter((d) => d.name.trim()) : [];
   // One line per doctor: name and specialty, or the name alone when both don't fit.
@@ -200,7 +200,8 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
     const full = [d.name, d.specialty].filter(Boolean).join(" · ");
     return (full.length <= room ? full : clip(d.name, room)) + more;
   });
-  const note = clinic && s.appointmentNote ? clip(s.appointmentNote, 48) : undefined;
+  // The appointment note (a hospital's OPD hours when it is open 24×7), under the timings.
+  const note = s.appointmentNote ? clip(s.appointmentNote, 48) : undefined;
   const rows: { icon: keyof typeof ICONS; label: string; value: string | string[]; note?: string }[] = [
     ...cardNumbers(s).map((n) => ({ icon: n.icon, label: n.label, value: formatPhone(n.value) })),
     ...(doctorLines.length ? [{ icon: "user" as const, label: doctors.length > 1 ? "Doctors" : "Doctor", value: doctorLines }] : []),
@@ -215,7 +216,7 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
   // Five rows (emergency, call, WhatsApp, address, timings): tighter rows and a smaller QR so it all fits.
   const tight = rows.length > 4;
   // A full clinic card (doctors and an appointment note, or five rows plus doctors): a shorter header too.
-  const compact = (tight && doctorLines.length > 0) || (doctorLines.length > 1 && Boolean(note));
+  const compact = (tight && (doctorLines.length > 0 || Boolean(note))) || (doctorLines.length > 1 && Boolean(note));
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body }}>
       {devBanner && <DevBanner name={devBanner} />}

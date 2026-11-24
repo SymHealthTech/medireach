@@ -102,7 +102,7 @@ describe("clinic visiting card", () => {
   const c = SAMPLE_SITES.skin;
   const card = (s: PublicEstablishment, variant: "print" | "phone") => renderToStaticMarkup(createElement(ClassicSiteCard, siteCardProps(s, variant, "html")));
 
-  it("names up to 2 doctors and adds the appointment note on the phone card", () => {
+  it("names up to 2 doctors (clinics only) and adds the appointment note on the phone card", () => {
     const doctors = [
       { name: "Dr. Riya Joshi", specialty: "Dermatologist" },
       { name: "Dr. Kunal Rao", specialty: "Trichologist" },
@@ -118,7 +118,10 @@ describe("clinic visiting card", () => {
     expect(card({ ...c, appointmentNote: "x".repeat(120) }, "phone")).toContain("…");
     // Not on the print card, and not on hospital cards.
     expect(card({ ...c, doctors, appointmentNote: "By appointment only" }, "print")).not.toContain("Dr. Riya Joshi");
-    expect(card({ ...SAMPLE_SITES["small-hospital"], doctors, appointmentNote: "OPD: Mon–Sat" }, "phone")).not.toContain("Dr. Riya Joshi");
+    const hospital = card({ ...SAMPLE_SITES["small-hospital"], doctors, appointmentNote: "OPD: Mon–Sat" }, "phone");
+    expect(hospital).not.toContain("Dr. Riya Joshi");
+    // Hospitals show their note (OPD hours when open 24×7) under the timings too.
+    expect(hospital).toContain("OPD: Mon–Sat");
   });
 });
 
