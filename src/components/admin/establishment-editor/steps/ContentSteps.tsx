@@ -158,7 +158,7 @@ export function LocationStep({ form: f, set, err, options, readOnly, hints }: ES
             <Input id="email" type="email" value={f.email} disabled={readOnly} onChange={(e) => set({ email: e.target.value })} />
           </Field>
           {f.kind === "hospital" && (
-            <Field label="Emergency number (24×7)" htmlFor="emergencyPhone" error={err("emergencyPhone")} help="Shown in the sticky 24×7 bar.">
+            <Field label="Emergency number (24×7)" htmlFor="emergencyPhone" error={err("emergencyPhone")} help="Optional. When added, the website shows a 24×7 emergency bar with this number; without one it shows a plain call bar.">
               <Input id="emergencyPhone" type="tel" inputMode="tel" value={f.emergencyPhone} disabled={readOnly} onChange={(e) => set({ emergencyPhone: e.target.value })} />
             </Field>
           )}

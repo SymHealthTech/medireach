@@ -661,7 +661,7 @@ const HOSPITAL: SectionDef[] = [
   {
     key: "address",
     title: "Address and contact",
-    fields: [...addressFields("hospital"), { key: "emergencyPhone", label: "24×7 emergency number", type: "phone", wide: true, help: "Shown in the sticky 24×7 bar on your website." }],
+    fields: [...addressFields("hospital"), { key: "emergencyPhone", label: "24×7 emergency number", type: "phone", wide: true, help: "Optional. When added, your website shows a 24×7 emergency bar with this number." }],
   },
   {
     key: "timings",
