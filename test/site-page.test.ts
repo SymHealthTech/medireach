@@ -3,6 +3,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SAMPLE_SITES } from "@/fixtures/sample-sites";
 import { bedsOf } from "@/lib/public/establishments";
+import { siteCardProps } from "@/lib/cards/render";
+import ClassicSiteCard from "@/templates/card/classic/site";
 import { ClassicSite } from "@/templates/site/ClassicSite";
 import type { PublicEstablishment } from "@/templates/types";
 
@@ -60,3 +62,39 @@ describe("hospital website page shows what the admin editor asks", () => {
     expect(without).toContain("tel:+912000000002");
   });
 });
+
+describe("hospital visiting card shows what the admin editor asks", () => {
+  const h = SAMPLE_SITES["small-hospital"];
+  // Lower-cased: the phone card prints its row labels in capitals.
+  const card = (s: PublicEstablishment, variant: "print" | "phone") => renderToStaticMarkup(createElement(ClassicSiteCard, siteCardProps(s, variant, "html"))).toLowerCase();
+
+  it("names the hospital type and labels every number", () => {
+    const busy = {
+      ...h,
+      category: { name: "Maternity Hospital", slug: "maternity-hospital", plural: "Maternity Hospitals" },
+      is24x7: true,
+      emergencyPhone: "919800000001",
+      phones: ["912027000002"],
+      whatsapp: "919800000003",
+      address: { ...h.address, line2: "Ground floor" },
+    };
+    for (const v of ["print", "phone"] as const) {
+      const html = card(busy, v);
+      expect(html, v).toContain("maternity hospital");
+      expect(html, v).toContain("24×7 emergency");
+      expect(html, v).toContain(">call<");
+      expect(html, v).toContain(">whatsapp<");
+    }
+    expect(card(busy, "phone")).toContain("ground floor");
+  });
+
+  it("folds a shared WhatsApp into the call label, and keeps a single number unlabelled on print", () => {
+    const shared = { ...h, emergencyPhone: undefined, phones: ["919800000002"], whatsapp: "919800000002" };
+    expect(card(shared, "print")).toContain("call or whatsapp");
+    expect(card(shared, "phone")).toContain("call or whatsapp");
+    const single = card({ ...h, emergencyPhone: undefined, phones: ["912027000002"], whatsapp: undefined }, "print");
+    expect(single).not.toContain(">call<");
+    expect(single).not.toContain("emergency");
+  });
+});
+

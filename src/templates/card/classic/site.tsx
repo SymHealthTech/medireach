@@ -49,6 +49,27 @@ function Logo({ url, name, size, primary, soft, fonts }: { url?: string; name: s
   );
 }
 
+/** "Maternity Hospital", "Skin Clinic"; "Hospital" / "Clinic" when no type is set (as on the website). */
+const typeName = (s: SiteCardTemplateProps["site"]) => s.category?.name ?? (s.kind === "hospital" ? "Hospital" : "Clinic");
+
+/**
+ * The numbers a card shows, labelled: the emergency number (only when one was
+ * entered), the main number, and WhatsApp (folded into the call or emergency
+ * label when it is the same number, else its own row).
+ */
+function cardNumbers(s: SiteCardTemplateProps["site"]): { icon: "phone" | "chat"; label: string; value: string; emergency?: boolean }[] {
+  const main = s.phones[0];
+  const emergency = s.emergencyPhone && s.emergencyPhone !== main ? s.emergencyPhone : undefined;
+  const wa = s.whatsapp;
+  const emergencyLabel = s.is24x7 ? "24×7 emergency" : "Emergency";
+  const out: { icon: "phone" | "chat"; label: string; value: string; emergency?: boolean }[] = [];
+  if (emergency) out.push({ icon: "phone", label: wa === emergency ? `${emergencyLabel} or WhatsApp` : emergencyLabel, value: emergency, emergency: true });
+  // The main number; it is the emergency number too when both are the same.
+  if (main) out.push({ icon: "phone", label: s.emergencyPhone === main ? (wa === main ? `${emergencyLabel}, call or WhatsApp` : `${emergencyLabel} and call`) : wa === main ? "Call or WhatsApp" : "Call", value: main });
+  if (wa && wa !== main && wa !== emergency) out.push({ icon: "chat", label: "WhatsApp", value: wa });
+  return out;
+}
+
 function hoursText(s: SiteCardTemplateProps["site"]): string {
   if (s.is24x7) return "Open 24×7";
   const summary = openDaysSummary(s.timings);
@@ -59,13 +80,16 @@ function hoursText(s: SiteCardTemplateProps["site"]): string {
 // Print: 85 × 55 mm at 300 dpi (1004 × 650)
 // ---------------------------------------------------------------------------
 
-function PrintRow({ icon, children, strong, soft, primary }: { icon: keyof typeof ICONS; children: React.ReactNode; strong?: boolean; soft: string; primary: string }) {
+function PrintRow({ icon, children, strong, soft, primary, label }: { icon: keyof typeof ICONS; children: React.ReactNode; strong?: boolean; soft: string; primary: string; label?: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", marginTop: 11 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 999, background: soft, marginRight: 14 }}>
         <Icon name={icon} size={19} color={primary} />
       </div>
-      <div style={{ display: "flex", fontSize: strong ? 24 : 19, fontWeight: strong ? 700 : 400, color: strong ? primary : TEXT }}>{children}</div>
+      <div style={{ display: "flex", alignItems: "baseline" }}>
+        {label && <div style={{ display: "flex", fontSize: 16, fontWeight: 600, color: MUTED, marginRight: 10 }}>{label}</div>}
+        <div style={{ display: "flex", fontSize: strong ? 24 : 19, fontWeight: strong ? 700 : 400, color: strong ? primary : TEXT }}>{children}</div>
+      </div>
     </div>
   );
 }
@@ -73,8 +97,10 @@ function PrintRow({ icon, children, strong, soft, primary }: { icon: keyof typeo
 function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
   const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
-  const phone = s.emergencyPhone ?? s.phones[0];
-  const what = s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic");
+  const numbers = cardNumbers(s);
+  // One plain number needs no label; several (or a shared WhatsApp) are labelled.
+  const labelled = numbers.length > 1 || numbers.some((n) => n.label !== "Call");
+  const what = typeName(s);
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body }}>
       {devBanner && <DevBanner name={devBanner} />}
@@ -95,11 +121,11 @@ function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
             {s.address.area.name}, {s.address.city.name}
           </div>
           <div style={{ display: "flex", flex: 1 }} />
-          {phone && (
-            <PrintRow icon="phone" strong soft={soft} primary={primary}>
-              {formatPhone(phone)}
+          {numbers.map((n) => (
+            <PrintRow key={`${n.label}-${n.value}`} icon={n.icon} strong={n.icon === "phone"} label={labelled ? n.label : undefined} soft={soft} primary={primary}>
+              {formatPhone(n.value)}
             </PrintRow>
-          )}
+          ))}
           <PrintRow icon="clock" soft={soft} primary={primary}>
             {hoursText(s)}
           </PrintRow>
@@ -117,9 +143,9 @@ function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
 // Phone: 1080 × 1920
 // ---------------------------------------------------------------------------
 
-function PhoneRow({ icon, label, value, last, soft, primary }: { icon: keyof typeof ICONS; label: string; value: string; last?: boolean; soft: string; primary: string }) {
+function PhoneRow({ icon, label, value, last, soft, primary, tight }: { icon: keyof typeof ICONS; label: string; value: string; last?: boolean; soft: string; primary: string; tight?: boolean }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
+    <div style={{ display: "flex", alignItems: "center", padding: tight ? "18px 0" : "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: 999, background: soft, marginRight: 28 }}>
         <Icon name={icon} size={38} color={primary} />
       </div>
@@ -134,20 +160,20 @@ function PhoneRow({ icon, label, value, last, soft, primary }: { icon: keyof typ
 function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
   const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
-  const what = s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic");
+  const what = typeName(s);
+  const street = [s.address.line1, s.address.line2].filter(Boolean).join(", ");
   const rows: { icon: keyof typeof ICONS; label: string; value: string }[] = [
-    ...(s.emergencyPhone ? [{ icon: "phone" as const, label: "24×7 emergency", value: formatPhone(s.emergencyPhone) }] : []),
-    ...(s.phones[0] && s.phones[0] !== s.emergencyPhone ? [{ icon: "phone" as const, label: "Call", value: formatPhone(s.phones[0]) }] : []),
+    ...cardNumbers(s).map((n) => ({ icon: n.icon, label: n.label, value: formatPhone(n.value) })),
     {
       icon: "pin",
       label: "Address",
-      // Skip the area when the first line already names it ("Sample Road, Wakad").
-      value: s.address.line1.toLowerCase().includes(s.address.area.name.toLowerCase())
-        ? s.address.line1
-        : [s.address.line1, s.address.area.name].filter(Boolean).join(", "),
+      // Skip the area when the address lines already name it ("Sample Road, Wakad").
+      value: street.toLowerCase().includes(s.address.area.name.toLowerCase()) ? street : [street, s.address.area.name].filter(Boolean).join(", "),
     },
     { icon: "clock", label: "Timings", value: hoursText(s) },
   ];
+  // Five rows (emergency, call, WhatsApp, address, timings): tighter rows and a smaller QR so it all fits.
+  const tight = rows.length > 4;
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body }}>
       {devBanner && <DevBanner name={devBanner} />}
@@ -167,15 +193,15 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
       <div style={{ display: "flex", padding: "0 72px", marginTop: -110, position: "relative" }}>
         <div style={{ display: "flex", flexDirection: "column", width: "100%", background: "#FFFFFF", borderRadius: 40, padding: "18px 48px", boxShadow: "0 30px 60px -20px rgba(0,0,0,0.25)" }}>
           {rows.map((r, i) => (
-            <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} last={i === rows.length - 1} soft={soft} primary={primary} />
+            <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} last={i === rows.length - 1} soft={soft} primary={primary} tight={tight} />
           ))}
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 32 }} />
       <div style={{ display: "flex", alignItems: "center", padding: "0 96px" }}>
         <div style={{ display: "flex", padding: 10, borderRadius: 28, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={260} radius={20} color={primary} />
+          <QrBlock qr={qr} px={tight ? 220 : 260} radius={20} color={primary} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 48, flex: 1 }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 46, lineHeight: 1.12, color: primary }}>Scan for timings and directions</div>
