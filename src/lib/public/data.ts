@@ -10,6 +10,7 @@ import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
 import { Specialty } from "@/models/Specialty";
 import { Establishment } from "@/models/Establishment";
 import { absUrl, paths, sitePath, subdomainUrl, type SiteRoute } from "@/lib/site";
+import { mapEmbedUrl } from "@/lib/maps";
 import { storyParagraphs } from "@/lib/format";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { CACHE_TAGS } from "@/lib/public/tags";
@@ -119,9 +120,10 @@ export function systemLabelOf(system: string | undefined, other?: string): strin
   return SYSTEM_LABEL[system] ?? system[0]!.toUpperCase() + system.slice(1);
 }
 
-function fullNameOf(d: Pick<LeanDoctor, "title" | "firstName" | "lastName" | "displayName">): string {
+/** "Dr. Asha R Kulkarni": the display name if set, else title, first, middle and last name. */
+function fullNameOf(d: Pick<LeanDoctor, "title" | "firstName" | "middleName" | "lastName" | "displayName">): string {
   if (d.displayName) return d.displayName;
-  return [d.title || "Dr.", d.firstName, d.lastName].filter(Boolean).join(" ");
+  return [d.title || "Dr.", d.firstName, d.middleName, d.lastName].filter(Boolean).join(" ");
 }
 
 function degreesLineOf(d: LeanDoctor, mi: MasterIndex): string {
@@ -170,6 +172,7 @@ function clinicsOf(d: LeanDoctor, mi: MasterIndex, sites?: SiteLinks): PublicCli
       pincode: c.pincode,
       fullAddress,
       directionsUrl: directionsUrl(c, fullAddress),
+      mapEmbedUrl: mapEmbedUrl(c.geo && typeof c.geo.lat === "number" ? c.geo : undefined, `${c.name}, ${fullAddress}`),
       ...(c.geo && typeof c.geo.lat === "number" ? { geo: { lat: c.geo.lat, lng: c.geo.lng } } : {}),
       ...(c.phone ? { phone: normalizeIndianPhone(c.phone) ?? c.phone } : {}),
       timings: c.timings.map((t) => ({ day: t.day, slots: t.slots.map((s) => ({ open: s.open, close: s.close })) })),

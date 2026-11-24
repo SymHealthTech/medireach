@@ -499,6 +499,16 @@ export default function ClassicPortfolio({ doctor: d, seo }: PortfolioTemplatePr
                 <ClinicCard key={c.id} clinic={c} />
               ))}
             </div>
+            {/* A map of the main clinic, as on clinic pages (loads only when scrolled to). */}
+            {clinic?.mapEmbedUrl && (
+              <iframe
+                title={`Map showing ${clinic.name}`}
+                src={clinic.mapEmbedUrl}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="mt-6 h-72 w-full rounded-2xl border-0 shadow-soft ring-1 ring-ink/5 sm:h-80"
+              />
+            )}
           </Section>
         )}
 

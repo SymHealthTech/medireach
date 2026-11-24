@@ -41,6 +41,8 @@ export interface PublicClinic {
   /** Single-line address for display and schema. */
   fullAddress: string;
   directionsUrl: string;
+  /** Google Maps embed of the pin, else of the address. Optional so sample data needs none. */
+  mapEmbedUrl?: string;
   geo?: { lat: number; lng: number };
   phone?: string;
   timings: PublicDayTimings[];

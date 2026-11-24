@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
-import { systemLabelOf } from "@/lib/public/data";
+import { Types } from "mongoose";
+import { systemLabelOf, toPublicDoctor } from "@/lib/public/data";
+import type { DoctorProfileDoc } from "@/models/DoctorProfile";
 import ClassicPortfolio from "@/templates/portfolio/classic";
 import ClassicCard from "@/templates/card/classic";
 import { cardProps } from "@/lib/cards/render";
@@ -83,6 +85,63 @@ describe("doctor visiting card shows what the admin editor asks", () => {
     expect(phone).toContain("reg. maharashtra council of indian medicine · i-12345");
     expect(phone).toContain("by appointment only");
     for (const v of ["print", "phone"] as const) expect(card(d, v), v).toContain("· ayurveda");
+  });
+});
+
+describe("doctor page: name and map", () => {
+  const city = new Types.ObjectId();
+  const area = new Types.ObjectId();
+  const masters = {
+    cities: [{ id: String(city), name: "Pune", slug: "pune", state: "Maharashtra" }],
+    areas: [{ id: String(area), name: "Kothrud", slug: "kothrud", cityId: String(city) }],
+    specialties: [],
+    degrees: [],
+    councils: [],
+  };
+  const doc = (extra: Record<string, unknown> = {}) =>
+    ({
+      _id: new Types.ObjectId(),
+      status: "published",
+      citySlug: "pune",
+      slug: "dr-asha-kulkarni",
+      title: "Dr.",
+      firstName: "Asha",
+      middleName: "R",
+      lastName: "Kulkarni",
+      languages: [],
+      systemOfMedicine: "allopathy",
+      registration: {},
+      qualifications: [],
+      practitionerType: "gp",
+      secondarySpecialtyIds: [],
+      services: [],
+      conditionsTreated: [],
+      clinics: [{ _id: new Types.ObjectId(), name: "Asha Clinic", type: "own_clinic", addressLine1: "Shop 4", areaId: area, cityId: city, state: "Maharashtra", pincode: "411038", timings: [], geo: { lat: 18.5, lng: 73.8 } }],
+      links: {},
+      awards: [],
+      memberships: [],
+      publications: [],
+      interests: [],
+      gallery: [],
+      portfolioTemplateId: "classic",
+      cardTemplateId: "classic",
+      seo: { noindex: false },
+      updatedAt: new Date(),
+      ...extra,
+    }) as unknown as DoctorProfileDoc;
+
+  it("shows the middle name unless a display name is set", () => {
+    expect(toPublicDoctor(doc(), masters).fullName).toBe("Dr. Asha R Kulkarni");
+    expect(toPublicDoctor(doc({ middleName: undefined }), masters).fullName).toBe("Dr. Asha Kulkarni");
+    expect(toPublicDoctor(doc({ displayName: "Dr. A. R. Kulkarni" }), masters).fullName).toBe("Dr. A. R. Kulkarni");
+  });
+
+  it("maps the main clinic", () => {
+    const d = toPublicDoctor(doc(), masters);
+    expect(d.clinics[0]!.mapEmbedUrl).toContain("18.5%2C73.8");
+    const html = render(d);
+    expect(html).toContain("<iframe");
+    expect(html).toContain("Map showing Asha Clinic");
   });
 });
 

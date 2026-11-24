@@ -2,6 +2,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import type { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db";
+import { mapEmbedUrl } from "@/lib/maps";
 import { getMasters, indexMasters, normalizeIndianPhone, PUBLISHED_LIVE, PUBLISHED_ROUTABLE, toCard, type Masters } from "@/lib/public/data";
 import { CACHE_TAGS } from "@/lib/public/tags";
 import { departmentMemberKeys, siteDoctorKey } from "@/lib/establishments/form";
@@ -42,10 +43,6 @@ export const getClinicCategories = unstable_cache(
 );
 
 /** Google Maps embed without an API key: the pin when known, else the address. */
-export function mapEmbedUrl(geo: { lat: number; lng: number } | undefined, address: string): string {
-  const q = geo ? `${geo.lat},${geo.lng}` : address;
-  return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=16&output=embed`;
-}
 
 function directionsUrl(mapsUrl: string | undefined, geo: { lat: number; lng: number } | undefined, address: string): string {
   if (mapsUrl) return mapsUrl;
