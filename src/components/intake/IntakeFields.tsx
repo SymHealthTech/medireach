@@ -11,6 +11,7 @@ import { RowsField } from "./RowsField";
 import { ROWS } from "@/lib/intake/rows";
 import { SelectOtherInput, SuggestionChips, SuggestionDatalist, datalistId, suggestMode, useFieldSuggestions } from "./Suggestions";
 import { TimingsField } from "./TimingsField";
+import { useOptionalIntakeContext } from "./IntakeContext";
 
 import { inputClass } from "./input-class";
 
@@ -45,6 +46,9 @@ export function IntakeField({
 }) {
   const id = fieldId(errKey);
   const suggestions = useFieldSuggestions(f, context);
+  const ctx = useOptionalIntakeContext();
+  // Live master list (clinic types) when the page passed it; else the built-in options.
+  const selectOptions = (f.optionsFrom && ctx?.[f.optionsFrom]?.length ? ctx[f.optionsFrom] : f.options) ?? [];
   const mode = suggestMode(f);
 
   if (f.type === "doctors") {
@@ -65,8 +69,11 @@ export function IntakeField({
   if (f.type === "checkbox") {
     return (
       <label htmlFor={id} className={cn("flex min-h-11 cursor-pointer items-center gap-3 self-end rounded-[10px] border border-line bg-surface px-3", f.wide && "sm:col-span-2")}>
-        <input id={id} type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="size-5 accent-[#0E7C7B]" />
-        <span className="text-sm font-medium text-body">{f.label}</span>
+        <input id={id} type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} className="size-5 shrink-0 accent-[#0E7C7B]" />
+        <span className="py-2">
+          <span className="block text-sm font-medium text-body">{f.label}</span>
+          {f.help && <span className="block text-xs text-body/70">{f.help}</span>}
+        </span>
       </label>
     );
   }
@@ -117,7 +124,7 @@ export function IntakeField({
       ) : f.type === "select" ? (
         <select {...common} onChange={(e) => onChange(e.target.value)} className={cn(inputClass, "h-11")}>
           <option value="">Choose…</option>
-          {f.options?.map((o) => (
+          {selectOptions.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>

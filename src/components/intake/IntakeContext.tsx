@@ -25,6 +25,8 @@ export interface IntakeContextValue {
   data?: Record<string, unknown>;
   /** City name → its area names (the admin master lists), for the city and area dropdowns. */
   places?: Record<string, string[]>;
+  /** Clinic types from the live category list (value = category slug), with "Other" last. */
+  clinicTypes?: readonly { value: string; label: string }[];
 }
 
 const Ctx = createContext<IntakeContextValue | null>(null);

@@ -73,6 +73,12 @@ export interface FieldDef {
   showIf?: { key: string; equals: string };
   /** A required field that is not needed while this checkbox is ticked (OPD timings when open 24×7). */
   optionalIf?: string;
+  /**
+   * Select options that come from a live master list (the page passes them
+   * through the form context; `options` is the built-in fallback). Saved
+   * values outside `options` are kept when they look like a list slug.
+   */
+  optionsFrom?: "clinicTypes";
   /** Step-by-step instructions, shown under the field on request. */
   steps?: readonly string[];
   /** Design pickers: which kind of site the choices are for. */
@@ -599,7 +605,7 @@ const CLINIC: SectionDef[] = [
     title: "About the clinic",
     fields: [
       text("name", "Clinic name", { required: true }),
-      { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES },
+      { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES, optionsFrom: "clinicTypes" },
       text("clinicTypeOther", "Please specify", { required: true, placeholder: "e.g. Sleep clinic, IVF centre", showIf: { key: "clinicType", equals: "other" } }),
       text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "Skin, hair and nail care in Kothrud", help: "Optional. Shown under the clinic name on your website. Facts only, no claims like “best”." }),
       shortDescriptionField("clinic", "A skin and hair clinic in Kothrud, Pune. See timings, services, doctors and directions."),
@@ -613,7 +619,11 @@ const CLINIC: SectionDef[] = [
   {
     key: "timings",
     title: "Timings",
-    fields: [timingsField(), text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" })],
+    fields: [
+      { key: "is24x7", label: "Open 24×7", type: "checkbox", wide: true, help: "Only if the clinic never closes." },
+      { ...timingsField(), optionalIf: "is24x7" },
+      text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" }),
+    ],
   },
   { key: "services", title: "Services, facilities and equipment", fields: [...servicesFields(), awardsField("clinic")] },
   {
@@ -1098,7 +1108,12 @@ function fieldSchema(f: FieldDef): z.ZodTypeAny {
     case "card":
     case "select":
       // Unknown or retired codes (e.g. typed by hand in older forms) become "not decided" instead of blocking the save.
-      return base.transform((v) => (f.options ?? []).find((o) => o.value.toLowerCase() === v.toLowerCase() || o.label.toLowerCase() === v.toLowerCase())?.value ?? "");
+      return base.transform(
+        (v) =>
+          (f.options ?? []).find((o) => o.value.toLowerCase() === v.toLowerCase() || o.label.toLowerCase() === v.toLowerCase())?.value ??
+          // A type added to the live list after this code was built (matched to the category on import).
+          (f.optionsFrom && /^[a-z0-9][a-z0-9-]{0,79}$/.test(v) ? v : ""),
+      );
     case "choice":
       return base.refine((v) => v === "" || (f.options ?? []).some((o) => o.value === v), "Choose an option.");
     default:

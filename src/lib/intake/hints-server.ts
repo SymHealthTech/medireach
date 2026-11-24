@@ -1,6 +1,7 @@
 import "server-only";
 import type { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db";
+import { ClinicCategory } from "@/models/ClinicCategory";
 import { Intake } from "@/models/Intake";
 import { withDefaults, type IntakeData } from "./form";
 import { doctorHints, siteHints, type DoctorFormHints, type SiteFormHints } from "./hints";
@@ -18,5 +19,12 @@ export async function doctorFormHints(id: string | Types.ObjectId): Promise<Doct
 
 export async function siteFormHints(id: string | Types.ObjectId): Promise<SiteFormHints | undefined> {
   const intake = await sourceIntake(id);
-  return intake && intake.kind !== "doctor" ? siteHints(intake.ref, intake.kind, withDefaults(intake.kind, intake.data as IntakeData), String(intake._id)) : undefined;
+  if (!intake || intake.kind === "doctor") return undefined;
+  const hints = siteHints(intake.ref, intake.kind, withDefaults(intake.kind, intake.data as IntakeData), String(intake._id));
+  // A clinic type from a category added in the dashboard: show its name, not its slug.
+  if (hints.category && /^[a-z0-9-]+$/.test(hints.category)) {
+    const cat = await ClinicCategory.findOne({ slug: hints.category }).select({ name: 1 }).lean();
+    if (cat) hints.category = cat.name;
+  }
+  return hints;
 }

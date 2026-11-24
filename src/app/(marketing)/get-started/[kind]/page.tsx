@@ -5,7 +5,7 @@ import { IntakeForm } from "@/components/intake/IntakeForm";
 import { INTAKE_KINDS, type IntakeKind } from "@/lib/constants";
 import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { DESIGN_OPTIONS, INTAKE_KIND_LABEL } from "@/lib/intake/form";
-import { intakePlaces } from "@/lib/intake/places";
+import { intakeClinicTypes, intakePlaces } from "@/lib/intake/places";
 import { intakeFor, toView } from "@/lib/intake/server";
 import { getIntakeEmail } from "@/lib/intake/session";
 import { getPublicSiteData } from "@/lib/public/site-data";
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ kind: str
 export default async function IntakeFormPage({ params, searchParams }: { params: Promise<{ kind: string }>; searchParams: Promise<{ continue?: string; design?: string; card?: string }> }) {
   const [{ kind }, sp] = await Promise.all([params, searchParams]);
   if (!isKind(kind)) notFound();
-  const [email, site, places] = await Promise.all([getIntakeEmail(), getPublicSiteData(), intakePlaces()]);
+  const [email, site, places, clinicTypes] = await Promise.all([getIntakeEmail(), getPublicSiteData(), intakePlaces(), kind === "clinic" ? intakeClinicTypes() : undefined]);
   const saved = email ? await intakeFor(email, kind) : null;
   const resume = sp.continue === "1" && saved;
   const prefill = {
@@ -46,6 +46,7 @@ export default async function IntakeFormPage({ params, searchParams }: { params:
           savedRef={!resume && saved ? saved.ref : undefined}
           prefill={prefill}
           places={places}
+          clinicTypes={clinicTypes}
         />
       </div>
     </main>

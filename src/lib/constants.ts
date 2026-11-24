@@ -137,7 +137,7 @@ export const LIMITS = {
   hospitalGalleryMax: 12,
   hospitalBedsMax: 10,
   /** Website form: doctors a clinic or hospital can list, departments a hospital can list, doctors per department. */
-  clinicDoctorsMax: 5,
+  clinicDoctorsMax: 30,
   hospitalDoctorsMax: 30,
   hospitalDepartmentsMax: 30,
   departmentDoctorsMax: 20,

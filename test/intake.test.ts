@@ -33,6 +33,7 @@ import {
 } from "@/lib/intake/form";
 import { doctorHints, parseQualificationLine, siteHints } from "@/lib/intake/hints";
 import { isOurPhoto, saveIntake } from "@/lib/intake/server";
+import { paths } from "@/lib/site";
 import { findOrCreateMaster } from "@/lib/masters/server";
 import { createIntakeToken, verifyIntakeToken } from "@/lib/intake/session";
 import { Area } from "@/models/Area";
@@ -174,7 +175,8 @@ describe("form definitions", () => {
     const parsed = intakeDataSchema("clinic").parse({ doctors: [doc("Dr. A"), { name: "", designation: "", education: "", role: "", portfolioUrl: "" }, { ...doc("Dr. B"), portfolioUrl: "drb.example.com" }] });
     expect((parsed.doctors as DoctorEntry[]).map((d) => d.name)).toEqual(["Dr. A", "Dr. B"]); // blank entry dropped
     expect((parsed.doctors as DoctorEntry[])[1]!.portfolioUrl).toBe("https://drb.example.com");
-    expect(intakeDataSchema("clinic").safeParse({ doctors: Array.from({ length: 6 }, (_, i) => doc(`Dr. ${i}`)) }).success).toBe(false);
+    expect(intakeDataSchema("clinic").safeParse({ doctors: Array.from({ length: 30 }, (_, i) => doc(`Dr. ${i}`)) }).success).toBe(true);
+    expect(intakeDataSchema("clinic").safeParse({ doctors: Array.from({ length: 31 }, (_, i) => doc(`Dr. ${i}`)) }).success).toBe(false);
     expect(intakeDataSchema("clinic").safeParse({ doctors: [{ ...doc("Dr. A"), role: "boss" }] }).success).toBe(true); // unknown role → not chosen
     expect(intakeDataSchema("clinic").parse({}).visitingDoctors).toBeUndefined();
   });
@@ -248,9 +250,15 @@ describe("form definitions", () => {
     const keys = (k: "clinic" | "hospital") => INTAKE_SECTIONS[k].flatMap((s) => s.fields.map((f) => f.key));
     for (const k of ["clinic", "hospital"] as const) expect(keys(k)).toEqual(expect.arrayContaining(["shortDescription", "city", "area", "address", "address2", "appointmentNote", "services", "facilities", "equipment", "insurance", "cashless"]));
     expect(keys("hospital")).toEqual(expect.arrayContaining(["doctors", "beds", "bedTypes", "visitingHours", "emergencyPhone", "is24x7", "description", "doctorNames"]));
-    // OPD timings are not needed when the hospital is open 24×7.
-    expect(missingForSubmit("hospital", emptyIntakeData("hospital")).map((m) => m.key)).toContain("timings");
-    expect(missingForSubmit("hospital", { ...emptyIntakeData("hospital"), is24x7: true }).map((m) => m.key)).not.toContain("timings");
+    // Timings are not needed when the clinic or hospital is open 24×7.
+    for (const k of ["clinic", "hospital"] as const) {
+      expect(missingForSubmit(k, emptyIntakeData(k)).map((m) => m.key)).toContain("timings");
+      expect(missingForSubmit(k, { ...emptyIntakeData(k), is24x7: true }).map((m) => m.key)).not.toContain("timings");
+    }
+    // Clinic types come from the live category list: a slug added later is kept; unknown hospital types are not.
+    expect(intakeDataSchema("clinic").parse({ clinicType: "sleep-clinic" }).clinicType).toBe("sleep-clinic");
+    expect(intakeDataSchema("clinic").parse({ clinicType: "Not a slug!" }).clinicType).toBe("");
+    expect(intakeDataSchema("hospital").parse({ hospitalType: "sleep-clinic" }).hospitalType).toBe("");
     // City and area are dropdowns from the master lists (Pune areas when no list is passed).
     const area = INTAKE_SECTIONS.doctor.find((s) => s.key === "clinics")!.fields.find((f) => f.key === "area")!;
     expect(area.suggest).toBe("area");
@@ -587,6 +595,41 @@ describe("creating the website draft", () => {
     expect(e!.facilities[0]).toMatchObject({ name: "Lift", description: "To all floors" });
     expect(e!.beds).toMatchObject({ total: 8, types: [{ type: "General ward", count: 6 }, { type: "ICU", count: 2 }] });
     expect(e!.departments[0]).toMatchObject({ name: "Orthopaedics", description: "Fractures and joints", doctorKeys: [e!.doctors[0]!.key] });
+  });
+
+  it("clinic import: first 4 phones, service groups from the design, MediReach portfolios linked", async () => {
+    // A doctor with a published-style page address to link to.
+    const dr = await saveIntake({ kind: "doctor", email: "linkme@example.com", data: fullDoctor(), photos: {} }, null);
+    const drMade = await createSiteFromIntake((await Intake.findById(dr.ok ? dr.intake.id : "").lean())!);
+    const profile = await DoctorProfile.findById(drMade.id).lean();
+    const page = `https://medireach.co.in${paths.doctor(profile!.citySlug!, profile!.slug!)}`;
+    const doc = (name: string, portfolioUrl = ""): DoctorEntry => ({ name, designation: "", education: "", role: "consultant", portfolioUrl });
+    const data = {
+      ...emptyIntakeData("clinic"),
+      name: "Glow Skin Clinic",
+      clinicType: "skin",
+      phones: "020 1111 1111, 020 2222 2222, 020 3333 3333, 020 4444 4444, 020 5555 5555",
+      is24x7: true,
+      services: "Acne – Medicines and peels\nLaser procedures\nCosmetic counselling",
+      doctors: [doc("Dr. Asha Kulkarni", page), doc("Dr. B Joshi", "https://www.practo.com/x")],
+    };
+    const r = await saveIntake({ kind: "clinic", email: "glow@example.com", data, photos: {} }, null);
+    const made = await createSiteFromIntake((await Intake.findById(r.ok ? r.intake.id : "").lean())!);
+    const e = await Establishment.findById(made.id).lean();
+    expect(e!.contact.phones).toHaveLength(4);
+    expect(e!.internalNotes).toContain("020 5555 5555");
+    expect(e!.is24x7).toBe(true);
+    expect(e!.services.map((s) => [s.name, s.group ?? ""])).toEqual([
+      ["Acne", "Skin"],
+      ["Laser procedures", "Procedures"],
+      ["Cosmetic counselling", ""],
+    ]);
+    expect(String(e!.doctors[0]!.doctorProfileId)).toBe(String(drMade.id));
+    expect(e!.doctors[0]!.profileUrl).toBeUndefined();
+    expect(e!.doctors[1]).toMatchObject({ name: "Dr. B Joshi", profileUrl: "https://www.practo.com/x" });
+    expect(e!.doctors[1]!.doctorProfileId).toBeUndefined();
+    // The portfolio now lists the clinic, as when linked in the editor.
+    expect((await DoctorProfile.findById(drMade.id).lean())!.establishmentIds.map(String)).toContain(String(made.id));
   });
 
   it("maps hospital departments and their doctors", async () => {

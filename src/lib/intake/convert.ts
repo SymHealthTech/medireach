@@ -2,11 +2,13 @@ import "server-only";
 import mongoose, { type Types } from "mongoose";
 import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { LIMITS, PRACTITIONER_TYPES, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
-import { isThemeKey } from "@/themes/specialty";
+import { getTheme, isThemeKey } from "@/themes/specialty";
 import { DEFAULT_HOSPITAL_CATEGORY } from "@/data/masters";
 import { escapeRegExp } from "@/lib/admin/list";
 import { ensureUrlKeys as ensureDoctorUrlKeys } from "@/lib/doctors/server";
 import { ensureUrlKeys as ensureSiteUrlKeys } from "@/lib/establishments/server";
+import { syncDoctorLinksFromEstablishment } from "@/lib/establishments/links";
+import { PRODUCTION_HOSTNAME, ROOT_HOSTNAME } from "@/lib/site";
 import {
   INTAKE_SECTIONS,
   designSummary,
@@ -326,10 +328,45 @@ function namedRows(kind: "services" | "facilities" | "equipment", v: unknown, ma
   });
 }
 
-/** Form doctors → the site's doctor list (each doctor once, even if in two departments), keyed so departments can list them. */
-function siteDoctors(kind: IntakeKind, d: IntakeData) {
+/**
+ * The MediReach doctor a pasted link points to: their page
+ * (/pune/doctor/dr-x), short link (/dr-x) or subdomain (x.medireach.co.in).
+ * Links to other sites (Practo, own website) give null.
+ */
+export async function doctorFromMediReachLink(link: string | undefined): Promise<Types.ObjectId | null> {
+  let u: URL;
+  try {
+    u = new URL(link ?? "");
+  } catch {
+    return null;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\./, "");
+  const roots = [...new Set([ROOT_HOSTNAME.toLowerCase(), PRODUCTION_HOSTNAME])];
+  const parts = u.pathname.split("/").filter(Boolean).map((x) => decodeURIComponent(x).toLowerCase());
+  let filter: Record<string, string> | null = null;
+  if (roots.includes(host)) {
+    if (parts.length === 3 && parts[1] === "doctor") filter = { citySlug: parts[0]!, slug: parts[2]! };
+    else if (parts.length === 1) filter = { shortSlug: parts[0]! };
+  } else {
+    const root = roots.find((r) => host.endsWith(`.${r}`));
+    const sub = root ? host.slice(0, -(root.length + 1)) : "";
+    if (sub && !sub.includes(".") && parts.length === 0) filter = { subdomain: sub };
+  }
+  if (!filter) return null;
+  const doc = await DoctorProfile.findOne(filter).select({ _id: 1 }).lean();
+  return doc?._id ?? null;
+}
+
+/**
+ * Form doctors → the site's doctor list (each doctor once, even if in two
+ * departments), keyed so departments can list them. A doctor whose link is
+ * their MediReach page is linked to that portfolio, like "MediReach portfolio"
+ * in the editor (the portfolio brings its own photo and details).
+ */
+async function siteDoctors(kind: IntakeKind, d: IntakeData) {
   const seen = new Set<string>();
-  return doctorEntries(kind, d)
+  const linked = new Set<string>();
+  const list = doctorEntries(kind, d)
     .map(({ doctor: e }) => ({
       name: str(e.name).slice(0, 120),
       ...(str(e.education) ? { qualifications: str(e.education).slice(0, 200) } : {}),
@@ -338,8 +375,17 @@ function siteDoctors(kind: IntakeKind, d: IntakeData) {
       ...(url(e.portfolioUrl) ? { profileUrl: url(e.portfolioUrl)!.slice(0, 500) } : {}),
       ...(e.photo ? { photo: image(e.photo, str(e.name) || undefined) } : {}),
     }))
-    .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()))
-    .map((x, i) => ({ ...x, key: `f${i + 1}` }));
+    .filter((x) => x.name && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()));
+  const out = [];
+  for (const [i, x] of list.entries()) {
+    const id = await doctorFromMediReachLink(x.profileUrl);
+    if (id && !linked.has(String(id))) {
+      linked.add(String(id));
+      const { photo: _photo, profileUrl: _url, ...rest } = x;
+      out.push({ ...rest, doctorProfileId: id, key: `f${i + 1}` });
+    } else out.push({ ...x, key: `f${i + 1}` });
+  }
+  return out;
 }
 
 async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "email" | "data" | "photos" | "adminNotes">) {
@@ -366,7 +412,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   if (!category) skipped.push("category");
 
   const pincode = str(d.pincode);
-  const doctors = siteDoctors(kind, d);
+  const doctors = await siteDoctors(kind, d);
   // Each department lists the doctors ticked for it (none has a portfolio yet, so by key).
   const keyByName = new Map(doctors.map((x) => [x.name.toLowerCase(), x.key]));
   const departments = (isRepeatValue(d.departments) ? (d.departments as RepeatItem[]) : [])
@@ -389,6 +435,16 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
   const label = kind === "clinic" ? "clinic" : "hospital";
+  // The editor keeps up to 4 numbers; the rest go to the notes.
+  const allPhones = phones(d.phones);
+  if (allPhones.length > 4) skipped.push(`more phone numbers (${allPhones.slice(4).join(", ")})`);
+  // Services get their group from the design's suggested services, as when added in the editor.
+  const themeKey = isThemeKey(str(d.websiteDesign)) ? str(d.websiteDesign) : category?.defaultThemeKey;
+  const suggested = getTheme(themeKey, kind).suggestedServices;
+  const services = namedRows("services", d.services, 120).map((sv) => {
+    const group = suggested.find((x) => x.name.toLowerCase() === sv.name.toLowerCase())?.group;
+    return group ? { ...sv, group } : sv;
+  });
 
   const doc = new Establishment({
     kind,
@@ -413,7 +469,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     },
     ...place(d),
     contact: {
-      phones: phones(d.phones),
+      phones: allPhones.slice(0, 4),
       whatsapp: mobile(d.siteWhatsapp),
       email: str(d.siteEmail) || undefined,
       emergencyPhone: phones(d.emergencyPhone)[0],
@@ -422,7 +478,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     ...(timings ? { timings } : {}),
     appointmentNote: str(d.appointmentNote) || undefined,
     visitingHours: str(d.visitingHours) || undefined,
-    services: namedRows("services", d.services, 120),
+    services,
     facilities: namedRows("facilities", d.facilities, 200),
     equipment: namedRows("equipment", d.equipment, 200),
     departments,
@@ -440,5 +496,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   doc.internalNotes = notesFor(intake, skipped);
   await ensureSiteUrlKeys(doc);
   await doc.save();
+  // Linked portfolios list this site under "Practises at", as when linked in the editor.
+  await syncDoctorLinksFromEstablishment(doc._id, [], doctors.flatMap((x) => ("doctorProfileId" in x && x.doctorProfileId ? [String(x.doctorProfileId)] : [])));
   return { kind, id: doc._id, href: `/admin/establishments/${doc._id}`, label };
 }
