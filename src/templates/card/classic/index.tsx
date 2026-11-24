@@ -94,17 +94,44 @@ function Photo({ url, name, size, ring, fonts, p }: { url?: string; name: string
   );
 }
 
+/** Shortened to `max` characters with "…" (card rows have a fixed width). */
+export const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
+
+/**
+ * The doctor's numbers, labelled: "Call or WhatsApp" only when WhatsApp is the
+ * same number; else "Call", and a separate "WhatsApp" row when they have one.
+ * The call number is the mobile, else the first clinic's phone.
+ */
+function doctorNumbers(d: CardTemplateProps["doctor"]): { icon: "phone" | "chat"; label: string; value: string }[] {
+  const phone = d.phone ?? d.clinics[0]?.phone;
+  const wa = d.whatsapp;
+  return [
+    ...(phone ? [{ icon: "phone" as const, label: wa === phone ? "Call or WhatsApp" : "Call", value: phone }] : []),
+    ...(wa && wa !== phone ? [{ icon: "chat" as const, label: "WhatsApp", value: wa }] : []),
+  ];
+}
+
+/** "General Physician", with the system for anyone not practising allopathy ("Physician · Ayurveda"). */
+function specialtyLine(d: CardTemplateProps["doctor"]): string {
+  const spec = d.primarySpecialty?.name ?? "";
+  const sys = d.systemLabel && !spec.toLowerCase().includes(d.systemLabel.toLowerCase()) ? d.systemLabel : "";
+  return [spec, sys].filter(Boolean).join(" · ");
+}
+
 // ---------------------------------------------------------------------------
 // Print: 85 × 55 mm at 300 dpi (1004 × 650)
 // ---------------------------------------------------------------------------
 
-function PrintRow({ icon, children, strong, p }: { icon: keyof typeof ICONS; children: React.ReactNode; strong?: boolean; p: Palette }) {
+function PrintRow({ icon, children, strong, p, label }: { icon: keyof typeof ICONS; children: React.ReactNode; strong?: boolean; p: Palette; label?: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", marginTop: 12 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 999, background: p.soft, marginRight: 14 }}>
         <Icon name={icon} size={20} color={p.ink} />
       </div>
-      <div style={{ display: "flex", fontSize: strong ? 24 : 20, fontWeight: strong ? 700 : 400, color: strong ? p.ink : "#2B3A3B" }}>{children}</div>
+      <div style={{ display: "flex", alignItems: "baseline" }}>
+        {label && <div style={{ display: "flex", fontSize: 16, fontWeight: 600, color: MUTED, marginRight: 10 }}>{label}</div>}
+        <div style={{ display: "flex", fontSize: strong ? 24 : 20, fontWeight: strong ? 700 : 400, color: strong ? p.ink : "#2B3A3B" }}>{children}</div>
+      </div>
     </div>
   );
 }
@@ -112,8 +139,11 @@ function PrintRow({ icon, children, strong, p }: { icon: keyof typeof ICONS; chi
 function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
   const clinic = d.clinics[0];
-  const phone = d.phone ?? clinic?.phone;
+  const numbers = doctorNumbers(d);
+  // One plain number needs no label; two (or a shared WhatsApp) are labelled.
+  const labelled = numbers.length > 1 || numbers.some((n) => n.label !== "Call");
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
+  const spec = specialtyLine(d);
   const p = doctorCardPalette(d.cardStyle);
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: p.paper, color: p.ink, fontFamily: fonts.body }}>
@@ -145,14 +175,14 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         <div style={{ display: "flex", flexDirection: "column", flex: 1, padding: "52px 50px 40px 50px" }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 54), lineHeight: 1.08 }}>{d.fullName}</div>
           <div style={{ display: "flex", width: 64, height: 4, borderRadius: 4, background: p.accent, marginTop: 16, marginBottom: 16 }} />
-          {d.primarySpecialty && <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: p.brand }}>{d.primarySpecialty.name}</div>}
+          {spec && <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: p.brand }}>{spec}</div>}
           {d.degreesLine && <div style={{ display: "flex", fontSize: 21, color: MUTED, marginTop: 6 }}>{d.degreesLine}</div>}
           <div style={{ display: "flex", flex: 1 }} />
-          {phone && (
-            <PrintRow icon="phone" strong p={p}>
-              {formatPhone(phone)}
+          {numbers.map((n) => (
+            <PrintRow key={n.label} icon={n.icon} strong={n.icon === "phone"} label={labelled ? n.label : undefined} p={p}>
+              {formatPhone(n.value)}
             </PrintRow>
-          )}
+          ))}
           {clinic && (
             <PrintRow icon="pin" p={p}>
               {clinic.name}, {clinic.area.name}
@@ -173,15 +203,16 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
 // Phone: 1080 × 1920 (WhatsApp status / share image)
 // ---------------------------------------------------------------------------
 
-function PhoneRow({ icon, label, value, last, p }: { icon: keyof typeof ICONS; label: string; value: string; last?: boolean; p: Palette }) {
+function PhoneRow({ icon, label, value, note, last, tight, p }: { icon: keyof typeof ICONS; label: string; value: string; note?: string; last?: boolean; tight?: boolean; p: Palette }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
+    <div style={{ display: "flex", alignItems: "center", padding: tight ? "18px 0" : "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: 999, background: p.soft, marginRight: 28 }}>
         <Icon name={icon} size={38} color={p.ink} />
       </div>
       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ display: "flex", fontSize: 24, fontWeight: 600, letterSpacing: 3, color: MUTED }}>{label.toUpperCase()}</div>
         <div style={{ display: "flex", fontSize: 36, fontWeight: 600, color: p.ink, marginTop: 4, lineHeight: 1.25 }}>{value}</div>
+        {note && <div style={{ display: "flex", fontSize: 28, color: MUTED, marginTop: 6, lineHeight: 1.3 }}>{note}</div>}
       </div>
     </div>
   );
@@ -190,13 +221,21 @@ function PhoneRow({ icon, label, value, last, p }: { icon: keyof typeof ICONS; l
 function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
   const clinic = d.clinics[0];
-  const phone = d.phone ?? clinic?.phone;
+  // The second place they see patients (a second clinic, or a hospital they visit), then "+N more".
+  const also = d.clinics[1];
+  const more = d.clinics.length > 2 ? ` +${d.clinics.length - 2} more` : "";
   const hours = clinic ? openDaysSummary(clinic.timings) : "";
-  const rows: { icon: keyof typeof ICONS; label: string; value: string }[] = [
-    ...(phone ? [{ icon: "phone" as const, label: "Call or WhatsApp", value: formatPhone(phone) }] : []),
-    ...(clinic ? [{ icon: "pin" as const, label: clinic.name, value: `${clinic.area.name}, ${clinic.city.name}` }] : []),
-    ...(hours ? [{ icon: "clock" as const, label: "Timings", value: hours.length > 70 ? "See my website for timings" : hours }] : []),
+  const note = clinic?.appointmentNote ? clip(clinic.appointmentNote, 48) : undefined;
+  const rows: { icon: keyof typeof ICONS; label: string; value: string; note?: string }[] = [
+    ...doctorNumbers(d).map((n) => ({ icon: n.icon, label: n.label, value: formatPhone(n.value) })),
+    ...(clinic ? [{ icon: "pin" as const, label: clip(clinic.name, 40), value: `${clinic.area.name}, ${clinic.city.name}` }] : []),
+    ...(also ? [{ icon: "pin" as const, label: "Also at", value: clip(`${also.name}, ${also.area.name}`, 40 - more.length) + more }] : []),
+    ...(hours || note ? [{ icon: "clock" as const, label: "Timings", value: hours ? (hours.length > 70 ? "See my website for timings" : hours) : "Please call for timings", ...(note ? { note } : {}) }] : []),
   ];
+  const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
+  const spec = specialtyLine(d);
+  // A full card (five rows, or four with a note): tighter rows, a smaller photo and QR so everything fits.
+  const tight = rows.length > 4 || (rows.length > 3 && Boolean(note));
   const p = doctorCardPalette(d.cardStyle);
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: p.paper, color: p.ink, fontFamily: fonts.body }}>
@@ -208,8 +247,9 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          height: 940,
-          paddingTop: 96,
+          // The registration line needs a taller header so the contact panel doesn't cover it (a full card has a smaller photo instead).
+          height: tight ? 860 : reg ? 990 : 940,
+          paddingTop: tight ? 72 : 96,
           backgroundImage: panelGradient(p),
           position: "relative",
           overflow: "hidden",
@@ -221,14 +261,15 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         <div style={{ display: "flex", position: "absolute", bottom: 40, left: -160, width: 420, height: 420, borderRadius: 999, background: alpha(p.highlight, 0.12) }} />
 
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: p.highlight }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: 56 }}>
-          <Photo url={photoUrl} name={d.fullName} size={340} ring={10} fonts={fonts} p={p} />
+        <div style={{ display: "flex", marginTop: tight ? 40 : 56 }}>
+          <Photo url={photoUrl} name={d.fullName} size={tight ? 280 : 340} ring={10} fonts={fonts} p={p} />
         </div>
-        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 86), lineHeight: 1.08, color: "#FFFFFF", marginTop: 52 }}>
+        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 86), lineHeight: 1.08, color: "#FFFFFF", marginTop: tight ? 40 : 52 }}>
           {d.fullName}
         </div>
-        {d.primarySpecialty && <div style={{ display: "flex", fontSize: 42, fontWeight: 700, color: p.highlight, marginTop: 18 }}>{d.primarySpecialty.name}</div>}
+        {spec && <div style={{ display: "flex", fontSize: 42, fontWeight: 700, color: p.highlight, marginTop: 18 }}>{spec}</div>}
         {d.degreesLine && <div style={{ display: "flex", fontSize: 32, color: "rgba(255,255,255,0.8)", marginTop: 12 }}>{d.degreesLine}</div>}
+        {reg && <div style={{ display: "flex", fontSize: 26, color: "rgba(255,255,255,0.65)", marginTop: 10, padding: "0 60px" }}>Reg. {reg}</div>}
       </div>
 
       {/* Contact panel, overlapping the header */}
@@ -246,17 +287,16 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           }}
         >
           {rows.map((r, i) => (
-            <PhoneRow key={r.label} icon={r.icon} label={r.label} value={r.value} last={i === rows.length - 1} p={p} />
+            <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} note={r.note} last={i === rows.length - 1} tight={tight} p={p} />
           ))}
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1 }} />
-
+      <div style={{ display: "flex", flex: 1, minHeight: 32 }} />
       {/* QR */}
       <div style={{ display: "flex", alignItems: "center", padding: "0 96px" }}>
         <div style={{ display: "flex", padding: 10, borderRadius: 28, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={260} radius={20} color={p.ink} />
+          <QrBlock qr={qr} px={tight ? 220 : 260} radius={20} color={p.ink} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 48, flex: 1 }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 48, lineHeight: 1.12 }}>Scan to visit my website</div>

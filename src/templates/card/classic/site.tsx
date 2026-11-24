@@ -5,7 +5,7 @@ import { DevBanner } from "@/templates/DevBanner";
 import { CARD_SIZE, type SiteCardTemplateProps } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
 import { siteCardPalette } from "@/lib/cards/styles";
-import { Icon, QrBlock, shortUrl, type ICONS } from "./index";
+import { clip, Icon, QrBlock, shortUrl, type ICONS } from "./index";
 
 /**
  * Classic visiting card for clinics and hospitals (DESIGN_BRIEF.md §10):
@@ -69,9 +69,6 @@ function cardNumbers(s: SiteCardTemplateProps["site"]): { icon: "phone" | "chat"
   if (wa && wa !== main && wa !== emergency) out.push({ icon: "chat", label: "WhatsApp", value: wa });
   return out;
 }
-
-/** Shortened to `max` characters with "…" (card rows have a fixed width). */
-const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 
 function hoursText(s: SiteCardTemplateProps["site"]): string {
   if (s.is24x7) return "Open 24×7";
