@@ -273,7 +273,8 @@ export interface PublicEstablishment {
   equipment: { name: string; description?: string }[];
   doctors: PublicSiteDoctor[];
   departments: { name: string; description?: string; doctors: PublicSiteDoctor[] }[];
-  beds?: { total: number; types: { type: string; count: number }[] };
+  /** `total` is the sum of the types when no total was entered; a type may have no count. */
+  beds?: { total: number; types: { type: string; count?: number }[] };
   insurance?: { cashless: boolean; providers: string[] };
   languages: string[];
   gallery: PublicImage[];

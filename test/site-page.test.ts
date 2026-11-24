@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SAMPLE_SITES } from "@/fixtures/sample-sites";
+import { bedsOf } from "@/lib/public/establishments";
 import { ClassicSite } from "@/templates/site/ClassicSite";
 import type { PublicEstablishment } from "@/templates/types";
 
@@ -27,5 +28,35 @@ describe("clinic website page shows what the admin editor asks", () => {
     expect(count(html, "SHORT DESCRIPTION ONE")).toBe(1);
     const noTagline = render({ ...clinic, tagline: undefined, shortDescription: "SHORT DESCRIPTION TWO", aboutHtml: undefined });
     expect(count(noTagline, "SHORT DESCRIPTION TWO")).toBe(1);
+  });
+});
+
+describe("hospital website page shows what the admin editor asks", () => {
+  const hospital = SAMPLE_SITES["small-hospital"];
+
+  it("shows beds from bed types alone, and bed types without a count by name", () => {
+    expect(bedsOf({ total: undefined, types: [{ type: "General ward", count: 6 }, { type: "ICU", count: null }] })).toEqual({ beds: { total: 6, types: [{ type: "General ward", count: 6 }, { type: "ICU" }] } });
+    expect(bedsOf({ total: 10, types: [] })).toEqual({ beds: { total: 10, types: [] } });
+    expect(bedsOf({ total: 0, types: [] })).toEqual({});
+    const html = render({ ...hospital, beds: { total: 0, types: [{ type: "Labour room" }] } });
+    expect(html).toContain('id="beds"');
+    expect(html).toContain("Labour room");
+    expect(html).not.toContain("beds in total");
+  });
+
+  it("names the hospital type in the badge and top bar", () => {
+    const html = render({ ...hospital, category: { name: "Maternity Hospital", slug: "maternity-hospital", plural: "Maternity Hospitals" } });
+    expect(count(html, "Maternity Hospital")).toBeGreaterThanOrEqual(2);
+    expect(render({ ...hospital, category: undefined })).toContain("Hospital");
+  });
+
+  it("shows the emergency bar only for an emergency number, else a plain call bar", () => {
+    const withEmergency = render({ ...hospital, emergencyPhone: "919800000001", phones: ["912000000002"] });
+    expect(withEmergency).toContain("emergency");
+    expect(withEmergency).toContain("tel:+919800000001");
+    const without = render({ ...hospital, emergencyPhone: undefined, phones: ["912000000002"] });
+    expect(without).not.toMatch(/24×7 emergency and contact|Emergency contact/); // the bar's wording (a service may be called "24×7 emergency")
+    expect(without).toContain("Call us");
+    expect(without).toContain("tel:+912000000002");
   });
 });

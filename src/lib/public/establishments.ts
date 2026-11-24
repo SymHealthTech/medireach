@@ -175,7 +175,7 @@ export function toPublicEstablishment(
             doctors: departmentDoctors(d),
           }))
         : [],
-    ...(e.kind === "hospital" && e.beds && e.beds.total > 0 ? { beds: { total: e.beds.total, types: e.beds.types.filter((b) => b.count > 0) } } : {}),
+    ...(e.kind === "hospital" ? bedsOf(e.beds) : {}),
     ...(e.insurance && (e.insurance.cashless || e.insurance.providers.length) ? { insurance: { cashless: e.insurance.cashless, providers: e.insurance.providers } } : {}),
     languages: e.languages ?? [],
     gallery: (e.gallery ?? []).map((g) => ({ url: g.url, alt: g.alt || `${e.name} – ${g.caption || what}`, ...(g.caption ? { caption: g.caption } : {}) })),
@@ -278,3 +278,15 @@ export const getCitySiteCards = unstable_cache(
   ["public-city-sites"],
   { tags: [CACHE_TAGS.establishments, CACHE_TAGS.masters], revalidate: DAY },
 );
+
+/**
+ * Beds as entered in the editor: a total and/or bed types (a type's count is
+ * optional). Shown when either is there; a missing total is the sum of the
+ * types' counts, and a type without a count is shown by name.
+ */
+export function bedsOf(beds: { total?: number | null; types?: { type?: string | null; count?: number | null }[] } | undefined | null): { beds?: NonNullable<PublicEstablishment["beds"]> } {
+  const types = (beds?.types ?? []).filter((b) => b.type?.trim()).map((b) => ({ type: b.type!.trim(), ...(b.count && b.count > 0 ? { count: b.count } : {}) }));
+  const sum = types.reduce((n, b) => n + (b.count ?? 0), 0);
+  const total = beds?.total && beds.total > 0 ? beds.total : sum;
+  return total > 0 || types.length > 0 ? { beds: { total, types } } : {};
+}

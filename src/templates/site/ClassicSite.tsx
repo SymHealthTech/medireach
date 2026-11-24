@@ -153,7 +153,11 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
   const Icon = THEME_ICONS[theme.icon];
   const hospital = s.kind === "hospital";
   const actions = contactActions(s);
-  const emergency = s.emergencyPhone ?? (hospital ? s.phones[0] : undefined);
+  // The emergency bar only shows a number entered as the emergency number; without one, hospitals get a plain call bar.
+  const emergency = s.emergencyPhone;
+  const callBar = hospital && !emergency ? s.phones[0] : undefined;
+  /** "Maternity Hospital", "Skin Clinic"; "Hospital" / "Clinic" when no type is set. */
+  const typeName = s.category?.name ?? (hospital ? "Hospital" : "Clinic");
 
   const has: Record<SiteSection, boolean> = {
     about: true,
@@ -327,17 +331,19 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
         return (
           <Section key={x} id="beds" label={label(x)} tone={tone(i)}>
             <div className="flex flex-wrap gap-4">
-              <div className={cn("flex items-center gap-4 rounded-2xl p-5", T.softBg)}>
-                <BedDouble aria-hidden className={cn("size-8", T.primaryText)} strokeWidth={1.5} />
-                <span>
-                  <span className={cn("block font-display text-3xl font-semibold", T.primaryText)}>{s.beds!.total}</span>
-                  <span className="text-sm text-body">beds in total</span>
-                </span>
-              </div>
+              {s.beds!.total > 0 && (
+                <div className={cn("flex items-center gap-4 rounded-2xl p-5", T.softBg)}>
+                  <BedDouble aria-hidden className={cn("size-8", T.primaryText)} strokeWidth={1.5} />
+                  <span>
+                    <span className={cn("block font-display text-3xl font-semibold", T.primaryText)}>{s.beds!.total}</span>
+                    <span className="text-sm text-body">beds in total</span>
+                  </span>
+                </div>
+              )}
               {s.beds!.types.map((b) => (
                 <div key={b.type} className="rounded-2xl bg-surface p-5 shadow-soft ring-1 ring-ink/5">
-                  <span className="block font-display text-2xl font-semibold text-ink">{b.count}</span>
-                  <span className="text-sm text-body">{b.type}</span>
+                  {b.count !== undefined && <span className="block font-display text-2xl font-semibold text-ink">{b.count}</span>}
+                  <span className={cn(b.count !== undefined ? "text-sm text-body" : "font-semibold text-ink")}>{b.type}</span>
                 </div>
               ))}
             </div>
@@ -439,8 +445,22 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
           </div>
         </div>
       )}
+      {callBar && (
+        <div className="sticky top-0 z-50 border-b border-ink/10 bg-surface text-ink">
+          <div className="mx-auto flex max-w-content items-center justify-between gap-3 px-4 py-2 text-sm sm:px-6">
+            <span className="flex items-center gap-2 font-semibold">
+              <Phone aria-hidden className={cn("size-4 shrink-0", T.primaryText)} />
+              <span className="sm:hidden">Call us</span>
+              <span className="hidden sm:inline">{s.is24x7 ? "Open 24×7. Call us" : "Call us"}</span>
+            </span>
+            <a href={`tel:+${callBar}`} className={cn("whitespace-nowrap rounded-full px-3 py-1 font-semibold text-white", T.primaryBg)}>
+              {formatPhone(callBar)}
+            </a>
+          </div>
+        </div>
+      )}
 
-      <SiteNav name={s.name} tagline={[s.kind === "hospital" ? "Hospital" : s.category?.name, s.address.area.name].filter(Boolean).join(" · ")} links={nav} {...(s.cardUrl ? { cardHref: s.cardUrl } : {})} />
+      <SiteNav name={s.name} tagline={[typeName, s.address.area.name].filter(Boolean).join(" · ")} links={nav} {...(s.cardUrl ? { cardHref: s.cardUrl } : {})} />
 
       <main>
         <section className={cn("relative overflow-hidden px-4 pb-16 pt-8 sm:px-6 sm:pt-10 lg:pb-20", T.softBg)}>
@@ -452,7 +472,7 @@ export function ClassicSite({ site: s, seo }: SiteTemplateProps) {
                   {s.logo && <Image src={s.logo.url} alt={s.logo.alt} width={64} height={64} className="size-14 rounded-xl bg-white object-cover shadow-soft" />}
                   <span className={cn("inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-sm font-semibold", T.primaryText)}>
                     <Icon aria-hidden className="size-4" strokeWidth={1.75} />
-                    {s.kind === "hospital" ? "Hospital" : (s.category?.name ?? "Clinic")}
+                    {typeName}
                   </span>
                   {s.is24x7 && <span className="rounded-full bg-leaf px-3 py-1 text-sm font-semibold text-white">Open 24×7</span>}
                 </div>
