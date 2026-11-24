@@ -122,6 +122,8 @@ export interface IntakePhotos {
   cover?: IntakePhoto;
   /** Doctors: the photo for their "Beyond medicine" story (uploaded in that section). */
   beyond?: IntakePhoto;
+  /** Doctors: one photo per award, captioned with the award's title (uploaded in the awards list). */
+  awards?: IntakePhoto[];
   gallery: IntakePhoto[];
   /** "I'll send my photos on WhatsApp." */
   viaWhatsapp: boolean;
@@ -183,6 +185,18 @@ const placeFields = (required: boolean, line1Placeholder = "Shop 4, Shanti Compl
   text("area", "Area", { required, suggest: "area", help: "Not in the list? Choose “Other” and type it." }),
   text("address", "Address line 1", { required, placeholder: line1Placeholder, autoComplete: "address-line1" }),
   text("address2", "Address line 2", { placeholder: "Floor, wing or road (optional)", autoComplete: "address-line2" }),
+];
+
+/** GP or consultant, like the admin editor's "Practitioner type". */
+export const PRACTITIONER_OPTIONS = [
+  { value: "gp", label: "General practitioner (GP)" },
+  { value: "consultant", label: "Consultant / specialist" },
+] as const;
+
+/** Consultation fee, and whether the website shows it (like the admin editor). */
+const feeFields = (): FieldDef[] => [
+  { key: "fee", label: "Consultation fee (₹)", type: "number", help: "Optional." },
+  { key: "showFee", label: "Show the fee on my website", type: "checkbox" },
 ];
 
 const TIMINGS_PLACEHOLDER = "Mon–Sat: 10 am – 1 pm, 6 pm – 9 pm\nSunday: closed";
@@ -336,8 +350,11 @@ const DOCTOR: SectionDef[] = [
       text("fullName", "Full name", { required: true, placeholder: "Dr. Amit Kulkarni", autoComplete: "name" }),
       { key: "mobile", label: "Mobile number", type: "mobile", required: true, autoComplete: "tel", help: "We call you on this number if anything is missing." },
       { key: "whatsapp", label: "WhatsApp number", type: "mobile", help: "Leave empty if it is the same as the mobile number." },
+      { key: "publicEmail", label: "Email for patients", type: "email", wide: true, help: "Optional. Shown on your website. Your login email above is never shown." },
       { key: "gender", label: "Gender", type: "select", options: GENDERS },
+      { key: "practitionerType", label: "You practise as", type: "select", options: PRACTITIONER_OPTIONS },
       text("specialty", "Specialty", { required: true, suggest: "specialty", help: "Not in the list? Choose “Other” and type it." }),
+      text("otherSpecialties", "Other specialties (optional)", { wide: true, placeholder: "Diabetology, Critical care", suggest: "otherSpecialties", help: "Any other specialties you practise. Tap to add, or type them separated by commas." }),
       { key: "systemOfMedicine", label: "System of medicine", type: "select", options: SYSTEMS },
       text("systemOther", "Please specify", { required: true, placeholder: "e.g. Naturopathy, Yoga, Sowa-Rigpa", showIf: { key: "systemOfMedicine", equals: "other" } }),
       {
@@ -376,7 +393,7 @@ const DOCTOR: SectionDef[] = [
       { key: "pincode", label: "Pincode", type: "pincode" },
       ...locationFields("clinic"),
       timingsField(),
-      { key: "fee", label: "Consultation fee (₹)", type: "number", help: "Optional. Shown only if you want." },
+      ...feeFields(),
       text("appointmentNote", "Appointment note", { placeholder: "Appointments preferred. Walk-ins welcome.", suggest: "appointmentNote" }),
     ],
   },
@@ -391,6 +408,7 @@ const DOCTOR: SectionDef[] = [
       ...placeFields(false, "40 Sassoon Road"),
       { key: "pincode", label: "Pincode", type: "pincode" },
       { ...timingsField("Days and timings you visit"), required: false, help: "Optional. Tap a common pattern, or type them, e.g. “Tuesday and Friday: 4 pm – 6 pm” or “On call”." },
+      ...feeFields(),
       text("appointmentNote", "Appointment note", { placeholder: "Appointments through the hospital desk", suggest: "appointmentNote" }),
     ],
   },
@@ -413,6 +431,7 @@ const DOCTOR: SectionDef[] = [
       { key: "conditions", label: "Conditions you treat", type: "lines", wide: true, placeholder: "One per line\nThyroid disorders\nFever and infections", suggest: "conditions" },
       { key: "awards", label: "Awards", type: "lines", rows: "awards", wide: true },
       { key: "memberships", label: "Memberships", type: "lines", rows: "memberships", wide: true, suggest: "memberships" },
+      { key: "publications", label: "Publications (optional)", type: "lines", rows: "publications", wide: true, help: "Papers, articles or book chapters. Add the link if it is online." },
     ],
   },
   {
@@ -904,6 +923,12 @@ export function doctorEntries(kind: IntakeKind, input: IntakeData): { doctor: Do
   return out;
 }
 
+/** Award photos (one per award title): typed ones win. */
+const mergeAwardPhotos = (typed: IntakePhoto[], saved: IntakePhoto[]) => [...typed, ...saved.filter((s) => !typed.some((t) => (t.caption ?? "").toLowerCase() === (s.caption ?? "").toLowerCase()))].slice(0, AWARD_PHOTOS_MAX);
+
+/** Award photos a doctor can add (one per award; the site counts them in its 5 photos). */
+export const AWARD_PHOTOS_MAX = 15;
+
 export function mergePhotos(typed: IntakePhotos, saved: IntakePhotos, galleryMax: number): IntakePhotos {
   const seen = new Set<string>();
   const gallery = [...typed.gallery, ...saved.gallery].filter((p) => !seen.has(p.publicId) && seen.add(p.publicId)).slice(0, galleryMax);
@@ -912,6 +937,7 @@ export function mergePhotos(typed: IntakePhotos, saved: IntakePhotos, galleryMax
     logo: typed.logo ?? saved.logo,
     cover: typed.cover ?? saved.cover,
     beyond: typed.beyond ?? saved.beyond,
+    ...(typed.awards?.length || saved.awards?.length ? { awards: mergeAwardPhotos(typed.awards ?? [], saved.awards ?? []) } : {}),
     gallery,
     viaWhatsapp: typed.viaWhatsapp || saved.viaWhatsapp,
   };
@@ -1200,6 +1226,7 @@ export function intakePhotosSchema(kind: IntakeKind) {
     logo: intakePhotoSchema.optional(),
     cover: intakePhotoSchema.optional(),
     beyond: intakePhotoSchema.optional(),
+    awards: z.array(intakePhotoSchema).max(AWARD_PHOTOS_MAX, `Add at most ${AWARD_PHOTOS_MAX} award photos.`).optional(),
     gallery: z.array(intakePhotoSchema).max(cfg.galleryMax, `Add at most ${cfg.galleryMax} photos.`).default([]),
     viaWhatsapp: z.boolean().default(false),
   });
@@ -1208,7 +1235,7 @@ export function intakePhotosSchema(kind: IntakeKind) {
 /** Every uploaded photo in a form (with `data`, the doctors' photos too). */
 export function allPhotos(p: IntakePhotos, kind?: IntakeKind, data?: IntakeData): IntakePhoto[] {
   const doctors = kind && data ? doctorEntries(kind, data).flatMap(({ doctor }) => (doctor.photo ? [{ ...doctor.photo, caption: doctor.name || "Doctor photo" }] : [])) : [];
-  return [p.profile, p.logo, p.cover, p.beyond, ...p.gallery, ...doctors].filter((x): x is IntakePhoto => Boolean(x));
+  return [p.profile, p.logo, p.cover, p.beyond, ...(p.awards ?? []), ...p.gallery, ...doctors].filter((x): x is IntakePhoto => Boolean(x));
 }
 
 /** One doctor entry as a line, for the admin notes. */

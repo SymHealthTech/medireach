@@ -50,6 +50,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
       lng: geo ? String(geo.lng) : "",
       appointmentNote: fc.appointmentNote,
       fee: /^\d+$/.test(fc.fee) ? Number(fc.fee) : undefined,
+      showFee: /^\d+$/.test(fc.fee) && fc.showFee,
       ...(timings ? { timings } : {}),
     };
   }
@@ -80,6 +81,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
           ...c,
           name: keep("name"),
           addressLine1: keep("addressLine1"),
+          addressLine2: keep("addressLine2"),
           cityId: c.cityId || v.cityId,
           areaId: c.areaId || (sameCity ? v.areaId : ""),
           pincode: keep("pincode"),
@@ -89,6 +91,7 @@ export function ClinicsStep({ form: f, set, err, options, readOnly, hints }: Ste
           lng: keep("lng"),
           appointmentNote: keep("appointmentNote"),
           fee: c.fee ?? v.fee,
+          showFee: c.fee === undefined ? v.showFee : c.showFee,
           timings: readTimings ? v.timings : c.timings,
         };
         return { clinics: updateAt(prev.clinics, i, next) };

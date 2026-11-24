@@ -50,6 +50,7 @@ export interface FormClinic {
   mapsUrl: string;
   appointmentNote: string;
   fee: string;
+  showFee: boolean;
   timings: string;
 }
 
@@ -149,6 +150,7 @@ export function doctorHints(ref: string, data: IntakeData, intakeId?: string): D
     mapsUrl: str(c.mapsUrl),
     appointmentNote: str(c.appointmentNote),
     fee: str(c.fee),
+    showFee: c.showFee === true,
     timings: str(c.timings),
   });
   return {

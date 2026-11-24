@@ -13,7 +13,7 @@ const TYPE_AHEAD: readonly SuggestKey[] = ["education"];
 /** A dropdown with "Other" and "Please specify" (the answer is stored as text), like the admin editor's lists. */
 const SELECT_OTHER: readonly SuggestKey[] = ["designation", "specialty", "council", "city", "area"];
 /** Text fields holding a comma-separated list. */
-const COMMA_LISTS: readonly SuggestKey[] = ["languages", "interests"];
+const COMMA_LISTS: readonly SuggestKey[] = ["languages", "interests", "otherSpecialties"];
 const SHOWN = 10;
 
 export type SuggestMode = "lines" | "comma" | "single" | "typeahead" | "selectOther";
@@ -58,7 +58,7 @@ export function SuggestionDatalist({ id, items }: { id: string; items: string[] 
  * One-tap chips under a field: add a line ("lines"), add to a comma list,
  * or fill a one-line answer. Items already in the answer are hidden.
  */
-export function SuggestionChips({ mode, items, value, onChange, label }: { mode: Exclude<SuggestMode, "typeahead">; items: string[]; value: string; onChange: (v: string) => void; label: string }) {
+export function SuggestionChips({ mode, items, value, onChange, label, addAll = true }: { mode: Exclude<SuggestMode, "typeahead">; items: string[]; value: string; onChange: (v: string) => void; label: string; addAll?: boolean }) {
   const [all, setAll] = useState(false);
   const have = new Set((mode === "lines" ? splitLines(value) : mode === "comma" ? splitList(value) : [value.trim()]).map((x) => x.toLowerCase()));
   const left = items.filter((s) => !have.has(s.toLowerCase()));
@@ -93,7 +93,7 @@ export function SuggestionChips({ mode, items, value, onChange, label }: { mode:
           {all ? "Show fewer" : `+${left.length - SHOWN} more`}
         </button>
       )}
-      {mode !== "single" && left.length > 1 && (
+      {addAll && mode !== "single" && left.length > 1 && (
         <button
           type="button"
           onClick={() => add(left)}

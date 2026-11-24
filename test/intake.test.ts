@@ -475,6 +475,38 @@ describe("creating the website draft", () => {
     expect(doc!.internalNotes).not.toContain("Please enter in the editor: qualifications");
   });
 
+  it("imports what only the admin editor asked before: practitioner type, other specialties, public email, publications, award photos, fee display", async () => {
+    const data: IntakeData = {
+      ...fullDoctor(),
+      visitingAt: "",
+      practitionerType: "consultant",
+      otherSpecialties: "Paediatrician, General Physician, Sleep medicine",
+      publicEmail: "Clinic@Example.com",
+      awards: "Best paper award – IMA Pune – 2019\nHalf award",
+      publications: "Thyroid in pregnancy – JAPI – 2020 – www.japi.org/x\nA talk",
+      clinics: [{ ...(fullDoctor().clinics as RepeatItem[])[0]!, showFee: true }],
+      visiting: [{ name: "Ruby Hall Clinic", address: "40 Sassoon Road", area: "Sangamwadi", city: "Pune", pincode: "411001", timings: "", fee: "800", showFee: false, appointmentNote: "" }],
+    };
+    const awardPhoto = { ...photo(20), caption: "Best paper award" };
+    const r = await saveIntake({ kind: "doctor", email: "seven@example.com", data, photos: { awards: [awardPhoto], gallery: [10, 11, 12, 13, 14].map(photo) } }, null);
+    expect(r.ok).toBe(true);
+    const made = await createSiteFromIntake((await Intake.findById(r.ok ? r.intake.id : "").lean())!);
+    const doc = await DoctorProfile.findById(made.id).lean();
+    expect(doc!.practitionerType).toBe("consultant");
+    expect(doc!.secondarySpecialtyIds).toHaveLength(1); // Paediatrician; the primary is left out
+    expect(doc!.internalNotes).toContain('other specialty ("Sleep medicine")');
+    expect(doc!.email).toBe("clinic@example.com");
+    expect(doc!.publications).toEqual([{ title: "Thyroid in pregnancy", journal: "JAPI", year: 2020, url: "https://www.japi.org/x" }, { title: "A talk" }]);
+    expect(doc!.awards[0]).toMatchObject({ title: "Best paper award", photo: { publicId: awardPhoto.publicId } });
+    // Award photos count toward the 5 photos: the gallery keeps 4, the 5th goes to the notes.
+    expect(doc!.gallery).toHaveLength(4);
+    expect(doc!.internalNotes).toContain(photo(14).url);
+    expect(doc!.clinics.map((c) => [c.type, c.fee, c.showFee])).toEqual([
+      ["own_clinic", 500, true],
+      ["hospital_visiting", 800, false],
+    ]);
+  });
+
   it("adds a council, degree and area the lists don't have yet (what the applicant typed)", async () => {
     const data = { ...fullDoctor(), council: "MCIM", qualifications: "BAMS,\nMD (Kayachikitsa)", clinics: [{ ...(fullDoctor().clinics as RepeatItem[])[0], area: "Zz New Area" }] };
     const r = await saveIntake({ kind: "doctor", email: "conv2@example.com", data, photos: {} }, null);

@@ -1,7 +1,7 @@
 import "server-only";
 import mongoose, { type Types } from "mongoose";
 import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
-import { LIMITS, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
+import { LIMITS, PRACTITIONER_TYPES, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
 import { isThemeKey } from "@/themes/specialty";
 import { DEFAULT_HOSPITAL_CATEGORY } from "@/data/masters";
 import { escapeRegExp } from "@/lib/admin/list";
@@ -180,6 +180,13 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     str(d.council) ? findOrCreateMaster("council", str(d.council)).catch(() => null) : null,
   ]);
   if (!specialty && str(d.specialty)) skipped.push(`specialty ("${str(d.specialty)}")`);
+  // Other specialties: matched by name (the primary one is left out).
+  const secondary: Types.ObjectId[] = [];
+  for (const nameTyped of splitList(d.otherSpecialties).slice(0, 10)) {
+    const sp = await matchByName((f) => Specialty.findOne(f).select({ _id: 1 }).lean(), nameTyped, {}, ["name", "plural"]);
+    if (!sp) skipped.push(`other specialty ("${nameTyped}")`);
+    else if (String(sp._id) !== String(specialty?._id) && !secondary.some((x) => String(x) === String(sp._id))) secondary.push(sp._id);
+  }
   const qualificationLines = splitLines(d.qualifications);
   const qualifications = [];
   for (const line of qualificationLines.slice(0, 12)) {
@@ -221,17 +228,38 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
       timings: parseTimingsText(str(c.timings)) ?? [],
       ...(str(c.appointmentNote) ? { appointmentNote: str(c.appointmentNote) } : {}),
       ...(fee !== undefined ? { fee } : {}),
-      showFee: false,
+      showFee: fee !== undefined && c.showFee === true,
     });
   }
   // Awards need a title, who gave it and the year; incomplete ones are left in the notes.
+  // Award photos count toward the site's 5 photos, so they come first and the gallery gets what is left.
+  const awardPhotos = intake.photos?.awards ?? [];
+  const extraPhotos: IntakePhoto[] = [];
+  let photoRoom = LIMITS.galleryMax;
   const awards = [];
   for (const line of splitLines(d.awards).slice(0, 15)) {
     const a = ROWS.awards.parse(line);
     const y = Number(a.year);
-    if (a.title && a.awardingBody && y && y <= new Date().getFullYear()) awards.push({ title: a.title.slice(0, 120), awardingBody: a.awardingBody.slice(0, 120), year: y });
-    else skipped.push(`award "${line}"`);
+    const photo = awardPhotos.find((p) => (p.caption ?? "").trim().toLowerCase() === (a.title ?? "").trim().toLowerCase());
+    if (a.title && a.awardingBody && y && y <= new Date().getFullYear()) {
+      const usePhoto = photo && photoRoom > 0;
+      if (usePhoto) photoRoom--;
+      else if (photo) extraPhotos.push(photo);
+      awards.push({ title: a.title.slice(0, 120), awardingBody: a.awardingBody.slice(0, 120), year: y, ...(usePhoto ? { photo: image(photo, a.title.slice(0, 120)) } : {}) });
+    } else {
+      skipped.push(`award "${line}"`);
+      if (photo) extraPhotos.push(photo);
+    }
   }
+  const publications = splitLines(d.publications)
+    .slice(0, 20)
+    .map((line) => ROWS.publications.parse(line))
+    .filter((p) => p.title)
+    .map((p) => {
+      const y = Number(p.year);
+      const link = url(/^www\./i.test(p.url ?? "") ? `https://${p.url}` : p.url);
+      return { title: p.title!.slice(0, 300), ...(p.journal ? { journal: p.journal.slice(0, 200) } : {}), ...(y && y <= new Date().getFullYear() ? { year: y } : {}), ...(link ? { url: link.slice(0, 500) } : {}) };
+    });
   const allGallery = intake.photos?.gallery ?? [];
   const story = str(d.beyondStory);
 
@@ -253,6 +281,8 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     registration: { ...(council ? { councilId: new mongoose.Types.ObjectId(council.id) } : {}), ...(str(d.registrationNumber) ? { number: str(d.registrationNumber) } : {}), ...(year(d.registrationYear) ? { year: year(d.registrationYear) } : {}), ...(str(d.nmrId) ? { nmrId: str(d.nmrId).slice(0, 40) } : {}) },
     qualifications,
     ...(specialty ? { primarySpecialtyId: specialty._id } : {}),
+    secondarySpecialtyIds: secondary,
+    ...((PRACTITIONER_TYPES as readonly string[]).includes(str(d.practitionerType)) ? { practitionerType: str(d.practitionerType) as (typeof PRACTITIONER_TYPES)[number] } : {}),
     services: splitLines(d.services).map((line) => {
       const s = ROWS.services.parse(line);
       return { name: (s.name || line).slice(0, 80), ...(s.description ? { description: s.description.slice(0, 200) } : {}) };
@@ -261,10 +291,12 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     clinics,
     mobile: mobile(d.mobile),
     whatsapp: mobile(d.whatsapp) ?? mobile(d.mobile),
+    ...(str(d.publicEmail) ? { email: str(d.publicEmail) } : {}),
     links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "linkedin", "youtube", "website"]),
     shortBio: str(d.shortBio).slice(0, LIMITS.shortBio) || undefined,
     fullBio: paragraphs(d.aboutMe),
     awards,
+    publications,
     memberships: splitLines(d.memberships).map((line) => {
       const m = ROWS.memberships.parse(line);
       const y = Number(m.since);
@@ -273,14 +305,14 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     interests: splitList(d.interests).slice(0, 20),
     ...(intake.photos?.beyond ? { interestsPhoto: { ...image(intake.photos.beyond, str(d.beyondTitle) || "Beyond medicine")!, caption: str(d.beyondTitle).slice(0, 120) || undefined } } : {}),
     ...(story || str(d.beyondTitle) ? { interestsStory: { title: str(d.beyondTitle).slice(0, 200) || "Beyond medicine", ...(story ? { body: story.slice(0, LIMITS.storyBody) } : {}) } } : {}),
-    gallery: gallery(allGallery, LIMITS.galleryMax),
+    gallery: gallery(allGallery, photoRoom),
     ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
     ...((TEMPLATE_KEYS as readonly string[]).includes(str(d.websiteDesign)) ? { portfolioTemplateId: str(d.websiteDesign) as TemplateKey } : {}),
     plan: "doctor",
     source: "inbound",
     ...(ownerFree ? { ownerEmail: intake.email } : {}),
   });
-  doc.internalNotes = notesFor(intake, skipped, allGallery.slice(LIMITS.galleryMax));
+  doc.internalNotes = notesFor(intake, skipped, [...extraPhotos, ...allGallery.slice(photoRoom)]);
   await ensureDoctorUrlKeys(doc);
   await doc.save();
   return { kind: "doctor" as const, id: doc._id, href: `/admin/doctors/${doc._id}` };

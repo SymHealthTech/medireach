@@ -306,7 +306,9 @@ export type SuggestKey =
   | "interests"
   /** City and area dropdowns (the website form passes the live master lists; these are the fallback). */
   | "city"
-  | "area";
+  | "area"
+  /** A doctor's other specialties (comma list). */
+  | "otherSpecialties";
 
 /**
  * The suggestions for a website-form field. `data` is the whole form (the
@@ -353,6 +355,8 @@ export function fieldSuggestions(kind: "doctor" | "clinic" | "hospital", key: Su
       return MEMBERSHIP_SUGGESTIONS;
     case "interests":
       return INTEREST_SUGGESTIONS;
+    case "otherSpecialties":
+      return SPECIALTY_SUGGESTIONS.filter((s) => s.toLowerCase() !== specialty.toLowerCase());
     case "city":
       return SEED_CITIES.map((c) => c.name);
     case "area": {

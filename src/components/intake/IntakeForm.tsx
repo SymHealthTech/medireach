@@ -25,6 +25,7 @@ import {
   missingForSubmit,
   photosWhatsappText,
   requiredProgress,
+  splitLines,
   type IntakeData,
   type IntakePhotos,
 } from "@/lib/intake/form";
@@ -32,7 +33,8 @@ import type { IntakeView } from "@/lib/intake/server";
 import { IntakeCodeForm } from "./IntakeCodeForm";
 import { IntakeContextProvider, type CardFace } from "./IntakeContext";
 import { IntakeSection, SectionCard, inputClass } from "./IntakeFields";
-import { IntakePhotosSection, SectionPhoto } from "./IntakePhotos";
+import { AwardPhotos, IntakePhotosSection, SectionPhoto } from "./IntakePhotos";
+import { ROWS } from "@/lib/intake/rows";
 
 const INTRO: Record<IntakeKind, string> = {
   doctor: "Tell us about yourself and your practice. We use this to write and design your website and visiting card.",
@@ -404,6 +406,15 @@ export function IntakeForm({
                         photoKey="beyond"
                         label="Photo for your story"
                         help="Optional. You running the marathon, on a trek, playing music or at a social-work camp. A wide (landscape) photo works best. No patient photos."
+                        photos={photos}
+                        onChange={changePhotos}
+                        ensureSaved={ensureSaved}
+                        sign={admin ? adminSign : publicSign}
+                        disabled={!editable}
+                      />
+                    ) : kind === "doctor" && s.key === "practice" ? (
+                      <AwardPhotos
+                        titles={[...new Set(splitLines(data.awards).map((l) => ROWS.awards.parse(l).title ?? "").filter(Boolean))]}
                         photos={photos}
                         onChange={changePhotos}
                         ensureSaved={ensureSaved}

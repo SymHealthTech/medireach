@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Crop, ImagePlus, Lightbulb, Loader2, Trash2, Upload } from "lucide-react";
 import { WhatsAppIcon } from "@/components/marketing/WhatsAppLink";
 import { uploadImage, type UploadSigner } from "@/lib/client/upload-image";
+import { LIMITS } from "@/lib/constants";
 import { cn } from "@/lib/cn";
 import { photosWhatsappText, type IntakePhoto, type IntakePhotos, type PhotoConfig, type SinglePhotoKey } from "@/lib/intake/form";
 import { inputClass, SectionCard } from "./IntakeFields";
@@ -289,6 +290,76 @@ export function SectionPhoto({
         onPick={(f) => void pick(f)}
         onRemove={() => onChange({ ...latest.current, [photoKey]: undefined })}
       />
+      {error && (
+        <p role="alert" className="text-sm text-clay-text">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A photo for each award typed in the awards list (certificate or the award
+ * being given), like the admin editor's award photos. Stored in
+ * `photos.awards`, captioned with the award title.
+ */
+export function AwardPhotos({
+  titles,
+  photos,
+  onChange,
+  ensureSaved,
+  sign,
+  disabled,
+}: {
+  titles: string[];
+  photos: IntakePhotos;
+  onChange: (p: IntakePhotos) => void;
+  ensureSaved: () => Promise<boolean>;
+  sign: UploadSigner;
+  disabled?: boolean;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const latest = useRef(photos);
+  latest.current = photos;
+  const same = (a?: string, b?: string) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+  const put = (title: string, photo?: IntakePhoto) => {
+    const rest = (latest.current.awards ?? []).filter((p) => !same(p.caption, title));
+    onChange({ ...latest.current, awards: photo ? [...rest, photo] : rest });
+  };
+  async function pick(title: string, f: File) {
+    setError(null);
+    setBusy(title);
+    try {
+      if (!(await ensureSaved())) return;
+      const up = await uploadImage(f, "intake", sign, COMPRESS.gallery);
+      put(title, { publicId: up.publicId, url: up.url, caption: title.slice(0, 120) });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Upload failed. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+  if (titles.length === 0) return null;
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-paper/60 p-4 sm:col-span-2">
+      <div>
+        <p className="text-sm font-semibold text-ink">Award photos (optional)</p>
+        <p className="text-xs text-body/70">A photo of the certificate or of the award being given. Your website shows up to {LIMITS.galleryMax} photos in all, award photos included.</p>
+      </div>
+      {titles.map((title) => (
+        <SinglePhoto
+          key={title}
+          label={title}
+          help="Photo for this award"
+          value={(photos.awards ?? []).find((p) => same(p.caption, title))}
+          busy={busy === title}
+          disabled={disabled || busy !== null}
+          onPick={(f) => void pick(title, f)}
+          onRemove={() => put(title)}
+        />
+      ))}
       {error && (
         <p role="alert" className="text-sm text-clay-text">
           {error}

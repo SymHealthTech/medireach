@@ -77,4 +77,11 @@ describe("clinic / hospital doctor degrees", () => {
     expect(ROWS.bedTypes.parse("ICU 2")).toEqual({ type: "ICU", count: "2" });
     expect(ROWS.bedTypes.parse("Private room: 3 beds")).toEqual({ type: "Private room", count: "3" });
   });
+
+  it("publications: title, journal, year and link", () => {
+    const def = ROWS.publications;
+    const rows = [{ title: "Thyroid in pregnancy", journal: "JAPI", year: "2020", url: "https://japi.org/x" }, { title: "A talk", journal: "", year: "", url: "" }];
+    expect(textToRows(def, rowsToText(def, rows))).toEqual(rows);
+    expect(def.parse("Paper – 2018 – www.x.org")).toEqual({ title: "Paper", journal: "", year: "2018", url: "www.x.org" });
+  });
 });

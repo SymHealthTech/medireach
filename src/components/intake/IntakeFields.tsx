@@ -134,7 +134,7 @@ export function IntakeField({
         />
       )}
       {mode === "typeahead" && suggestions.length > 0 && <SuggestionDatalist id={datalistId(id)} items={suggestions} />}
-      {mode && !f.rows && mode !== "typeahead" && mode !== "selectOther" && suggestions.length > 0 && <SuggestionChips mode={mode} items={suggestions} value={v} onChange={onChange} label={f.label} />}
+      {mode && !f.rows && mode !== "typeahead" && mode !== "selectOther" && suggestions.length > 0 && <SuggestionChips mode={mode} items={suggestions} value={v} onChange={onChange} label={f.label} addAll={f.suggest !== "otherSpecialties"} />}
       {error ? (
         <p id={`${id}-error`} className="text-sm text-clay-text">
           {error}

@@ -53,6 +53,7 @@ export function toView(doc: Pick<IntakeDoc, "_id" | "kind" | "email" | "ref" | "
       ...(ph.logo ? { logo: clean(ph.logo) } : {}),
       ...(ph.cover ? { cover: clean(ph.cover) } : {}),
       ...(ph.beyond ? { beyond: clean(ph.beyond) } : {}),
+      ...(ph.awards?.length ? { awards: ph.awards.map((a) => clean(a)!) } : {}),
       gallery: (ph.gallery ?? []).map((g) => clean(g)!),
       viaWhatsapp: Boolean(ph.viaWhatsapp),
     },

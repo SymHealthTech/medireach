@@ -11,7 +11,7 @@ import { BED_TYPE_SUGGESTIONS, DEGREE_SUGGESTIONS } from "@/lib/suggestions";
  * Pure module: used by the browser and the server.
  */
 
-export type RowsKind = "qualifications" | "degrees" | "services" | "facilities" | "equipment" | "bedTypes" | "awards" | "memberships";
+export type RowsKind = "qualifications" | "degrees" | "services" | "facilities" | "equipment" | "bedTypes" | "awards" | "memberships" | "publications";
 
 export interface RowColumn {
   key: string;
@@ -167,6 +167,25 @@ export const ROWS: Record<RowsKind, RowsDef> = {
       const { rest, year } = splitYear(line);
       const [title = "", ...body] = rest.split(DASH);
       return { title: title.trim(), awardingBody: body.join(" – ").trim(), year };
+    },
+  },
+  // Like the admin editor's publications: title, journal, year, link.
+  publications: {
+    item: "Publication",
+    max: 20,
+    columns: [
+      { key: "title", label: "Title", placeholder: "Thyroid disorders in pregnancy", required: true },
+      { key: "journal", label: "Journal / organisation", placeholder: "Journal of the Association of Physicians of India" },
+      { key: "year", label: "Year", type: "year", placeholder: "2019" },
+      { key: "url", label: "Link (optional)", placeholder: "https://…" },
+    ],
+    format: (r) => join([r.title, r.journal, r.year, r.url]),
+    parse: (line) => {
+      const parts = line.split(DASH).map((p) => p.trim()).filter(Boolean);
+      const url = parts.find((p) => /^(https?:\/\/|www\.)\S+$/i.test(p)) ?? "";
+      const year = parts.find((p) => p !== url && /^(19[4-9]\d|20\d{2})$/.test(p)) ?? "";
+      const [title = "", ...rest] = parts.filter((p) => p !== url && p !== year);
+      return { title, journal: rest.join(" – "), year, url };
     },
   },
   memberships: {
