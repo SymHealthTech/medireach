@@ -402,7 +402,8 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   if (!city || !area) skipped.push("area / city");
 
   // Clinic type is a category slug from the form; "Other" (or an older free-text answer) is matched by name.
-  const typeSlug = kind === "clinic" ? str(d.clinicType) : hospitalCategoryFor(str(d.hospitalType));
+  // Hospital types: the built-in short values ("maternity") map to their category; types added later are category slugs.
+  const typeSlug = kind === "clinic" ? str(d.clinicType) : hospitalCategoryFor(str(d.hospitalType)) || (str(d.hospitalType) === "other" ? "" : str(d.hospitalType));
   const typeText = (kind === "clinic" ? str(d.clinicTypeOther) || (typeSlug === "other" ? "" : typeSlug) : str(d.hospitalTypeOther)).toLowerCase();
   const categories = await ClinicCategory.find({ kind }).select({ name: 1, slug: 1, defaultThemeKey: 1 }).lean();
   const category =
@@ -435,6 +436,11 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
   const label = kind === "clinic" ? "clinic" : "hospital";
+  // Open 24×7: the site shows "Open 24 hours", not the week, so OPD hours typed in the form go in the appointment note.
+  const opd = d.is24x7 === true && str(d.timings) ? `OPD: ${splitLines(d.timings).join("; ")}` : "";
+  const noteParts = [str(d.appointmentNote), opd].filter(Boolean).join(" ");
+  const appointmentNote = noteParts.slice(0, 200) || undefined;
+  if (noteParts.length > 200) skipped.push(`appointment note / OPD hours (too long: "${noteParts}")`);
   // The editor keeps up to 4 numbers; the rest go to the notes.
   const allPhones = phones(d.phones);
   if (allPhones.length > 4) skipped.push(`more phone numbers (${allPhones.slice(4).join(", ")})`);
@@ -476,7 +482,7 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     },
     is24x7: d.is24x7 === true,
     ...(timings ? { timings } : {}),
-    appointmentNote: str(d.appointmentNote) || undefined,
+    appointmentNote,
     visitingHours: str(d.visitingHours) || undefined,
     services,
     facilities: namedRows("facilities", d.facilities, 200),

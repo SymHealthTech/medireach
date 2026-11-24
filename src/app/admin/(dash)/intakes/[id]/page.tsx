@@ -13,7 +13,7 @@ import { INTAKE_STATUS_LABEL, INTAKE_STATUS_TONE } from "@/lib/admin/labels";
 import { connectToDatabase } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { INTAKE_KIND_LABEL, allPhotos, designSummary, missingForSubmit, str } from "@/lib/intake/form";
-import { intakeClinicTypes, intakePlaces } from "@/lib/intake/places";
+import { intakePlaces, intakeSiteTypes } from "@/lib/intake/places";
 import { toView } from "@/lib/intake/server";
 import { getPublicSiteData } from "@/lib/public/site-data";
 import { Intake } from "@/models/Intake";
@@ -27,7 +27,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
   const { id } = await params;
   if (!isObjectId(id)) notFound();
   await connectToDatabase();
-  const [doc, site, places, clinicTypes] = await Promise.all([Intake.findById(id).lean(), getPublicSiteData(), intakePlaces(), intakeClinicTypes()]);
+  const [doc, site, places] = await Promise.all([Intake.findById(id).lean(), getPublicSiteData(), intakePlaces()]);
   if (!doc) notFound();
   const view = toView(doc);
   const missing = missingForSubmit(view.kind, view.data);
@@ -114,7 +114,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
         <IntakeReviewControls id={view.id} status={view.status} notes={doc.adminNotes ?? ""} draftHref={draftHref} canDelete={admin.role !== "sales"} kind={view.kind} />
       </section>
 
-      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" cardFaces={sampleCardFaces(view.kind)} places={places} clinicTypes={view.kind === "clinic" ? clinicTypes : undefined} />
+      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" cardFaces={sampleCardFaces(view.kind)} places={places} siteTypes={view.kind === "doctor" ? undefined : await intakeSiteTypes(view.kind)} />
     </div>
   );
 }

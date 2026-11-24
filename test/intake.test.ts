@@ -258,7 +258,17 @@ describe("form definitions", () => {
     // Clinic types come from the live category list: a slug added later is kept; unknown hospital types are not.
     expect(intakeDataSchema("clinic").parse({ clinicType: "sleep-clinic" }).clinicType).toBe("sleep-clinic");
     expect(intakeDataSchema("clinic").parse({ clinicType: "Not a slug!" }).clinicType).toBe("");
-    expect(intakeDataSchema("hospital").parse({ hospitalType: "sleep-clinic" }).hospitalType).toBe("");
+    // Hospitals too: built-in short types stay, a category added later is kept by slug; the type is required.
+    expect(intakeDataSchema("hospital").parse({ hospitalType: "maternity" }).hospitalType).toBe("maternity");
+    expect(intakeDataSchema("hospital").parse({ hospitalType: "cancer-hospital" }).hospitalType).toBe("cancer-hospital");
+    expect(missingForSubmit("hospital", emptyIntakeData("hospital")).map((m) => m.key)).toContain("hospitalType");
+    // Beds: at most the plan's 10, in total and across the bed types.
+    expect(intakeDataSchema("hospital").safeParse({ beds: "10", bedTypes: "General ward – 8\nICU – 2" }).success).toBe(true);
+    const tooMany = intakeDataSchema("hospital").safeParse({ beds: "11" });
+    expect(tooMany.success).toBe(false);
+    expect(tooMany.error?.issues[0]?.message).toContain("up to 10 beds");
+    const typesTooMany = intakeDataSchema("hospital").safeParse({ bedTypes: "General ward – 9\nICU 2" });
+    expect(typesTooMany.error?.issues.map((i) => i.path.join("."))).toEqual(["bedTypes"]);
     // City and area are dropdowns from the master lists (Pune areas when no list is passed).
     const area = INTAKE_SECTIONS.doctor.find((s) => s.key === "clinics")!.fields.find((f) => f.key === "area")!;
     expect(area.suggest).toBe("area");
@@ -630,6 +640,18 @@ describe("creating the website draft", () => {
     expect(e!.doctors[1]!.doctorProfileId).toBeUndefined();
     // The portfolio now lists the clinic, as when linked in the editor.
     expect((await DoctorProfile.findById(drMade.id).lean())!.establishmentIds.map(String)).toContain(String(made.id));
+  });
+
+  it("hospital import: OPD hours go in the appointment note when open 24×7, and types added later get their category", async () => {
+    await ClinicCategory.create({ name: "Cancer Hospital", plural: "Cancer Hospitals", slug: "cancer-hospital", kind: "hospital", defaultThemeKey: "small-hospital", icon: "hospital" });
+    const data = { ...emptyIntakeData("hospital"), name: "Open All Day Hospital", hospitalType: "cancer-hospital", is24x7: true, timings: "Mon–Sat: 9 am – 1 pm\nSunday: closed", appointmentNote: "Call ahead." };
+    const r = await saveIntake({ kind: "hospital", email: "opd@example.com", data, photos: {} }, null);
+    const made = await createSiteFromIntake((await Intake.findById(r.ok ? r.intake.id : "").lean())!);
+    const e = await Establishment.findById(made.id).lean();
+    expect(e!.is24x7).toBe(true);
+    expect(e!.appointmentNote).toBe("Call ahead. OPD: Mon–Sat: 9 am – 1 pm; Sunday: closed");
+    const cat = await ClinicCategory.findById(e!.categoryId).lean();
+    expect(cat!.slug).toBe("cancer-hospital");
   });
 
   it("maps hospital departments and their doctors", async () => {

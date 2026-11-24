@@ -78,7 +78,11 @@ export interface FieldDef {
    * through the form context; `options` is the built-in fallback). Saved
    * values outside `options` are kept when they look like a list slug.
    */
-  optionsFrom?: "clinicTypes";
+  optionsFrom?: "siteTypes";
+  /** Number fields: the largest value accepted. */
+  maxValue?: number;
+  /** Another label and help while this checkbox is ticked (OPD hours when open 24×7). */
+  whenChecked?: { key: string; label: string; help: string };
   /** Step-by-step instructions, shown under the field on request. */
   steps?: readonly string[];
   /** Design pickers: which kind of site the choices are for. */
@@ -605,7 +609,7 @@ const CLINIC: SectionDef[] = [
     title: "About the clinic",
     fields: [
       text("name", "Clinic name", { required: true }),
-      { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES, optionsFrom: "clinicTypes" },
+      { key: "clinicType", label: "Type of clinic", type: "select", required: true, options: CLINIC_TYPES, optionsFrom: "siteTypes" },
       text("clinicTypeOther", "Please specify", { required: true, placeholder: "e.g. Sleep clinic, IVF centre", showIf: { key: "clinicType", equals: "other" } }),
       text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "Skin, hair and nail care in Kothrud", help: "Optional. Shown under the clinic name on your website. Facts only, no claims like “best”." }),
       shortDescriptionField("clinic", "A skin and hair clinic in Kothrud, Pune. See timings, services, doctors and directions."),
@@ -644,7 +648,7 @@ const HOSPITAL: SectionDef[] = [
     title: "About the hospital",
     fields: [
       text("name", "Hospital name", { required: true }),
-      { key: "hospitalType", label: "Type of hospital", type: "select", options: HOSPITAL_TYPES },
+      { key: "hospitalType", label: "Type of hospital", type: "select", required: true, options: HOSPITAL_TYPES, optionsFrom: "siteTypes" },
       text("hospitalTypeOther", "Please specify", { required: true, placeholder: "e.g. Cancer care, De-addiction", showIf: { key: "hospitalType", equals: "other" } }),
       text("tagline", "Tagline (one line)", { wide: true, max: 120, placeholder: "A 10-bed multi-speciality hospital in Wakad", help: "Optional. Shown under the hospital name on your website. Facts only, no claims like “best”." }),
       shortDescriptionField("hospital", "A 10-bed multi-speciality hospital in Wakad, Pune. See OPD timings, departments, doctors and directions."),
@@ -664,7 +668,15 @@ const HOSPITAL: SectionDef[] = [
     title: "Timings",
     fields: [
       { key: "is24x7", label: "Open 24×7", type: "checkbox", wide: true },
-      { ...timingsField("OPD timings"), optionalIf: "is24x7" },
+      {
+        ...timingsField("OPD timings"),
+        optionalIf: "is24x7",
+        whenChecked: {
+          key: "is24x7",
+          label: "OPD hours (optional)",
+          help: "Your website shows “Open 24 hours, all 7 days”. Outpatient (OPD) hours you add here are shown in the appointment note.",
+        },
+      },
       text("appointmentNote", "Appointment note", { wide: true, placeholder: "Appointments through the hospital desk", suggest: "appointmentNote" }),
     ],
   },
@@ -681,7 +693,7 @@ const HOSPITAL: SectionDef[] = [
     title: "Beds and visiting hours",
     description: `Number and types, factual. For hospitals up to ${LIMITS.hospitalBedsMax} beds.`,
     fields: [
-      { key: "beds", label: "Total beds", type: "number" },
+      { key: "beds", label: "Total beds", type: "number", maxValue: LIMITS.hospitalBedsMax },
       { key: "bedTypes", label: "Bed types", type: "lines", rows: "bedTypes", wide: true, help: "Optional. E.g. General ward 6, ICU 2." },
       text("visitingHours", "Visiting hours for patients' families", { wide: true, placeholder: "11 am – 1 pm, 5 pm – 8 pm", suggest: "visitingHours" }),
     ],
@@ -1097,7 +1109,10 @@ function fieldSchema(f: FieldDef): z.ZodTypeAny {
     case "year":
       return base.refine((v) => v === "" || (/^\d{4}$/.test(v) && +v >= 1940 && +v <= new Date().getFullYear()), "Enter a year like 2012.");
     case "number":
-      return base.transform((s) => s.replace(/[₹,\s]/g, "")).refine((v) => v === "" || /^\d{1,7}$/.test(v), "Enter a number.");
+      return base
+        .transform((s) => s.replace(/[₹,\s]/g, ""))
+        .refine((v) => v === "" || /^\d{1,7}$/.test(v), "Enter a number.")
+        .refine((v) => v === "" || f.maxValue === undefined || Number(v) <= f.maxValue, f.key === "beds" ? BEDS_MESSAGE : `Enter at most ${f.maxValue}.`);
     case "pincode":
       return base.transform((s) => s.replace(/\s/g, "")).refine((v) => v === "" || /^\d{6}$/.test(v), "Enter a 6-digit pincode.");
     case "story":
@@ -1121,6 +1136,17 @@ function fieldSchema(f: FieldDef): z.ZodTypeAny {
   }
 }
 
+const BEDS_MESSAGE = `This plan covers hospitals up to ${LIMITS.hospitalBedsMax} beds.`;
+
+/** Beds in one bed-type row ("ICU – 2", "ICU 2", "Private room: 3 beds"). */
+export const bedTypeCount = (line: string): number => Number(line.match(/(\d{1,3})\s*(?:beds?)?\s*$/i)?.[1] ?? 0);
+
+/** Bed types may not add up to more beds than the plan covers (like the admin editor). */
+function checkBedTypes(d: Record<string, unknown>, ctx: z.RefinementCtx) {
+  const sum = splitLines(d.bedTypes).reduce((n, l) => n + bedTypeCount(l), 0);
+  if (sum > LIMITS.hospitalBedsMax) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["bedTypes"], message: `The bed types add up to ${sum}. ${BEDS_MESSAGE}` });
+}
+
 const schemaCache = new Map<IntakeKind, z.ZodTypeAny>();
 
 /**
@@ -1140,7 +1166,8 @@ export function intakeDataSchema(kind: IntakeKind): z.ZodType<IntakeData, z.ZodT
     }
   }
   // Older answers (doctors as text lines) are upgraded first, so a page opened before a change still saves.
-  const schema = z.preprocess((v) => (isObj(v) ? upgradeLegacy(kind, v) : v), z.object(shape));
+  const object = kind === "hospital" ? z.object(shape).superRefine(checkBedTypes) : z.object(shape);
+  const schema = z.preprocess((v) => (isObj(v) ? upgradeLegacy(kind, v) : v), object);
   schemaCache.set(kind, schema);
   return schema as unknown as z.ZodType<IntakeData, z.ZodTypeDef, unknown>;
 }

@@ -49,6 +49,8 @@ export function IntakeField({
   const ctx = useOptionalIntakeContext();
   // Live master list (clinic types) when the page passed it; else the built-in options.
   const selectOptions = (f.optionsFrom && ctx?.[f.optionsFrom]?.length ? ctx[f.optionsFrom] : f.options) ?? [];
+  // Another label and help while a checkbox is ticked (OPD hours when open 24×7).
+  if (f.whenChecked && context[f.whenChecked.key] === true) f = { ...f, label: f.whenChecked.label, help: f.whenChecked.help };
   const mode = suggestMode(f);
 
   if (f.type === "doctors") {
