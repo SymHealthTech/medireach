@@ -12,7 +12,7 @@ import { Establishment } from "@/models/Establishment";
 import { absUrl, paths, sitePath, subdomainUrl, type SiteRoute } from "@/lib/site";
 import { mapEmbedUrl } from "@/lib/maps";
 import { storyParagraphs } from "@/lib/format";
-import { toPublicBlog } from "@/lib/blog";
+import { pickHealthTips } from "@/lib/health-tips";
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { CACHE_TAGS } from "@/lib/public/tags";
 import type { DoctorCardData, PublicClinic, PublicDoctor, PublicNamed } from "@/templates/types";
@@ -295,7 +295,15 @@ export function toPublicDoctor(d: LeanDoctor, masters: Masters, sites?: SiteLink
       ? { interestsStory: { title: d.interestsStory.title, paragraphs: storyParagraphs(d.interestsStory.body) } }
       : {}),
     gallery,
-    ...(d.blogPosts?.some((p) => p.status === "published") ? { blog: toPublicBlog(d.blogPosts, fullName) } : {}),
+    ...(d.showHealthTips !== false
+      ? {
+          healthTips: pickHealthTips(
+            idStr(d._id),
+            [primarySpecialty?.slug, ...d.secondarySpecialtyIds.map((id) => specialtyOf(id, mi)?.slug)].filter((x): x is string => Boolean(x)),
+            d.healthTipSlugs ?? [],
+          ),
+        }
+      : {}),
 
     portfolioTemplateId: d.portfolioTemplateId,
     cardTemplateId: d.cardTemplateId,

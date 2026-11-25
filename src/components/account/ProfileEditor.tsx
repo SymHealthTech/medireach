@@ -25,7 +25,7 @@ const LINKS: { key: keyof ProfileForm["links"]; label: string; placeholder: stri
  * conditions, languages, interests, public email and links. One Save button;
  * the NMC wording check runs on the server and errors show beside the field.
  */
-export function ProfileEditor({ initial }: { initial: ProfileForm }) {
+export function ProfileEditor({ initial, demo }: { initial: ProfileForm; /** Sample dashboard: nothing is saved. */ demo?: boolean }) {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -48,6 +48,11 @@ export function ProfileEditor({ initial }: { initial: ProfileForm }) {
 
   const save = () =>
     start(async () => {
+      if (demo) {
+        setDirty(false);
+        setMessage({ ok: true, text: "Demo: on a real account this updates the website straight away." });
+        return;
+      }
       const res = await saveProfileAction(form);
       if (res.ok) {
         setErrors({});

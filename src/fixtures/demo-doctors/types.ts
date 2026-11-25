@@ -5,7 +5,7 @@ import type { InquiryStatus, InquiryTime } from "@/lib/inquiries";
  * A FICTIONAL demo doctor: everything needed to show a complete, realistic
  * website without a database (the /sample/{key} pages and design gallery), and
  * to seed the same doctor into a database (`npm run seed:demo`) so the doctor
- * login, inquiries and blog editor can be demonstrated.
+ * login and appointment requests can be demonstrated.
  *
  * Master lists are referenced by slug (resolved when seeding) and also carry
  * their display names, so the page renders without the database.
@@ -32,18 +32,6 @@ export interface DemoClinic {
   appointmentNote?: string;
   fee?: number;
   showFee: boolean;
-}
-
-export interface DemoBlogPost {
-  slug: string;
-  title: string;
-  excerpt: string;
-  /** Plain text; blank lines split paragraphs. */
-  body: string;
-  cover: { url: string; alt: string };
-  tags: string[];
-  /** YYYY-MM-DD. */
-  publishedAt: string;
 }
 
 export interface DemoInquiry {
@@ -91,12 +79,12 @@ export interface DemoDoctor {
   fullBio: string;
   awards: { title: string; awardingBody: string; year: number }[];
   memberships: { name: string; since?: number }[];
-  publications: { title: string; journal?: string; year?: number }[];
   interests: string[];
   interestsPhoto: { url: string; alt: string; caption: string };
   interestsStory: { title: string; body: string };
   gallery: { url: string; alt: string; caption: string }[];
-  blog: DemoBlogPost[];
+  /** Show the Health tips section (general articles chosen by specialty). */
+  showHealthTips: boolean;
   /** Appointment requests seeded with the doctor, so the account page has something to show. */
   inquiries: DemoInquiry[];
   portfolioTemplateId: TemplateKey;

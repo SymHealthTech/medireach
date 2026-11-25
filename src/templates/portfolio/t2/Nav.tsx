@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarCheck, Menu, Phone, X } from "lucide-react";
+import { CalendarCheck, Menu, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export interface NavLink {
@@ -17,17 +17,11 @@ export interface NavLink {
 export function Nav({
   name,
   tagline,
-  monogram,
   links,
-  phone,
-  phoneLabel,
 }: {
   name: string;
   tagline?: string;
-  monogram: string;
   links: NavLink[];
-  phone?: string;
-  phoneLabel?: string;
 }) {
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
@@ -67,17 +61,8 @@ export function Nav({
     >
       <div className="mx-auto flex h-[72px] max-w-[1240px] items-center gap-4 px-4 sm:px-6">
         <a href="#top" className="flex min-w-0 items-center gap-3" onClick={() => setOpen(false)}>
-          <span
-            aria-hidden
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold tracking-wide transition",
-              light ? "bg-cm-navy text-white" : "bg-white/15 text-white ring-1 ring-white/40 backdrop-blur",
-            )}
-          >
-            {monogram}
-          </span>
           <span className="min-w-0 leading-tight">
-            <span className={cn("block truncate text-[15px] font-bold transition-colors sm:text-base", light ? "text-cm-navy" : "text-white")}>{name}</span>
+            <span className={cn("block truncate text-base font-extrabold tracking-tight transition-colors sm:text-lg", light ? "text-cm-navy" : "text-white")}>{name}</span>
             {tagline && <span className={cn("block truncate text-xs font-medium transition-colors", light ? "text-cm-teal" : "text-white/75")}>{tagline}</span>}
           </span>
         </a>
@@ -110,18 +95,6 @@ export function Nav({
         </nav>
 
         <div className="ml-auto flex items-center gap-2 lg:ml-4">
-          {phone && (
-            <a
-              href={`tel:+${phone}`}
-              className={cn(
-                "hidden items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition xl:inline-flex",
-                light ? "text-cm-navy hover:bg-cm-sky" : "text-white hover:bg-white/10",
-              )}
-            >
-              <Phone aria-hidden className="size-4" strokeWidth={2} />
-              {phoneLabel}
-            </a>
-          )}
           <a
             href="#appointment"
             className="hidden items-center gap-2 rounded-xl bg-cm-teal px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(13_148_136/0.8)] transition hover:-translate-y-0.5 hover:bg-cm-teal-2 sm:inline-flex"

@@ -126,8 +126,8 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
   return (
     <>
       <DoctorOverview
-        counts={{ new: newCount, month: monthCount, total: monthCount }}
-        articles={(d.blogPosts ?? []).filter((p) => p.status === "published").length}
+        counts={{ new: newCount, month: monthCount }}
+        healthTipsOn={d.showHealthTips !== false}
         latest={latest.map((q) => ({
           id: String(q._id),
           name: q.name,
@@ -179,7 +179,7 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
       <section className={card}>
         <div>
           <h2 className="font-display text-xl font-semibold text-ink">Request a change</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">For your photo, name, qualifications, registration, a new clinic or your page design, our team makes the change for you. Your about text, services and articles you can edit yourself.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">For your photo, name, qualifications, registration, a new clinic or your page design, our team makes the change for you. Your about text, services and health tips you can change yourself.</p>
         </div>
         <ChangeRequestForm priceLabel={priceLabel} />
         {requests.length > 0 && (

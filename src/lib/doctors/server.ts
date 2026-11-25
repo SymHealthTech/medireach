@@ -170,6 +170,7 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
     portfolioTemplateId: d.portfolioTemplateId,
     cardTemplateId: d.cardTemplateId,
     cardStyle: d.cardStyle ?? "",
+    showHealthTips: d.showHealthTips !== false,
     approval: {
       doctorApprovedAt: d.compliance?.doctorApprovedAt ? toDateInput(d.compliance.doctorApprovedAt) : "",
       approvedVia: d.compliance?.approvedVia ?? "",
@@ -347,7 +348,7 @@ export async function applySection<K extends StepKey>(
       if (!ok("portfolio", d.portfolioTemplateId)) throw new ActionError("That portfolio design isn't ready yet.");
       if (!ok("card", d.cardTemplateId)) throw new ActionError("That card design isn't ready yet.");
       // cardStyle is undefined when the default is chosen, which clears the field.
-      doc.set({ portfolioTemplateId: d.portfolioTemplateId, cardTemplateId: d.cardTemplateId, cardStyle: d.cardStyle });
+      doc.set({ portfolioTemplateId: d.portfolioTemplateId, cardTemplateId: d.cardTemplateId, cardStyle: d.cardStyle, showHealthTips: d.showHealthTips });
       break;
     }
     case "review":

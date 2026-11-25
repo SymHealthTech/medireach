@@ -24,7 +24,7 @@ function configure() {
   configured = true;
 }
 
-export const UPLOAD_PURPOSES = ["doctor-photo", "gallery", "award", "interests", "template-preview", "logo", "cover", "intake", "blog"] as const;
+export const UPLOAD_PURPOSES = ["doctor-photo", "gallery", "award", "interests", "template-preview", "logo", "cover", "intake"] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 
 const ALLOWED_FORMATS = "jpg,jpeg,png,webp,heic";

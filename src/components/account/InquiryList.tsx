@@ -32,7 +32,7 @@ const TONE: Record<InquiryStatus, string> = {
 const dateTimeFmt = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 
 /** The doctor's appointment requests: call / WhatsApp / email, status and a private note, saved as you go. */
-export function InquiryList({ initial }: { initial: InquiryRow[] }) {
+export function InquiryList({ initial, demo }: { initial: InquiryRow[]; /** Sample dashboard: changes stay on screen only. */ demo?: boolean }) {
   const [rows, setRows] = useState(initial);
   if (rows.length === 0) {
     return (
@@ -46,13 +46,13 @@ export function InquiryList({ initial }: { initial: InquiryRow[] }) {
   return (
     <ul className="space-y-3">
       {rows.map((r) => (
-        <InquiryCard key={r.id} row={r} onChange={(patch) => setRows((all) => all.map((x) => (x.id === r.id ? { ...x, ...patch } : x)))} />
+        <InquiryCard key={r.id} row={r} demo={demo} onChange={(patch) => setRows((all) => all.map((x) => (x.id === r.id ? { ...x, ...patch } : x)))} />
       ))}
     </ul>
   );
 }
 
-function InquiryCard({ row: r, onChange }: { row: InquiryRow; onChange: (patch: Partial<InquiryRow>) => void }) {
+function InquiryCard({ row: r, demo, onChange }: { row: InquiryRow; demo?: boolean; onChange: (patch: Partial<InquiryRow>) => void }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string>();
   const [note, setNote] = useState(r.note ?? "");
@@ -64,7 +64,7 @@ function InquiryCard({ row: r, onChange }: { row: InquiryRow; onChange: (patch: 
   const save = (patch: { status?: InquiryStatus; note?: string }) =>
     start(async () => {
       setError(undefined);
-      const res = await updateInquiryAction({ id: r.id, ...patch });
+      const res = demo ? ({ ok: true } as const) : await updateInquiryAction({ id: r.id, ...patch });
       if (res.ok) {
         onChange(patch);
         setSaved(true);

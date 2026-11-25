@@ -1,6 +1,6 @@
 /**
  * `npm run seed:demo` — publish the FICTIONAL demo doctors from
- * src/fixtures/demo-doctors (noindex) with their blog posts and sample
+ * src/fixtures/demo-doctors (noindex) with sample
  * appointment requests.
  *
  *   --owner=you@example.com   login email for the first demo doctor, so you can

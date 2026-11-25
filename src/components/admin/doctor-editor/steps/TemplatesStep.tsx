@@ -6,6 +6,7 @@ import { CardStylePicker, DesignPicker } from "@/components/intake/DesignPickers
 import { DEFAULT_DOCTOR_CARD_STYLE, findCardStyle } from "@/lib/cards/styles";
 import { cn } from "@/lib/cn";
 import { DESIGN_OPTIONS, INTAKE_SECTIONS } from "@/lib/intake/form";
+import { SwitchField } from "@/components/admin/form/fields";
 import { Group, type StepProps } from "../shared";
 
 function SlotPicker({
@@ -92,11 +93,18 @@ export function TemplatesStep({ form: f, set, options, readOnly, hints, cardFace
           <span>
             Website form {hints.ref}: website <strong>{formDesign ?? "not decided"}</strong>, card <strong>{formCard ? `${formCard.name} (${formCard.code})` : "not decided"}</strong>
             {hints.designDecision === "discuss" ? " · Not final: talk to the doctor first." : hints.designDecision === "final" ? " · Final choice." : ""}
+            {hints.healthTips ? ` · Health tips: ${hints.healthTips === "no" ? "no" : "yes"}` : ""}
           </span>
         </p>
       )}
       <Group title="Website design" description="The designs doctors see on the website. View opens the full sample site; every design has the same SEO.">
         <DesignPicker id="portfolioTemplateId" field={WEBSITE_FIELD} value={f.portfolioTemplateId} onChange={(v) => v && set({ portfolioTemplateId: v })} undecided={false} />
+        <SwitchField
+          label="Health tips section"
+          description="Two short, general health articles chosen for the doctor's specialty (not written by or credited to the doctor). Shown in designs that have the section, such as Clinic Modern."
+          checked={f.showHealthTips}
+          onCheckedChange={(showHealthTips) => set({ showHealthTips })}
+        />
       </Group>
       <Group
         title="Visiting card"

@@ -277,6 +277,11 @@ export const DESIGN_OPTIONS: Record<IntakeKind, readonly { value: string; label:
   hospital: [...SPECIALTY_THEMES].sort((a, b) => Number(b.kind === "hospital") - Number(a.kind === "hospital")).map((t) => ({ value: t.key, label: t.name, ready: true, sampleHref: `/designs/${t.key}` })),
 };
 
+export const HEALTH_TIPS_CHOICES = [
+  { value: "yes", label: "Yes, add it", description: "Two general health articles on my website." },
+  { value: "no", label: "No, leave it out" },
+] as const;
+
 export const DESIGN_DECISIONS = [
   { value: "final", label: "Final", description: "Go ahead with the designs I picked." },
   { value: "discuss", label: "Not final yet", description: "Talk to me first. I'd like to discuss the design before you finalise it." },
@@ -303,6 +308,18 @@ const designSection = (kind: IntakeKind): SectionDef => ({
       wide: true,
       options: CARD_STYLES_BY_GROUP[kind].map((c) => ({ value: c.code, label: c.name })),
     },
+    ...(kind === "doctor"
+      ? [
+          {
+            key: "healthTips",
+            label: "Add a “Health tips” section?",
+            type: "choice" as const,
+            wide: true,
+            help: "Two short, general health articles that suit your specialty, for patients' information. They are not shown with your name.",
+            options: HEALTH_TIPS_CHOICES,
+          },
+        ]
+      : []),
     { key: "designDecision", label: "Is this your final choice?", type: "choice", required: true, wide: true, options: DESIGN_DECISIONS },
   ],
 });

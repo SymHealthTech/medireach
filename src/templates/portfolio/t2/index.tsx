@@ -1,42 +1,55 @@
 import Image from "next/image";
 import {
+  Activity,
+  Apple,
   ArrowRight,
   ArrowUpRight,
   Award,
+  Baby,
   BadgeCheck,
-  BookOpenText,
+  Bone,
+  Brain,
   Building2,
   CalendarCheck,
   Check,
   Clock,
+  ClipboardCheck,
+  Droplet,
+  Eye,
   GraduationCap,
   HeartPulse,
+  House,
   IdCard,
-  IndianRupee,
   Languages,
   Mail,
   MapPin,
   MessageCircle,
   Mountain,
-  Navigation,
   Phone,
   PhoneCall,
+  Pill,
   Plus,
   ShieldCheck,
+  Smile,
+  Sparkles,
   Stethoscope,
+  Syringe,
+  Thermometer,
   UserPlus,
   Users,
+  Wind,
 } from "lucide-react";
-import { ClinicHours } from "@/components/public/ClinicHours";
 import { Gallery } from "@/components/public/Gallery";
 import { cn } from "@/lib/cn";
 import { formatPhone } from "@/lib/phone";
 import { absUrl } from "@/lib/site";
 import { formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER, DAY_SHORT } from "@/lib/timings";
+import { describeService, type ServiceIcon } from "@/content/service-descriptions";
 import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
-import type { PortfolioTemplateProps, PublicClinic, PublicDoctor } from "@/templates/types";
+import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { AppointmentForm } from "./AppointmentForm";
-import { BlogSection } from "./BlogSection";
+import { ClinicsSection } from "./ClinicsSection";
+import { HealthTipsSection } from "./HealthTipsSection";
 import { HeroCarousel, type Slide } from "./HeroCarousel";
 import { CountUp, RevealObserver } from "./Motion";
 import { Nav, type NavLink } from "./Nav";
@@ -45,11 +58,12 @@ import { Nav, type NavLink } from "./Nav";
  * Portfolio design 2 — "Clinic Modern". A photo-led, animated one-page website
  * in a navy / clinical blue / teal medical palette:
  *
- * nav → hero (background photo carousel, portrait, floating badges) → quick
- * info strip → about → numbers band (photo) → services (photo cards) →
- * conditions marquee → education timeline → clinics and timings (+ map) →
- * appointment form (photo band) → recognition → beyond medicine → health
- * articles → gallery → FAQ → footer, plus a mobile contact bar.
+ * nav → hero (background photo carousel, portrait, years badge) → quick
+ * info strip → about → numbers band (photo) → services (photo + numbered
+ * list, default descriptions) → conditions marquee → education → clinics
+ * (one open at a time: details, weekly timings, small map) → appointment form
+ * (photo band) → awards and memberships → beyond medicine → health tips
+ * (optional, general articles) → gallery → FAQ → footer, plus a mobile bar.
  *
  * Every section hides itself when its data is empty. Presentation only: the
  * H1, intro sentence, nearby doctors and JSON-LD come from the shared wrapper.
@@ -68,39 +82,25 @@ const HERO_SLIDES: Slide[] = [
   { src: `${IMG}/hero-4.jpg`, alt: "A doctor writing notes with a stethoscope on the desk" },
 ];
 
-/** Stock photo per service, matched on its name; unmatched services take the next unused photo. */
-const SERVICE_PHOTOS: [RegExp, string][] = [
-  [/diabet|sugar|hba1c/i, "svc-diabetes"],
-  [/blood pressure|\bbp\b|hypertens|heart|cardi|ecg/i, "svc-bp"],
-  [/vaccin|immuni/i, "svc-vaccine"],
-  [/check-?up|screening|preventive|health check/i, "svc-checkup"],
-  [/thyroid|hormone/i, "svc-thyroid"],
-  [/diet|lifestyle|nutrition|weight|obesity/i, "svc-diet"],
-  [/elder|senior|geriatric|home visit|family|child/i, "svc-family"],
-  [/infection|fever|seasonal|dengue|malaria/i, "svc-heart"],
-  [/consult|general|opd/i, "svc-consult"],
-];
-const ALL_SERVICE_PHOTOS = ["svc-consult", "svc-checkup", "svc-bp", "svc-diabetes", "svc-heart", "svc-vaccine", "svc-diet", "svc-family", "svc-thyroid"];
-
-function servicePhotos(names: string[]): string[] {
-  const used = new Set<string>();
-  const picked = names.map((n) => {
-    const hit = SERVICE_PHOTOS.find(([re, img]) => re.test(n) && !used.has(img))?.[1];
-    if (hit) used.add(hit);
-    return hit;
-  });
-  return picked.map((p) => {
-    if (p) return `${IMG}/${p}.jpg`;
-    const next = ALL_SERVICE_PHOTOS.find((x) => !used.has(x)) ?? ALL_SERVICE_PHOTOS[used.size % ALL_SERVICE_PHOTOS.length]!;
-    used.add(next);
-    return `${IMG}/${next}.jpg`;
-  });
-}
-
-const CLINIC_TYPE_LABEL: Record<PublicClinic["type"], string> = {
-  own_clinic: "Own clinic",
-  hospital_visiting: "Visiting consultant",
-  other: "Clinic",
+const SERVICE_ICONS: Record<ServiceIcon, typeof Stethoscope> = {
+  stethoscope: Stethoscope,
+  droplet: Droplet,
+  heart: HeartPulse,
+  syringe: Syringe,
+  clipboard: ClipboardCheck,
+  thermometer: Thermometer,
+  apple: Apple,
+  users: Users,
+  activity: Activity,
+  baby: Baby,
+  bone: Bone,
+  eye: Eye,
+  smile: Smile,
+  brain: Brain,
+  wind: Wind,
+  sparkles: Sparkles,
+  home: House,
+  pill: Pill,
 };
 
 const LINK_LABELS: Record<string, string> = {
@@ -166,11 +166,6 @@ function Heading({
   );
 }
 
-/** "Mon–Sat 9:30 am – 1:30 pm, 6 pm – 9 pm" for the first open day group (fits the info strip). */
-function shortHours(c: PublicClinic): string {
-  const s = openDaysSummary(c.timings).split(" | ");
-  return s[0] ? s[0].replace(" · ", " ") + (s.length > 1 ? " +" : "") : "";
-}
 
 // ---------------------------------------------------------------------------
 // FAQ (facts the doctor entered; no claims)
@@ -190,7 +185,6 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
   });
   if (c && typeof c.fee === "number") out.push({ q: "What is the consultation fee?", a: `The consultation fee at ${c.name} is ₹${c.fee.toLocaleString("en-IN")}. Tests and medicines are charged separately.` });
   if (d.languages.length) out.push({ q: `Which languages does ${d.fullName} speak?`, a: `${d.languages.join(", ")}.` });
-  if (d.registration.council && d.registration.number) out.push({ q: "Is the doctor registered?", a: `Yes. ${d.fullName} is registered with the ${d.registration.council}, registration number ${d.registration.number}.` });
   return out;
 }
 
@@ -206,11 +200,11 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
   const years = d.practiceSinceYear ? new Date().getFullYear() - d.practiceSinceYear : undefined;
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
   const regMore = [d.registration.year ? `Registered in ${d.registration.year}` : "", d.registration.nmrId ? `NMR ID ${d.registration.nmrId}` : ""].filter(Boolean).join(" · ");
-  const hasRecognition = d.awards.length > 0 || d.memberships.length > 0 || d.publications.length > 0;
-  const blog = d.blog ?? [];
+  const hasRecognition = d.awards.length > 0 || d.memberships.length > 0;
+  const tips = d.healthTips ?? [];
   const story = d.interestsStory;
   const waHref = d.whatsapp ? `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(`Hello ${d.fullName}, I would like to book an appointment.`)}` : undefined;
-  const photos = servicePhotos(d.services.map((s) => s.name));
+  const clinicPhotos = d.clinics.map((_, i) => d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? `${IMG}/band-appointment.jpg`);
   const aboutPhoto = d.gallery[0] ?? { url: `${IMG}/band-clinic.jpg`, alt: "Inside the clinic" };
   const faq = faqs(d);
   const place = clinic ? `${clinic.area.name}, ${clinic.city.name}` : "";
@@ -220,7 +214,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
     ...(d.services.length ? [{ label: "Services", href: "#services" }] : []),
     ...(d.qualifications.length ? [{ label: "Education", href: "#education" }] : []),
     ...(d.clinics.length ? [{ label: "Clinics", href: "#clinics" }] : []),
-    ...(blog.length ? [{ label: "Articles", href: "#blog" }] : []),
+    ...(tips.length ? [{ label: "Health tips", href: "#health-tips" }] : []),
     { label: "Contact", href: "#appointment" },
   ];
 
@@ -235,6 +229,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
     .slice(0, 4) as { value: number; suffix: string; label: string; icon: typeof Stethoscope }[];
 
   const formClinics = d.clinics.map((c) => ({ id: c.id, name: c.name, area: c.area.name }));
+  const services = d.services.map((s) => ({ name: s.name, ...describeService(s.name, s.description) }));
 
   return (
     <div id="cm-top" className="overflow-x-clip bg-white font-sans text-cm-text">
@@ -242,10 +237,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
       <Nav
         name={d.fullName}
         tagline={d.primarySpecialty?.name}
-        monogram={initials(d.fullName)}
         links={nav}
-        phone={phone}
-        phoneLabel={phone ? formatPhone(phone) : undefined}
       />
 
       <main>
@@ -352,7 +344,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                 <div aria-hidden className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-cm-navy/70 to-transparent" />
               </div>
               {years && years > 0 ? (
-                <div className="cm-float absolute -left-4 top-10 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-cm-lg sm:-left-10">
+                <div className="cm-float absolute -right-3 bottom-10 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-cm-lg sm:-right-8">
                   <span className="flex size-11 items-center justify-center rounded-xl bg-cm-mint text-cm-teal">
                     <Stethoscope aria-hidden className="size-6" strokeWidth={2} />
                   </span>
@@ -362,15 +354,6 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                   </span>
                 </div>
               ) : null}
-              {clinic && (
-                <div className="cm-float cm-float-late absolute -right-3 bottom-10 max-w-[230px] rounded-2xl bg-white px-4 py-3 shadow-cm-lg sm:-right-8">
-                  <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cm-teal">
-                    <Clock aria-hidden className="size-3.5" strokeWidth={2.5} />
-                    Clinic hours
-                  </p>
-                  <p className="mt-1 text-sm font-semibold leading-snug text-cm-navy">{shortHours(clinic) || "Please call for timings"}</p>
-                </div>
-              )}
             </div>
           </div>
         </section>
@@ -530,35 +513,46 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
           </section>
         )}
 
-        {/* ── Services ── */}
-        {d.services.length > 0 && (
+        {/* ── Services: one photo beside a calm, numbered list ── */}
+        {services.length > 0 && (
           <Section id="services" className="bg-cm-sky">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <Heading id="services" eyebrow="Services" title="Care for the whole family" lead={`What ${firstName} looks after in the clinic, from a short illness to long-term conditions.`} />
-              <a href="#appointment" className="cm-reveal inline-flex items-center gap-2 self-start font-semibold text-cm-teal hover:text-cm-teal-2 lg:self-auto">
-                Ask about a service <ArrowRight aria-hidden className="size-4" />
-              </a>
+            <div className="grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+              <div className="lg:sticky lg:top-28 lg:self-start">
+                <Heading id="services" eyebrow="Services" title="Care for the whole family" lead={`What ${firstName} looks after in the clinic, from a short illness to long-term conditions.`} />
+                <div className="cm-reveal cm-left relative mt-8 hidden aspect-[4/3.2] overflow-hidden rounded-[28px] shadow-cm-lg lg:block">
+                  <Image src={`${IMG}/svc-consult.jpg`} alt="A doctor in consultation with a patient" fill sizes="480px" className="object-cover" />
+                  <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-cm-navy/85 via-cm-navy/10 to-transparent" />
+                  <div className="absolute inset-x-6 bottom-6 text-white">
+                    <p className="text-lg font-bold">Not sure which service you need?</p>
+                    <a href="#appointment" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-cm-navy transition hover:-translate-y-0.5">
+                      Ask the clinic <ArrowRight aria-hidden className="size-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <ol className="grid gap-px overflow-hidden rounded-[28px] bg-cm-line shadow-cm ring-1 ring-cm-line sm:grid-cols-2">
+                {services.map((s, i) => {
+                  const Icon = SERVICE_ICONS[s.icon];
+                  return (
+                    <li key={s.name} className="cm-reveal group relative bg-white p-6 transition-colors duration-300 hover:bg-cm-navy sm:p-7" style={{ ["--cm-delay" as string]: `${(i % 2) * 90}ms` }}>
+                      <div className="flex items-start justify-between gap-4">
+                        <span className="flex size-12 items-center justify-center rounded-2xl bg-cm-mint text-cm-teal transition-colors duration-300 group-hover:bg-white/10 group-hover:text-teal-300">
+                          <Icon aria-hidden className="size-6" strokeWidth={1.8} />
+                        </span>
+                        <span className="text-sm font-bold tabular-nums text-cm-line transition-colors group-hover:text-white/30">{String(i + 1).padStart(2, "0")}</span>
+                      </div>
+                      <h3 className="mt-5 text-lg font-bold text-cm-navy transition-colors group-hover:text-white">{s.name}</h3>
+                      <p className="mt-2 text-[15px] leading-relaxed text-cm-muted transition-colors group-hover:text-white/70">{s.text}</p>
+                    </li>
+                  );
+                })}
+                {services.length % 2 === 1 && (
+                  <li aria-hidden className="hidden bg-gradient-to-br from-cm-teal to-cm-blue sm:flex sm:items-end sm:p-7">
+                    <HeartPulse className="size-16 text-white/25" strokeWidth={1.4} />
+                  </li>
+                )}
+              </ol>
             </div>
-            <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {d.services.map((s, i) => (
-                <li key={s.name} className="cm-reveal" style={{ ["--cm-delay" as string]: `${(i % 3) * 100}ms` }}>
-                  <article className="group flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-cm ring-1 ring-cm-line transition duration-300 hover:-translate-y-1.5 hover:shadow-cm-lg">
-                    <div className="relative aspect-[16/9] overflow-hidden bg-cm-blue-soft">
-                      <Image src={photos[i]!} alt="" fill sizes="(min-width: 1024px) 400px, (min-width: 640px) 50vw, 100vw" className="object-cover transition duration-700 group-hover:scale-110" />
-                      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-cm-navy/50 via-transparent to-transparent" />
-                      <span className="absolute left-5 top-5 rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold text-cm-navy backdrop-blur">{String(i + 1).padStart(2, "0")}</span>
-                    </div>
-                    <div className="relative flex flex-1 flex-col px-6 pb-6 pt-9">
-                      <span className="absolute -top-7 left-6 flex size-14 items-center justify-center rounded-2xl bg-cm-teal text-white shadow-[0_12px_24px_-10px_rgb(13_148_136/0.9)] ring-4 ring-white transition group-hover:bg-cm-navy">
-                        <Stethoscope aria-hidden className="size-6" strokeWidth={1.9} />
-                      </span>
-                      <h3 className="text-lg font-bold text-cm-navy">{s.name}</h3>
-                      {s.description && <p className="mt-2 text-[15px] leading-relaxed text-cm-muted">{s.description}</p>}
-                    </div>
-                  </article>
-                </li>
-              ))}
-            </ul>
           </Section>
         )}
 
@@ -603,7 +597,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
         {d.qualifications.length > 0 && (
           <Section id="education">
             <div className="grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-20">
-              <div className="lg:sticky lg:top-28 lg:self-start">
+              <div className="lg:self-center">
                 <Heading
                   id="education"
                   eyebrow="Education"
@@ -616,7 +610,12 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                   <p className="absolute bottom-5 left-5 right-5 text-lg font-bold leading-snug text-white">{d.degreesLine}</p>
                 </div>
               </div>
-              <ol className="relative space-y-6 before:absolute before:bottom-8 before:left-[27px] before:top-8 before:w-0.5 before:bg-gradient-to-b before:from-cm-teal before:to-cm-blue/20">
+              <ol
+                className={cn(
+                  "relative space-y-6 lg:self-center",
+                  d.qualifications.length > 1 && "before:absolute before:bottom-8 before:left-[27px] before:top-8 before:w-0.5 before:bg-gradient-to-b before:from-cm-teal before:to-cm-blue/20",
+                )}
+              >
                 {d.qualifications.map((q, i) => (
                   <li key={`${q.degree}-${i}`} className="cm-reveal cm-right relative flex gap-6" style={{ ["--cm-delay" as string]: `${i * 120}ms` }}>
                     <span className="relative z-10 flex size-14 shrink-0 items-center justify-center rounded-2xl bg-cm-navy text-white shadow-cm ring-4 ring-white">
@@ -646,90 +645,12 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
               id="clinics"
               eyebrow="Clinic and timings"
               title={d.clinics.length > 1 ? "Where to consult" : "Visit the clinic"}
-              lead={d.clinics.length > 1 ? `${firstName} consults at ${d.clinics.length} places. Timings show whether each is open right now.` : "Timings show whether the clinic is open right now."}
+              lead={d.clinics.length > 1 ? `${firstName} consults at ${d.clinics.length} places. Open one to see its timings and directions.` : "Timings, directions and whether the clinic is open right now."}
               center
             />
-            <div className={cn("mt-12 grid gap-8", d.clinics.length > 1 && "lg:grid-cols-2")}>
-              {d.clinics.map((c, i) => (
-                <article key={c.id} className="cm-reveal flex flex-col overflow-hidden rounded-3xl bg-white shadow-cm ring-1 ring-cm-line" style={{ ["--cm-delay" as string]: `${i * 120}ms` }}>
-                  <div className="relative h-44 overflow-hidden">
-                    <Image
-                      src={d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? `${IMG}/band-appointment.jpg`}
-                      alt=""
-                      fill
-                      sizes="(min-width: 1024px) 600px, 100vw"
-                      className="object-cover"
-                    />
-                    <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-cm-navy/90 via-cm-navy/40 to-transparent" />
-                    <div className="absolute inset-x-6 bottom-5 flex items-end justify-between gap-3 text-white">
-                      <div className="min-w-0">
-                        <h3 className="text-2xl font-extrabold">
-                          {c.site ? (
-                            <a href={c.site.url} className="underline-offset-4 hover:underline">
-                              {c.name}
-                            </a>
-                          ) : (
-                            c.name
-                          )}
-                        </h3>
-                        <p className="text-sm text-white/80">
-                          {c.area.name}, {c.city.name}
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-bold ring-1 ring-white/30 backdrop-blur">{CLINIC_TYPE_LABEL[c.type]}</span>
-                    </div>
-                  </div>
-                  <div className="grid flex-1 gap-6 p-6 sm:grid-cols-2">
-                    <div className="space-y-3 text-[15px]">
-                      <address className="flex gap-3 not-italic text-cm-text/85">
-                        <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-cm-teal" strokeWidth={1.9} />
-                        {c.fullAddress}
-                      </address>
-                      {c.phone && (
-                        <p className="flex items-center gap-3">
-                          <Phone aria-hidden className="size-5 shrink-0 text-cm-teal" strokeWidth={1.9} />
-                          <a href={`tel:+${c.phone}`} className="font-semibold text-cm-navy hover:text-cm-teal">
-                            {formatPhone(c.phone)}
-                          </a>
-                        </p>
-                      )}
-                      {typeof c.fee === "number" && (
-                        <p className="flex items-center gap-3 text-cm-text/85">
-                          <IndianRupee aria-hidden className="size-5 shrink-0 text-cm-teal" strokeWidth={1.9} />
-                          Consultation <strong className="font-bold text-cm-navy">₹{c.fee.toLocaleString("en-IN")}</strong>
-                        </p>
-                      )}
-                      {c.appointmentNote && <p className="rounded-2xl bg-cm-mint px-4 py-3 text-sm text-cm-teal-2">{c.appointmentNote}</p>}
-                      {c.site && (
-                        <a href={c.site.url} className="inline-flex items-center gap-1 text-sm font-semibold text-cm-blue hover:underline">
-                          Visit {c.site.name}&apos;s website <ArrowUpRight aria-hidden className="size-4" />
-                        </a>
-                      )}
-                      <a
-                        href={c.directionsUrl}
-                        target="_blank"
-                        rel="noopener"
-                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-cm-navy px-4 text-sm font-semibold text-white transition hover:bg-cm-navy-2"
-                      >
-                        <Navigation aria-hidden className="size-4" strokeWidth={2} />
-                        Get directions
-                      </a>
-                    </div>
-                    <div className="min-w-0 rounded-2xl bg-cm-sky p-4 text-sm">
-                      <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cm-muted">
-                        <Clock aria-hidden className="size-3.5" strokeWidth={2.5} /> Timings
-                      </p>
-                      <ClinicHours timings={c.timings} expandable={false} />
-                    </div>
-                  </div>
-                </article>
-              ))}
+            <div className="mt-12">
+              <ClinicsSection clinics={d.clinics} photos={clinicPhotos} />
             </div>
-            {clinic?.mapEmbedUrl && (
-              <div className="cm-reveal mt-8 overflow-hidden rounded-3xl shadow-cm ring-1 ring-cm-line">
-                <iframe title={`Map showing ${clinic.name}`} src={clinic.mapEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-80 w-full border-0" />
-              </div>
-            )}
           </Section>
         )}
 
@@ -806,8 +727,8 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
         {/* ── Recognition ── */}
         {hasRecognition && (
           <Section id="recognition">
-            <Heading id="recognition" eyebrow="Recognition" title="Awards, memberships and work" center />
-            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+            <Heading id="recognition" eyebrow="Recognition" title="Awards and memberships" center />
+            <div className={cn("mx-auto mt-12 grid max-w-5xl gap-6", d.awards.length > 0 && d.memberships.length > 0 && "lg:grid-cols-2")}>
               {d.awards.length > 0 && (
                 <div className="cm-reveal rounded-3xl bg-gradient-to-br from-cm-navy to-cm-navy-2 p-7 text-white shadow-cm-lg">
                   <span className="flex size-12 items-center justify-center rounded-2xl bg-cm-gold/20 text-cm-gold">
@@ -839,28 +760,6 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                           <span className="block font-semibold text-cm-navy">{m.name}</span>
                           {m.since && <span className="block text-sm text-cm-muted">Member since {m.since}</span>}
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {d.publications.length > 0 && (
-                <div className="cm-reveal rounded-3xl bg-white p-7 shadow-cm ring-1 ring-cm-line" style={{ ["--cm-delay" as string]: "240ms" }}>
-                  <span className="flex size-12 items-center justify-center rounded-2xl bg-cm-blue-soft text-cm-blue">
-                    <BookOpenText aria-hidden className="size-6" strokeWidth={1.9} />
-                  </span>
-                  <h3 className="mt-5 text-xl font-extrabold text-cm-navy">Publications and talks</h3>
-                  <ul className="mt-5 space-y-4">
-                    {d.publications.map((p) => (
-                      <li key={p.title}>
-                        {p.url ? (
-                          <a href={p.url} target="_blank" rel="noopener" className="font-semibold text-cm-navy hover:text-cm-teal">
-                            {p.title} <ArrowUpRight aria-hidden className="inline size-3.5" />
-                          </a>
-                        ) : (
-                          <span className="block font-semibold text-cm-navy">{p.title}</span>
-                        )}
-                        <span className="block text-sm text-cm-muted">{[p.journal, p.year].filter(Boolean).join(", ")}</span>
                       </li>
                     ))}
                   </ul>
@@ -927,13 +826,11 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
           </Section>
         )}
 
-        {/* ── Health articles ── */}
-        {blog.length > 0 && (
-          <Section id="blog" className="bg-white">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              <Heading id="blog" eyebrow="Health articles" title={`Notes from ${firstName}'s desk`} lead="Plain-language guides on everyday health questions patients ask in the clinic." />
-            </div>
-            <BlogSection posts={blog} author={d.fullName} />
+        {/* ── Health tips (general articles, optional) ── */}
+        {tips.length > 0 && (
+          <Section id="health-tips" className="bg-white">
+            <Heading id="health-tips" eyebrow="Health tips" title="Good to know" lead="Short, general health information for patients and families. Not a substitute for a consultation." center />
+            <HealthTipsSection tips={tips} />
           </Section>
         )}
 
@@ -1112,10 +1009,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
           </div>
 
           <div className="space-y-2 border-t border-white/10 py-7 text-sm text-white/50">
-            <p>
-              Information provided by the doctor.{reg && <> Registration: {reg}.</>}
-              {regMore && <> {regMore}.</>} In a medical emergency, call 108 or go to the nearest hospital.
-            </p>
+            <p>Information provided by the doctor. In a medical emergency, call 108 or go to the nearest hospital.</p>
             <p className="flex flex-wrap gap-x-5 gap-y-1">
               <span>
                 © {new Date().getFullYear()} {d.fullName}
@@ -1126,8 +1020,8 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                   MediReach
                 </a>
               </span>
-              {/* Absolute: /login is blocked on doctor subdomains. */}
-              <a href={absUrl("/login")} rel="nofollow" className="underline underline-offset-2 hover:text-white">
+              {/* Absolute: the login lives on the apex domain, not the doctor's subdomain. */}
+              <a href={d.loginUrl ?? absUrl(`/doctor-login?d=${d.id}`)} rel="nofollow" className="underline underline-offset-2 hover:text-white">
                 Doctor login
               </a>
             </p>

@@ -182,7 +182,7 @@ export function SimpleImageUpload({
 }: {
   value?: ImageValue;
   onChange: (v: ImageValue | undefined) => void;
-  purpose: "award" | "template-preview" | "gallery" | "interests" | "blog";
+  purpose: "award" | "template-preview" | "gallery" | "interests";
   label?: string;
   disabled?: boolean;
   /** Upload signer; defaults to the admin one. */

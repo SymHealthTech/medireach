@@ -29,16 +29,19 @@ export const STATUS_TONE: Record<InquiryStatus, string> = {
 export function DoctorOverview({
   counts,
   latest,
-  articles,
+  healthTipsOn,
+  base = "/account",
 }: {
-  counts: { new: number; month: number; total: number };
+  counts: { new: number; month: number };
   latest: OverviewInquiry[];
-  articles: number;
+  healthTipsOn: boolean;
+  /** Where the account pages live (the demo dashboard has its own). */
+  base?: string;
 }) {
   const tiles = [
-    { label: "New requests", value: counts.new, href: "/account/inquiries?status=new", icon: Inbox, tone: "bg-marigold text-white" },
-    { label: "Requests in the last 30 days", value: counts.month, href: "/account/inquiries", icon: CalendarCheck, tone: "bg-lagoon text-white" },
-    { label: "Published articles", value: articles, href: "/account/blog", icon: Newspaper, tone: "bg-ink text-paper" },
+    { label: "New requests", value: counts.new, href: `${base}/inquiries?status=new`, icon: Inbox, tone: "bg-marigold text-white" },
+    { label: "Requests in the last 30 days", value: counts.month, href: `${base}/inquiries`, icon: CalendarCheck, tone: "bg-lagoon text-white" },
+    { label: "Health tips section", value: healthTipsOn ? "On" : "Off", href: `${base}/health-tips`, icon: Newspaper, tone: "bg-ink text-paper" },
   ];
   return (
     <section aria-label="Overview" className="space-y-4">
@@ -61,7 +64,7 @@ export function DoctorOverview({
       <div className="rounded-2xl border border-line bg-surface shadow-soft">
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-6">
           <h2 className="font-display text-lg font-semibold text-ink">Latest appointment requests</h2>
-          <Link href="/account/inquiries" className="inline-flex items-center gap-1 text-sm font-semibold text-lagoon hover:text-ink">
+          <Link href={`${base}/inquiries`} className="inline-flex items-center gap-1 text-sm font-semibold text-lagoon hover:text-ink">
             See all <ArrowRight aria-hidden className="size-4" />
           </Link>
         </div>
@@ -105,18 +108,18 @@ export function DoctorOverview({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Link href="/account/profile" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm shadow-soft hover:border-ink/30">
+        <Link href={`${base}/profile`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm shadow-soft hover:border-ink/30">
           <UserRound aria-hidden className="size-5 text-lagoon" />
           <span>
             <span className="block font-semibold text-ink">Edit your profile</span>
             <span className="text-muted-foreground">About text, services, conditions, languages and links.</span>
           </span>
         </Link>
-        <Link href="/account/blog" className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm shadow-soft hover:border-ink/30">
+        <Link href={`${base}/health-tips`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm shadow-soft hover:border-ink/30">
           <Newspaper aria-hidden className="size-5 text-lagoon" />
           <span>
-            <span className="block font-semibold text-ink">Write a health article</span>
-            <span className="text-muted-foreground">Share simple guidance with your patients.</span>
+            <span className="block font-semibold text-ink">Health tips</span>
+            <span className="text-muted-foreground">Choose the two general articles on your website, or hide them.</span>
           </span>
         </Link>
       </div>

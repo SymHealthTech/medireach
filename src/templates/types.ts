@@ -53,17 +53,14 @@ export interface PublicClinic {
   site?: { name: string; url: string };
 }
 
-/** A health article on the doctor's page. Plain text split into paragraphs (no HTML). */
-export interface PublicBlogPost {
-  id: string;
+/** A general health tip (content/health-tips.ts). No author: never attributed to the doctor. */
+export interface PublicHealthTip {
   slug: string;
   title: string;
   excerpt: string;
   paragraphs: string[];
-  cover?: PublicImage;
-  tags: string[];
-  /** ISO date. */
-  publishedAt: string;
+  cover: PublicImage;
+  topic: string;
   readMinutes: number;
 }
 
@@ -126,8 +123,10 @@ export interface PublicDoctor {
   interestsStory?: { title: string; paragraphs: string[] };
   /** Gallery photos plus award photos (max 5 in total). */
   gallery: PublicImage[];
-  /** Published health articles by the doctor, newest first (designs that have a blog show them). */
-  blog?: PublicBlogPost[];
+  /** General health tips for the "Health tips" section (absent when the doctor turned it off). */
+  healthTips?: PublicHealthTip[];
+  /** Where "Doctor login" in the footer goes (demo pages have their own); defaults to the standalone login. */
+  loginUrl?: string;
 
   portfolioTemplateId: string;
   cardTemplateId: string;

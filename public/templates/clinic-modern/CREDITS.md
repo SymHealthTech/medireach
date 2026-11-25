@@ -38,6 +38,32 @@ Downloaded 2026-11-25 from `images.pexels.com/photos/<id>/`.
 | clinic-exam.jpg | 7789603 | Examination room |
 | clinic-room-2.jpg | 263201 | Treatment room |
 | clinic-wide.jpg | 7789601 | Examination room, wide |
-| blog-monsoon.jpg | 14229957 | Green hills in the monsoon |
-| blog-thali.jpg | 35008222 | Indian thali |
-| blog-bp.jpg | 7659564 | Blood pressure check |
+
+## Health tips covers (public/templates/health-tips)
+
+| File | Pexels id |
+| --- | --- |
+| back-pain.jpg | 7298429 |
+| bp.jpg | 7659564 |
+| calm.jpg | 3957803 |
+| child-fever.jpg | 7641415 |
+| family.jpg | 9345665 |
+| glucometer.jpg | 11337257 |
+| heart.jpg | 4386467 |
+| inhaler.jpg | 30428329 |
+| knee.jpg | 20860607 |
+| medicines.jpg | 3873149 |
+| monsoon.jpg | 14229957 |
+| pregnancy.jpg | 37245185 |
+| screen-eyes.jpg | 5843348 |
+| skin.jpg | 8989973 |
+| sleep.jpg | 9615244 |
+| stomach.jpg | 5712686 |
+| sunscreen.jpg | 16378487 |
+| teeth.jpg | 65055 |
+| thali.jpg | 35008222 |
+| thyroid.jpg | 48603 |
+| toothpaste.jpg | 216729 |
+| vaccine.jpg | 8830469 |
+| walk.jpg | 30357899 |
+| water.jpg | 3500006 |

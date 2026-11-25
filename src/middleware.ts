@@ -82,7 +82,9 @@ async function handleSubdomain(req: NextRequest, sub: string) {
   // Built-in sample doctors (homepage visiting cards): served from /sample/{key}, no lookup.
   const sample = SAMPLE_SUBDOMAINS[sub];
   if (sample) {
-    if (path === "/" || path === "/card" || path === "/contact.vcf") return rewriteTo(req, `/sample/${sample}${path === "/" ? "" : path}`);
+    if (path === "/" || path === "/card" || path === "/contact.vcf" || path === "/login" || path === "/admin" || path.startsWith("/admin/")) {
+      return rewriteTo(req, `/sample/${sample}${path === "/" ? "" : path}`);
+    }
     return NextResponse.redirect(`${SITE_URL}${path}${req.nextUrl.search}`, 308);
   }
 

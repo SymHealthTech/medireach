@@ -34,6 +34,8 @@ export interface DoctorFormHints {
   websiteDesign?: string;
   cardStyle?: string;
   designDecision?: string;
+  /** "yes" / "no": add the Health tips section. */
+  healthTips?: string;
 }
 
 export interface FormClinic {
@@ -162,6 +164,7 @@ export function doctorHints(ref: string, data: IntakeData, intakeId?: string): D
     ...(str(data.websiteDesign) ? { websiteDesign: str(data.websiteDesign) } : {}),
     ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
     ...(str(data.designDecision) ? { designDecision: str(data.designDecision) } : {}),
+    ...(str(data.healthTips) ? { healthTips: str(data.healthTips) } : {}),
     qualificationLines: lines,
     qualifications: lines.map(parseQualificationLine).filter((q): q is ParsedQualification => q !== null),
     clinics: [...clinics.map(asClinic), ...visiting.map((c) => ({ type: "visiting" as const, ...asClinic(c) }))].filter((c) => c.name || c.address || c.area),

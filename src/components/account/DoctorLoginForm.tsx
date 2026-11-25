@@ -24,7 +24,7 @@ const RESEND_AFTER_S = 30;
  * enter your email, get a 6-digit code, type it here, and land on /account.
  * The page supplies the card around it.
  */
-export function DoctorLoginForm({ linkError }: { linkError?: string }) {
+export function DoctorLoginForm({ linkError, eyebrow = "For doctors, clinics and hospitals" }: { linkError?: string; eyebrow?: string }) {
   const [state, action, pending] = useActionState<LoginCodeState, FormData>(requestLoginCodeAction, {});
   const [editing, setEditing] = useState(false);
 
@@ -35,7 +35,7 @@ export function DoctorLoginForm({ linkError }: { linkError?: string }) {
   const error = state.error ?? (state.sent ? undefined : linkError);
   return (
     <div>
-      <p className="text-sm font-semibold uppercase tracking-[0.12em] text-lagoon">For doctors, clinics and hospitals</p>
+      <p className="text-sm font-semibold uppercase tracking-[0.12em] text-lagoon">{eyebrow}</p>
       <h1 className="mt-2 font-display text-[32px] font-semibold leading-tight text-ink">Welcome back</h1>
       <p className="mt-3 text-body/85">Enter the email you gave MediReach and we&apos;ll send you a 6-digit login code.</p>
       <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-sage px-3 py-1 text-sm font-semibold text-ink-700">

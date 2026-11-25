@@ -1,4 +1,4 @@
-import { toPublicBlog } from "@/lib/blog";
+import { pickHealthTips } from "@/lib/health-tips";
 import { storyParagraphs } from "@/lib/format";
 import { mapEmbedUrl } from "@/lib/maps";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
@@ -87,15 +87,13 @@ function toPublic(d: DemoDoctor): PublicDoctor {
     fullBioHtml: d.fullBio,
     awards: d.awards,
     memberships: d.memberships,
-    publications: d.publications,
+    publications: [],
     interests: d.interests,
     interestsPhoto: d.interestsPhoto,
     interestsStory: { title: d.interestsStory.title, paragraphs: storyParagraphs(d.interestsStory.body) },
     gallery: d.gallery,
-    blog: toPublicBlog(
-      d.blog.map((p) => ({ ...p, id: p.slug, status: "published" as const })),
-      fullName,
-    ),
+    ...(d.showHealthTips ? { healthTips: pickHealthTips(`demo-${d.key}`, [d.primarySpecialty.slug, ...d.secondarySpecialties.map((s) => s.slug)]) } : {}),
+    loginUrl: `/sample/${d.key}/login`,
     portfolioTemplateId: d.portfolioTemplateId,
     cardTemplateId: d.cardTemplateId,
     seo: { noindex: true },

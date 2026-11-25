@@ -143,6 +143,8 @@ export interface DoctorForm {
   cardTemplateId: string;
   /** Visiting card colour style code ("" = default, DOC-LAGOON). */
   cardStyle: string;
+  /** Show the "Health tips" section (general articles) in designs that have one. */
+  showHealthTips: boolean;
 
   // 10 Review
   approval: { doctorApprovedAt: string; approvedVia: "" | (typeof APPROVAL_CHANNELS)[number] };
@@ -232,6 +234,7 @@ export function emptyDoctorForm(): DoctorForm {
     portfolioTemplateId: "classic",
     cardTemplateId: "classic",
     cardStyle: "",
+    showHealthTips: true,
     approval: { doctorApprovedAt: "", approvedVia: "" },
   };
 }
@@ -608,6 +611,7 @@ export const sectionSchemas = {
     portfolioTemplateId: z.enum(TEMPLATE_KEYS),
     cardTemplateId: z.enum(TEMPLATE_KEYS),
     cardStyle: z.enum(["", ...DOCTOR_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
+    showHealthTips: z.boolean().default(true),
   }),
   review: approvalSchema,
   publish: approvalSchema,
@@ -633,7 +637,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "business":
       return { plan: f.plan, founding: f.founding, setupPaidAt: f.setupPaidAt, renewalPrice: f.renewalPrice, renewalDueDate: f.renewalDueDate, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, establishmentIds: f.establishmentIds, salesExecutive: f.salesExecutive, salesExecutiveId: f.salesExecutiveId, source: f.source, internalNotes: f.internalNotes };
     case "templates":
-      return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle };
+      return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle, showHealthTips: f.showHealthTips };
     case "review":
     case "publish":
       return { approval: f.approval };

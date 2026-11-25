@@ -9,6 +9,7 @@ export const RESERVED_SLUGS = [
   "admin",
   "api",
   "login",
+  "doctor-login",
   "logout",
   "account",
   "pricing",

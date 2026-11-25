@@ -10,8 +10,8 @@ import { doctorShortSlugBase, doctorSlug } from "@/lib/slug";
 
 /**
  * Upsert the FICTIONAL demo doctors (fixtures/demo-doctors) as published,
- * noindex profiles, with their blog posts and a few appointment requests, so
- * the doctor login, inquiries and blog editor can be shown. Requires seeded
+ * noindex profiles, with a few appointment requests, so the doctor login and
+ * appointment requests can be shown. Requires seeded
  * master lists. Matched on subdomain, so re-running updates in place.
  *
  * Their photos are bundled files under public/demo/ (not Cloudinary); the
@@ -99,21 +99,12 @@ async function seedOne(d: DemoDoctor, opts: SeedDemoOptions & { owner: boolean }
     fullBio: d.fullBio,
     awards: d.awards,
     memberships: d.memberships,
-    publications: d.publications,
+    publications: [],
     interests: d.interests,
     interestsPhoto: { ...demoImage(d.interestsPhoto.url, d.interestsPhoto.alt), caption: d.interestsPhoto.caption },
     interestsStory: d.interestsStory,
     gallery: d.gallery.map((g) => ({ ...demoImage(g.url, g.alt), caption: g.caption })),
-    blogPosts: d.blog.map((p) => ({
-      title: p.title,
-      slug: p.slug,
-      excerpt: p.excerpt,
-      body: p.body,
-      cover: { publicId: demoImage(p.cover.url).publicId, url: p.cover.url, alt: p.cover.alt },
-      tags: p.tags,
-      status: "published",
-      publishedAt: new Date(`${p.publishedAt}T09:00:00+05:30`),
-    })),
+    showHealthTips: d.showHealthTips,
     portfolioTemplateId: d.portfolioTemplateId,
     cardTemplateId: d.cardTemplateId,
     seo: { noindex: true },

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BLOG_LIMITS } from "@/lib/blog";
+import { HEALTH_TIPS } from "@/content/health-tips";
+import { HEALTH_TIPS_SHOWN } from "@/lib/health-tips";
 import { LIMITS } from "@/lib/constants";
 import { chips, email, sectionSchemas, t, url } from "@/lib/doctors/form";
 
@@ -107,35 +108,14 @@ export function htmlToAbout(html: string | undefined): string {
 }
 
 // ---------------------------------------------------------------------------
-// Blog
+// Health tips (general articles, content/health-tips.ts)
 // ---------------------------------------------------------------------------
 
-export const blogPostSchema = z.object({
-  /** Existing post id; empty for a new post. */
-  id: z.string().regex(/^([a-f0-9]{24})?$/i).default(""),
-  title: z.string().trim().min(5, "Add a title (at least a few words).").max(BLOG_LIMITS.title, `Use at most ${BLOG_LIMITS.title} characters.`),
-  excerpt: t(BLOG_LIMITS.excerpt),
-  body: z
-    .string()
-    .trim()
-    .min(200, "Write a little more (at least a short paragraph or two).")
-    .max(BLOG_LIMITS.body, `Use at most ${BLOG_LIMITS.body} characters.`),
-  tags: lines(BLOG_LIMITS.tags, BLOG_LIMITS.tag),
-  cover: z
-    .object({
-      publicId: z.string().min(1).max(300),
-      url: z
-        .string()
-        .max(1000)
-        .refine((u) => u.startsWith("https://res.cloudinary.com/") || /^\/demo\/[\w/.-]+$/.test(u), "Images must be uploaded."),
-      alt: t(200).optional(),
-    })
-    .nullable(),
-  publish: z.boolean(),
+export const healthTipsSchema = z.object({
+  show: z.boolean(),
+  /** Chosen tips; empty = automatic. Unknown slugs are dropped. */
+  slugs: z
+    .array(z.string().max(100))
+    .max(HEALTH_TIPS_SHOWN)
+    .transform((a) => a.filter((s) => HEALTH_TIPS.some((t) => t.slug === s))),
 });
-
-export type BlogPostInput = z.output<typeof blogPostSchema>;
-
-export function blogTextFields(p: BlogPostInput): Record<string, string> {
-  return { title: p.title, excerpt: p.excerpt ?? "", body: p.body, tags: p.tags.join(", ") };
-}

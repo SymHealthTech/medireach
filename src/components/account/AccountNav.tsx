@@ -6,27 +6,28 @@ import { CalendarCheck, ExternalLink, IdCard, LayoutDashboard, Newspaper, UserRo
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
-  { href: "/account", label: "Overview", icon: LayoutDashboard },
-  { href: "/account/inquiries", label: "Appointment requests", short: "Requests", icon: CalendarCheck, badge: true },
-  { href: "/account/profile", label: "Profile", icon: UserRound },
-  { href: "/account/blog", label: "Health articles", short: "Articles", icon: Newspaper },
-  { href: "/account/card", label: "Visiting card", short: "Card", icon: IdCard },
+  { href: "", label: "Overview", icon: LayoutDashboard },
+  { href: "/inquiries", label: "Appointment requests", short: "Requests", icon: CalendarCheck, badge: true },
+  { href: "/profile", label: "Profile", icon: UserRound },
+  { href: "/health-tips", label: "Health tips", short: "Tips", icon: Newspaper },
+  { href: "/card", label: "Visiting card", short: "Card", icon: IdCard },
 ] as const;
 
 /**
  * Doctor account navigation: a sidebar on large screens, a scrollable tab row
  * on phones. `newCount` badges the appointment requests.
  */
-export function AccountNav({ newCount, pageUrl }: { newCount: number; pageUrl?: string }) {
+export function AccountNav({ newCount, pageUrl, base = "/account", cardHref }: { newCount: number; pageUrl?: string; base?: string; cardHref?: string }) {
   const path = usePathname();
-  const active = (href: string) => (href === "/account" ? path === "/account" : path.startsWith(href));
+  const items = ITEMS.map((it) => ({ ...it, href: it.href === "/card" && cardHref ? cardHref : `${base}${it.href}` }));
+  const active = (href: string) => (href === base ? path === base : path.startsWith(href));
 
   return (
     <>
       {/* Phones and tablets: tab row */}
       <nav aria-label="Account" className="-mx-4 overflow-x-auto border-b border-line px-4 lg:hidden">
         <ul className="flex min-w-max gap-1">
-          {ITEMS.map((it) => (
+          {items.map((it) => (
             <li key={it.href}>
               <Link
                 href={it.href}
@@ -48,7 +49,7 @@ export function AccountNav({ newCount, pageUrl }: { newCount: number; pageUrl?: 
       {/* Large screens: sidebar */}
       <nav aria-label="Account" className="sticky top-24 hidden self-start lg:block">
         <ul className="space-y-1">
-          {ITEMS.map((it) => (
+          {items.map((it) => (
             <li key={it.href}>
               <Link
                 href={it.href}

@@ -312,6 +312,7 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     gallery: gallery(allGallery, photoRoom),
     ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
     ...((TEMPLATE_KEYS as readonly string[]).includes(str(d.websiteDesign)) ? { portfolioTemplateId: str(d.websiteDesign) as TemplateKey } : {}),
+    showHealthTips: str(d.healthTips) !== "no",
     plan: "doctor",
     source: "inbound",
     ...(ownerFree ? { ownerEmail: intake.email } : {}),
