@@ -271,7 +271,7 @@ export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) 
         </Group>
       )}
 
-      <Group title="Owner login" description="Lets the owner log in at /login to update timings, phones and address. One email can own several sites.">
+      <Group title="Owner login" description="Lets the owner log in at /login and update everything on their site (full update access). One email can own several sites.">
         <div className={grid2}>
           <Field
             label="Owner login email"

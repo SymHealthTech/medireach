@@ -7,6 +7,7 @@ import { formatDate, toDateInput } from "@/lib/format";
 import { sendEmail } from "@/lib/integrations/email";
 import { createPreviewToken, PREVIEW_LINK_DAYS, previewUrl } from "@/lib/preview-link";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
+import { ensureUid } from "@/lib/uid";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { Payment } from "@/models/Payment";
@@ -25,18 +26,20 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 async function who(kind: "doctor" | "site", id: string) {
   if (kind === "doctor") {
-    const d = await DoctorProfile.findById(id).select({ title: 1, firstName: 1, lastName: 1, displayName: 1, mobile: 1, whatsapp: 1, email: 1, ownerEmail: 1 }).lean();
+    const d = await DoctorProfile.findById(id).select({ uid: 1, title: 1, firstName: 1, lastName: 1, displayName: 1, mobile: 1, whatsapp: 1, email: 1, ownerEmail: 1 }).lean();
     if (!d) throw new ActionError("This doctor no longer exists.");
     return {
+      uid: await ensureUid(DoctorProfile as never, d, "doctor"),
       name: d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`,
       what: "website",
       phone: digits(d.whatsapp) || digits(d.mobile),
       email: d.ownerEmail || d.email || "",
     };
   }
-  const e = await Establishment.findById(id).select({ name: 1, kind: 1, contact: 1, contactPerson: 1, ownerEmail: 1 }).lean();
+  const e = await Establishment.findById(id).select({ uid: 1, name: 1, kind: 1, contact: 1, contactPerson: 1, ownerEmail: 1 }).lean();
   if (!e) throw new ActionError("This clinic or hospital no longer exists.");
   return {
+    uid: await ensureUid(Establishment as never, e, e.kind === "hospital" ? "hospital" : "clinic"),
     name: e.name,
     what: e.kind === "hospital" ? "hospital website" : "clinic website",
     phone: digits(e.contact?.whatsapp) || digits(e.contactPerson?.phone) || digits(e.contact?.phones?.[0]),
@@ -108,13 +111,13 @@ async function liveUrlOf(kind: "doctor" | "site", id: string): Promise<string> {
   return absUrl(path);
 }
 
-const liveMessageFor = (name: string, what: string, url: string) =>
-  `Hello ${name},\n\nYour ${what} is now live on MediReach:\n${url}\n\nPlease open it and check everything. You can share this link with your patients, on WhatsApp and on social media.`;
+const liveMessageFor = (name: string, what: string, url: string, uid: string) =>
+  `Hello ${name},\n\nYour ${what} is now live on MediReach:\n${url}\n\nYour website UID: ${uid}\nPlease save it. Quote it whenever you contact us, and we can find your website at once.\n\nPlease open it and check everything. You can update everything on it yourself from your dashboard, and share this link with your patients, on WhatsApp and on social media.`;
 
 /** The live link, with who to send it to (WhatsApp number, email) and a ready message. */
 export const createLiveLinkAction = adminAction({ schema: target }, async ({ kind, id }) => {
   const [w, url] = await Promise.all([who(kind, id), liveUrlOf(kind, id)]);
-  return { url, name: w.name, phone: w.phone.length === 10 ? w.phone : "", email: w.email, message: liveMessageFor(w.name, w.what, url) };
+  return { url, name: w.name, phone: w.phone.length === 10 ? w.phone : "", email: w.email, message: liveMessageFor(w.name, w.what, url, w.uid) };
 });
 
 /** Email the live link (to the address typed, usually the owner's). */
@@ -122,12 +125,13 @@ export const emailLiveLinkAction = adminAction(
   { schema: target.extend({ to: z.string().trim().toLowerCase().email("Enter a valid email address.") }) },
   async ({ kind, id, to }, admin) => {
     const [w, url] = await Promise.all([who(kind, id), liveUrlOf(kind, id)]);
-    const text = liveMessageFor(w.name, w.what, url);
+    const text = liveMessageFor(w.name, w.what, url, w.uid);
     const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#0a3f3f">
 <p>Hello ${esc(w.name)},</p>
 <p>Your ${esc(w.what)} is now live on MediReach.</p>
 <p><a href="${esc(url)}" style="display:inline-block;background:#0E7C7B;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Open your ${esc(w.what)}</a></p>
 <p>${esc(url)}</p>
+<p style="padding:12px 16px;background:#ECF6F5;border-radius:8px">Your website UID: <strong style="font-family:monospace;font-size:16px">${esc(w.uid)}</strong><br>Please save it. Quote it whenever you contact us, and we can find your website at once.</p>
 <p>Please open it and check everything. You can share this link with your patients, on WhatsApp and on social media.</p>
 <p>MediReach</p></div>`;
     const res = await sendEmail({ to, subject: `Your ${w.what} is live – MediReach`, html, text });

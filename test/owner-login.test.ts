@@ -15,14 +15,17 @@ vi.mock("@/lib/auth/doctor", async (load) => {
       if (!current) throw new real.DoctorAuthError();
       return current;
     },
+    requireDoctor: async () => {
+      const c = current as { doctor?: unknown } | null;
+      if (!c?.doctor) throw new real.DoctorAuthError();
+      return { ...c, id: String((c.doctor as { _id: unknown })._id) };
+    },
   };
 });
 
 const { connectToDatabase } = await import("@/lib/db");
 const { loginOwnerFor, sendLoginLink } = await import("@/lib/auth/login-link");
-const { ownerSiteSchema, ownerSiteTextFields } = await import("@/lib/establishments/owner");
-const { scanFields } = await import("@/lib/compliance/scan");
-const { saveSiteAccountAction } = await import("@/app/account/actions");
+const { saveMySiteSectionAction } = await import("@/app/account/actions");
 const { AuditLog } = await import("@/models/AuditLog");
 const { DoctorProfile } = await import("@/models/DoctorProfile");
 const { Establishment } = await import("@/models/Establishment");
@@ -74,48 +77,8 @@ describe("who can log in", () => {
   });
 });
 
-describe("what owners may change", () => {
-  const valid = {
-    id: "a".repeat(24),
-    address: { line1: "2 Sample Road", line2: "", pincode: "411045", landmark: "", parkingNote: "" },
-    mapsUrl: "",
-    phones: ["98000 00102", ""],
-    whatsapp: "",
-    emergencyPhone: "",
-    is24x7: false,
-    timings: [{ day: 2, slots: [{ open: "09:00", close: "12:00" }] }],
-    appointmentNote: "",
-    visitingHours: "",
-  };
-
-  it("needs a phone, an address and timings (or 24×7)", () => {
-    expect(ownerSiteSchema.safeParse(valid).success).toBe(true);
-    expect(ownerSiteSchema.safeParse({ ...valid, phones: [""] }).success).toBe(false);
-    expect(ownerSiteSchema.safeParse({ ...valid, timings: [] }).success).toBe(false);
-    expect(ownerSiteSchema.safeParse({ ...valid, timings: [], is24x7: true }).success).toBe(true);
-    expect(ownerSiteSchema.safeParse({ ...valid, address: { ...valid.address, pincode: "4110" } }).success).toBe(false);
-  });
-
-  it("scans the free text for NMC-banned wording", () => {
-    const input = ownerSiteSchema.parse({ ...valid, appointmentNote: "Best clinic in Pune" });
-    expect(scanFields(ownerSiteTextFields(input)).map((i) => i.field)).toEqual(["appointmentNote"]);
-  });
-});
-
-describe("saving a site from /account", () => {
-  const payload = (id: string, extra: Record<string, unknown> = {}) => ({
-    id,
-    address: { line1: "3 New Road", line2: "", pincode: "411045", landmark: "Near the bus stop", parkingNote: "" },
-    mapsUrl: "",
-    phones: ["9800000199"],
-    whatsapp: "",
-    emergencyPhone: "9800000911",
-    is24x7: false,
-    timings: [{ day: 3, slots: [{ open: "17:00", close: "20:30" }] }, { day: 4, slots: [] }],
-    appointmentNote: "Walk-ins welcome",
-    visitingHours: "11 am – 1 pm",
-    ...extra,
-  });
+describe("owners update their whole site from /account", () => {
+  const timings = (extra: Record<string, unknown> = {}) => ({ is24x7: false, timings: [{ day: 3, slots: [{ open: "17:00", close: "20:30" }] }, { day: 4, slots: [] }], appointmentNote: "Walk-ins welcome", ...extra });
 
   async function signInAs(email: string) {
     current = {
@@ -128,55 +91,80 @@ describe("saving a site from /account", () => {
 
   it("refuses without a login", async () => {
     current = null;
-    expect(await saveSiteAccountAction(payload(ids.zClinic))).toMatchObject({ ok: false, error: expect.stringMatching(/log in/) });
+    expect(await saveMySiteSectionAction({ id: ids.zClinic, step: "timings", data: timings() })).toMatchObject({ ok: false, error: expect.stringMatching(/log in/) });
   });
 
-  it("saves the owner's own site and logs who changed what", async () => {
+  it("saves a section of the owner's own site and logs who changed what", async () => {
     await signInAs("owner@example.com");
-    const res = await saveSiteAccountAction(payload(ids.zClinic));
+    const res = await saveMySiteSectionAction({ id: ids.zClinic, step: "timings", data: timings() });
     expect(res.ok).toBe(true);
     const doc = (await Establishment.findById(ids.zClinic).lean())!;
-    expect(doc.address.line1).toBe("3 New Road");
-    expect(doc.address.landmark).toBe("Near the bus stop");
-    expect(doc.contact.phones).toEqual(["9800000199"]);
-    expect(doc.timings).toEqual([expect.objectContaining({ day: 3 })]); // empty days dropped
-    expect(doc.visitingHours).toBeUndefined(); // hospital-only field, ignored for a clinic
-    const log = await AuditLog.findOne({ action: "clinic.self_edit" }).lean();
+    expect(doc.timings).toEqual([expect.objectContaining({ day: 3 })]);
+    expect(doc.appointmentNote).toBe("Walk-ins welcome");
+    const log = await AuditLog.findOne({ action: "clinic.self_edit.timings" }).lean();
     expect(log?.actor.role).toBe("owner");
-    expect(Object.keys(log?.diff ?? {})).toEqual(expect.arrayContaining(["address", "phones", "timings"]));
   });
 
-  it("lets a hospital owner set visiting hours and the emergency number", async () => {
+  it("can't touch the page address, business or publishing", async () => {
     await signInAs("owner@example.com");
-    expect((await saveSiteAccountAction(payload(ids.aHospital))).ok).toBe(true);
-    const doc = (await Establishment.findById(ids.aHospital).lean())!;
-    expect(doc.visitingHours).toBe("11 am – 1 pm");
-    expect(doc.contact.emergencyPhone).toBe("9800000911");
+    for (const step of ["seo", "business", "publish"]) {
+      expect((await saveMySiteSectionAction({ id: ids.zClinic, step, data: {} })).ok).toBe(false);
+    }
   });
 
   it("never edits a site that belongs to another email", async () => {
     await signInAs("owner@example.com");
-    const res = await saveSiteAccountAction(payload(ids.other));
+    const res = await saveMySiteSectionAction({ id: ids.other, step: "timings", data: timings() });
     expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/can't edit that site/) });
-    expect((await Establishment.findById(ids.other).lean())!.address.line1).toBe("1 Sample Road");
   });
 
   it("rejects wording the NMC guidelines don't allow", async () => {
     await signInAs("owner@example.com");
-    const res = await saveSiteAccountAction(payload(ids.zClinic, { appointmentNote: "Best clinic in Pune" }));
+    const res = await saveMySiteSectionAction({ id: ids.zClinic, step: "timings", data: timings({ appointmentNote: "Best clinic in Pune" }) });
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.fieldErrors?.appointmentNote).toMatch(/Not allowed/);
   });
 
   it("saves a published site with older gaps it didn't cause, and refreshes the live page", async () => {
-    // Published but incomplete (no city, area, category or owner approval): the team's to fix,
-    // so they don't block the owner's timings or phone changes.
     await Establishment.updateOne({ _id: ids.zClinic }, { $set: { status: "published", citySlug: "pune", slug: "zed-sample-clinic" } });
     await signInAs("owner@example.com");
     revalidatePath.mockClear();
-    const res = await saveSiteAccountAction(payload(ids.zClinic, { appointmentNote: "Please call before visiting" }));
+    const res = await saveMySiteSectionAction({ id: ids.zClinic, step: "timings", data: timings({ appointmentNote: "Please call before visiting" }) });
     expect(res.ok).toBe(true);
     expect((await Establishment.findById(ids.zClinic).lean())!.appointmentNote).toBe("Please call before visiting");
     expect(revalidatePath).toHaveBeenCalledWith("/pune/clinic/zed-sample-clinic");
+  });
+});
+
+describe("website UIDs", () => {
+  it("gives every website a permanent UID per product, which owners can't change", async () => {
+    const { backfillUids, normalizeUid, UID_RE } = await import("@/lib/uid");
+    const fresh = await Establishment.create(site({ name: "New Sample Clinic", ownerEmail: "owner@example.com" }));
+    expect(fresh.uid).toMatch(/^MRC-\d{6}$/);
+    await backfillUids();
+    const doctor = (await DoctorProfile.findOne({ ownerEmail: "asha@example.com" }).lean())!;
+    const hospital = (await Establishment.findById(ids.aHospital).lean())!;
+    expect(doctor.uid).toMatch(/^MRD-\d{6}$/);
+    expect(hospital.uid).toMatch(/^MRH-\d{6}$/);
+    expect(UID_RE.test(doctor.uid!)).toBe(true);
+    expect(normalizeUid(" mrd 100001 ")).toBe("MRD-100001");
+    // Immutable: a later save can't change it.
+    const doc = (await Establishment.findById(ids.aHospital))!;
+    doc.set({ uid: "MRH-999999" });
+    await doc.save();
+    expect((await Establishment.findById(ids.aHospital).lean())!.uid).toBe(hospital.uid);
+    // A doctor saving their own page keeps their UID.
+    const me = await DoctorProfile.findOne({ ownerEmail: "asha@example.com" });
+    current = { email: "asha@example.com", name: "Dr. Asha Sample", doctor: me, sites: [] };
+    const { saveMyDoctorSectionAction } = await import("@/app/account/actions");
+    const res = await saveMyDoctorSectionAction({
+      step: "basics",
+      data: { title: "Dr.", firstName: "Asha", middleName: "", lastName: "Sample", displayName: "", gender: "", languages: ["English"], practiceSinceYear: 2015 },
+    });
+    expect(res.ok).toBe(true);
+    const after = (await DoctorProfile.findById(me!._id).lean())!;
+    expect(after.uid).toBe(doctor.uid);
+    expect(after.languages).toEqual(["English"]);
+    // Team-only sections are refused.
+    expect((await saveMyDoctorSectionAction({ step: "seo", data: {} })).ok).toBe(false);
   });
 });

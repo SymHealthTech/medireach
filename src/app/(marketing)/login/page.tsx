@@ -14,7 +14,7 @@ const ERRORS: Record<string, string> = {
 
 /** What a logged-in doctor or site owner can do (see /account). */
 const AFTER_LOGIN = [
-  { icon: Clock, text: "Update timings, phone numbers, address and fees" },
+  { icon: Clock, text: "Full update access: change anything on your website" },
   { icon: QrCode, text: "Download and share your visiting card" },
   { icon: MessageSquareText, text: "Request changes from our team" },
   { icon: CalendarCheck, text: "See your renewal date" },

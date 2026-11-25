@@ -1,19 +1,24 @@
 import { notFound } from "next/navigation";
-import { ProfileEditor } from "@/components/account/ProfileEditor";
-import { demoDoctor, demoProfile } from "@/fixtures/demo-doctors/dashboard";
+import { DoctorSelfEditor } from "@/components/account/DoctorSelfEditor";
+import { UidBadge } from "@/components/account/UidBadge";
+import { demoDoctor, demoDoctorForm, demoEditorOptions } from "@/fixtures/demo-doctors/dashboard";
 
-/** Demo profile editor (same screen as /account/profile; nothing is saved). */
+/** Demo of the doctor's full self-editor (same screen as /account/profile; nothing is saved). */
 export default async function DemoProfilePage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   const d = demoDoctor(key);
   if (!d) notFound();
+  const form = demoDoctorForm(d);
   return (
     <main className="space-y-6 pb-24 pt-6 lg:pt-0">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-ink">Profile</h1>
-        <p className="mt-1 text-body">What patients read about you. Changes go live as soon as you save.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold text-ink">Your website</h1>
+          <p className="mt-1 text-body">Update anything: your details, photos, services, clinics, timings, awards and design. Changes go live when you save.</p>
+        </div>
+        <UidBadge uid={form.uid!} />
       </div>
-      <ProfileEditor initial={demoProfile(d)} demo />
+      <DoctorSelfEditor initial={form} options={demoEditorOptions()} demo />
     </main>
   );
 }

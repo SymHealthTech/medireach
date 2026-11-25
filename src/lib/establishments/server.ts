@@ -57,6 +57,7 @@ const named = (list: { name: string; description?: string }[] = []) => list.map(
 export function docToForm(d: EstablishmentDoc): EstablishmentForm {
   return {
     id: String(d._id),
+    ...(d.uid ? { uid: d.uid } : {}),
     status: d.status,
     updatedAt: d.updatedAt ? new Date(d.updatedAt).toISOString() : undefined,
     publishedAt: d.publishedAt ? new Date(d.publishedAt).toISOString() : undefined,
@@ -165,7 +166,7 @@ async function assertTemplateReady(type: "clinic" | "hospital" | "card", key: st
 }
 
 /** Apply one validated step to the document (not saved). */
-export async function applySection<K extends StepKey>(doc: EstablishmentDocument, step: K, input: SectionData<K>, admin: CurrentAdmin): Promise<void> {
+export async function applySection<K extends StepKey>(doc: EstablishmentDocument, step: K, input: SectionData<K>, admin: CurrentAdmin | null): Promise<void> {
   switch (step) {
     case "basics": {
       const d = input as SectionData<"basics">;
@@ -322,7 +323,7 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
         ownerEmail: d.ownerEmail,
         internalNotes: d.internalNotes,
       });
-      if (can.publish(admin.role)) {
+      if (admin && can.publish(admin.role)) {
         if (d.founding && !doc.foundingNumber) doc.foundingNumber = await nextFoundingNumber();
         if (!d.founding) doc.foundingNumber = undefined;
         doc.founding = d.founding;

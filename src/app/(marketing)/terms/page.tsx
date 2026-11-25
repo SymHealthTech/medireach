@@ -91,8 +91,9 @@ export default async function TermsPage() {
         <section>
           <h2>6. Updates</h2>
           <p>
-            You can change your clinic timings, phone numbers, address and fees yourself after logging in. For other changes, our team updates
-            your page for {rupees(site.prices.updatePrice)} per request. Your first done-for-you update is free.
+            Doctors, clinics and hospitals get full update access: after logging in you can change everything on your website yourself, as often
+            as you like, except its address and its website UID (a permanent reference number we give every website). If you prefer, our team
+            makes changes for you for {rupees(site.prices.updatePrice)} per request. Your first done-for-you update is free.
           </p>
         </section>
 

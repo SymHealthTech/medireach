@@ -16,6 +16,7 @@ import { getEditorOptions } from "@/lib/doctors/options";
 import { timeAgo } from "@/lib/format";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
 import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
+import { backfillUids } from "@/lib/uid";
 
 export const metadata: Metadata = { title: "Doctors" };
 
@@ -24,7 +25,7 @@ const SORTS = { updated: { updatedAt: -1 }, name: { firstName: 1, lastName: 1 },
 export default async function DoctorsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const admin = await requireAdminPage(rolesFor("/admin/doctors"));
   const sp = await searchParams;
-  const options = await getEditorOptions();
+  const [options] = await Promise.all([getEditorOptions(), backfillUids()]);
 
   const filter: FilterQuery<DoctorProfileDoc> = {};
   const status = oneOf(param(sp, "status"), DOCTOR_STATUSES);
@@ -41,7 +42,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
   if (isObjectId(specialty)) filter.$or = [{ primarySpecialtyId: specialty }, { secondarySpecialtyIds: specialty }];
   const re = searchRegex(param(sp, "q"));
   if (re) {
-    const or = [{ firstName: re }, { lastName: re }, { displayName: re }, { slug: re }, { mobile: re }, { "clinics.name": re }];
+    const or = [{ uid: re }, { firstName: re }, { lastName: re }, { displayName: re }, { slug: re }, { mobile: re }, { "clinics.name": re }];
     filter.$and = [...(filter.$or ? [{ $or: filter.$or }] : []), { $or: or }];
     delete filter.$or;
   }
@@ -54,7 +55,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
       .sort(SORTS[sortKey])
       .skip((page - 1) * PAGE_SIZE)
       .limit(PAGE_SIZE)
-      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, photo: 1, primarySpecialtyId: 1, clinics: { $slice: 1 }, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, founding: 1, foundingNumber: 1, updatedAt: 1, plan: 1, "compliance.issues": 1 })
+      .select({ uid: 1, title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, photo: 1, primarySpecialtyId: 1, clinics: { $slice: 1 }, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, founding: 1, foundingNumber: 1, updatedAt: 1, plan: 1, "compliance.issues": 1 })
       .lean(),
   ]);
 
@@ -65,6 +66,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
     const live = d.status === "published" && d.slug && d.citySlug;
     return {
       id: String(d._id),
+      uid: d.uid,
       name,
       status: d.status,
       photo: d.photo?.url,
@@ -93,7 +95,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
       </div>
 
       <ListToolbar
-        placeholder="Search name, mobile, clinic…"
+        placeholder="Search name, UID, mobile, clinic…"
         filters={[
           { name: "status", label: "Status", options: DOCTOR_STATUSES.map((s) => ({ value: s, label: s === "review" ? "In review" : s[0]!.toUpperCase() + s.slice(1) })) },
           { name: "specialty", label: "Specialty", options: options.specialties.map((s) => ({ value: s.id, label: s.name })) },
@@ -142,6 +144,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                         <span className="min-w-0">
                           <span className="flex items-center gap-2 font-semibold text-ink">
                             <span className="truncate">{r.name}</span>
+                            {r.uid && <span className="shrink-0 rounded bg-mist px-1.5 font-mono text-[11px] font-semibold text-ink">{r.uid}</span>}
                             {r.founding !== null && <FoundingBadge number={r.founding || undefined} />}
                           </span>
                           <span className="block truncate text-xs text-muted-foreground">{r.meta || "—"}</span>
@@ -172,7 +175,9 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                 <Link href={`/admin/doctors/${r.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                   <Thumb src={r.photo} name={r.name} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold text-ink">{r.name}</span>
+                    <span className="block truncate font-semibold text-ink">
+                      {r.name} {r.uid && <span className="ml-1 rounded bg-mist px-1.5 font-mono text-[11px]">{r.uid}</span>}
+                    </span>
                     <span className="block truncate text-xs text-muted-foreground">{r.meta || "—"}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-1.5">
                       <StatusBadge status={r.status} />

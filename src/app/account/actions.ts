@@ -6,13 +6,21 @@ import { ActionError, fieldErrorsOf, type ActionResult } from "@/lib/admin/actio
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hitRateLimit } from "@/lib/api/rate-limit";
 import { DoctorAuthError, doctorActor, ownerActor, requireAccount, requireDoctor } from "@/lib/auth/doctor";
-import { scanFields } from "@/lib/compliance/scan";
-import { accountSchema, accountTextFields, changeRequestSchema } from "@/lib/doctors/account";
-import { aboutToHtml, healthTipsSchema, profileSchema, profileTextFields } from "@/lib/doctors/self-profile";
+import { changeRequestSchema } from "@/lib/doctors/account";
+import { sectionPayload as doctorSectionPayload, sectionSchemas as doctorSectionSchemas, stepForField as doctorStepForField, type DoctorForm } from "@/lib/doctors/form";
+import { applySection as applyDoctorSection, docToForm as doctorDocToForm, ensureUrlKeys as ensureDoctorUrlKeys, publishProblems, scanDoctor } from "@/lib/doctors/server";
+import { healthTipsSchema } from "@/lib/doctors/self-profile";
+import { sectionPayload as siteSectionPayload, sectionSchemas as siteSectionSchemas, stepForField as siteStepForField, type EstablishmentForm } from "@/lib/establishments/form";
+import {
+  applySection as applySiteSection,
+  docToForm as siteDocToForm,
+  ensureUrlKeys as ensureSiteUrlKeys,
+  publishProblems as siteProblems,
+  scanEstablishment,
+} from "@/lib/establishments/server";
+import { syncDoctorLinksFromEstablishment, syncEstablishmentDoctors } from "@/lib/establishments/links";
 import { connectToDatabase } from "@/lib/db";
 import { INQUIRY_STATUSES } from "@/lib/inquiries";
-import { Inquiry } from "@/models/Inquiry";
-import { publishProblems, scanDoctor } from "@/lib/doctors/server";
 import { optionalEnv } from "@/lib/env";
 import { createSignedUpload, type SignedUploadParams } from "@/lib/integrations/cloudinary";
 import { sendEmail } from "@/lib/integrations/email";
@@ -20,16 +28,17 @@ import { revalidateDoctorPages, revalidateEstablishmentPages } from "@/lib/publi
 import { getSettings } from "@/lib/settings";
 import { absUrl } from "@/lib/site";
 import { createUpdateRequest } from "@/lib/update-requests/create";
-import { ownerSiteSchema, ownerSiteTextFields } from "@/lib/establishments/owner";
-import { publishProblems as siteProblems, scanEstablishment } from "@/lib/establishments/server";
-import type { DoctorProfileDoc } from "@/models/DoctorProfile";
-import type { EstablishmentDoc } from "@/models/Establishment";
+import { Inquiry } from "@/models/Inquiry";
+import { DOCTOR_SELF_STEPS, SITE_SELF_STEPS } from "@/lib/self-edit";
 
 /**
- * Self-edit actions for doctors and clinic/hospital owners. The account is re-read from the database on every
- * call; input is validated with the same schemas as the dashboard editor; free
- * text runs the NMC scan; every change is audit-logged and refreshes the live
- * page straight away.
+ * Self-edit actions for doctors and clinic/hospital owners. They can change
+ * everything on their website except its address (SEO), the business record
+ * and publishing, using the same section schemas and save logic as the
+ * dashboard editors. The account is re-read from the database on every call;
+ * free text runs the NMC scan; live pages must stay publishable; every change
+ * is audit-logged and refreshes the live page straight away. The website UID
+ * is never part of any section, so owners can't change it.
  */
 
 async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
@@ -43,102 +52,25 @@ async function run<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
   }
 }
 
-const snapshot = (d: Pick<DoctorProfileDoc, "mobile" | "whatsapp" | "clinics" | "interestsPhoto" | "interestsStory">) => ({
-  mobile: d.mobile ?? null,
-  whatsapp: d.whatsapp ?? null,
-  interestsPhoto: d.interestsPhoto ?? null,
-  interestsStory: d.interestsStory ?? null,
-  ...Object.fromEntries(
-    d.clinics.map((c) => [
-      `clinic:${String(c._id)}`,
-      {
-        addressLine1: c.addressLine1,
-        addressLine2: c.addressLine2 ?? null,
-        pincode: c.pincode,
-        mapsUrl: c.mapsUrl ?? null,
-        phone: c.phone ?? null,
-        timings: c.timings,
-        appointmentNote: c.appointmentNote ?? null,
-        fee: c.fee ?? null,
-        showFee: c.showFee,
-      },
-    ]),
-  ),
-});
-
-export async function saveAccountAction(raw: unknown): Promise<ActionResult<{ savedAt: string }>> {
-  return run(async () => {
-    const me = await requireDoctor();
-    const parsed = accountSchema.safeParse(raw);
-    if (!parsed.success) {
-      const fieldErrors = fieldErrorsOf(parsed.error);
-      throw new ActionError(Object.values(fieldErrors)[0] ?? "Please check the form.", fieldErrors);
-    }
-    const input = parsed.data;
-    const doc = me.doctor;
-
-    // Doctors edit their existing clinics; they can't add, remove or swap them.
-    const existing = doc.clinics.map((c) => String(c._id));
-    const sent = input.clinics.map((c) => c.key);
-    if (existing.length !== sent.length || existing.some((id) => !sent.includes(id))) {
-      throw new ActionError("Your clinics have changed since you opened this page. Please reload and try again.");
-    }
-
-    const settings = await getSettings();
-    const textIssues = scanFields(accountTextFields(input), settings.bannedPhrases);
-    if (textIssues.length > 0) {
-      const fieldErrors = Object.fromEntries(textIssues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
-      throw new ActionError("Some wording isn't allowed on doctor pages. Please change the highlighted text.", fieldErrors);
-    }
-
-    const before = snapshot(doc.toObject());
-    doc.mobile = input.mobile;
-    doc.whatsapp = input.whatsapp;
-    if (input.interestsStory) doc.set({ interestsStory: input.interestsStory.title ? input.interestsStory : undefined });
-    if (input.interestsPhoto !== undefined) doc.set({ interestsPhoto: input.interestsPhoto ?? undefined });
-    for (const c of input.clinics) {
-      const clinic = doc.clinics.find((x) => String(x._id) === c.key)!;
-      // Subdocument setters track each change for save().
-      Object.assign(clinic, {
-        addressLine1: c.addressLine1,
-        addressLine2: c.addressLine2,
-        pincode: c.pincode,
-        mapsUrl: c.mapsUrl,
-        phone: c.phone,
-        timings: c.timings.filter((t) => t.slots.length > 0),
-        appointmentNote: c.appointmentNote,
-        fee: c.fee,
-        showFee: c.showFee,
-      });
-    }
-
-    const issues = scanDoctor(doc, settings.bannedPhrases);
-    if (doc.status === "published" && publishProblems(doc, issues).length > 0) {
-      throw new ActionError("This change can't go live as it is. Please use “Request a change” and our team will help.");
-    }
-    doc.compliance.issues = issues;
-    doc.compliance.lastScanAt = new Date();
-    await doc.save();
-
-    const diff = shallowDiff(before, snapshot(doc.toObject()));
-    if (Object.keys(diff).length > 0) {
-      await audit(doctorActor(me), "doctor.self_edit", { entity: "DoctorProfile", entityId: doc._id, diff });
-    }
-    if (doc.status === "published") revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
-    return { savedAt: new Date().toISOString() };
-  });
+function parseOrThrow<S extends z.ZodTypeAny>(schema: S, raw: unknown): z.output<S> {
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) {
+    const fieldErrors = fieldErrorsOf(parsed.error);
+    throw new ActionError(Object.values(fieldErrors)[0] ?? "Please check the form.", fieldErrors);
+  }
+  return parsed.data;
 }
 
-// Doctors may only upload the "Beyond medicine" photo from their account.
-const doctorUploadSchema = z.object({ purpose: z.literal("interests") });
+// Owners upload their own photos: profile photo, gallery, award and "Beyond medicine" photos, logo and cover.
+const accountUploadSchema = z.object({ purpose: z.enum(["doctor-photo", "gallery", "award", "interests", "logo", "cover"]) });
 
-/** Signed Cloudinary upload params for the signed-in doctor. */
-export async function signDoctorUploadAction(raw: unknown): Promise<ActionResult<SignedUploadParams>> {
+/** Signed Cloudinary upload params for the signed-in doctor or owner. */
+export async function signAccountUploadAction(raw: unknown): Promise<ActionResult<SignedUploadParams>> {
   return run(async () => {
-    const me = await requireDoctor();
-    const parsed = doctorUploadSchema.safeParse(raw);
+    const me = await requireAccount();
+    const parsed = accountUploadSchema.safeParse(raw);
     if (!parsed.success) throw new ActionError("This upload isn't allowed.");
-    const limit = await hitRateLimit(`doctor-upload:${me.id}`, 20, 60 * 60_000);
+    const limit = await hitRateLimit(`account-upload:${me.email}`, 60, 60 * 60_000);
     if (!limit.allowed) throw new ActionError("Too many uploads. Please try again in an hour.");
     return createSignedUpload(parsed.data.purpose);
   });
@@ -181,148 +113,108 @@ export async function requestChangeAction(raw: unknown): Promise<ActionResult<{ 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 // ---------------------------------------------------------------------------
-// Clinic / hospital owners
+// Full self-edit: the same sections as the dashboard editors
 // ---------------------------------------------------------------------------
 
-const siteSnapshot = (s: EstablishmentDoc) => ({
-  address: { line1: s.address?.line1 ?? null, line2: s.address?.line2 ?? null, pincode: s.address?.pincode ?? null, landmark: s.address?.landmark ?? null, parkingNote: s.address?.parkingNote ?? null },
-  mapsUrl: s.mapsUrl ?? null,
-  phones: s.contact?.phones ?? [],
-  whatsapp: s.contact?.whatsapp ?? null,
-  emergencyPhone: s.contact?.emergencyPhone ?? null,
-  is24x7: s.is24x7,
-  timings: s.timings,
-  appointmentNote: s.appointmentNote ?? null,
-  visitingHours: s.visitingHours ?? null,
-});
 
-/** Save what a clinic/hospital owner may change (lib/establishments/owner.ts). */
-export async function saveSiteAccountAction(raw: unknown): Promise<ActionResult<{ savedAt: string }>> {
-  return run(async () => {
-    const me = await requireAccount();
-    const parsed = ownerSiteSchema.safeParse(raw);
-    if (!parsed.success) {
-      const fieldErrors = fieldErrorsOf(parsed.error);
-      throw new ActionError(Object.values(fieldErrors)[0] ?? "Please check the form.", fieldErrors);
-    }
-    const input = parsed.data;
-    // Only sites owned by this login email; re-read on every call.
-    const doc = me.sites.find((s) => String(s._id) === input.id);
-    if (!doc) throw new ActionError("You can't edit that site. Please reload the page.");
+const doctorSectionInput = z.object({ step: z.enum(DOCTOR_SELF_STEPS), data: z.unknown() });
+const siteSectionInput = z.object({ id: z.string().regex(/^[a-f0-9]{24}$/i), step: z.enum(SITE_SELF_STEPS), data: z.unknown() });
 
-    const settings = await getSettings();
-    const textIssues = scanFields(ownerSiteTextFields(input), settings.bannedPhrases);
-    if (textIssues.length > 0) {
-      const fieldErrors = Object.fromEntries(textIssues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
-      throw new ActionError("Some wording isn't allowed on clinic and hospital sites. Please change the highlighted text.", fieldErrors);
-    }
-
-    const before = siteSnapshot(doc.toObject());
-    // Problems the site already had (e.g. a missing approval record) are the team's to fix;
-    // only a change that adds a new one is refused.
-    const problemsBefore = doc.status === "published" ? siteProblems(doc, scanEstablishment(doc, settings.bannedPhrases)) : [];
-    doc.set({
-      "address.line1": input.address.line1,
-      "address.line2": input.address.line2,
-      "address.pincode": input.address.pincode,
-      "address.landmark": input.address.landmark,
-      "address.parkingNote": input.address.parkingNote,
-      mapsUrl: input.mapsUrl,
-      "contact.phones": input.phones.filter((p): p is string => Boolean(p)),
-      "contact.whatsapp": input.whatsapp,
-      "contact.emergencyPhone": input.emergencyPhone,
-      is24x7: input.is24x7,
-      timings: input.timings.filter((t) => t.slots.length > 0),
-      appointmentNote: input.appointmentNote,
-      // Visiting hours are a hospital field; clinics never set them here.
-      ...(doc.kind === "hospital" ? { visitingHours: input.visitingHours } : {}),
-    });
-
-    const issues = scanEstablishment(doc, settings.bannedPhrases);
-    if (doc.status === "published" && siteProblems(doc, issues).some((p) => !problemsBefore.includes(p))) {
-      throw new ActionError("This change can't go live as it is. Please message us and our team will help.");
-    }
-    doc.compliance.issues = issues;
-    doc.compliance.lastScanAt = new Date();
-    await doc.save();
-
-    const diff = shallowDiff(before, siteSnapshot(doc.toObject()));
-    if (Object.keys(diff).length > 0) {
-      await audit(ownerActor(me, String(doc._id)), `${doc.kind}.self_edit`, { entity: "Establishment", entityId: doc._id, diff });
-    }
-    if (doc.status === "published") revalidateEstablishmentPages({ kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
-    return { savedAt: new Date().toISOString() };
-  });
+/** Owners never save NMC-banned wording in what they edit, live or not. */
+function refuseBannedWording(issues: { field: string; phrase: string }[]) {
+  if (issues.length === 0) return;
+  const fieldErrors = Object.fromEntries(issues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
+  throw new ActionError("Some wording isn't allowed under NMC guidelines. Please change the highlighted text.", fieldErrors);
 }
 
-// ---------------------------------------------------------------------------
-// Doctor profile, health articles and appointment requests
-// ---------------------------------------------------------------------------
-
-function parseOrThrow<S extends z.ZodTypeAny>(schema: S, raw: unknown): z.output<S> {
-  const parsed = schema.safeParse(raw);
-  if (!parsed.success) {
-    const fieldErrors = fieldErrorsOf(parsed.error);
-    throw new ActionError(Object.values(fieldErrors)[0] ?? "Please check the form.", fieldErrors);
-  }
-  return parsed.data;
-}
-
-async function nmcCheck(fields: Record<string, string>) {
-  const settings = await getSettings();
-  const textIssues = scanFields(fields, settings.bannedPhrases);
-  if (textIssues.length > 0) {
-    const fieldErrors = Object.fromEntries(textIssues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
-    throw new ActionError("Some wording isn't allowed on doctor pages. Please change the highlighted text.", fieldErrors);
-  }
-  return settings;
-}
-
-const profileSnapshot = (d: DoctorProfileDoc) =>
-  JSON.parse(
-    JSON.stringify({
-      shortBio: d.shortBio ?? null,
-      fullBio: d.fullBio ?? null,
-      services: d.services,
-      conditionsTreated: d.conditionsTreated,
-      languages: d.languages,
-      interests: d.interests,
-      email: d.email ?? null,
-      links: d.links,
-    }),
-  ) as Record<string, unknown>;
-
-/** Bio, services, conditions, languages, interests, public email and links (lib/doctors/self-profile.ts). */
-export async function saveProfileAction(raw: unknown): Promise<ActionResult<{ savedAt: string }>> {
+/** Save one section of the doctor's own page; live pages update straight away. */
+export async function saveMyDoctorSectionAction(raw: unknown): Promise<ActionResult<{ form: DoctorForm; savedAt: string }>> {
   return run(async () => {
     const me = await requireDoctor();
-    const input = parseOrThrow(profileSchema, raw);
-    const settings = await nmcCheck(profileTextFields(input));
+    const { step, data } = parseOrThrow(doctorSectionInput, raw);
+    const input = parseOrThrow(doctorSectionSchemas[step], data) as Record<string, unknown>;
     const doc = me.doctor;
-    const before = profileSnapshot(doc.toObject());
-    doc.set({
-      shortBio: input.shortBio,
-      fullBio: input.about.trim() ? aboutToHtml(input.about) : undefined,
-      services: input.services,
-      conditionsTreated: input.conditions,
-      languages: input.languages,
-      interests: input.interests,
-      email: input.email,
-      links: input.links,
-    });
+    // The login email is the team's to change (it decides who can log in).
+    if (step === "contact") input.ownerEmail = doc.ownerEmail;
+
+    const before = doctorDocToForm(doc.toObject());
+    const oldRoute = { citySlug: doc.citySlug, slug: doc.slug };
+    const settings = await getSettings();
+    // Gaps the page already had are the team's to fix; only a change that adds a new one is refused.
+    const problemsBefore = doc.status === "published" ? publishProblems(doc, scanDoctor(doc, settings.bannedPhrases)) : [];
+    await applyDoctorSection(doc, step, input as never, null);
+    await ensureDoctorUrlKeys(doc);
     const issues = scanDoctor(doc, settings.bannedPhrases);
-    if (doc.status === "published" && publishProblems(doc, issues).length > 0) {
-      throw new ActionError("This change can't go live as it is. Please use “Request a change” and our team will help.");
+    refuseBannedWording(issues.filter((i) => doctorStepForField(i.field) === step));
+    if (doc.status === "published") {
+      const problems = publishProblems(doc, issues).filter((p) => !problemsBefore.includes(p));
+      if (problems.length > 0) {
+        const fieldErrors = Object.fromEntries(issues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
+        throw new ActionError(`Not saved: your page is live and this change would break the rules (${problems.join("; ")}).`, fieldErrors);
+      }
     }
     doc.compliance.issues = issues;
     doc.compliance.lastScanAt = new Date();
     await doc.save();
-    const diff = shallowDiff(before, profileSnapshot(doc.toObject()));
-    if (Object.keys(diff).length > 0) await audit(doctorActor(me), "doctor.self_edit", { entity: "DoctorProfile", entityId: doc._id, diff });
-    if (doc.status === "published") revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
-    return { savedAt: new Date().toISOString() };
+
+    const after = doctorDocToForm(doc.toObject());
+    const diff = shallowDiff(
+      (doctorSectionPayload(step, before) ?? {}) as Record<string, unknown>,
+      (doctorSectionPayload(step, after) ?? {}) as Record<string, unknown>,
+    );
+    if (Object.keys(diff).length > 0) await audit(doctorActor(me), `doctor.self_edit.${step}`, { entity: "DoctorProfile", entityId: doc._id, diff });
+    if (step === "clinics") await syncEstablishmentDoctors(doc._id, before.establishmentIds, after.establishmentIds);
+    if (doc.status === "published") revalidateDoctorPages(oldRoute, { citySlug: doc.citySlug, slug: doc.slug });
+    return { form: after, savedAt: new Date().toISOString() };
   });
 }
+
+/** Save one section of a clinic or hospital site the signed-in owner owns. */
+export async function saveMySiteSectionAction(raw: unknown): Promise<ActionResult<{ form: EstablishmentForm; savedAt: string }>> {
+  return run(async () => {
+    const me = await requireAccount();
+    const { id, step, data } = parseOrThrow(siteSectionInput, raw);
+    const doc = me.sites.find((s) => String(s._id) === id);
+    if (!doc) throw new ActionError("You can't edit that site. Please reload the page.");
+    const input = parseOrThrow(siteSectionSchemas[step], data);
+
+    const before = siteDocToForm(doc.toObject());
+    const oldRoute = { kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug };
+    const settings = await getSettings();
+    const problemsBefore = doc.status === "published" ? siteProblems(doc, scanEstablishment(doc, settings.bannedPhrases)) : [];
+    await applySiteSection(doc, step, input as never, null);
+    await ensureSiteUrlKeys(doc);
+    const issues = scanEstablishment(doc, settings.bannedPhrases);
+    refuseBannedWording(issues.filter((i) => siteStepForField(i.field) === step));
+    if (doc.status === "published") {
+      const problems = siteProblems(doc, issues).filter((p) => !problemsBefore.includes(p));
+      if (problems.length > 0) {
+        const fieldErrors = Object.fromEntries(issues.map((i) => [i.field, `Not allowed under NMC guidelines: "${i.phrase}"`]));
+        throw new ActionError(`Not saved: your site is live and this change would break the rules (${problems.join("; ")}).`, fieldErrors);
+      }
+    }
+    doc.compliance.issues = issues;
+    doc.compliance.lastScanAt = new Date();
+    await doc.save();
+
+    const after = siteDocToForm(doc.toObject());
+    const diff = shallowDiff(
+      (siteSectionPayload(step, before) ?? {}) as Record<string, unknown>,
+      (siteSectionPayload(step, after) ?? {}) as Record<string, unknown>,
+    );
+    if (Object.keys(diff).length > 0) await audit(ownerActor(me, id), `${doc.kind}.self_edit.${step}`, { entity: "Establishment", entityId: doc._id, diff });
+    if (step === "doctors") {
+      const linked = (f: EstablishmentForm) => f.doctors.map((d) => d.doctorProfileId).filter(Boolean);
+      await syncDoctorLinksFromEstablishment(doc._id, linked(before), linked(after));
+    }
+    if (doc.status === "published") revalidateEstablishmentPages(oldRoute, { kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
+    return { form: after, savedAt: new Date().toISOString() };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Health tips and appointment requests (doctors)
+// ---------------------------------------------------------------------------
 
 /** Show or hide the Health tips section, and which tips it shows (empty = automatic). */
 export async function saveHealthTipsAction(raw: unknown): Promise<ActionResult<{ savedAt: string }>> {

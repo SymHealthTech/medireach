@@ -88,7 +88,7 @@ export const CARD_SPOTLIGHT = {
   points: [
     "Scan to save contact",
     "One-tap call, WhatsApp and directions",
-    "Update timings anytime",
+    "Update everything yourself, anytime",
     "Share on WhatsApp in one tap",
     "Print-ready version included",
   ],
@@ -144,7 +144,7 @@ export const HOW_IT_WORKS = {
   steps: [
     { title: "Share your details", text: "Send them on WhatsApp, or fill a 10-minute form." },
     { title: "We design it in 24–48 hours", text: "We write and design your website and visiting card. You check everything first." },
-    { title: "Approve, share, update", text: "Share your link and QR code. Update timings yourself anytime." },
+    { title: "Approve, share, update", text: "Share your link and QR code. Update everything on your website yourself, anytime." },
   ],
 };
 
@@ -230,7 +230,7 @@ export const PRICING_PAGE = {
   renewalCovers: [
     "Hosting on medireach.co.in, with your own short link and subdomain",
     "Security and software updates",
-    "Changes you make yourself after logging in: timings, phone numbers, address and fees",
+    "Full update access: change everything on your website yourself after logging in, as often as you like",
     "Your listing on the city, area and specialty pages",
     "Your digital visiting card link and QR code",
   ],
@@ -375,7 +375,7 @@ export const FOR_HOSPITALS = {
     },
     {
       q: "Who updates the site when schedules change?",
-      a: "You can change timings and phone numbers yourself after logging in. For other changes, message us and our team makes them.",
+      a: "You do. Doctors, clinics and hospitals get full update access: log in and change anything on your website yourself, from timings and phone numbers to photos, services, doctors and design. Prefer us to do it? Message us and our team makes the change.",
     },
   ],
   formTitle: "Tell us about your hospital",
@@ -408,8 +408,8 @@ export const FAQ = {
       a: "Yes. We buy and connect it for you, and you pay only what the domain costs. Your MediReach address keeps working too.",
     },
     {
-      q: "How do I change timings?",
-      a: "Use the login link at the bottom of your site to change timings, phone numbers and fees yourself. For anything else, message us and our team makes the change.",
+      q: "How do I change my website?",
+      a: "Use the login link at the bottom of your site. You get full update access: details, photos, services, clinics or doctors, timings, fees and design. Only your page address and website UID stay fixed. Prefer us to do it? Message us and our team makes the change.",
     },
     {
       q: "Will another clinic have the same design?",

@@ -5,6 +5,7 @@
  */
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db";
+import { backfillUids } from "@/lib/uid";
 import { DEFAULT_DB_NAME, env } from "@/lib/env";
 import { seedSampleDoctors } from "@/lib/seed/samples";
 
@@ -18,6 +19,7 @@ async function main() {
   }
   await connectToDatabase();
   const urls = await seedSampleDoctors();
+  await backfillUids();
   console.log(`Published ${urls.length} sample doctors into "${db}":`);
   for (const u of urls) console.log(`  ${u}`);
 }

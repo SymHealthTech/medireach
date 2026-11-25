@@ -40,21 +40,24 @@ export function DoctorOverview({
 }) {
   const tiles = [
     { label: "New requests", value: counts.new, href: `${base}/inquiries?status=new`, icon: Inbox, tone: "bg-marigold text-white" },
-    { label: "Requests in the last 30 days", value: counts.month, href: `${base}/inquiries`, icon: CalendarCheck, tone: "bg-lagoon text-white" },
-    { label: "Health tips section", value: healthTipsOn ? "On" : "Off", href: `${base}/health-tips`, icon: Newspaper, tone: "bg-ink text-paper" },
+    { label: "Last 30 days", value: counts.month, href: `${base}/inquiries`, icon: CalendarCheck, tone: "bg-lagoon text-white" },
+    { label: "Health tips", value: healthTipsOn ? "On" : "Off", href: `${base}/health-tips`, icon: Newspaper, tone: "bg-ink text-paper" },
   ];
   return (
     <section aria-label="Overview" className="space-y-4">
-      <ul className="grid gap-3 sm:grid-cols-3">
+      <ul className="grid grid-cols-3 gap-2 sm:gap-3">
         {tiles.map((t) => (
-          <li key={t.label}>
-            <Link href={t.href} className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift">
-              <span className={`flex size-12 items-center justify-center rounded-xl ${t.tone}`}>
+          <li key={t.label} className="min-w-0">
+            <Link
+              href={t.href}
+              className="group flex h-full min-w-0 flex-col gap-3 rounded-2xl border border-line bg-surface p-3 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift sm:flex-row sm:items-center sm:p-4"
+            >
+              <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl sm:size-11 ${t.tone}`}>
                 <t.icon aria-hidden className="size-5" strokeWidth={2} />
               </span>
-              <span>
-                <span className="block font-display text-3xl font-semibold leading-none text-ink">{t.value}</span>
-                <span className="mt-1 block text-sm text-muted-foreground">{t.label}</span>
+              <span className="min-w-0">
+                <span className="block font-display text-2xl font-semibold leading-none text-ink sm:text-3xl">{t.value}</span>
+                <span className="mt-1 block truncate text-xs text-muted-foreground sm:text-sm">{t.label}</span>
               </span>
             </Link>
           </li>
@@ -111,8 +114,8 @@ export function DoctorOverview({
         <Link href={`${base}/profile`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm shadow-soft hover:border-ink/30">
           <UserRound aria-hidden className="size-5 text-lagoon" />
           <span>
-            <span className="block font-semibold text-ink">Edit your profile</span>
-            <span className="text-muted-foreground">About text, services, conditions, languages and links.</span>
+            <span className="block font-semibold text-ink">Edit your website</span>
+            <span className="text-muted-foreground">Details, photos, services, clinics, timings and more.</span>
           </span>
         </Link>
         <Link href={`${base}/health-tips`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-sm shadow-soft hover:border-ink/30">

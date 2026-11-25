@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { PDFDocument } from "pdf-lib";
 import { cloudinaryJpg } from "@/lib/cards/photo";
+import { absUrl } from "@/lib/site";
 import { qrForUrl } from "@/lib/cards/qr";
 import { resolveCardTemplate, type ReadyTemplates } from "@/templates/registry";
 import ClassicSiteCard from "@/templates/card/classic/site";
@@ -52,7 +53,8 @@ export function cardProps(doctor: PublicDoctor, variant: CardVariant, renderer: 
     variant,
     qr: qrForUrl(doctor.shareUrl),
     fonts: renderer === "image" ? IMAGE_FONTS : HTML_FONTS,
-    ...(doctor.photo ? { photoUrl: cloudinaryJpg(doctor.photo.url, 600) } : {}),
+    // Bundled photos (demo doctors) are site paths; the image renderer needs absolute URLs.
+    ...(doctor.photo ? { photoUrl: doctor.photo.url.startsWith("/") ? absUrl(doctor.photo.url) : cloudinaryJpg(doctor.photo.url, 600) } : {}),
   };
 }
 
@@ -66,13 +68,17 @@ export async function renderCardPng(doctor: PublicDoctor, variant: CardVariant, 
 
 const MM_TO_PT = 72 / 25.4;
 
-/** Print-ready PDF: one page, exactly 85 × 55 mm, the 300 dpi card filling it. */
-export async function renderCardPdf(doctor: PublicDoctor, ready?: ReadyTemplates): Promise<Uint8Array> {
-  return pdfFromPrintPng(await renderCardPng(doctor, "print", ready), `${doctor.fullName} – visiting card`);
+/** Page sizes for the PDFs: the print card exactly 85 × 55 mm; the full phone card 90 × 160 mm (same 9:16 shape). */
+const PDF_MM: Record<CardVariant, [number, number]> = { print: [85, 55], phone: [90, 160] };
+
+/** PDF of a card: one page, the card image filling it (print: print-ready 85 × 55 mm; phone: the full card). */
+export async function renderCardPdf(doctor: PublicDoctor, ready?: ReadyTemplates, variant: CardVariant = "print"): Promise<Uint8Array> {
+  return pdfFromPng(await renderCardPng(doctor, variant, ready), `${doctor.fullName} – visiting card`, variant);
 }
 
 export const CARD_FILES = {
   "phone.png": { variant: "phone", type: "image/png" },
+  "phone.pdf": { variant: "phone", type: "application/pdf" },
   "print.png": { variant: "print", type: "image/png" },
   "print.pdf": { variant: "print", type: "application/pdf" },
 } as const satisfies Record<string, { variant: CardVariant; type: string }>;
@@ -86,7 +92,8 @@ export async function cardFileResponse(
   opts: { ready?: ReadyTemplates; cacheControl: string; download: boolean },
 ): Promise<Response> {
   const { type } = CARD_FILES[file];
-  const body = file === "print.pdf" ? await renderCardPdf(doctor, opts.ready) : await renderCardPng(doctor, CARD_FILES[file].variant, opts.ready);
+  const { variant } = CARD_FILES[file];
+  const body = type === "application/pdf" ? await renderCardPdf(doctor, opts.ready, variant) : await renderCardPng(doctor, variant, opts.ready);
   const name = `${doctor.shortSlug ?? doctor.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
   return new Response(body as BodyInit, {
     headers: {
@@ -129,14 +136,14 @@ export async function renderSiteCardPng(site: PublicEstablishment, variant: Card
   return res.arrayBuffer();
 }
 
-async function pdfFromPrintPng(png: ArrayBuffer, title: string): Promise<Uint8Array> {
+async function pdfFromPng(png: ArrayBuffer, title: string, variant: CardVariant): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setCreator("MediReach");
   pdf.setProducer("MediReach");
   const image = await pdf.embedPng(png);
-  const width = 85 * MM_TO_PT;
-  const height = 55 * MM_TO_PT;
+  const width = PDF_MM[variant][0] * MM_TO_PT;
+  const height = PDF_MM[variant][1] * MM_TO_PT;
   const page = pdf.addPage([width, height]);
   page.drawImage(image, { x: 0, y: 0, width, height });
   return pdf.save();
@@ -150,7 +157,7 @@ export async function siteCardFileResponse(
 ): Promise<Response> {
   const { type, variant } = CARD_FILES[file];
   const png = await renderSiteCardPng(site, variant);
-  const body = file === "print.pdf" ? await pdfFromPrintPng(png, `${site.name} – visiting card`) : png;
+  const body = type === "application/pdf" ? await pdfFromPng(png, `${site.name} – visiting card`, variant) : png;
   const name = `${site.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
   return new Response(body as BodyInit, {
     headers: {

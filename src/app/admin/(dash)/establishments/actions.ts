@@ -17,6 +17,7 @@ import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { sitePath } from "@/lib/site";
 import { RESERVED_SUBDOMAINS } from "@/config/reserved";
 import { Establishment } from "@/models/Establishment";
+import { ensureUid } from "@/lib/uid";
 import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME } from "@/themes/specialty";
 
 const id = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.");
@@ -175,12 +176,12 @@ export const submitEstablishmentForReviewAction = statusChange("review", "submit
  * saved owner email, so it must be saved on the Business step first.
  */
 export const sendEstablishmentLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
-  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1 }).lean();
+  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1 }).lean();
   if (!doc) throw new ActionError("Clinic or hospital not found.");
   if (!doc.ownerEmail) throw new ActionError("Save the owner's login email first.");
   const limit = await hitRateLimit(`login-link:admin:${establishmentId}`, 5, 60 * 60_000);
   if (!limit.allowed) throw new ActionError("Several login emails were sent in the last hour. Please wait before sending another.");
-  const sent = await sendLoginLink(doc.ownerEmail, { welcome: true });
+  const sent = await sendLoginLink(doc.ownerEmail, { welcome: true, uid: await ensureUid(Establishment as never, doc, doc.kind === "hospital" ? "hospital" : "clinic") });
   if (!sent) throw new ActionError("The email couldn't be sent. Check the email settings (RESEND_API_KEY) and try again.");
   await audit(auditCtx(admin), "establishment.send_login_email", { entity: "Establishment", entityId: establishmentId, diff: { to: doc.ownerEmail } });
   return { to: doc.ownerEmail };

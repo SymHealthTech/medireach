@@ -54,6 +54,7 @@ async function assertEstablishmentsExist(ids: string[], field: string): Promise<
 export function docToForm(d: DoctorProfileDoc): DoctorForm {
   return {
     id: String(d._id),
+    ...(d.uid ? { uid: d.uid } : {}),
     status: d.status,
     updatedAt: d.updatedAt ? new Date(d.updatedAt).toISOString() : undefined,
     publishedAt: d.publishedAt ? new Date(d.publishedAt).toISOString() : undefined,
@@ -190,7 +191,7 @@ export async function applySection<K extends StepKey>(
   doc: DoctorDocument,
   step: K,
   input: SectionData<K>,
-  admin: CurrentAdmin,
+  admin: CurrentAdmin | null,
 ): Promise<void> {
   switch (step) {
     case "basics": {
@@ -321,7 +322,7 @@ export async function applySection<K extends StepKey>(
         source: d.source,
         internalNotes: d.internalNotes,
       });
-      if (can.publish(admin.role)) {
+      if (admin && can.publish(admin.role)) {
         if (d.founding && !doc.foundingNumber) doc.foundingNumber = await nextFoundingNumber();
         if (!d.founding) doc.foundingNumber = undefined;
         doc.founding = d.founding;

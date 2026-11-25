@@ -1,21 +1,19 @@
 import Link from "next/link";
-import { CalendarClock, ExternalLink, IdCard } from "lucide-react";
-import { AccountEditor } from "@/components/account/AccountEditor";
+import { CalendarClock, Clock, ExternalLink, IdCard, ImageIcon, MapPin, PencilLine, Phone, Stethoscope, UserRound } from "lucide-react";
 import { ChangeRequestForm } from "@/components/account/ChangeRequestForm";
-import { SiteAccountEditor } from "@/components/account/SiteAccountEditor";
+import { DoctorOverview } from "@/components/account/DoctorOverview";
+import { UidBadge } from "@/components/account/UidBadge";
 import { requireAccountPage, type CurrentAccount } from "@/lib/auth/doctor";
-import { ALL_DAYS } from "@/lib/doctors/form";
-import type { AccountForm } from "@/lib/doctors/account";
-import type { OwnerSiteForm } from "@/lib/establishments/owner";
 import { displayRenewalStatus, listRenewalPrice, type RenewalProduct } from "@/lib/renewals";
-import { getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
 import { getSettings } from "@/lib/settings";
 import { absUrl, paths, sitePath, subdomainUrl } from "@/lib/site";
 import type { RenewalStatus } from "@/lib/constants";
+import { ensureUid } from "@/lib/uid";
+import { DoctorProfile } from "@/models/DoctorProfile";
+import { Establishment } from "@/models/Establishment";
 import { Area } from "@/models/Area";
 import { UpdateRequest } from "@/models/UpdateRequest";
 import { Inquiry } from "@/models/Inquiry";
-import { DoctorOverview } from "@/components/account/DoctorOverview";
 
 export const dynamic = "force-dynamic";
 
@@ -47,75 +45,48 @@ function RenewalLine({ due, status, price }: { due?: Date; status: RenewalStatus
   );
 }
 
+/** Shortcuts into the doctor's editor (/account/profile?tab=…). */
+const EDIT_LINKS = [
+  { tab: "basics", icon: UserRound, title: "Name, photo and languages" },
+  { tab: "clinics", icon: Clock, title: "Clinics, timings and fees" },
+  { tab: "contact", icon: Phone, title: "Mobile, WhatsApp and links" },
+  { tab: "practice", icon: Stethoscope, title: "Specialty, services and conditions" },
+  { tab: "about", icon: ImageIcon, title: "About, awards and gallery" },
+  { tab: "registration", icon: MapPin, title: "Registration and education" },
+] as const;
+
 export default async function AccountPage() {
   const me = await requireAccountPage();
-  const [settings, site] = await Promise.all([getSettings(), getPublicSiteData()]);
-  const what = [me.doctor ? "your page" : "", me.sites.length ? (me.sites.length === 1 ? "your site" : "your sites") : ""].filter(Boolean).join(" and ");
+  const settings = await getSettings();
+  const what = [me.doctor ? "your website" : "", me.sites.length ? (me.sites.length === 1 ? "your site" : "your sites") : ""].filter(Boolean).join(" and ");
 
   return (
     <main className={me.doctor ? "max-w-3xl space-y-6 pb-24 pt-6 lg:pt-0" : "mx-auto max-w-3xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pt-12"}>
       <div>
         <h1 className="font-display text-3xl font-semibold text-ink sm:text-4xl">Hello, {me.name}</h1>
-        <p className="mt-2 text-body">Keep {what} up to date. Changes show straight away.</p>
+        <p className="mt-2 text-body">You can update everything on {what} yourself. Changes show straight away.</p>
       </div>
 
       {me.doctor && <DoctorSections me={me} prices={settings.prices} updatePrice={settings.prices.updatePrice} />}
-
-      {me.sites.length > 0 && (
-        <SiteSections me={me} prices={settings.prices} waHref={whatsappHref(site.whatsappNumber, "Hi, I'd like a change on my MediReach site.")} />
-      )}
+      {me.sites.length > 0 && <SiteSections me={me} prices={settings.prices} />}
     </main>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Doctor portfolio (unchanged editor; renewal line added)
+// Doctor
 // ---------------------------------------------------------------------------
 
 async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount; prices: Parameters<typeof listRenewalPrice>[2]; updatePrice: number }) {
   const d = me.doctor!;
   const monthAgo = new Date(Date.now() - 30 * 86_400_000);
-  const [areas, requests, newCount, monthCount, latest] = await Promise.all([
-    Area.find({ _id: { $in: d.clinics.map((c) => c.areaId) } }).select({ name: 1 }).lean(),
+  const [uid, requests, newCount, monthCount, latest] = await Promise.all([
+    ensureUid(DoctorProfile as never, d, "doctor"),
     UpdateRequest.find({ doctorId: d._id }).sort({ createdAt: -1 }).limit(5).lean(),
     Inquiry.countDocuments({ doctorId: d._id, status: "new" }),
     Inquiry.countDocuments({ doctorId: d._id, createdAt: { $gte: monthAgo } }),
     Inquiry.find({ doctorId: d._id }).sort({ createdAt: -1 }).limit(4).lean(),
   ]);
-  const areaName = (id: unknown) => areas.find((a) => String(a._id) === String(id))?.name ?? "";
-
-  const initial: AccountForm = {
-    mobile: d.mobile ?? "",
-    whatsapp: d.whatsapp ?? "",
-    clinics: d.clinics.map((c) => ({
-      key: String(c._id),
-      name: c.name,
-      area: areaName(c.areaId),
-      addressLine1: c.addressLine1,
-      addressLine2: c.addressLine2 ?? "",
-      pincode: c.pincode,
-      mapsUrl: c.mapsUrl ?? "",
-      phone: c.phone ?? "",
-      timings: ALL_DAYS.map((day) => ({
-        day,
-        slots: (c.timings.find((t) => t.day === day)?.slots ?? []).map((s) => ({ open: s.open, close: s.close })),
-      })),
-      appointmentNote: c.appointmentNote ?? "",
-      fee: c.fee ?? undefined,
-      showFee: Boolean(c.showFee),
-    })),
-    interestsStory: { title: d.interestsStory?.title ?? "", body: d.interestsStory?.body ?? "" },
-    ...(d.interestsPhoto
-      ? {
-          interestsPhoto: {
-            publicId: d.interestsPhoto.publicId,
-            url: d.interestsPhoto.url,
-            ...(d.interestsPhoto.alt ? { alt: d.interestsPhoto.alt } : {}),
-            caption: d.interestsPhoto.caption ?? "",
-          },
-        }
-      : {}),
-  };
 
   const live = d.status === "published" && d.citySlug && d.slug;
   const pagePath = live ? paths.doctor(d.citySlug!, d.slug!) : null;
@@ -141,7 +112,10 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
       />
 
       <section className={card}>
-        <h2 className="font-display text-xl font-semibold text-ink">Your page</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold text-ink">Your website</h2>
+          <UidBadge uid={uid} />
+        </div>
         {pagePath ? (
           <>
             <p className="break-all text-body">
@@ -153,7 +127,7 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
             </p>
             <div className="flex flex-wrap gap-2">
               <a href={pagePath} target="_blank" rel="noopener" className={btn}>
-                <ExternalLink className="size-4" strokeWidth={1.75} /> View page
+                <ExternalLink className="size-4" strokeWidth={1.75} /> View website
               </a>
               <Link href="/account/card" className={btn}>
                 <IdCard className="size-4" strokeWidth={1.75} /> Visiting card: share, download, print
@@ -163,23 +137,37 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
         ) : (
           <p className="text-body">
             {d.status === "suspended"
-              ? "Your page is paused at the moment. Message us to turn it back on."
-              : "Your page isn't live yet. We'll send you the link as soon as it is. You can already update your details below."}
+              ? "Your website is paused at the moment. Message us to turn it back on."
+              : "Your website isn't live yet. We'll send you the link as soon as it is. You can already update your details."}
           </p>
         )}
         <RenewalLine due={d.renewalDueDate} status={status} price={renewalPrice} />
       </section>
 
-      {initial.clinics.length > 0 ? (
-        <AccountEditor initial={initial} />
-      ) : (
-        <p className="rounded-xl border border-line bg-surface p-4 text-body">Your clinics haven&apos;t been added yet. Use “Request a change” below and we&apos;ll add them.</p>
-      )}
+      <section className={card}>
+        <div>
+          <h2 className="font-display text-xl font-semibold text-ink">Update your website</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Everything on your website is yours to change.</p>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {EDIT_LINKS.map(({ tab, icon: Icon, title }) => (
+            <li key={tab}>
+              <Link href={`/account/profile?tab=${tab}`} className="flex min-h-12 items-center gap-3 rounded-xl border border-line bg-paper px-3 py-2 text-sm font-semibold text-ink hover:border-ink/40">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-mist text-lagoon">
+                  <Icon aria-hidden className="size-4" strokeWidth={2} />
+                </span>
+                {title}
+                <PencilLine aria-hidden className="ml-auto size-4 text-muted-foreground" />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className={card}>
         <div>
-          <h2 className="font-display text-xl font-semibold text-ink">Request a change</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">For your photo, name, qualifications, registration, a new clinic or your page design, our team makes the change for you. Your about text, services and health tips you can change yourself.</p>
+          <h2 className="font-display text-xl font-semibold text-ink">Prefer us to do it?</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Tell us what to change and our team will do it for you ({priceLabel}). For your page address, quote your UID {uid}.</p>
         </div>
         <ChangeRequestForm priceLabel={priceLabel} />
         {requests.length > 0 && (
@@ -207,86 +195,62 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
 // Clinic and hospital sites owned by this email
 // ---------------------------------------------------------------------------
 
-async function SiteSections({ me, prices, waHref }: { me: CurrentAccount; prices: Parameters<typeof listRenewalPrice>[2]; waHref: string }) {
-  const areas = await Area.find({ _id: { $in: me.sites.map((s) => s.address?.areaId).filter(Boolean) } }).select({ name: 1 }).lean();
+async function SiteSections({ me, prices }: { me: CurrentAccount; prices: Parameters<typeof listRenewalPrice>[2] }) {
+  const [areas, uids] = await Promise.all([
+    Area.find({ _id: { $in: me.sites.map((s) => s.address?.areaId).filter(Boolean) } }).select({ name: 1 }).lean(),
+    Promise.all(me.sites.map((s) => ensureUid(Establishment as never, s, s.kind === "hospital" ? "hospital" : "clinic"))),
+  ]);
   const areaName = (id: unknown) => areas.find((a) => String(a._id) === String(id))?.name ?? "";
 
   return (
     <>
       {me.doctor && <h2 className="pt-4 font-display text-2xl font-semibold text-ink">{me.sites.length === 1 ? "Your clinic site" : "Your clinic and hospital sites"}</h2>}
-      {me.sites.map((s) => {
+      {me.sites.map((s, i) => {
         const product: RenewalProduct = s.kind;
         const status = displayRenewalStatus(s.renewalStatus, s.renewalDueDate);
         const live = s.status === "published" && s.citySlug && s.slug;
         const path = live ? sitePath({ kind: s.kind, citySlug: s.citySlug!, slug: s.slug! }) : null;
-        const initial: OwnerSiteForm = {
-          id: String(s._id),
-          kind: s.kind,
-          name: s.name,
-          area: areaName(s.address?.areaId),
-          address: {
-            line1: s.address?.line1 ?? "",
-            line2: s.address?.line2 ?? "",
-            pincode: s.address?.pincode ?? "",
-            landmark: s.address?.landmark ?? "",
-            parkingNote: s.address?.parkingNote ?? "",
-          },
-          mapsUrl: s.mapsUrl ?? "",
-          phones: s.contact?.phones?.length ? [...s.contact.phones] : [""],
-          whatsapp: s.contact?.whatsapp ?? "",
-          emergencyPhone: s.contact?.emergencyPhone ?? "",
-          is24x7: Boolean(s.is24x7),
-          timings: ALL_DAYS.map((day) => ({
-            day,
-            slots: (s.timings.find((t) => t.day === day)?.slots ?? []).map((x) => ({ open: x.open, close: x.close })),
-          })),
-          appointmentNote: s.appointmentNote ?? "",
-          visitingHours: s.visitingHours ?? "",
-        };
+        const area = areaName(s.address?.areaId);
         return (
           <section key={String(s._id)} className={card} aria-labelledby={`site-${s._id}`}>
-            <div className="space-y-2">
-              <h2 id={`site-${s._id}`} className="font-display text-xl font-semibold text-ink">
-                {s.name}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                {s.kind === "hospital" ? "Hospital" : "Clinic"}
-                {initial.area ? ` · ${initial.area}` : ""}
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id={`site-${s._id}`} className="font-display text-xl font-semibold text-ink">
+                  {s.name}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {s.kind === "hospital" ? "Hospital" : "Clinic"}
+                  {area ? ` · ${area}` : ""}
+                </p>
+              </div>
+              <UidBadge uid={uids[i]!} />
+            </div>
+            {path ? (
+              <p className="break-all text-body">
+                <a href={path} target="_blank" rel="noopener" className="font-semibold text-ink underline">
+                  {absUrl(path).replace(/^https?:\/\//, "")}
+                </a>
+                {s.subdomain && <span className="block text-sm text-muted-foreground">Also at {subdomainUrl(s.subdomain).replace(/^https?:\/\//, "")}</span>}
               </p>
-              {path ? (
-                <>
-                  <p className="break-all text-body">
-                    <a href={path} target="_blank" rel="noopener" className="font-semibold text-ink underline">
-                      {absUrl(path).replace(/^https?:\/\//, "")}
-                    </a>
-                    {s.subdomain && <span className="block text-sm text-muted-foreground">Also at {subdomainUrl(s.subdomain).replace(/^https?:\/\//, "")}</span>}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <a href={path} target="_blank" rel="noopener" className={btn}>
-                      <ExternalLink className="size-4" strokeWidth={1.75} /> View site
-                    </a>
-                    {status !== "lapsed" && (
-                      <a href={`${path}/card`} target="_blank" rel="noopener" className={btn}>
-                        <IdCard className="size-4" strokeWidth={1.75} /> Visiting card
-                      </a>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="text-body">This site isn&apos;t live yet. We&apos;ll send you the link as soon as it is. You can already update the details below.</p>
+            ) : (
+              <p className="text-body">This site isn&apos;t live yet. We&apos;ll send you the link as soon as it is. You can already update everything on it.</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/account/site/${s._id}`} className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-ink px-4 text-sm font-semibold text-paper hover:bg-ink-700">
+                <PencilLine className="size-4" strokeWidth={1.9} /> Update website
+              </Link>
+              {path && (
+                <a href={path} target="_blank" rel="noopener" className={btn}>
+                  <ExternalLink className="size-4" strokeWidth={1.75} /> View site
+                </a>
               )}
-              <RenewalLine due={s.renewalDueDate} status={status} price={s.renewalPrice ?? listRenewalPrice(product, Boolean(s.founding), prices)} />
+              {path && status !== "lapsed" && (
+                <a href={`${path}/card`} target="_blank" rel="noopener" className={btn}>
+                  <IdCard className="size-4" strokeWidth={1.75} /> Visiting card
+                </a>
+              )}
             </div>
-            <div className="border-t border-line pt-5">
-              <SiteAccountEditor initial={initial} />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Need another change?{" "}
-              <a href={waHref} target="_blank" rel="noopener" className="font-semibold text-ink underline">
-                Message us on WhatsApp
-              </a>
-              .
-            </p>
+            <RenewalLine due={s.renewalDueDate} status={status} price={s.renewalPrice ?? listRenewalPrice(product, Boolean(s.founding), prices)} />
           </section>
         );
       })}

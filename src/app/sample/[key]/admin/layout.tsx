@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "@/components/ui/sonner";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LogOut } from "lucide-react";
@@ -20,6 +21,7 @@ export default async function DemoAdminLayout({ children, params }: { children: 
   const base = `/sample/${key}/admin`;
   return (
     <div className="min-h-dvh bg-paper">
+      <Toaster position="top-center" />
       <div className="bg-marigold px-4 py-2 text-center text-sm font-semibold text-white">Demo dashboard — the doctor, patients and requests are fictional. Changes are not saved.</div>
       <DoctorDashboardHeader
         name={demoName(d)}

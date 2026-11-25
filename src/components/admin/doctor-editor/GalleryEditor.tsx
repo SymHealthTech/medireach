@@ -7,6 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { useUploadSigner } from "@/components/admin/form/upload-signer";
 import { uploadImage } from "@/lib/client/upload-image";
 import type { DoctorForm } from "@/lib/doctors/form";
 
@@ -92,6 +93,7 @@ export function GalleryEditor({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const ctxSign = useUploadSigner();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
@@ -113,7 +115,7 @@ export function GalleryEditor({
     const added: Item[] = [];
     try {
       for (const file of Array.from(files).slice(0, room)) {
-        const up = await uploadImage(file, "gallery");
+        const up = await uploadImage(file, "gallery", ctxSign);
         added.push({ publicId: up.publicId, url: up.url, caption: "" });
       }
     } catch (e) {

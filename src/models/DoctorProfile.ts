@@ -23,6 +23,7 @@ import {
   type TemplateKey,
 } from "@/lib/constants";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
+import { nextUid } from "@/lib/uid";
 import {
   complianceIssueSchema,
   currentYear,
@@ -81,6 +82,8 @@ export interface ClinicEntry {
 
 export interface DoctorProfileDoc {
   _id: Types.ObjectId;
+  /** Permanent website reference ("MRD-100001", lib/uid.ts). Set once, never editable. */
+  uid?: string;
   status: DoctorStatus;
   slug?: string;
   shortSlug?: string;
@@ -237,6 +240,7 @@ const clinicSchema = new Schema<ClinicEntry>({
 
 const doctorProfileSchema = new Schema<DoctorProfileDoc>(
   {
+    uid: { type: String, immutable: true, trim: true },
     status: { type: String, enum: DOCTOR_STATUSES, default: "draft" },
     slug: { type: String, lowercase: true, trim: true, match: SLUG_RE },
     shortSlug: { type: String, lowercase: true, trim: true, match: SLUG_RE },
@@ -438,7 +442,14 @@ doctorProfileSchema.pre("validate", function (next) {
   next();
 });
 
+/** A permanent UID on first save (lib/uid.ts). */
+doctorProfileSchema.pre("save", async function () {
+  // Immutable paths can only be set on new documents; older ones get theirs from backfillUids().
+  if (this.isNew && !this.uid) this.uid = await nextUid("doctor");
+});
+
 // --- Indexes ---
+doctorProfileSchema.index({ uid: 1 }, { unique: true, ...hasString("uid") });
 doctorProfileSchema.index({ citySlug: 1, slug: 1 }, { unique: true, ...hasString("slug") });
 doctorProfileSchema.index({ shortSlug: 1 }, { unique: true, ...hasString("shortSlug") });
 doctorProfileSchema.index({ subdomain: 1 }, { unique: true, ...hasString("subdomain") });

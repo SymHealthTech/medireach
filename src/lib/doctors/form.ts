@@ -63,6 +63,8 @@ export interface ClinicForm {
 
 export interface DoctorForm {
   id?: string;
+  /** Permanent website UID (read-only, lib/uid.ts). */
+  uid?: string;
   status: DoctorStatus;
   updatedAt?: string;
   publishedAt?: string;
@@ -389,7 +391,11 @@ export const optOid = z
   .transform((s) => s || undefined);
 export const image = z.object({
   publicId: z.string().min(1).max(300),
-  url: z.string().url().max(1000).refine((u) => u.startsWith("https://res.cloudinary.com/"), "Images must be uploaded."),
+  // Uploaded to Cloudinary, or one of our bundled demo photos (public/demo/…).
+  url: z
+    .string()
+    .max(1000)
+    .refine((u) => u.startsWith("https://res.cloudinary.com/") || /^\/demo\/[\w/.-]+\.(jpe?g|png|webp)$/.test(u), "Images must be uploaded."),
   alt: t(200).optional(),
 });
 /** "Beyond medicine" story: a title is needed once there's any text. */

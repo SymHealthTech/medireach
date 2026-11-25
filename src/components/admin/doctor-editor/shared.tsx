@@ -23,6 +23,8 @@ export interface StepProps {
   hints?: DoctorFormHints;
   /** Server-rendered visiting cards per style code (the Design step's picker). */
   cardFaces?: Record<string, CardFace>;
+  /** "owner": the doctor's own dashboard (hides team-only controls such as the login email). */
+  audience?: "admin" | "owner";
 }
 
 /** A titled group inside a step. */

@@ -13,6 +13,7 @@ import { isObjectId, oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchPa
 import { RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
 import { DOCTOR_STATUSES, ESTABLISHMENT_KINDS, RENEWAL_STATUSES } from "@/lib/constants";
 import { getEstablishmentEditorOptions } from "@/lib/establishments/options";
+import { backfillUids } from "@/lib/uid";
 import { timeAgo } from "@/lib/format";
 import { displayRenewalStatus } from "@/lib/renewals";
 import { absUrl, paths, subdomainUrl } from "@/lib/site";
@@ -28,7 +29,7 @@ const SORTS = { updated: { updatedAt: -1 }, name: { name: 1 }, created: { create
 export default async function EstablishmentsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const admin = await requireAdminPage(rolesFor("/admin/establishments"));
   const sp = await searchParams;
-  const options = await getEstablishmentEditorOptions();
+  const [options] = await Promise.all([getEstablishmentEditorOptions(), backfillUids()]);
 
   // Clinics and hospitals are separate lists (Clinics / Hospitals in the menu).
   const kind = oneOf(param(sp, "kind"), ESTABLISHMENT_KINDS);
@@ -45,7 +46,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   const area = param(sp, "area");
   if (isObjectId(area)) filter["address.areaId"] = area;
   const re = searchRegex(param(sp, "q"));
-  if (re) filter.$or = [{ name: re }, { slug: re }, { "contact.phones": re }, { "contactPerson.name": re }];
+  if (re) filter.$or = [{ uid: re }, { name: re }, { slug: re }, { "contact.phones": re }, { "contactPerson.name": re }];
   const renewal = oneOf(param(sp, "renewal"), RENEWAL_STATUSES);
   const sortKey = oneOf(param(sp, "sort"), Object.keys(SORTS) as (keyof typeof SORTS)[]) ?? "updated";
   const page = pageOf(sp);
@@ -53,7 +54,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   // Renewal status is worked out live (see Payments & renewals), so filter on it after the query.
   const docs = await Establishment.find(filter)
     .sort(SORTS[sortKey])
-    .select({ name: 1, kind: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, categoryId: 1, themeKey: 1, logo: 1, address: 1, founding: 1, foundingNumber: 1, renewalDueDate: 1, renewalStatus: 1, doctors: 1, updatedAt: 1, "compliance.issues": 1 })
+    .select({ uid: 1, name: 1, kind: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, categoryId: 1, themeKey: 1, logo: 1, address: 1, founding: 1, foundingNumber: 1, renewalDueDate: 1, renewalStatus: 1, doctors: 1, updatedAt: 1, "compliance.issues": 1 })
     .limit(5000)
     .lean();
   const now = new Date();
@@ -68,6 +69,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
     const live = d.status === "published" && d.slug && d.citySlug;
     return {
       id: String(d._id),
+      uid: d.uid,
       name: d.name,
       kind: d.kind,
       status: d.status,
@@ -96,7 +98,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
       <p className="text-muted-foreground">{kind === "hospital" ? "Small hospital websites (up to 10 beds) and their visiting cards." : "Clinic websites and their visiting cards."}</p>
 
       <ListToolbar
-        placeholder="Search name, phone, contact person…"
+        placeholder="Search name, UID, phone, contact person…"
         filters={[
           { name: "category", label: "Category", options: options.categories.filter((c) => c.kind === kind).map((c) => ({ value: c.id, label: c.name })) },
           { name: "area", label: "Area", options: options.areas.filter((a) => a.cityId === pune).map((a) => ({ value: a.id, label: a.name })) },
@@ -133,6 +135,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
                 <span className="min-w-0 flex-1">
                   <span className="flex flex-wrap items-center gap-2 font-semibold text-ink">
                     <span className="truncate">{r.name}</span>
+                    {r.uid && <span className="shrink-0 rounded bg-mist px-1.5 font-mono text-[11px] font-semibold text-ink">{r.uid}</span>}
                     {r.founding !== null && <FoundingBadge number={r.founding || undefined} />}
                   </span>
                   <span className="block truncate text-xs text-muted-foreground">

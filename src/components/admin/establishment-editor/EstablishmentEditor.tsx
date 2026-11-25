@@ -113,6 +113,7 @@ export function EstablishmentEditor({
           ...prev,
           id: server.id,
           status: server.status,
+          uid: server.uid,
           updatedAt: server.updatedAt,
           publishedAt: server.publishedAt,
           citySlug: server.citySlug,
@@ -266,6 +267,11 @@ export function EstablishmentEditor({
           <span aria-hidden className="size-4 shrink-0 rounded-full border border-black/10" style={{ background: theme.palette.primary }} />
           <h2 className="min-w-0 truncate font-display text-2xl font-semibold text-ink">{form.name.trim() || `New ${kindLabel}`}</h2>
           <StatusBadge status={form.status} />
+          {form.uid && (
+            <span title="Permanent website UID" className="rounded-md bg-mist px-2 py-0.5 font-mono text-xs font-semibold text-ink">
+              UID {form.uid}
+            </span>
+          )}
           <Pill tone="muted">{form.kind === "hospital" ? "Hospital" : "Clinic"}</Pill>
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
             {save.status === "saving" && (

@@ -21,11 +21,12 @@ export interface LoginEmail {
   text: string;
 }
 
-export function loginEmail({ name, url, welcome = false }: { name: string; url: string; welcome?: boolean }): LoginEmail {
-  const subject = welcome ? "Manage your MediReach page" : "Your MediReach login link";
+export function loginEmail({ name, url, welcome = false, uid }: { name: string; url: string; welcome?: boolean; uid?: string }): LoginEmail {
+  const subject = welcome ? "Manage your MediReach website" : "Your MediReach login link";
   const intro = welcome
-    ? "Your MediReach site is set up for self-editing. Log in to update your timings, phone numbers and address whenever they change."
+    ? "Your website dashboard is ready. Log in to update everything on your website yourself: details, photos, services, clinics, timings and more, whenever you like."
     : "Here is your link to log in to MediReach.";
+  const uidNote = welcome && uid ? `Your website UID is ${uid}. Please save it: quote it whenever you contact us, and we can find your website at once.` : "";
   const n = esc(name);
   const u = esc(url);
 
@@ -42,6 +43,7 @@ export function loginEmail({ name, url, welcome = false }: { name: string; url: 
 <tr><td style="padding:24px 32px 0 32px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:16px;line-height:24px;color:#1F2933;">
 <p style="margin:0 0 12px 0;">Hello ${n},</p>
 <p style="margin:0 0 24px 0;">${esc(intro)}</p>
+${uidNote ? `<p style="margin:0 0 24px 0;padding:12px 16px;background:#ECF6F5;border-radius:10px;">Your website UID: <strong style="font-family:monospace;font-size:17px;color:${INK};">${esc(uid!)}</strong><br><span style="font-size:14px;color:${MUTED};">Please save it. Quote it whenever you contact us, and we can find your website at once.</span></p>` : ""}
 </td></tr>
 <tr><td align="center" style="padding:0 32px;">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr>
@@ -66,6 +68,7 @@ Didn't request this? Ignore this email. Nobody can log in without this link.<br>
     `Hello ${name},`,
     "",
     intro,
+    ...(uidNote ? ["", uidNote] : []),
     "",
     "Log in to MediReach:",
     url,

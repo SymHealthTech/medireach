@@ -6,6 +6,7 @@ import { Camera, Loader2, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useUploadSigner } from "@/components/admin/form/upload-signer";
 import { uploadImage, type UploadSigner } from "@/lib/client/upload-image";
 import type { ImageValue } from "@/lib/doctors/form";
 import type { UploadPurpose } from "@/lib/integrations/cloudinary";
@@ -54,6 +55,7 @@ export function PhotoCropUpload({
   const [zoom, setZoom] = useState(1);
   const [area, setArea] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
+  const ctxSign = useUploadSigner();
   const [small, setSmall] = useState(false);
 
   const onCropComplete = useCallback((_: Area, px: Area) => setArea(px), []);
@@ -75,7 +77,7 @@ export function PhotoCropUpload({
     setBusy(true);
     try {
       const blob = await cropToBlob(src, area);
-      const up = await uploadImage(blob, purpose);
+      const up = await uploadImage(blob, purpose, ctxSign);
       onChange({ publicId: up.publicId, url: up.url });
       setSrc(null);
       toast.success("Photo uploaded");
@@ -192,11 +194,12 @@ export function SimpleImageUpload({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const ctxSign = useUploadSigner();
   async function pick(file: File | undefined) {
     if (!file) return;
     setBusy(true);
     try {
-      const up = await uploadImage(file, purpose, sign);
+      const up = await uploadImage(file, purpose, sign ?? ctxSign);
       onChange({ publicId: up.publicId, url: up.url });
     } catch (e) {
       onError(e instanceof Error ? e.message : "Upload failed.");

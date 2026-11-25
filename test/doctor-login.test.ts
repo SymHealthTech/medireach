@@ -25,8 +25,6 @@ import {
   loginTokenValid,
   sendLoginLink,
 } from "@/lib/auth/login-link";
-import { accountSchema, accountTextFields } from "@/lib/doctors/account";
-import { scanFields } from "@/lib/compliance/scan";
 import { DoctorProfile } from "@/models/DoctorProfile";
 
 // NextAuth's own token hash (not in its exports map), to prove our stored tokens are ones it accepts.
@@ -65,7 +63,7 @@ describe("login email", () => {
     expect(m.html).toContain("Didn't request this? Ignore this email.");
     expect(m.text).toContain("https://medireach.co.in/login/verify?token=abc&email=a%40b.c");
     expect(m.text).toContain("Didn't request this? Ignore this email.");
-    expect(loginEmail({ name: "x", url: "u", welcome: true }).subject).toBe("Manage your MediReach page");
+    expect(loginEmail({ name: "x", url: "u", welcome: true }).subject).toBe("Manage your MediReach website");
   });
 });
 
@@ -191,71 +189,5 @@ describe("login codes (email OTP)", () => {
     const adapter = MongoDBAdapter(mongoose.connection.getClient() as unknown as MongoClient, { databaseName: "medireach_login_test" });
     expect((await adapter.useVerificationToken!({ identifier: "asha@example.com", token: hashLoginToken(raw) }))?.identifier).toBe("asha@example.com");
     expect(await adapter.useVerificationToken!({ identifier: "asha@example.com", token: hashLoginToken(raw) })).toBeNull();
-  });
-});
-
-describe("account (self-edit) schema", () => {
-  const clinic = {
-    key: "6650c0ffee0000000000000a",
-    addressLine1: "12, Lane 3",
-    addressLine2: "",
-    pincode: "411038",
-    mapsUrl: "",
-    phone: "020 2545 1234",
-    timings: [{ day: 1, slots: [{ open: "10:00", close: "13:00" }] }],
-    appointmentNote: "Walk-ins welcome",
-    fee: 500,
-    showFee: true,
-  };
-
-  it("keeps only the fields a doctor may edit", () => {
-    const parsed = accountSchema.parse({
-      mobile: "+91 98765 43210",
-      whatsapp: "",
-      clinics: [{ ...clinic, name: "Renamed", cityId: "6650c0ffee0000000000000b", areaId: "6650c0ffee0000000000000c" }],
-      firstName: "Hacker",
-      status: "published",
-    });
-    expect(parsed).not.toHaveProperty("firstName");
-    expect(parsed).not.toHaveProperty("status");
-    expect(parsed.clinics[0]).not.toHaveProperty("name");
-    expect(parsed.clinics[0]).not.toHaveProperty("cityId");
-    expect(parsed.mobile).toBe("9876543210");
-    expect(parsed.whatsapp).toBeUndefined();
-  });
-
-  it("rejects bad values with field paths", () => {
-    const r = accountSchema.safeParse({ mobile: "123", whatsapp: "", clinics: [{ ...clinic, pincode: "41103", timings: [{ day: 1, slots: [{ open: "10:00", close: "10:00" }] }] }] });
-    expect(r.success).toBe(false);
-    const paths = r.success ? [] : r.error.issues.map((i) => i.path.join("."));
-    expect(paths).toEqual(expect.arrayContaining(["mobile", "clinics.0.pincode", "clinics.0.timings.0.slots.0"]));
-  });
-
-  it("accepts the Beyond medicine photo and story, and scans their text", () => {
-    const photo = { publicId: "p", url: "https://res.cloudinary.com/x/image/upload/p.jpg", caption: "100% fit at 40" };
-    const input = accountSchema.parse({
-      mobile: "",
-      whatsapp: "",
-      clinics: [clinic],
-      interestsStory: { title: "My first marathon", body: "Training for 100% of the year.\n\nThen race day." },
-      interestsPhoto: photo,
-    });
-    expect(input.interestsStory?.title).toBe("My first marathon");
-    const issues = scanFields(accountTextFields(input)).map((i) => i.field);
-    expect(issues).toEqual(expect.arrayContaining(["interestsStory.body", "interestsPhoto.caption"]));
-    // A story needs a title once it has text.
-    const untitled = accountSchema.safeParse({ mobile: "", whatsapp: "", clinics: [clinic], interestsStory: { title: "", body: "Some text" } });
-    expect(untitled.success ? [] : untitled.error.issues.map((i) => i.path.join("."))).toContain("interestsStory.title");
-    // Leaving the fields out keeps what's saved; null removes the photo; outside images are refused.
-    expect(accountSchema.parse({ mobile: "", whatsapp: "", clinics: [clinic] }).interestsStory).toBeUndefined();
-    expect(accountSchema.parse({ mobile: "", whatsapp: "", clinics: [clinic], interestsPhoto: null }).interestsPhoto).toBeNull();
-    const foreign = accountSchema.safeParse({ mobile: "", whatsapp: "", clinics: [clinic], interestsPhoto: { ...photo, url: "https://evil.example/p.jpg" } });
-    expect(foreign.success).toBe(false);
-  });
-
-  it("scans the appointment note and address for NMC phrases", () => {
-    const input = accountSchema.parse({ mobile: "", whatsapp: "", clinics: [{ ...clinic, appointmentNote: "Best clinic in Kothrud", addressLine2: "Near guaranteed cure centre" }] });
-    const issues = scanFields(accountTextFields(input));
-    expect(issues.map((i) => i.field)).toEqual(expect.arrayContaining(["clinics.0.appointmentNote", "clinics.0.addressLine2"]));
   });
 });

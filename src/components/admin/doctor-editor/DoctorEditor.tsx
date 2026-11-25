@@ -124,6 +124,7 @@ export function DoctorEditor({
           ...prev,
           id: server.id,
           status: server.status,
+          uid: server.uid,
           updatedAt: server.updatedAt,
           publishedAt: server.publishedAt,
           citySlug: server.citySlug,
@@ -270,6 +271,11 @@ export function DoctorEditor({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h2 className="min-w-0 truncate font-display text-2xl font-semibold text-ink">{name && name !== "Dr." ? name : "New doctor"}</h2>
           <StatusBadge status={form.status} />
+          {form.uid && (
+            <span title="Permanent website UID" className="rounded-md bg-mist px-2 py-0.5 font-mono text-xs font-semibold text-ink">
+              UID {form.uid}
+            </span>
+          )}
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
             {save.status === "saving" && (
               <>

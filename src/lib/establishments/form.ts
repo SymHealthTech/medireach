@@ -36,6 +36,8 @@ export interface NamedValue {
 
 export interface EstablishmentForm {
   id?: string;
+  /** Permanent website UID (read-only, lib/uid.ts). */
+  uid?: string;
   status: DoctorStatus;
   updatedAt?: string;
   publishedAt?: string;

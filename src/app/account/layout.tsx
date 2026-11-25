@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "@/components/ui/sonner";
 import Link from "next/link";
 import { AccountNav } from "@/components/account/AccountNav";
 import { LogoutButton } from "@/components/account/LogoutButton";
@@ -27,6 +28,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
     const specialty = doctor.primarySpecialtyId ? await Specialty.findById(doctor.primarySpecialtyId).select({ name: 1 }).lean() : null;
     return (
       <div className="min-h-dvh bg-paper">
+        <Toaster position="top-center" />
         <DoctorDashboardHeader name={me!.name} subtitle={[specialty?.name, "Website dashboard"].filter(Boolean).join(" · ")} actions={<LogoutButton />} />
         <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10 lg:pt-8">
           <AccountNav newCount={newCount} pageUrl={live ? paths.doctor(doctor.citySlug!, doctor.slug!) : undefined} />
@@ -38,6 +40,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
 
   return (
     <div className="min-h-dvh bg-paper">
+      <Toaster position="top-center" />
       <header className="border-b border-line bg-paper">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-4 sm:px-6">
           <Link href="/" aria-label="MediReach home">

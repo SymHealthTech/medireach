@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useUploadSigner } from "@/components/admin/form/upload-signer";
 import { uploadImage } from "@/lib/client/upload-image";
 import type { ImageValue } from "@/lib/doctors/form";
 import type { UploadPurpose } from "@/lib/integrations/cloudinary";
@@ -24,12 +25,13 @@ export function ImageUpload({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const ctxSign = useUploadSigner();
 
   async function pick(file: File | undefined) {
     if (!file) return;
     setBusy(true);
     try {
-      const up = await uploadImage(file, purpose);
+      const up = await uploadImage(file, purpose, ctxSign);
       onChange({ publicId: up.publicId, url: up.url });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed.");

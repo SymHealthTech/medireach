@@ -28,6 +28,7 @@ import {
   type GalleryItem,
   type ImageRef,
 } from "@/models/shared";
+import { nextUid } from "@/lib/uid";
 import { THEME_KEYS, type ThemeKey } from "@/themes/specialty";
 
 /**
@@ -51,6 +52,8 @@ export interface NamedItem {
 
 export interface EstablishmentDoc {
   _id: Types.ObjectId;
+  /** Permanent website reference ("MRC-100001" / "MRH-100001", lib/uid.ts). Set once, never editable. */
+  uid?: string;
   kind: EstablishmentKind;
   status: DoctorStatus;
   name: string;
@@ -161,6 +164,7 @@ const namedItem = (extra: Record<string, unknown> = {}) =>
 
 const establishmentSchema = new Schema<EstablishmentDoc>(
   {
+    uid: { type: String, immutable: true, trim: true },
     kind: { type: String, enum: ESTABLISHMENT_KINDS, required: true },
     status: { type: String, enum: ESTABLISHMENT_STATUSES, default: "draft" },
     name: { type: String, required: true, trim: true },
@@ -327,6 +331,13 @@ establishmentSchema.pre("validate", function (next) {
 });
 
 // --- Indexes ---
+/** A permanent UID on first save (lib/uid.ts): MRC- for clinics, MRH- for hospitals. */
+establishmentSchema.pre("save", async function () {
+  // Immutable paths can only be set on new documents; older ones get theirs from backfillUids().
+  if (this.isNew && !this.uid) this.uid = await nextUid(this.kind === "hospital" ? "hospital" : "clinic");
+});
+
+establishmentSchema.index({ uid: 1 }, { unique: true, ...hasString("uid") });
 establishmentSchema.index({ citySlug: 1, slug: 1 }, { unique: true, ...hasString("slug") });
 establishmentSchema.index({ shortSlug: 1 }, { unique: true, ...hasString("shortSlug") });
 establishmentSchema.index({ subdomain: 1 }, { unique: true, ...hasString("subdomain") });

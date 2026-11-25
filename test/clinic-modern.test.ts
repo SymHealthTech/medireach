@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DEMO_DOCTORS, DEMO_PUBLIC_DOCTORS } from "@/fixtures/demo-doctors";
-import { DEMO_LOGIN, demoInquiries, demoProfile } from "@/fixtures/demo-doctors/dashboard";
+import { DEMO_LOGIN, demoDoctorForm, demoEditorOptions, demoInquiries } from "@/fixtures/demo-doctors/dashboard";
 import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { HEALTH_TIPS } from "@/content/health-tips";
 import { describeService, SERVICE_DEFAULTS } from "@/content/service-descriptions";
 import { healthTipCandidates, pickHealthTips } from "@/lib/health-tips";
 import { scanFields } from "@/lib/compliance/scan";
-import { aboutToHtml, healthTipsSchema, htmlToAbout, profileSchema } from "@/lib/doctors/self-profile";
+import { healthTipsSchema } from "@/lib/doctors/self-profile";
 import { inquirySchema } from "@/lib/inquiries";
 import { cardProps } from "@/lib/cards/render";
 import { SAMPLE_SUBDOMAINS, RESERVED_SUBDOMAINS } from "@/config/reserved";
@@ -56,7 +56,13 @@ describe("demo doctors (fixtures/demo-doctors)", () => {
     const rows = demoInquiries(d, Date.parse("2026-11-25T10:00:00Z"));
     expect(rows).toHaveLength(d.inquiries.length);
     expect(rows[0]!.clinicName).toBe("Deshpande Family Clinic");
-    expect(demoProfile(d).about).toContain("- Long-term care for diabetes");
+    // The demo's full editor: every id in the form exists in the demo lists.
+    const form = demoDoctorForm(d);
+    const o = demoEditorOptions();
+    expect(o.specialties.some((s) => s.id === form.primarySpecialtyId)).toBe(true);
+    expect(form.qualifications.every((q) => o.degrees.some((x) => x.id === q.degreeId))).toBe(true);
+    expect(o.councils.some((c) => c.id === form.registration.councilId)).toBe(true);
+    expect(form.clinics.every((c) => o.areas.some((a) => a.id === c.areaId))).toBe(true);
     expect(DEMO_LOGIN.email).toMatch(/@demo\./);
   });
 });
@@ -154,31 +160,6 @@ describe("Clinic Modern visiting card", () => {
       expect(out).toContain("drarnavdeshpande.");
       expect(out).toContain("General Physician");
     }
-  });
-});
-
-describe("doctor self-edit profile", () => {
-  it("turns about text into safe HTML and back", () => {
-    const text = "First paragraph with <b>tags</b>.\n\n- One\n- Two & three\n\nLast line.";
-    const html = aboutToHtml(text);
-    expect(html).toBe("<p>First paragraph with &lt;b&gt;tags&lt;/b&gt;.</p><ul><li>One</li><li>Two &amp; three</li></ul><p>Last line.</p>");
-    expect(htmlToAbout(html)).toBe(text);
-  });
-
-  it("splits lists and checks links", () => {
-    const parsed = profileSchema.parse({
-      shortBio: "GP",
-      about: "",
-      services: [{ name: "Diabetes care", description: "" }],
-      conditions: "Fever\nDiabetes, Thyroid disorders (hypo, hyper)",
-      languages: "English, Hindi",
-      interests: "",
-      email: "",
-      links: { googleBusiness: "", instagram: "", facebook: "", linkedin: "", youtube: "", website: "" },
-    });
-    expect(parsed.conditions).toEqual(["Fever", "Diabetes", "Thyroid disorders (hypo, hyper)"]);
-    expect(parsed.languages).toEqual(["English", "Hindi"]);
-    expect(profileSchema.safeParse({ ...parsed, conditions: "", languages: "", interests: "", links: { ...parsed.links, instagram: "instagram.com/x" } }).success).toBe(false);
   });
 });
 

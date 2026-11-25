@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { ExternalLink, IdCard } from "lucide-react";
 import Link from "next/link";
 import { DoctorOverview } from "@/components/account/DoctorOverview";
+import { UidBadge } from "@/components/account/UidBadge";
+import { demoDoctorForm } from "@/fixtures/demo-doctors/dashboard";
 import { demoDoctor, demoInquiries, demoName } from "@/fixtures/demo-doctors/dashboard";
 import { subdomainUrl } from "@/lib/site";
 
@@ -29,7 +31,10 @@ export default async function DemoOverviewPage({ params }: { params: Promise<{ k
         latest={rows.slice(0, 4)}
       />
       <section className="space-y-4 rounded-xl border border-line bg-surface p-4 shadow-soft sm:p-6">
-        <h2 className="font-display text-xl font-semibold text-ink">Your website</h2>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold text-ink">Your website</h2>
+          <UidBadge uid={demoDoctorForm(d).uid!} />
+        </div>
         <p className="break-all text-body">
           <a href={`/sample/${key}`} target="_blank" rel="noopener" className="font-semibold text-ink underline">
             {subdomainUrl(d.subdomain).replace(/^https?:\/\//, "")}

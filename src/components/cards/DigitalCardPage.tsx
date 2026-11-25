@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Download, FileText, ImageIcon, UserPlus } from "lucide-react";
+import { ArrowLeft, Download, FileText, ImageIcon } from "lucide-react";
 import { CardShare, PatientShare } from "@/components/cards/CardShare";
 import { CardView } from "@/components/cards/CardView";
 import { DigitalCard } from "@/components/cards/DigitalCard";
@@ -16,7 +16,7 @@ import type { PublicDoctor } from "@/templates/types";
  *    and one Share button. This is all patients ever see.
  *  - Doctor view (doctor's account after login, sample doctor preview): the
  *    card plus the toolkit to send it: link, WhatsApp image, print-ready PDF
- *    and PNG, vCard, and previews of the downloads.
+ *    and PNG files, and previews of the downloads.
  */
 
 export interface CardViewToggleProps {
@@ -113,9 +113,9 @@ export function DoctorCardView({
   const file = (name: string) => `${filesBase}/${name}?${v}download=1`;
   const downloads = [
     { href: file("phone.png"), icon: ImageIcon, title: "Card image", meta: "PNG · 1080 × 1920", note: "For WhatsApp status and sharing" },
+    { href: file("phone.pdf"), icon: FileText, title: "Full card PDF", meta: "PDF · whole card", note: "The full card image as a PDF, to save or share" },
     { href: file("print.pdf"), icon: FileText, title: "Print-ready PDF", meta: "PDF · 85 × 55 mm", note: "Send to any printer" },
     { href: file("print.png"), icon: Download, title: "Print card image", meta: "PNG · 300 dpi", note: "For designers and printers" },
-    { href: d.vcfUrl, icon: UserPlus, title: "Contact file", meta: "vCard (.vcf)", note: "Adds you to a patient's phone contacts" },
   ];
 
   return (

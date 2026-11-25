@@ -11,6 +11,7 @@
  */
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db";
+import { backfillUids } from "@/lib/uid";
 import { DEFAULT_DB_NAME, env } from "@/lib/env";
 import { seedDemoDoctors } from "@/lib/seed/demo";
 
@@ -25,6 +26,7 @@ async function main() {
   }
   await connectToDatabase();
   const results = await seedDemoDoctors({ ownerEmail: arg("owner"), resetInquiries: process.argv.includes("--reset-inquiries") });
+  await backfillUids();
   console.log(`Published ${results.length} demo doctor(s) into "${db}":`);
   for (const r of results) console.log(`  ${r.url}  (${r.inquiries} appointment requests)`);
   if (arg("owner")) console.log(`Login email for the first demo doctor: ${arg("owner")}`);

@@ -19,7 +19,7 @@ const LINKS: { key: keyof StepProps["form"]["links"]; label: string; placeholder
   { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/…" },
 ];
 
-export function ContactStep({ form: f, set, err, readOnly, doctorId }: StepProps) {
+export function ContactStep({ form: f, set, err, readOnly, doctorId, audience }: StepProps) {
   const sameWhatsapp = !f.whatsapp || f.whatsapp === f.mobile;
   const [selfEdit, setSelfEdit] = useState(Boolean(f.ownerEmail));
   const [sending, startSending] = useTransition();
@@ -64,7 +64,8 @@ export function ContactStep({ form: f, set, err, readOnly, doctorId }: StepProps
         </div>
       </Group>
 
-      <Group title="Doctor login" description="Lets the doctor sign in with an emailed link to update timings, phone, address and fees.">
+      {audience !== "owner" && (
+        <Group title="Doctor login" description="Lets the doctor sign in with an emailed code and update everything on their website.">
         <SwitchField
           label="Enable self-edit login"
           description="Needs the doctor's email. They log in at medireach.co.in/login with a link sent to that email; no password or SMS."
@@ -88,7 +89,8 @@ export function ContactStep({ form: f, set, err, readOnly, doctorId }: StepProps
             <p className="text-xs text-muted-foreground">Sends a one-time login link to the saved login email (valid 24 hours).</p>
           </div>
         )}
-      </Group>
+        </Group>
+      )}
     </div>
   );
 }

@@ -17,4 +17,6 @@ export interface EStepProps {
   hints?: SiteFormHints;
   /** Server-rendered sample visiting cards per style code (the Design step's picker). */
   cardFaces?: Record<string, CardFace>;
+  /** "owner": the owner's own dashboard (hides team-only controls). */
+  audience?: "admin" | "owner";
 }

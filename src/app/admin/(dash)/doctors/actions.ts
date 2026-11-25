@@ -21,6 +21,7 @@ import { revalidateDoctorPages } from "@/lib/public/revalidate";
 import { getSettings } from "@/lib/settings";
 import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { DoctorProfile } from "@/models/DoctorProfile";
+import { ensureUid } from "@/lib/uid";
 import { Lead } from "@/models/Lead";
 import { syncEstablishmentDoctors } from "@/lib/establishments/links";
 
@@ -227,12 +228,12 @@ export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, a
  * saved login email, so the toggle and email must be saved first.
  */
 export const sendDoctorLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: doctorId }, admin) => {
-  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1 }).lean();
+  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1 }).lean();
   if (!doc) throw new ActionError("Doctor not found.");
   if (!doc.ownerEmail) throw new ActionError("Turn on self-edit login and save the doctor's email first.");
   const limit = await hitRateLimit(`login-link:admin:${doctorId}`, 5, 60 * 60_000);
   if (!limit.allowed) throw new ActionError("Several login emails were sent in the last hour. Please wait before sending another.");
-  const sent = await sendLoginLink(doc.ownerEmail, { welcome: true });
+  const sent = await sendLoginLink(doc.ownerEmail, { welcome: true, uid: await ensureUid(DoctorProfile as never, doc, "doctor") });
   if (!sent) throw new ActionError("The email couldn't be sent. Check the email settings (RESEND_API_KEY) and try again.");
   await audit(auditCtx(admin), "doctor.send_login_email", { entity: "DoctorProfile", entityId: doctorId, diff: { to: doc.ownerEmail } });
   return { to: doc.ownerEmail };
