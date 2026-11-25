@@ -99,6 +99,8 @@ export const RESERVED_SUBDOMAINS = [
   "medireach",
   // Sample doctor addresses (see SAMPLE_SUBDOMAINS): never available to real doctors.
   "draditisample",
+  // Demo doctors (fixtures/demo-doctors).
+  "drarnavdeshpande",
 ] as const;
 
 /**
@@ -109,6 +111,7 @@ export const RESERVED_SUBDOMAINS = [
  */
 export const SAMPLE_SUBDOMAINS: Record<string, string> = {
   draditisample: "gp",
+  drarnavdeshpande: "arnav-deshpande",
 };
 
 /** Prefix that marks a top-level doctor short slug (`/dr-amit-shah`). */

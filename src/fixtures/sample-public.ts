@@ -3,6 +3,7 @@ import { doctorShortSlugBase, doctorSlug } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
 import { SAMPLE_DOCTORS, type SampleDoctorInput } from "./sample-doctors";
 import { SAMPLE_GALLERY, SAMPLE_INTEREST_PHOTOS } from "./sample-gallery";
+import { DEMO_PUBLIC_DOCTORS } from "./demo-doctors";
 
 /**
  * FICTIONAL sample doctors as ready-to-render PublicDoctor objects (no
@@ -150,7 +151,12 @@ function toPublic(s: SampleDoctorInput): PublicDoctor {
   };
 }
 
-export const SAMPLE_PUBLIC_DOCTORS: Record<SampleDoctorInput["key"], PublicDoctor> = {
+/** Every built-in example doctor by /sample/{key}: the two samples plus the demo doctors (fixtures/demo-doctors). */
+export const SAMPLE_PUBLIC_DOCTORS: Record<SampleDoctorInput["key"], PublicDoctor> & Record<string, PublicDoctor | undefined> = {
   gp: toPublic(SAMPLE_DOCTORS[0]!),
   consultant: toPublic(SAMPLE_DOCTORS[1]!),
+  ...DEMO_PUBLIC_DOCTORS,
 };
+
+/** Keys for generateStaticParams on /sample/[key] routes. */
+export const SAMPLE_KEYS = Object.keys(SAMPLE_PUBLIC_DOCTORS);

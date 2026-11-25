@@ -79,6 +79,22 @@ export interface ClinicEntry {
   establishmentId?: Types.ObjectId;
 }
 
+/** A health article the doctor writes from their account (designs with a blog show the published ones). */
+export interface BlogPostEntry {
+  _id: Types.ObjectId;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  /** Plain text; blank lines split paragraphs. */
+  body: string;
+  /** Cloudinary upload (publicId) or a bundled demo image (url only). */
+  cover?: { publicId?: string; url: string; alt?: string };
+  tags: string[];
+  status: "draft" | "published";
+  publishedAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface DoctorProfileDoc {
   _id: Types.ObjectId;
   status: DoctorStatus;
@@ -153,6 +169,8 @@ export interface DoctorProfileDoc {
   /** A personal story for "Beyond medicine" (achievements, hobbies). Plain text; blank lines split paragraphs. */
   interestsStory?: { title: string; body?: string };
   gallery: GalleryItem[];
+  /** Health articles (newest first on the page). */
+  blogPosts: BlogPostEntry[];
 
   // Templates
   portfolioTemplateId: TemplateKey;
@@ -362,6 +380,30 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
       default: undefined,
     },
     gallery: { type: [galleryItemSchema], default: [] },
+    blogPosts: {
+      type: [
+        new Schema<BlogPostEntry>(
+          {
+            title: { type: String, required: true, trim: true, maxlength: 140 },
+            slug: { type: String, required: true, lowercase: true, trim: true, match: SLUG_RE },
+            excerpt: { type: String, trim: true, maxlength: 300 },
+            body: { type: String, required: true, maxlength: 12000 },
+            cover: {
+              type: new Schema(
+                { publicId: { type: String }, url: { type: String, required: true }, alt: { type: String, trim: true } },
+                { _id: false },
+              ),
+              default: undefined,
+            },
+            tags: { type: [String], default: [] },
+            status: { type: String, enum: ["draft", "published"], default: "draft" },
+            publishedAt: { type: Date },
+          },
+          { timestamps: { createdAt: false, updatedAt: true } },
+        ),
+      ],
+      default: [],
+    },
 
     portfolioTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
     cardTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },

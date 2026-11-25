@@ -332,3 +332,74 @@
   .mr-ring { animation: none !important; opacity: 0; }
   .mr-dot { animation: none !important; opacity: 0.6; }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Portfolio design 2 "Clinic Modern" (templates/portfolio/t2).
+   A doctor's own site, so it has its own medical palette: deep navy, clinical
+   blue, teal for actions, pale sky and mint washes. Scoped by the `cm-` prefix.
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-cm-navy: #0b2545;
+  --color-cm-navy-2: #13315c;
+  --color-cm-blue: #1f6fd1;
+  --color-cm-blue-soft: #e8f1fc;
+  --color-cm-teal: #0d9488;
+  --color-cm-teal-2: #0f766e;
+  --color-cm-mint: #e7f6f3;
+  --color-cm-sky: #f3f8fd;
+  --color-cm-text: #1c2a3a;
+  --color-cm-muted: #5a6b80;
+  --color-cm-line: #dfe7f1;
+  --color-cm-gold: #f2b544;
+  --shadow-cm: 0 1px 2px rgb(11 37 69 / 0.05), 0 12px 32px -8px rgb(11 37 69 / 0.14);
+  --shadow-cm-lg: 0 2px 6px rgb(11 37 69 / 0.06), 0 30px 60px -20px rgb(11 37 69 / 0.35);
+}
+
+/* Hero background carousel: cross-fade with a slow Ken Burns zoom. */
+@keyframes cm-kenburns { from { transform: scale(1.02); } to { transform: scale(1.14); } }
+.cm-slide { opacity: 0; transition: opacity 1400ms ease-in-out; }
+.cm-slide[data-active="true"] { opacity: 1; }
+.cm-slide[data-active="true"] img { animation: cm-kenburns 9s ease-out both; }
+@keyframes cm-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cm-progress { transform-origin: left; animation: cm-progress var(--cm-interval, 6s) linear both; }
+
+/* Reveal on scroll: only armed once JS runs (no-JS visitors see everything). */
+.cm-armed .cm-reveal { opacity: 0; transform: translateY(28px); transition: opacity 800ms cubic-bezier(.2,.7,.2,1), transform 800ms cubic-bezier(.2,.7,.2,1); transition-delay: var(--cm-delay, 0ms); }
+.cm-armed .cm-reveal.cm-left { transform: translateX(-36px); }
+.cm-armed .cm-reveal.cm-right { transform: translateX(36px); }
+.cm-armed .cm-reveal.cm-zoom { transform: scale(.94); }
+.cm-armed .cm-reveal[data-shown] { opacity: 1; transform: none; }
+
+/* Hero entrance. */
+@keyframes cm-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.cm-rise { animation: cm-rise 900ms cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--cm-delay, 0ms); }
+
+/* Floating badges near the portrait. */
+@keyframes cm-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.cm-float { animation: cm-float 5.5s ease-in-out infinite; }
+.cm-float-late { animation-delay: -2.7s; }
+
+/* Heartbeat line drawn across the hero. */
+@keyframes cm-ecg { from { stroke-dashoffset: 1200; } to { stroke-dashoffset: 0; } }
+.cm-ecg { stroke-dasharray: 1200; animation: cm-ecg 4.5s ease-in-out infinite alternate; }
+
+/* Pulsing "open now" dot and the WhatsApp button halo. */
+@keyframes cm-ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.4); opacity: 0; } }
+.cm-ping { animation: cm-ping 1.8s cubic-bezier(0,0,.2,1) infinite; }
+
+/* Conditions marquee. */
+@keyframes cm-marquee { to { transform: translateX(-50%); } }
+.cm-marquee { animation: cm-marquee 38s linear infinite; }
+.cm-marquee-wrap:hover .cm-marquee { animation-play-state: paused; }
+
+/* Photo bands: fixed background on large screens (parallax feel). */
+.cm-parallax { background-size: cover; background-position: center; }
+@media (min-width: 1024px) and (hover: hover) { .cm-parallax { background-attachment: fixed; } }
+
+.cm-blog-body p + p { margin-top: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-armed .cm-reveal { opacity: 1 !important; transform: none !important; }
+  .cm-slide[data-active="true"] img, .cm-float, .cm-ecg, .cm-ping, .cm-marquee, .cm-progress { animation: none !important; }
+  .cm-parallax { background-attachment: scroll; }
+}

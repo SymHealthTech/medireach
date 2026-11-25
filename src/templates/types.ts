@@ -53,6 +53,20 @@ export interface PublicClinic {
   site?: { name: string; url: string };
 }
 
+/** A health article on the doctor's page. Plain text split into paragraphs (no HTML). */
+export interface PublicBlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  paragraphs: string[];
+  cover?: PublicImage;
+  tags: string[];
+  /** ISO date. */
+  publishedAt: string;
+  readMinutes: number;
+}
+
 export interface PublicDoctor {
   id: string;
   citySlug: string;
@@ -112,6 +126,8 @@ export interface PublicDoctor {
   interestsStory?: { title: string; paragraphs: string[] };
   /** Gallery photos plus award photos (max 5 in total). */
   gallery: PublicImage[];
+  /** Published health articles by the doctor, newest first (designs that have a blog show them). */
+  blog?: PublicBlogPost[];
 
   portfolioTemplateId: string;
   cardTemplateId: string;

@@ -46,7 +46,7 @@ function Switcher({ basePath, current }: { basePath: string; current: TemplateKe
             <li key={d.key}>
               {d.ready ? (
                 <Link
-                  href={d.key === "classic" ? basePath : `${basePath}?design=${d.key}`}
+                  href={`${basePath}?design=${d.key}`}
                   scroll={false}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={`Design ${label}: ${d.name}`}

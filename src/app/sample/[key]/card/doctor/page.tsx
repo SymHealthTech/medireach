@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CardPageFooter, CardPageHeader, DoctorCardView } from "@/components/cards/DigitalCardPage";
-import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
+import { SAMPLE_KEYS, SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { absUrl } from "@/lib/site";
 
 /**
@@ -11,7 +11,7 @@ import { absUrl } from "@/lib/site";
  * print-ready PDF and PNG, vCard). Fixtures only; noindex.
  */
 export function generateStaticParams() {
-  return [{ key: "gp" }, { key: "consultant" }];
+  return SAMPLE_KEYS.map((key) => ({ key }));
 }
 
 export const metadata: Metadata = {

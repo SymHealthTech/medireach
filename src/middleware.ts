@@ -68,7 +68,14 @@ async function handleSubdomain(req: NextRequest, sub: string) {
   }
   // Let crawlers read robots/sitemaps and Next's own assets.
   // Static icons from public/ (logo, apple-icon) load directly instead of bouncing to the apex.
-  if (path === "/robots.txt" || path.startsWith("/sitemap") || path.startsWith("/_next/") || /^\/[\w-]+\.(png|ico)$/.test(path)) {
+  // Design photos (public/templates/…) and demo-doctor photos (public/demo/…) too, so subdomain sites don't bounce them.
+  if (
+    path === "/robots.txt" ||
+    path.startsWith("/sitemap") ||
+    path.startsWith("/_next/") ||
+    /^\/[\w-]+\.(png|ico)$/.test(path) ||
+    /^\/(templates|demo)\/[\w/.-]+\.(jpe?g|png|webp|avif)$/.test(path)
+  ) {
     return NextResponse.next();
   }
 

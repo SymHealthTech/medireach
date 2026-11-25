@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ProfileView } from "@/components/public/ProfileView";
 import { DesignSwitcher } from "@/components/public/DesignSwitcher";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
-import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
+import { SAMPLE_KEYS, SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 
 /**
  * Public sample pages (/sample/gp, /sample/consultant) linked from the
@@ -13,14 +13,20 @@ import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
  * noindex, clearly labelled, and without the doctor JSON-LD.
  */
 export function generateStaticParams() {
-  return [{ key: "gp" }, { key: "consultant" }];
+  return SAMPLE_KEYS.map((key) => ({ key }));
 }
 
-export const metadata: Metadata = {
-  title: { absolute: "Sample doctor page – MediReach" },
-  description: "An example MediReach page for a made-up doctor.",
-  robots: { index: false, follow: true },
-};
+export async function generateMetadata({ params }: { params: Promise<{ key: string }> }): Promise<Metadata> {
+  const { key } = await params;
+  const d = SAMPLE_PUBLIC_DOCTORS[key];
+  const demo = d?.id.startsWith("demo-");
+  const place = d?.clinics[0] ? `${d.clinics[0].area.name}, ${d.clinics[0].city.name}` : "";
+  return {
+    title: { absolute: d && demo ? `${d.fullName} – ${d.primarySpecialty?.name ?? "Doctor"} in ${place} (demo website)` : "Sample doctor page – MediReach" },
+    description: d && demo ? `${d.shortBio ?? ""} A MediReach demo website for a fictional doctor.`.trim() : "An example MediReach page for a made-up doctor.",
+    robots: { index: false, follow: true },
+  };
+}
 
 export default async function SamplePage({
   params,
@@ -32,14 +38,19 @@ export default async function SamplePage({
   const [{ key }, { design }] = await Promise.all([params, searchParams]);
   const doctor = SAMPLE_PUBLIC_DOCTORS[key as keyof typeof SAMPLE_PUBLIC_DOCTORS];
   if (!doctor) notFound();
-  const current = SAMPLE_DESIGNS.find((d) => d.key === design && d.ready) ?? SAMPLE_DESIGNS[0]!;
+  // ?design= wins; otherwise the doctor's own design (demo doctors have one), else Classic.
+  const current =
+    SAMPLE_DESIGNS.find((d) => d.key === design && d.ready) ??
+    SAMPLE_DESIGNS.find((d) => d.key === doctor.portfolioTemplateId && d.ready) ??
+    SAMPLE_DESIGNS[0]!;
+  const demo = doctor.id.startsWith("demo-");
 
   return (
     <>
       <div className="bg-marigold px-4 py-2 text-center text-sm font-semibold text-white">
-        Sample page — this doctor and clinic are made up.{" "}
+        {demo ? `Demo website — ${doctor.fullName} and the clinic are fictional.` : "Sample page — this doctor and clinic are made up."}{" "}
         <Link href="/" className="underline">
-          Get your own page
+          {demo ? "Get a website like this" : "Get your own page"}
         </Link>
       </div>
       <ProfileView doctor={{ ...doctor, portfolioTemplateId: current.key }} nearby={[]} jsonLd={false} />

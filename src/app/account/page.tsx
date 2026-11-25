@@ -14,6 +14,8 @@ import { absUrl, paths, sitePath, subdomainUrl } from "@/lib/site";
 import type { RenewalStatus } from "@/lib/constants";
 import { Area } from "@/models/Area";
 import { UpdateRequest } from "@/models/UpdateRequest";
+import { Inquiry } from "@/models/Inquiry";
+import { DoctorOverview } from "@/components/account/DoctorOverview";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +53,7 @@ export default async function AccountPage() {
   const what = [me.doctor ? "your page" : "", me.sites.length ? (me.sites.length === 1 ? "your site" : "your sites") : ""].filter(Boolean).join(" and ");
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pt-12">
+    <main className={me.doctor ? "max-w-3xl space-y-6 pb-24 pt-6 lg:pt-0" : "mx-auto max-w-3xl space-y-6 px-4 pb-24 pt-8 sm:px-6 sm:pt-12"}>
       <div>
         <h1 className="font-display text-3xl font-semibold text-ink sm:text-4xl">Hello, {me.name}</h1>
         <p className="mt-2 text-body">Keep {what} up to date. Changes show straight away.</p>
@@ -72,9 +74,13 @@ export default async function AccountPage() {
 
 async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount; prices: Parameters<typeof listRenewalPrice>[2]; updatePrice: number }) {
   const d = me.doctor!;
-  const [areas, requests] = await Promise.all([
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000);
+  const [areas, requests, newCount, monthCount, latest] = await Promise.all([
     Area.find({ _id: { $in: d.clinics.map((c) => c.areaId) } }).select({ name: 1 }).lean(),
     UpdateRequest.find({ doctorId: d._id }).sort({ createdAt: -1 }).limit(5).lean(),
+    Inquiry.countDocuments({ doctorId: d._id, status: "new" }),
+    Inquiry.countDocuments({ doctorId: d._id, createdAt: { $gte: monthAgo } }),
+    Inquiry.find({ doctorId: d._id }).sort({ createdAt: -1 }).limit(4).lean(),
   ]);
   const areaName = (id: unknown) => areas.find((a) => String(a._id) === String(id))?.name ?? "";
 
@@ -119,6 +125,21 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
 
   return (
     <>
+      <DoctorOverview
+        counts={{ new: newCount, month: monthCount, total: monthCount }}
+        articles={(d.blogPosts ?? []).filter((p) => p.status === "published").length}
+        latest={latest.map((q) => ({
+          id: String(q._id),
+          name: q.name,
+          phone: q.phone,
+          ...(q.message ? { message: q.message } : {}),
+          status: q.status,
+          createdAt: q.createdAt.toISOString(),
+          ...(q.preferredDate ? { preferredDate: q.preferredDate.toISOString() } : {}),
+          ...(q.preferredTime ? { preferredTime: q.preferredTime } : {}),
+        }))}
+      />
+
       <section className={card}>
         <h2 className="font-display text-xl font-semibold text-ink">Your page</h2>
         {pagePath ? (
@@ -158,7 +179,7 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
       <section className={card}>
         <div>
           <h2 className="font-display text-xl font-semibold text-ink">Request a change</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">For anything else, like your photo, services, qualifications, a new clinic or your page design, our team makes the change for you.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">For your photo, name, qualifications, registration, a new clinic or your page design, our team makes the change for you. Your about text, services and articles you can edit yourself.</p>
         </div>
         <ChangeRequestForm priceLabel={priceLabel} />
         {requests.length > 0 && (

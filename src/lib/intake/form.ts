@@ -272,7 +272,7 @@ export const NOT_SURE = "";
 
 /** Website design choices per kind. Doctors: portfolio designs (unbuilt ones show as coming soon). Clinics/hospitals: specialty designs, own kind first. */
 export const DESIGN_OPTIONS: Record<IntakeKind, readonly { value: string; label: string; ready: boolean; sampleHref: string }[]> = {
-  doctor: SAMPLE_DESIGNS.map((d) => ({ value: d.key, label: d.name, ready: d.ready, sampleHref: `/sample/gp?design=${d.key}` })),
+  doctor: SAMPLE_DESIGNS.map((d) => ({ value: d.key, label: d.name, ready: d.ready, sampleHref: `/sample/${d.sample}?design=${d.key}` })),
   clinic: [...SPECIALTY_THEMES].sort((a, b) => Number(b.kind === "clinic") - Number(a.kind === "clinic")).map((t) => ({ value: t.key, label: t.name, ready: true, sampleHref: `/designs/${t.key}` })),
   hospital: [...SPECIALTY_THEMES].sort((a, b) => Number(b.kind === "hospital") - Number(a.kind === "hospital")).map((t) => ({ value: t.key, label: t.name, ready: true, sampleHref: `/designs/${t.key}` })),
 };

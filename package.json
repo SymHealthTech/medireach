@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "seed:masters": "node --env-file-if-exists=.env.local --import tsx scripts/seed-masters.ts",
     "seed:samples": "node --env-file-if-exists=.env.local --import tsx scripts/seed-samples.ts",
+    "seed:demo": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo.ts",
     "seed:admin": "node --env-file-if-exists=.env.local --import tsx scripts/seed-admin.ts",
     "migrate:v2": "node --env-file-if-exists=.env.local --import tsx scripts/migrate-v2.ts",
     "renewals": "node --env-file-if-exists=.env.local --require ./scripts/no-server-only.cjs --import tsx scripts/renewals.ts"
