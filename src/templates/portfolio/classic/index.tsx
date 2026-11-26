@@ -49,6 +49,8 @@ import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
 import { specialtyPhotos, type SpecialtyPhotos } from "@/templates/shared/specialty-photos";
+import { splitClinics } from "@/templates/shared/clinic-split";
+import { VisitingHospitals } from "@/templates/shared/VisitingHospitals";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { ClinicTabs } from "./serene/ClinicTabs";
 import { HeroSlides } from "./serene/HeroSlides";
@@ -259,6 +261,7 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
 
 export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
   const photos = specialtyPhotos(d, PHOTOS);
+  const { main: mainClinics, visiting } = splitClinics(d.clinics);
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const cardHref = d.cardUrl ?? `${d.url}/card`;
@@ -802,17 +805,18 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
             <Heading
               id="clinics"
               eyebrow="Visit"
-              title={d.clinics.length > 1 ? "Where to find me" : "Visit the clinic"}
+              title={mainClinics.length > 1 ? "Where to find me" : "Visit the clinic"}
               lead={
-                d.clinics.length > 1
-                  ? `${firstName} consults at ${d.clinics.length} places. Pick one to see its timings and directions.`
+                mainClinics.length > 1
+                  ? `${firstName} consults at ${mainClinics.length} clinics. Pick one to see its timings and directions.`
                   : "Timings, directions and whether the clinic is open right now."
               }
               center
             />
             <div className="mt-12">
-              <ClinicTabs clinics={d.clinics} />
+              <ClinicTabs clinics={mainClinics} />
             </div>
+            <VisitingHospitals hospitals={visiting} />
           </Section>
         )}
 

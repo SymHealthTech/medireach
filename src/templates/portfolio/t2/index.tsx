@@ -47,6 +47,8 @@ import { formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER, DAY_SHORT } from
 import { describeService, type ServiceIcon } from "@/content/service-descriptions";
 import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { specialtyPhotos } from "@/templates/shared/specialty-photos";
+import { splitClinics } from "@/templates/shared/clinic-split";
+import { VisitingHospitals } from "@/templates/shared/VisitingHospitals";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { AppointmentForm } from "./AppointmentForm";
 import { ClinicsSection } from "./ClinicsSection";
@@ -199,7 +201,8 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
   const tips = d.healthTips ?? [];
   const story = d.interestsStory;
   const waHref = d.whatsapp ? `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(`Hello ${d.fullName}, I would like to book an appointment.`)}` : undefined;
-  const clinicPhotos = d.clinics.map((_, i) => d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? photos.side.src);
+  const { main: mainClinics, visiting } = splitClinics(d.clinics);
+  const clinicPhotos = mainClinics.map((_, i) => d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? photos.side.src);
   const aboutPhoto = d.gallery[0] ?? { url: photos.band.src, alt: photos.band.alt };
   const faq = faqs(d);
   const place = clinic ? `${clinic.area.name}, ${clinic.city.name}` : "";
@@ -639,13 +642,14 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
             <Heading
               id="clinics"
               eyebrow="Clinic and timings"
-              title={d.clinics.length > 1 ? "Where to consult" : "Visit the clinic"}
-              lead={d.clinics.length > 1 ? `${firstName} consults at ${d.clinics.length} places. Open one to see its timings and directions.` : "Timings, directions and whether the clinic is open right now."}
+              title={mainClinics.length > 1 ? "Where to consult" : "Visit the clinic"}
+              lead={mainClinics.length > 1 ? `${firstName} consults at ${mainClinics.length} clinics. Open one to see its timings and directions.` : "Timings, directions and whether the clinic is open right now."}
               center
             />
             <div className="mt-12">
-              <ClinicsSection clinics={d.clinics} photos={clinicPhotos} />
+              <ClinicsSection clinics={mainClinics} photos={clinicPhotos} />
             </div>
+            <VisitingHospitals hospitals={visiting} />
           </Section>
         )}
 

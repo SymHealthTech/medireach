@@ -46,6 +46,8 @@ import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
 import { BgSlides } from "@/templates/shared/BgSlides";
 import { specialtyPhotos } from "@/templates/shared/specialty-photos";
+import { splitClinics } from "@/templates/shared/clinic-split";
+import { VisitingHospitals } from "@/templates/shared/VisitingHospitals";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { ClinicCards } from "./ClinicCards";
 import { Nav, type NavLink } from "./Nav";
@@ -182,6 +184,7 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
 
 export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
   const photos = specialtyPhotos(d);
+  const { main: mainClinics, visiting } = splitClinics(d.clinics);
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const cardHref = d.cardUrl ?? `${d.url}/card`;
@@ -527,12 +530,13 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
             <Heading
               id="clinics"
               eyebrow="Visit"
-              title={d.clinics.length > 1 ? "Where to find me" : "Visit the clinic"}
-              lead={d.clinics.length > 1 ? `${firstName} consults at ${d.clinics.length} places.` : "Timings, directions and whether the clinic is open right now."}
+              title={mainClinics.length > 1 ? "Where to find me" : "Visit the clinic"}
+              lead={mainClinics.length > 1 ? `${firstName} consults at ${mainClinics.length} clinics.` : "Timings, directions and whether the clinic is open right now."}
             />
             <div className="mt-14">
-              <ClinicCards clinics={d.clinics} />
+              <ClinicCards clinics={mainClinics} />
             </div>
+            <VisitingHospitals hospitals={visiting} />
           </Section>
         )}
 

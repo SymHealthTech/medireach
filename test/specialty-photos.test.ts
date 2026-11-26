@@ -1,7 +1,9 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { splitClinics } from "@/templates/shared/clinic-split";
 import { PHOTO_SETS, photoGroupFor, specialtyPhotos } from "@/templates/shared/specialty-photos";
+import type { PublicClinic } from "@/templates/types";
 
 const spec = (slug: string) => ({ slug, name: slug, plural: slug });
 const doc = (primary?: string, secondary: string[] = [], systemOfMedicine?: string) => ({
@@ -36,5 +38,19 @@ describe("photos by specialty", () => {
       expect(set.hero).toHaveLength(4);
       for (const p of [...set.hero, set.band, set.side, set.feature]) expect(existsSync(path.join("public", p.src)), p.src).toBe(true);
     }
+  });
+});
+
+describe("own clinics vs visited hospitals", () => {
+  const clinic = (id: string, type: PublicClinic["type"]) => ({ id, type }) as PublicClinic;
+  it("shows own clinics in full and lists hospital visits briefly", () => {
+    const r = splitClinics([clinic("a", "own_clinic"), clinic("h", "hospital_visiting"), clinic("b", "other")]);
+    expect(r.main.map((c) => c.id)).toEqual(["a", "b"]);
+    expect(r.visiting.map((c) => c.id)).toEqual(["h"]);
+  });
+  it("shows the first hospital in full when the doctor only visits hospitals", () => {
+    const r = splitClinics([clinic("h1", "hospital_visiting"), clinic("h2", "hospital_visiting")]);
+    expect(r.main.map((c) => c.id)).toEqual(["h1"]);
+    expect(r.visiting.map((c) => c.id)).toEqual(["h2"]);
   });
 });

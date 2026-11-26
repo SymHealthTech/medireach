@@ -192,12 +192,12 @@ export function ConditionsFilter({ conditions }: { conditions: string[] }) {
 }
 
 /** The week as a grid: days down the side, clinics across, today highlighted. */
-export function ScheduleMatrix({ clinics }: { clinics: PublicClinic[] }) {
+export function ScheduleMatrix({ clinics, reveal = true }: { clinics: PublicClinic[]; reveal?: boolean }) {
   const [today, setToday] = useState<number | null>(null);
   useEffect(() => setToday(nowInIndia().day), []);
   return (
-    <div className="cm-reveal overflow-x-auto rounded-2xl bg-white shadow-sp ring-1 ring-sp-line">
-      <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+    <div className={cn("overflow-x-auto rounded-2xl bg-white shadow-sp ring-1 ring-sp-line", reveal && "cm-reveal")}>
+      <table className={cn("w-full border-collapse text-left text-sm", clinics.length > 1 && "min-w-[520px]")}>
         <caption className="sr-only">Weekly consultation timings</caption>
         <thead>
           <tr className="bg-sp-slate text-white">

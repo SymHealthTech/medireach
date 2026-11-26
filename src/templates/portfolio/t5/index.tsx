@@ -5,19 +5,15 @@ import {
   Award,
   BadgeCheck,
   CalendarCheck,
-  ClipboardList,
   GraduationCap,
   HeartPulse,
   IdCard,
-  IndianRupee,
   Languages,
   Mail,
   MapPin,
   MessageCircle,
-  Navigation,
   Phone,
   Plus,
-  Stethoscope,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -33,8 +29,11 @@ import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
 import { BgSlides } from "@/templates/shared/BgSlides";
 import { specialtyPhotos } from "@/templates/shared/specialty-photos";
+import { splitClinics } from "@/templates/shared/clinic-split";
+import { VisitingHospitals } from "@/templates/shared/VisitingHospitals";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
-import { ConditionsFilter, ScheduleMatrix, ServiceTabs } from "./Interactive";
+import { ClinicPanels } from "./ClinicPanels";
+import { ConditionsFilter, ServiceTabs } from "./Interactive";
 import { Nav, type NavLink } from "./Nav";
 
 /**
@@ -46,7 +45,8 @@ import { Nav, type NavLink } from "./Nav";
  * carousel that comes into focus from a blur, with a heartbeat line and a
  * credentials card → KPI strip → about (portrait + credentials table) →
  * services as tabs → searchable conditions → credentials (education, awards,
- * memberships in columns) → clinics (weekly schedule grid + clinic cards) →
+ * memberships in columns) → clinics (one open at a time with its own timetable;
+ * visited hospitals listed briefly) →
  * appointment → beyond medicine (magazine columns) → health tips → gallery →
  * FAQ → footer, plus a mobile bar.
  *
@@ -66,12 +66,6 @@ const LINK_LABELS: Record<string, string> = {
   facebook: "Facebook",
   linkedin: "LinkedIn",
   youtube: "YouTube",
-};
-
-const TYPE_LABEL: Record<PublicDoctor["clinics"][number]["type"], string> = {
-  own_clinic: "Own clinic",
-  hospital_visiting: "Visiting consultant",
-  other: "Clinic",
 };
 
 function initials(name: string): string {
@@ -162,6 +156,7 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
 
 export default function SpecialistProPortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
   const photos = specialtyPhotos(d);
+  const { main: mainClinics, visiting } = splitClinics(d.clinics);
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const cardHref = d.cardUrl ?? `${d.url}/card`;
@@ -532,86 +527,12 @@ export default function SpecialistProPortfolio({ doctor: d, seo }: PortfolioTemp
               id="clinics"
               eyebrow="Clinics"
               title="When and where to consult"
-              lead={`The week at a glance${d.clinics.length > 1 ? ` across ${d.clinics.length} places` : ""}, with today highlighted.`}
+              lead={mainClinics.length > 1 ? `${firstName} consults at ${mainClinics.length} clinics. Open one to see its timings.` : "Clinic details and the week's timings, with today highlighted."}
             />
             <div className="mt-10">
-              <ScheduleMatrix clinics={d.clinics} />
+              <ClinicPanels clinics={mainClinics} />
             </div>
-            <div className={cn("mt-6 grid gap-6", d.clinics.length > 1 && "md:grid-cols-2")}>
-              {d.clinics.map((c, i) => (
-                <article key={c.id} className="cm-reveal flex flex-col rounded-2xl bg-white p-6 shadow-sp ring-1 ring-sp-line sm:p-7" style={delay(i * 100)}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-sp-cyan">{TYPE_LABEL[c.type]}</p>
-                      <h3 className="mt-1 text-xl font-bold text-sp-slate">{c.name}</h3>
-                    </div>
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sp-blush text-sp-crimson">
-                      <Stethoscope aria-hidden className="size-5" />
-                    </span>
-                  </div>
-                  <ul className="mt-4 space-y-2.5 text-[15px]">
-                    <li className="flex gap-3">
-                      <MapPin aria-hidden className="mt-0.5 size-5 shrink-0 text-sp-crimson" strokeWidth={1.9} />
-                      <address className="not-italic text-sp-text/85">{c.fullAddress}</address>
-                    </li>
-                    {c.phone && (
-                      <li className="flex items-center gap-3">
-                        <Phone aria-hidden className="size-5 shrink-0 text-sp-crimson" strokeWidth={1.9} />
-                        <a href={`tel:+${c.phone}`} className="font-semibold text-sp-slate hover:text-sp-crimson">
-                          {formatPhone(c.phone)}
-                        </a>
-                      </li>
-                    )}
-                    {typeof c.fee === "number" && (
-                      <li className="flex items-center gap-3 text-sp-text/85">
-                        <IndianRupee aria-hidden className="size-5 shrink-0 text-sp-crimson" strokeWidth={1.9} />
-                        Consultation fee <strong className="font-bold text-sp-slate">₹{c.fee.toLocaleString("en-IN")}</strong>
-                      </li>
-                    )}
-                    {c.appointmentNote && (
-                      <li className="flex gap-3 text-sp-text/85">
-                        <ClipboardList aria-hidden className="mt-0.5 size-5 shrink-0 text-sp-crimson" strokeWidth={1.9} />
-                        {c.appointmentNote}
-                      </li>
-                    )}
-                  </ul>
-                  <div className="mt-auto grid gap-4 pt-6 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                    <div className="flex flex-col gap-2">
-                      <a
-                        href={c.directionsUrl}
-                        target="_blank"
-                        rel="noopener"
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sp-slate px-4 text-sm font-semibold text-white transition hover:bg-sp-slate-2"
-                      >
-                        <Navigation aria-hidden className="size-4" /> Directions
-                      </a>
-                      {c.phone && (
-                        <a
-                          href={`tel:+${c.phone}`}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-sp-slate ring-1 ring-sp-line transition hover:bg-sp-ice"
-                        >
-                          <Phone aria-hidden className="size-4" /> Call
-                        </a>
-                      )}
-                      {c.site && (
-                        <a href={c.site.url} className="inline-flex min-h-11 items-center justify-center gap-1 text-sm font-semibold text-sp-crimson hover:underline">
-                          {c.site.name} website <ArrowUpRight aria-hidden className="size-4" />
-                        </a>
-                      )}
-                    </div>
-                    {c.mapEmbedUrl && (
-                      <iframe
-                        title={`Map showing ${c.name}`}
-                        src={c.mapEmbedUrl}
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        className="block h-36 w-full rounded-xl border-0 ring-1 ring-sp-line sm:h-full sm:min-h-[100px]"
-                      />
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
+            <VisitingHospitals hospitals={visiting} />
           </Section>
         )}
 

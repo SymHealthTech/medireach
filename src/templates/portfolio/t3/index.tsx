@@ -30,6 +30,8 @@ import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
 import { specialtyPhotos } from "@/templates/shared/specialty-photos";
+import { splitClinics } from "@/templates/shared/clinic-split";
+import { VisitingHospitals } from "@/templates/shared/VisitingHospitals";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { ClinicList } from "./ClinicList";
 import { HeroWipe } from "./HeroWipe";
@@ -174,7 +176,8 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
   const tips = d.healthTips ?? [];
   const story = d.interestsStory;
   const waHref = d.whatsapp ? `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(`Hello ${d.fullName}, I would like to book an appointment.`)}` : undefined;
-  const clinicPhotos = d.clinics.map((_, i) => d.gallery[i]?.url ?? photos.side.src);
+  const { main: mainClinics, visiting } = splitClinics(d.clinics);
+  const clinicPhotos = mainClinics.map((_, i) => d.gallery[i]?.url ?? photos.side.src);
   const faq = faqs(d);
   const place = clinic ? `${clinic.area.name}, ${clinic.city.name}` : "";
   const hasRecognition = d.awards.length > 0 || d.memberships.length > 0 || d.publications.length > 0;
@@ -575,16 +578,17 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
               id="clinics"
               num={num()}
               eyebrow="Clinics"
-              title={d.clinics.length > 1 ? "Where to find me" : "Visit the clinic"}
+              title={mainClinics.length > 1 ? "Where to find me" : "Visit the clinic"}
               lead={
-                d.clinics.length > 1
-                  ? `${firstName} consults at ${d.clinics.length} places. Timings, directions and live open/closed status for each.`
+                mainClinics.length > 1
+                  ? `${firstName} consults at ${mainClinics.length} clinics. Timings, directions and live open/closed status for each.`
                   : "Timings, directions and whether the clinic is open right now."
               }
             />
             <div className="mt-12">
-              <ClinicList clinics={d.clinics} photos={clinicPhotos} />
+              <ClinicList clinics={mainClinics} photos={clinicPhotos} />
             </div>
+            <VisitingHospitals hospitals={visiting} square />
           </Section>
         )}
 
