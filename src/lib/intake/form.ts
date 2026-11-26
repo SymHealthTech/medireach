@@ -200,7 +200,7 @@ const placeFields = (required: boolean, line1Placeholder = "Shop 4, Shanti Compl
 /** GP or consultant, like the admin editor's "Practitioner type". */
 export const PRACTITIONER_OPTIONS = [
   { value: "gp", label: "General practitioner (GP)" },
-  { value: "consultant", label: "Consultant / specialist" },
+  { value: "consultant", label: "Consultant" },
 ] as const;
 
 /** Consultation fee, and whether the website shows it (like the admin editor). */

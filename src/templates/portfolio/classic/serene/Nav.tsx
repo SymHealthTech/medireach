@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarHeart, Clock, Menu, Phone, X } from "lucide-react";
+import { CalendarHeart, Menu, Phone, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export interface NavLink {
@@ -10,16 +10,15 @@ export interface NavLink {
 }
 
 /**
- * Serene Care header: a slim plum ribbon (hours and phone) above a frosted
- * white bar. The ribbon folds away once the page scrolls; the section in view
- * gets a rose underline; phones get a drawer that slides in from the right.
+ * Serene Care header: a frosted white bar that firms up once the page
+ * scrolls; the section in view gets a rose underline; phones get a drawer
+ * that slides in from the right.
  */
 export function Nav({
   name,
   monogram,
   tagline,
   links,
-  hours,
   phone,
   phoneLabel,
 }: {
@@ -27,7 +26,6 @@ export function Nav({
   monogram: string;
   tagline?: string;
   links: NavLink[];
-  hours?: string;
   phone?: string;
   phoneLabel?: string;
 }) {
@@ -63,27 +61,6 @@ export function Nav({
 
   return (
     <header className="sticky top-0 z-40">
-      {(hours || phone) && (
-        <div className={cn("hidden overflow-hidden bg-sc-plum text-[13px] text-white/85 transition-all duration-500 md:block", scrolled ? "max-h-0" : "max-h-10")}>
-          <div className="mx-auto flex h-10 max-w-[1200px] items-center justify-between gap-6 px-6">
-            {hours ? (
-              <p className="flex min-w-0 items-center gap-2 truncate">
-                <Clock aria-hidden className="size-3.5 shrink-0 text-sc-pink" strokeWidth={2} />
-                {hours}
-              </p>
-            ) : (
-              <span />
-            )}
-            {phone && (
-              <a href={`tel:+${phone}`} className="flex shrink-0 items-center gap-2 font-semibold text-white hover:text-sc-pink">
-                <Phone aria-hidden className="size-3.5 text-sc-pink" strokeWidth={2} />
-                {phoneLabel}
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
       <div
         className={cn(
           "border-b transition-all duration-300",

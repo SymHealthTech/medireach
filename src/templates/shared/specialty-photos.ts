@@ -4,7 +4,7 @@ import type { PublicDoctor } from "@/templates/types";
  * Background photos chosen by the doctor's specialty, so a gynaecologist's
  * hero shows pregnancy and women's care while an orthopaedic surgeon's shows
  * rehabilitation and X-rays. Anything else gets general clinic photos.
- * Used by designs 1 (Serene Care) and 3 (Modern Edge).
+ * Used by design 3 (Modern Edge); design 1 has one neutral set for everyone.
  *
  * Pexels photos (free licence): public/templates/specialty/CREDITS.md and
  * public/templates/clinic-modern/CREDITS.md. No photo shows the doctor.

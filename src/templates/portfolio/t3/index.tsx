@@ -422,7 +422,7 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
               <dl className="cm-reveal mt-8 grid gap-px bg-me-line sm:grid-cols-2">
                 <div className="bg-white p-5">
                   <dt className="text-xs font-bold uppercase tracking-[0.2em] text-me-muted">Practice</dt>
-                  <dd className="mt-1 font-bold text-me-ink">{d.practitionerType === "consultant" ? "Consultant / specialist" : "General practitioner"}</dd>
+                  <dd className="mt-1 font-bold text-me-ink">{d.practitionerType === "consultant" ? "Consultant" : "General practitioner"}</dd>
                 </div>
                 {d.systemLabel ? (
                   <div className="bg-white p-5">

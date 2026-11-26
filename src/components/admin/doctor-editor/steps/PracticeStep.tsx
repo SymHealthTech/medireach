@@ -73,7 +73,7 @@ export function PracticeStep({ form: f, set, err, options, readOnly, hints }: St
               onChange={(e) => set({ practitionerType: e.target.value as typeof f.practitionerType })}
             >
               <option value="gp">General practitioner</option>
-              <option value="consultant">Consultant / specialist</option>
+              <option value="consultant">Consultant</option>
             </NativeSelect>
           </Field>
           <Field

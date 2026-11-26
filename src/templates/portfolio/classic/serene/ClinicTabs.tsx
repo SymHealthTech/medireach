@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, IndianRupee, MapPin, Navigation, Phone } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -11,10 +10,10 @@ import type { PublicClinic } from "@/templates/types";
 
 /**
  * Serene Care clinics: pill tabs (one per clinic, with a live open/closed
- * dot), and one panel at a time — photo with the address card floating over
- * it, weekly timings and a small map. Arrow keys move between tabs.
+ * dot), and one panel at a time: address card, weekly timings and a small
+ * map. Arrow keys move between tabs.
  */
-export function ClinicTabs({ clinics, photos }: { clinics: PublicClinic[]; photos: string[] }) {
+export function ClinicTabs({ clinics }: { clinics: PublicClinic[] }) {
   const [active, setActive] = useState(0);
   const [now, setNow] = useState<{ day: number; minutes: number } | null>(null);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -76,19 +75,14 @@ export function ClinicTabs({ clinics, photos }: { clinics: PublicClinic[]; photo
         id={`sc-panel-${c.id}`}
         role={clinics.length > 1 ? "tabpanel" : undefined}
         aria-labelledby={clinics.length > 1 ? `sc-tab-${c.id}` : undefined}
-        className="cm-rise mt-10 grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10"
+        className="cm-rise mt-10 grid items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10"
       >
         <div className="min-w-0">
-          <div className="relative">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-t-[200px] rounded-b-[32px] shadow-sc-lg sm:aspect-[16/11]">
-              <Image src={photos[active]!} alt="" fill sizes="(min-width: 1024px) 620px, 100vw" className="object-cover" />
-              <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-sc-plum/70 via-transparent to-transparent" />
-              <span className="absolute left-1/2 top-6 -translate-x-1/2 rounded-full bg-white/90 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-sc-plum backdrop-blur">
-                {TYPE_LABEL[c.type]}
-              </span>
-            </div>
-            <div className="relative -mt-24 mx-4 rounded-[28px] bg-white p-6 shadow-sc-lg ring-1 ring-sc-line sm:mx-8 sm:p-7">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-5">
+            <div className="relative overflow-hidden rounded-[28px] bg-white p-6 shadow-sc-lg ring-1 ring-sc-line sm:p-8">
+              <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sc-gold via-sc-pink to-sc-rose" />
+              <span className="inline-block rounded-full bg-sc-blush px-3.5 py-1 text-xs font-bold uppercase tracking-[0.16em] text-sc-rose">{TYPE_LABEL[c.type]}</span>
+              <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
                 <h3 className="font-display text-2xl font-semibold text-sc-plum">{c.name}</h3>
                 {st && (
                   <span
@@ -148,20 +142,20 @@ export function ClinicTabs({ clinics, photos }: { clinics: PublicClinic[]; photo
                 )}
               </div>
             </div>
+            {c.mapEmbedUrl && (
+              <iframe
+                title={`Map showing ${c.name}`}
+                src={c.mapEmbedUrl}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="block h-56 w-full rounded-[28px] border-0 shadow-sc ring-1 ring-sc-line"
+              />
+            )}
           </div>
         </div>
 
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0">
           <TimingsBoard timings={c.timings} />
-          {c.mapEmbedUrl && (
-            <iframe
-              title={`Map showing ${c.name}`}
-              src={c.mapEmbedUrl}
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              className="block h-60 w-full rounded-[28px] border-0 shadow-sc ring-1 ring-sc-line"
-            />
-          )}
         </div>
       </div>
     </div>

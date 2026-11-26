@@ -3,15 +3,13 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play } from "lucide-react";
-import { cn } from "@/lib/cn";
 import type { StockPhoto } from "@/templates/shared/specialty-photos";
 
 const INTERVAL_MS = 6000;
 
 /**
  * Serene Care hero background: photos cross-fade with a slow zoom (shared
- * `cm-slide` styles). Controls sit bottom-left as numbered captions with a
- * filling line, plus a pause button. Stays still for reduced-motion
+ * `cm-slide` styles), with a small pause button bottom-right. Stays still for reduced-motion
  * visitors and while the tab is hidden; only the first photo loads eagerly.
  */
 export function HeroSlides({ slides }: { slides: StockPhoto[] }) {
@@ -46,43 +44,14 @@ export function HeroSlides({ slides }: { slides: StockPhoto[] }) {
       </div>
 
       {slides.length > 1 && (
-        <div className="absolute bottom-6 left-4 right-4 z-20 hidden items-end gap-6 sm:left-6 md:flex lg:bottom-9 lg:left-[max(1.5rem,calc((100vw-1200px)/2+1.5rem))]">
-          <ul className="flex gap-5">
-            {slides.map((s, i) => (
-              <li key={s.src}>
-                <button
-                  type="button"
-                  onClick={() => setActive(i)}
-                  aria-label={`Show photo ${i + 1} of ${slides.length}${s.caption ? `: ${s.caption}` : ""}`}
-                  aria-current={i === active}
-                  className={cn("group w-28 text-left transition-opacity", i === active ? "opacity-100" : "opacity-60 hover:opacity-90")}
-                >
-                  <span className="relative block h-[2px] overflow-hidden rounded-full bg-sc-plum/20">
-                    {i === active && (
-                      <span
-                        key={`p-${active}-${paused}`}
-                        className={cn("absolute inset-0 rounded-full bg-sc-rose", !paused && "cm-progress")}
-                        style={{
-                          ["--cm-interval" as string]: `${INTERVAL_MS}ms`,
-                        }}
-                      />
-                    )}
-                  </span>
-                  <span className="mt-2 block text-[11px] font-bold tracking-[0.2em] text-sc-rose">0{i + 1}</span>
-                  {s.caption && <span className="block truncate text-xs font-semibold text-sc-plum">{s.caption}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            onClick={() => setPaused((p) => !p)}
-            aria-label={paused ? "Play slideshow" : "Pause slideshow"}
-            className="mb-1 flex size-9 items-center justify-center rounded-full bg-white/80 text-sc-plum ring-1 ring-sc-line backdrop-blur transition hover:bg-white"
-          >
-            {paused ? <Play aria-hidden className="size-3.5" fill="currentColor" /> : <Pause aria-hidden className="size-3.5" fill="currentColor" />}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setPaused((p) => !p)}
+          aria-label={paused ? "Play background photos" : "Pause background photos"}
+          className="absolute bottom-6 right-4 z-20 hidden size-9 items-center justify-center rounded-full bg-white/70 text-sc-plum ring-1 ring-sc-line backdrop-blur transition hover:bg-white md:flex lg:bottom-9 lg:right-8"
+        >
+          {paused ? <Play aria-hidden className="size-3.5" fill="currentColor" /> : <Pause aria-hidden className="size-3.5" fill="currentColor" />}
+        </button>
       )}
     </>
   );

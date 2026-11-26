@@ -457,7 +457,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                   <Stethoscope aria-hidden className="size-6 shrink-0 text-cm-blue" strokeWidth={1.9} />
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wider text-cm-muted">Practice</dt>
-                    <dd className="font-semibold text-cm-navy">{d.practitionerType === "consultant" ? "Consultant / specialist" : "General practice"}</dd>
+                    <dd className="font-semibold text-cm-navy">{d.practitionerType === "consultant" ? "Consultant" : "General practice"}</dd>
                   </div>
                 </div>
                 {d.languages.length > 0 && (

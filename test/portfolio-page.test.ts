@@ -34,7 +34,7 @@ describe("doctor portfolio page shows what the admin editor asks", () => {
     });
     expect(html).toContain("System of medicine");
     expect(html.match(/Ayurveda</g)?.length).toBeGreaterThanOrEqual(2); // hero tag + About fact
-    expect(html).toContain("Consultant / specialist");
+    expect(html).toContain("Consultant");
     expect(html).toContain("Registered in 2010 · NMR ID NMR-778");
     expect(html).toContain("Ayurveda physician for joint and skin care.");
     expect(html).toContain("Full bio.");

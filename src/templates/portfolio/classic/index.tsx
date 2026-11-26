@@ -48,7 +48,7 @@ import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
-import { specialtyPhotos } from "@/templates/shared/specialty-photos";
+import type { StockPhoto } from "@/templates/shared/specialty-photos";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { ClinicTabs } from "./serene/ClinicTabs";
 import { HeroSlides } from "./serene/HeroSlides";
@@ -59,8 +59,8 @@ import { Nav, type NavLink } from "./serene/Nav";
  * deep plum, rose, blush and cream with a thin gold line and Fraunces
  * headings. Light and airy where Clinic Modern (design 2) is dark and bold:
  *
- * ribbon + frosted nav → light hero over a cross-fading photo carousel
- * (photos chosen by specialty), arched portrait with a rotating name ring and
+ * frosted nav → light hero over a cross-fading photo carousel (the same
+ * photos for every specialty), arched portrait with a rotating name ring and
  * drifting petals → welcome cards → about (pull quote, photo collage,
  * credentials) → services (feature photo + cards) → numbers → conditions
  * (arched photo + chips) → education (horizontal timeline) → clinics (tabs,
@@ -74,6 +74,24 @@ import { Nav, type NavLink } from "./serene/Nav";
  *
  * NMC: no ratings, reviews, testimonials, patient counts or superlatives.
  */
+
+/**
+ * Photos for every Serene Care site, whatever the specialty: women doctors in
+ * everyday consultations (physician, skin, gynaecology and others all fit).
+ * Pexels, see public/templates/serene-care/CREDITS.md.
+ */
+const IMG = "/templates/serene-care";
+const PHOTOS: { hero: StockPhoto[]; band: StockPhoto; side: StockPhoto; feature: StockPhoto } = {
+  hero: [
+    { src: `${IMG}/hero-1.jpg`, alt: "A doctor checking a patient in a bright clinic" },
+    { src: `${IMG}/hero-2.jpg`, alt: "A doctor talking with a patient" },
+    { src: `${IMG}/hero-3.jpg`, alt: "A doctor writing a prescription at her desk" },
+    { src: `${IMG}/hero-4.jpg`, alt: "A blood pressure check in the clinic" },
+  ],
+  band: { src: `${IMG}/band.jpg`, alt: "A doctor listening to a patient's chest" },
+  side: { src: `${IMG}/side.jpg`, alt: "A doctor listening to a patient and taking notes" },
+  feature: { src: `${IMG}/feature.jpg`, alt: "A doctor in consultation with patients" },
+};
 
 const SERVICE_ICONS: Record<ServiceIcon, typeof Stethoscope> = {
   stethoscope: Stethoscope,
@@ -238,7 +256,7 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
 // ---------------------------------------------------------------------------
 
 export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
-  const photos = specialtyPhotos(d);
+  const photos = PHOTOS;
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const cardHref = d.cardUrl ?? `${d.url}/card`;
@@ -249,14 +267,12 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
   const tips = d.healthTips ?? [];
   const story = d.interestsStory;
   const waHref = d.whatsapp ? `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(`Hello ${d.fullName}, I would like to book an appointment.`)}` : undefined;
-  const clinicPhotos = d.clinics.map((_, i) => d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? photos.side.src);
   const collage = d.gallery[0] ?? {
     url: photos.band.src,
     alt: photos.band.alt,
   };
   const faq = faqs(d);
   const place = clinic ? `${clinic.area.name}, ${clinic.city.name}` : "";
-  const hoursLine = clinic ? openDaysSummary(clinic.timings).split(" | ").filter(Boolean).slice(0, 2).join("  ·  ") : "";
   const ringText =
     [`${d.primarySpecialty?.name ?? "Doctor"} · ${clinic ? `${clinic.area.name} · ` : ""}${d.fullName} · `, `${d.fullName} · `].find((t) => t.length <= 48) ??
     `${d.fullName.slice(0, 44)} · `;
@@ -311,7 +327,6 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
         monogram={initials(d.fullName)}
         tagline={d.primarySpecialty?.name}
         links={nav}
-        hours={hoursLine}
         phone={phone}
         phoneLabel={phone ? formatPhone(phone) : undefined}
       />
@@ -321,7 +336,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
         <section
           id="top"
           aria-label="Introduction"
-          className="relative isolate -mt-[78px] flex min-h-[720px] items-center overflow-hidden pb-24 pt-32 md:-mt-[118px] md:pt-40 lg:min-h-[860px]"
+          className="relative isolate -mt-[78px] flex min-h-[720px] items-center overflow-hidden pb-24 pt-32 md:pt-36 lg:min-h-[860px]"
         >
           <HeroSlides slides={photos.hero} />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-sc-cream/95 via-sc-cream/80 to-sc-cream/20 lg:from-sc-cream/90 lg:via-sc-cream/55 lg:to-sc-cream/0" />
@@ -537,18 +552,20 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
             {/* Collage */}
             <div className="cm-reveal cm-left relative mx-auto w-full max-w-[520px] pb-16 pl-8 sm:pl-12">
               <div aria-hidden className="sc-blob absolute left-0 top-10 size-[85%] bg-sc-blush" />
-              <div className="relative aspect-[4/5] overflow-hidden rounded-t-[220px] rounded-b-[28px] shadow-sc-lg">
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[32px] shadow-sc-lg">
                 <Image src={collage.url} alt={collage.alt} fill sizes="(min-width: 1024px) 460px, 86vw" className="object-cover transition duration-[1.4s] hover:scale-105" />
               </div>
-              <div className="absolute bottom-0 left-0 w-[46%] overflow-hidden rounded-[28px] border-[6px] border-sc-cream shadow-sc-lg">
-                <div className="relative aspect-square">
-                  <Image src={photos.feature.src} alt="" fill sizes="240px" className="object-cover" />
+              {d.photo && (
+                <div className="absolute bottom-0 left-0 w-[44%] overflow-hidden rounded-[28px] border-[6px] border-sc-cream shadow-sc-lg">
+                  <div className="relative aspect-square bg-sc-blush">
+                    <Image src={d.photo.url} alt={d.photo.alt} fill sizes="240px" className="object-cover object-top" />
+                  </div>
                 </div>
-              </div>
+              )}
               {years && years > 0 ? (
-                <div className="cm-float absolute -right-2 top-12 flex size-32 flex-col items-center justify-center rounded-full bg-sc-rose text-center text-white shadow-sc-lg ring-8 ring-sc-cream sm:-right-6">
-                  <span className="font-display text-4xl font-semibold leading-none">{years}+</span>
-                  <span className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-white/85">years of care</span>
+                <div className="cm-float absolute right-4 top-4 rounded-2xl bg-white/95 px-5 py-3 text-center shadow-sc-lg ring-1 ring-sc-line backdrop-blur">
+                  <span className="block font-display text-3xl font-semibold leading-none text-sc-rose">{years}+</span>
+                  <span className="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-sc-plum">years of care</span>
                 </div>
               ) : null}
             </div>
@@ -584,7 +601,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
                   <dt className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sc-muted">
                     <HeartHandshake aria-hidden className="size-4 text-sc-gold" /> Practice
                   </dt>
-                  <dd className="text-right font-semibold text-sc-plum">{d.practitionerType === "consultant" ? "Consultant / specialist" : "General practitioner"}</dd>
+                  <dd className="text-right font-semibold text-sc-plum">{d.practitionerType === "consultant" ? "Consultant" : "General practitioner"}</dd>
                 </div>
                 {d.systemLabel && (
                   <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
@@ -726,7 +743,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
               <div className="cm-reveal cm-left relative mx-auto hidden w-full max-w-[420px] lg:block">
                 <div aria-hidden className="absolute -inset-4 rounded-t-full rounded-b-[40px] border border-sc-gold/50" />
                 <div className="relative aspect-[3/4] overflow-hidden rounded-t-full rounded-b-[32px] shadow-sc-lg">
-                  <Image src={photos.side.src} alt={photos.side.alt} fill sizes="420px" className="object-cover" />
+                  <Image src={photos.side.src} alt={photos.side.alt} fill sizes="420px" className="object-cover object-bottom" />
                 </div>
               </div>
               <div>
@@ -801,7 +818,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
               center
             />
             <div className="mt-12">
-              <ClinicTabs clinics={d.clinics} photos={clinicPhotos} />
+              <ClinicTabs clinics={d.clinics} />
             </div>
           </Section>
         )}
@@ -812,7 +829,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
           <div aria-hidden className="sc-blob absolute -bottom-40 -right-24 size-[520px] bg-white/60" style={{ animationDelay: "-7s" }} />
           <div className="relative mx-auto grid max-w-[1200px] overflow-hidden rounded-[40px] bg-white shadow-sc-lg lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
             <div className="relative isolate overflow-hidden bg-sc-plum p-8 text-white sm:p-10">
-              <Image src={photos.side.src} alt="" fill sizes="(min-width: 1024px) 500px, 100vw" className="-z-10 object-cover opacity-20" />
+              <Image src={photos.hero[2]!.src} alt="" fill sizes="(min-width: 1024px) 500px, 100vw" className="-z-10 object-cover opacity-20" />
               <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-b from-sc-plum/60 to-sc-plum" />
               <Heading
                 id="appointment"
@@ -1087,7 +1104,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
             </div>
           </div>
 
-          <div className="mt-16 grid gap-10 border-t border-white/10 py-14 md:grid-cols-2 lg:grid-cols-[1.3fr_0.8fr_1.1fr_1.1fr]">
+          <div className="mt-16 grid gap-10 border-t border-white/10 py-14 md:grid-cols-2 lg:grid-cols-[1.15fr_0.65fr_1.45fr_1.05fr]">
             <div>
               <div className="flex items-center gap-3">
                 <span aria-hidden className="flex size-12 items-center justify-center rounded-full font-display text-lg ring-1 ring-sc-gold/70">
@@ -1149,7 +1166,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
                     return (
                       <li key={day} className="flex justify-between gap-4">
                         <span className="text-white/55">{DAY_SHORT[day]}</span>
-                        <span className={slots.length ? "text-right text-white/85" : "text-white/40"}>{slots.length ? formatSlots(slots) : "Closed"}</span>
+                        <span className={slots.length ? "whitespace-nowrap text-right text-white/85" : "text-white/40"}>{slots.length ? formatSlots(slots) : "Closed"}</span>
                       </li>
                     );
                   })}
@@ -1191,8 +1208,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
 
           <div className="space-y-2 border-t border-white/10 py-7 text-sm text-white/50">
             <p>
-              Information provided by the doctor.
-              {reg ? ` Registration: ${reg}.` : ""} In a medical emergency, call 108 or go to the nearest hospital.
+              Information provided by the doctor. In a medical emergency, call 108 or go to the nearest hospital.
             </p>
             <p className="flex flex-wrap gap-x-5 gap-y-1">
               <span>
