@@ -49,18 +49,17 @@ import { specialtyPhotos } from "@/templates/shared/specialty-photos";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { ClinicCards } from "./ClinicCards";
 import { Nav, type NavLink } from "./Nav";
-import { ArchDefs, Divider, Mandala, Rosette } from "./Ornaments";
+import { Divider, Mandala, Rosette } from "./Ornaments";
 
 /**
  * Portfolio design 4 — "Warm Heritage". A warm, traditional one-page website:
  * forest green, terracotta, saffron and cream paper, Fraunces headings, line
- * mandalas, scalloped edges and pointed "jharokha" arches.
+ * mandalas and scalloped edges.
  *
  * letterhead nav (name centred) → hero over a photo carousel where each photo
- * opens in a widening circle, round portrait inside a turning mandala, all
- * centred → scalloped edge → three info medallions → about (arched portrait,
- * facts) → services (rosette tiles) → numbers (forest band) → conditions →
- * education (centred path) → clinics (cards with timings) → appointment →
+ * opens in a widening circle, round portrait, all centred → scalloped edge →
+ * three info medallions → about (framed portrait, facts) → services (rosette tiles) → numbers (forest band) → conditions →
+ * education (centred path) → clinics (first open, others open on request) → appointment →
  * recognition (medallions) → beyond medicine (tilted photo) → health tips →
  * gallery → FAQ → footer, plus a mobile bar.
  *
@@ -235,7 +234,6 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
   return (
     <div id="wh-top" className="wh-theme wh-paper overflow-x-clip font-sans text-wh-text">
       <RevealObserver rootId="wh-top" />
-      <ArchDefs />
       <Nav name={d.fullName} tagline={d.primarySpecialty?.name} links={nav} phone={phone} />
 
       <main>
@@ -252,9 +250,8 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
           <Mandala className="wh-spin-rev pointer-events-none absolute -bottom-48 -right-40 z-[3] size-[560px] text-wh-saffron/15" />
 
           <div className="relative z-10 mx-auto flex w-full max-w-[880px] flex-col items-center px-4 text-center sm:px-6">
-            <div className="cm-rise relative size-44 sm:size-52">
-              <Mandala className="wh-spin absolute -inset-8 text-wh-saffron/70" strokeWidth={0.8} />
-              <div className="absolute inset-0 overflow-hidden rounded-full bg-wh-forest-2 ring-4 ring-wh-saffron/80 ring-offset-4 ring-offset-wh-forest">
+            <div className="cm-rise relative size-40 sm:size-48">
+              <div className="absolute inset-0 overflow-hidden rounded-full border-4 border-wh-cream bg-wh-forest-2 shadow-wh-lg">
                 {d.photo ? (
                   <Image src={d.photo.url} alt={d.photo.alt} fill priority sizes="210px" className="object-cover object-top" />
                 ) : (
@@ -264,7 +261,7 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
                 )}
               </div>
             </div>
-            <p className="cm-rise mt-10 text-sm font-semibold uppercase tracking-[0.32em] text-wh-saffron" style={delay(100)}>
+            <p className="cm-rise mt-8 text-sm font-semibold uppercase tracking-[0.32em] text-wh-saffron" style={delay(100)}>
               Namaste · <span lang="hi">नमस्ते</span>
             </p>
             <div
@@ -353,9 +350,8 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
           <div className="grid items-start gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
             <div className="cm-reveal cm-left mx-auto w-full max-w-[440px]">
               <div className="relative">
-                <div aria-hidden className="absolute -inset-3 bg-wh-saffron/70" style={{ clipPath: "url(#wh-arch)" }} />
-                <div aria-hidden className="absolute -inset-1.5 bg-wh-cream" style={{ clipPath: "url(#wh-arch)" }} />
-                <div className="relative aspect-[4/5] bg-wh-sand" style={{ clipPath: "url(#wh-arch)" }}>
+                <div aria-hidden className="absolute -bottom-3 -right-3 h-full w-full rounded-[22px] border-2 border-wh-saffron" />
+                <div className="relative aspect-[4/5] overflow-hidden rounded-[22px] bg-wh-sand shadow-wh-lg">
                   <Image src={aboutPhoto.url} alt={aboutPhoto.alt} fill sizes="(min-width: 1024px) 440px, 90vw" className="object-cover object-top" />
                 </div>
                 {years && years > 0 ? (
@@ -480,9 +476,8 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
                 </ul>
               </div>
               <div className="cm-reveal cm-right relative mx-auto hidden w-full max-w-[420px] lg:block">
-                <div aria-hidden className="absolute -inset-3 bg-wh-terra/60" style={{ clipPath: "url(#wh-arch)" }} />
-                <div aria-hidden className="absolute -inset-1.5 bg-wh-cream" style={{ clipPath: "url(#wh-arch)" }} />
-                <div className="relative aspect-[3/4]" style={{ clipPath: "url(#wh-arch)" }}>
+                <div aria-hidden className="absolute -bottom-3 -left-3 h-full w-full rounded-[22px] border-2 border-wh-terra/60" />
+                <div className="relative aspect-[3/4] overflow-hidden rounded-[22px] shadow-wh-lg">
                   <Image src={photos.side.src} alt={photos.side.alt} fill sizes="420px" className="object-cover" />
                 </div>
               </div>
