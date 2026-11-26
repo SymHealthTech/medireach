@@ -243,7 +243,7 @@ export const SEED_TEMPLATE_SLOTS = {
   clinic: ["Classic", "Bold Photo", "Calm Minimal", "Heritage", "Multi-doctor Grid"],
   // DESIGN_BRIEF.md §11: hospital slots 2–5 are reserved without names yet.
   hospital: ["Classic", "Hospital Design 2", "Hospital Design 3", "Hospital Design 4", "Hospital Design 5"],
-  card: ["Classic", "Clinic Modern", "Modern Edge", "Heritage", "Photo Card"],
+  card: ["Classic", "Clinic Modern", "Modern Edge", "Warm Heritage", "Specialist Pro"],
 } as const;
 
 /**

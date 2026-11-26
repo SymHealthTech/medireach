@@ -526,3 +526,104 @@
   .me-slide { transition: none !important; }
   .cm-armed .sc-line { transform: none !important; }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Portfolio design 4 "Warm Heritage" (templates/portfolio/t4).
+   Warm and traditional: forest green, terracotta for actions, saffron and
+   cream paper, Fraunces headings, mandala and arch motifs. `wh-` prefix;
+   `.wh-theme` re-colours the shared widgets.
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-wh-forest: #1f4a3a;
+  --color-wh-forest-2: #2b5f4c;
+  --color-wh-terra: #b4522c;
+  --color-wh-terra-2: #93401f;
+  --color-wh-saffron: #e0a33a;
+  --color-wh-cream: #fbf5ea;
+  --color-wh-paper: #f4ebdb;
+  --color-wh-sand: #eadfc9;
+  --color-wh-text: #2b2620;
+  --color-wh-muted: #6d6252;
+  --color-wh-line: #e5d7bf;
+  --shadow-wh: 0 1px 2px rgb(43 38 32 / 0.06), 0 14px 30px -12px rgb(43 38 32 / 0.2);
+  --shadow-wh-lg: 0 2px 6px rgb(43 38 32 / 0.08), 0 34px 64px -26px rgb(31 74 58 / 0.45);
+}
+.wh-theme {
+  --color-cm-navy: #1f4a3a;
+  --color-cm-navy-2: #2b5f4c;
+  --color-cm-blue: #93401f;
+  --color-cm-blue-soft: #f4ebdb;
+  --color-cm-teal: #b4522c;
+  --color-cm-teal-2: #93401f;
+  --color-cm-mint: #f6ead3;
+  --color-cm-sky: #fbf5ea;
+  --color-cm-text: #2b2620;
+  --color-cm-muted: #6d6252;
+  --color-cm-line: #e5d7bf;
+  --color-cm-gold: #e0a33a;
+  --shadow-cm: 0 1px 2px rgb(43 38 32 / 0.06), 0 14px 30px -12px rgb(43 38 32 / 0.2);
+  --shadow-cm-lg: 0 2px 6px rgb(43 38 32 / 0.08), 0 34px 64px -26px rgb(31 74 58 / 0.45);
+}
+/* Hero carousel: each photo opens in a widening circle over the last one. */
+.wh-slide { clip-path: circle(0% at 72% 45%); transition: clip-path 1600ms cubic-bezier(.65,0,.25,1); }
+.wh-slide[data-active="true"] { clip-path: circle(150% at 72% 45%); z-index: 2; }
+.wh-slide[data-prev="true"] { clip-path: circle(150% at 72% 45%); z-index: 1; }
+.wh-slide[data-active="true"] img { animation: cm-kenburns 10s ease-out both; }
+/* Paper grain and a faint mandala watermark. */
+.wh-paper { background-color: var(--color-wh-cream); background-image: radial-gradient(rgb(180 82 44 / 0.05) 1px, transparent 1.2px); background-size: 22px 22px; }
+/* Scalloped edge (place at the bottom of a coloured block). */
+.wh-scallop { height: 18px; background: radial-gradient(circle at 12px -2px, transparent 12px, var(--wh-scallop, #fbf5ea) 12.5px) repeat-x; background-size: 24px 18px; }
+@keyframes wh-spin { to { transform: rotate(360deg); } }
+.wh-spin { animation: wh-spin 60s linear infinite; }
+.wh-spin-rev { animation: wh-spin 80s linear infinite reverse; }
+@keyframes wh-sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+.wh-sway { animation: wh-sway 6s ease-in-out infinite; transform-origin: top center; }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Portfolio design 5 "Specialist Pro" (templates/portfolio/t5).
+   Crisp and clinical: deep slate, crimson for actions, ice-white panels,
+   cyan for data. `sp-` prefix; `.sp-theme` re-colours the shared widgets.
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-sp-slate: #0f1b2d;
+  --color-sp-slate-2: #1a2a42;
+  --color-sp-crimson: #c21e3a;
+  --color-sp-crimson-2: #9e1530;
+  --color-sp-blush: #fdecef;
+  --color-sp-cyan: #0e8fb0;
+  --color-sp-ice: #f3f6fa;
+  --color-sp-text: #142033;
+  --color-sp-muted: #5a6a7f;
+  --color-sp-line: #e0e6ee;
+  --shadow-sp: 0 1px 2px rgb(15 27 45 / 0.05), 0 10px 28px -10px rgb(15 27 45 / 0.16);
+  --shadow-sp-lg: 0 2px 6px rgb(15 27 45 / 0.06), 0 30px 60px -24px rgb(15 27 45 / 0.4);
+}
+.sp-theme {
+  --color-cm-navy: #0f1b2d;
+  --color-cm-navy-2: #1a2a42;
+  --color-cm-blue: #0e8fb0;
+  --color-cm-blue-soft: #eef3f8;
+  --color-cm-teal: #c21e3a;
+  --color-cm-teal-2: #9e1530;
+  --color-cm-mint: #fdecef;
+  --color-cm-sky: #f3f6fa;
+  --color-cm-text: #142033;
+  --color-cm-muted: #5a6a7f;
+  --color-cm-line: #e0e6ee;
+  --color-cm-gold: #f2b544;
+  --shadow-cm: 0 1px 2px rgb(15 27 45 / 0.05), 0 10px 28px -10px rgb(15 27 45 / 0.16);
+  --shadow-cm-lg: 0 2px 6px rgb(15 27 45 / 0.06), 0 30px 60px -24px rgb(15 27 45 / 0.4);
+}
+/* Hero carousel: photos come into focus (blur to sharp) as they fade in. */
+.sp-slide { opacity: 0; filter: blur(22px); transform: scale(1.08); transition: opacity 1200ms ease, filter 1600ms ease, transform 1800ms ease; }
+.sp-slide[data-active="true"] { opacity: 1; filter: blur(0); transform: scale(1); }
+.sp-slide[data-active="true"] img { animation: cm-kenburns 10s ease-out 800ms both; }
+@keyframes sp-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.16); } 30% { transform: scale(1); } 45% { transform: scale(1.1); } }
+.sp-beat { animation: sp-beat 1.6s ease-in-out infinite; }
+@keyframes sp-scan { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.sp-scan { animation: sp-scan 3.2s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wh-slide, .sp-slide { transition: none !important; }
+  .wh-slide[data-active="true"] img, .sp-slide[data-active="true"] img, .wh-spin, .wh-spin-rev, .wh-sway, .sp-beat, .sp-scan { animation: none !important; }
+}

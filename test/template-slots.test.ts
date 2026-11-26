@@ -34,7 +34,6 @@ describe("syncTemplateSlots", () => {
     expect(await slot("portfolio", "t3")).toMatchObject({ name: "Modern Edge", status: "ready" });
     expect(await slot("portfolio", "t2")).toMatchObject({ status: "ready" });
     expect(await slot("card", "t3")).toMatchObject({ name: "My card", status: "ready" }); // custom name kept
-    expect(await slot("portfolio", "t4")).toMatchObject({ status: "coming_soon" }); // not built yet
 
     expect(await syncTemplateSlots()).toEqual([]);
   });

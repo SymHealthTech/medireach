@@ -17,6 +17,10 @@ const BUILT: { type: SiteTemplateType; key: TemplateKey; name: string; oldNames:
   { type: "portfolio", key: "t3", name: "Modern Edge", oldNames: ["Minimal Mono"] },
   { type: "card", key: "t2", name: "Clinic Modern", oldNames: ["Ink Bold"] },
   { type: "card", key: "t3", name: "Modern Edge", oldNames: ["Minimal"] },
+  { type: "portfolio", key: "t4", name: "Warm Heritage", oldNames: [] },
+  { type: "portfolio", key: "t5", name: "Specialist Pro", oldNames: [] },
+  { type: "card", key: "t4", name: "Warm Heritage", oldNames: ["Heritage"] },
+  { type: "card", key: "t5", name: "Specialist Pro", oldNames: ["Photo Card"] },
 ];
 
 export interface SlotChange {

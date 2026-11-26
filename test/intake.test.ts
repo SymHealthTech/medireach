@@ -112,8 +112,8 @@ describe("form definitions", () => {
 
   it("asks for the design decision, and drops unknown design codes instead of failing", () => {
     expect(missingForSubmit("doctor", { ...fullDoctor(), designDecision: "" }).map((m) => m.key)).toEqual(["designDecision"]);
-    const d = intakeDataSchema("doctor").parse({ ...fullDoctor(), websiteDesign: "t4", cardStyle: "BLUE-ish" });
-    expect(d.websiteDesign).toBe(""); // t4 isn't built yet
+    const d = intakeDataSchema("doctor").parse({ ...fullDoctor(), websiteDesign: "t9", cardStyle: "BLUE-ish" });
+    expect(d.websiteDesign).toBe(""); // not a design
     expect(d.cardStyle).toBe("");
     expect(intakeDataSchema("doctor").parse(fullDoctor()).cardStyle).toBe("DOC-AMBER");
     expect(intakeDataSchema("clinic").parse({ websiteDesign: "dental" }).websiteDesign).toBe("dental");

@@ -45,7 +45,7 @@ export function demoInquiries(d: DemoDoctor, now = Date.now()): InquiryRow[] {
  */
 export function demoEditorOptions(): EditorOptions {
   const slot = (type: "portfolio" | "card", names: readonly string[]) =>
-    names.map((name, i) => ({ type, key: i === 0 ? "classic" : `t${i + 1}`, name, status: i < 3 ? "ready" : "coming_soon" }));
+    names.map((name, i) => ({ type, key: i === 0 ? "classic" : `t${i + 1}`, name, status: "ready" }));
   return {
     cities: [{ id: "pune", name: "Pune", slug: "pune", state: "Maharashtra" }],
     areas: PUNE_AREAS.map((name) => ({ id: slugify(name), name, slug: slugify(name), cityId: "pune" })),
