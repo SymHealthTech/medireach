@@ -46,11 +46,12 @@ import { absUrl } from "@/lib/site";
 import { formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER, DAY_SHORT } from "@/lib/timings";
 import { describeService, type ServiceIcon } from "@/content/service-descriptions";
 import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
+import { specialtyPhotos } from "@/templates/shared/specialty-photos";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { AppointmentForm } from "./AppointmentForm";
 import { ClinicsSection } from "./ClinicsSection";
 import { HealthTipsSection } from "./HealthTipsSection";
-import { HeroCarousel, type Slide } from "./HeroCarousel";
+import { HeroCarousel } from "./HeroCarousel";
 import { CountUp, RevealObserver } from "./Motion";
 import { Nav, type NavLink } from "./Nav";
 
@@ -70,17 +71,10 @@ import { Nav, type NavLink } from "./Nav";
  *
  * NMC: no ratings, reviews, testimonials, patient counts or superlatives.
  * Numbers shown are facts the doctor entered (years, clinics, languages).
- * Photos: public/templates/clinic-modern (Pexels, see CREDITS.md).
+ * Photos follow the specialty (templates/shared/specialty-photos.ts); general
+ * clinic photos: public/templates/clinic-modern (Pexels, see CREDITS.md).
  */
 
-const IMG = "/templates/clinic-modern";
-
-const HERO_SLIDES: Slide[] = [
-  { src: `${IMG}/hero-1.jpg`, alt: "A doctor examining a patient in a clinic" },
-  { src: `${IMG}/hero-2.jpg`, alt: "A clean, bright examination room" },
-  { src: `${IMG}/hero-3.jpg`, alt: "A family sharing a meal at home" },
-  { src: `${IMG}/hero-4.jpg`, alt: "A doctor writing notes with a stethoscope on the desk" },
-];
 
 const SERVICE_ICONS: Record<ServiceIcon, typeof Stethoscope> = {
   stethoscope: Stethoscope,
@@ -193,6 +187,7 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
 // ---------------------------------------------------------------------------
 
 export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
+  const photos = specialtyPhotos(d);
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const cardHref = d.cardUrl ?? `${d.url}/card`;
@@ -204,8 +199,8 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
   const tips = d.healthTips ?? [];
   const story = d.interestsStory;
   const waHref = d.whatsapp ? `https://wa.me/${d.whatsapp}?text=${encodeURIComponent(`Hello ${d.fullName}, I would like to book an appointment.`)}` : undefined;
-  const clinicPhotos = d.clinics.map((_, i) => d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? `${IMG}/band-appointment.jpg`);
-  const aboutPhoto = d.gallery[0] ?? { url: `${IMG}/band-clinic.jpg`, alt: "Inside the clinic" };
+  const clinicPhotos = d.clinics.map((_, i) => d.gallery[i + 1]?.url ?? d.gallery[0]?.url ?? photos.side.src);
+  const aboutPhoto = d.gallery[0] ?? { url: photos.band.src, alt: photos.band.alt };
   const faq = faqs(d);
   const place = clinic ? `${clinic.area.name}, ${clinic.city.name}` : "";
 
@@ -243,7 +238,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
       <main>
         {/* ── Hero ── */}
         <section id="top" aria-label="Introduction" className="relative isolate -mt-[72px] flex min-h-[680px] items-center overflow-hidden bg-cm-navy pb-40 pt-28 sm:pb-44 lg:min-h-[820px] lg:pt-32">
-          <HeroCarousel slides={HERO_SLIDES} />
+          <HeroCarousel slides={photos.hero} />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-cm-navy via-cm-navy/85 to-cm-navy/35" />
           <div aria-hidden className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-cm-navy/70 to-transparent" />
           <svg aria-hidden viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute inset-x-0 bottom-24 h-24 w-full opacity-25">
@@ -495,7 +490,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
 
         {/* ── Numbers band (photo background) ── */}
         {stats.length > 0 && (
-          <section aria-label="At a glance" className="cm-parallax relative isolate px-4 py-20 sm:px-6" style={{ backgroundImage: `url(${IMG}/band-clinic.jpg)` }}>
+          <section aria-label="At a glance" className="cm-parallax relative isolate px-4 py-20 sm:px-6" style={{ backgroundImage: `url(${photos.band.src})` }}>
             <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-cm-navy/90 via-cm-navy/75 to-cm-teal-2/70" />
             <dl className={cn("mx-auto grid max-w-[1240px] gap-8 text-center text-white sm:grid-cols-2", stats.length >= 4 ? "lg:grid-cols-4" : stats.length === 3 ? "lg:grid-cols-3" : "")}>
               {stats.map((s, i) => (
@@ -520,7 +515,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
               <div className="lg:sticky lg:top-28 lg:self-start">
                 <Heading id="services" eyebrow="Services" title="Care for the whole family" lead={`What ${firstName} looks after in the clinic, from a short illness to long-term conditions.`} />
                 <div className="cm-reveal cm-left relative mt-8 hidden aspect-[4/3.2] overflow-hidden rounded-[28px] shadow-cm-lg lg:block">
-                  <Image src={`${IMG}/svc-consult.jpg`} alt="A doctor in consultation with a patient" fill sizes="480px" className="object-cover" />
+                  <Image src={photos.feature.src} alt={photos.feature.alt} fill sizes="480px" className="object-cover" />
                   <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-cm-navy/85 via-cm-navy/10 to-transparent" />
                   <div className="absolute inset-x-6 bottom-6 text-white">
                     <p className="text-lg font-bold">Not sure which service you need?</p>
@@ -605,7 +600,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
                   lead={d.registration.council ? `Registered with the ${d.registration.council}${d.registration.year ? ` since ${d.registration.year}` : ""}.` : undefined}
                 />
                 <div className="cm-reveal relative mt-8 hidden aspect-[5/3] overflow-hidden rounded-3xl lg:block">
-                  <Image src={`${IMG}/hero-4.jpg`} alt="" fill sizes="480px" className="object-cover" />
+                  <Image src={photos.hero[3]?.src ?? photos.band.src} alt="" fill sizes="480px" className="object-cover" />
                   <div aria-hidden className="absolute inset-0 bg-gradient-to-tr from-cm-navy/70 to-transparent" />
                   <p className="absolute bottom-5 left-5 right-5 text-lg font-bold leading-snug text-white">{d.degreesLine}</p>
                 </div>
@@ -659,7 +654,7 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
           id="appointment"
           aria-labelledby="appointment-title"
           className="cm-parallax relative isolate scroll-mt-16 px-4 py-20 sm:px-6 lg:py-28"
-          style={{ backgroundImage: `url(${IMG}/band-appointment.jpg)` }}
+          style={{ backgroundImage: `url(${photos.side.src})` }}
         >
           <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-br from-cm-navy/95 via-cm-navy/85 to-cm-navy-2/60" />
           <div className="mx-auto grid max-w-[1240px] gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">

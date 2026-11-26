@@ -11,8 +11,7 @@ export interface NavLink {
 
 /**
  * Modern Edge header: a dark glass bar with a square monogram, a thin orange
- * scroll-progress line, and a full-screen menu on phones with large numbered
- * links.
+ * scroll-progress line, and a full-screen menu on phones with large links.
  */
 export function Nav({ name, monogram, tagline, links, phone }: { name: string; monogram: string; tagline?: string; links: NavLink[]; phone?: string }) {
   const [scrolled, setScrolled] = useState(false);
@@ -64,20 +63,18 @@ export function Nav({ name, monogram, tagline, links, phone }: { name: string; m
 
           <nav aria-label="Sections" className="ml-auto hidden lg:block">
             <ul className="flex items-center">
-              {links.map((l, i) => (
+              {links.map((l) => (
                 <li key={l.href}>
                   <a
                     href={l.href}
                     aria-current={current === l.href ? "true" : undefined}
                     className={cn(
-                      "group flex items-baseline gap-1 px-3 py-2 text-sm font-semibold transition-colors",
+                      "relative px-3 py-2 text-sm font-semibold transition-colors",
                       current === l.href ? "text-white" : "text-white/65 hover:text-white",
                     )}
                   >
-                    <span className={cn("text-[10px] font-bold transition-colors", current === l.href ? "text-me-orange" : "text-white/30 group-hover:text-me-orange")}>
-                      0{i + 1}
-                    </span>
                     {l.label}
+                    {current === l.href && <span aria-hidden className="absolute inset-x-3 -bottom-0.5 h-[2px] bg-me-orange" />}
                   </a>
                 </li>
               ))}
@@ -130,12 +127,11 @@ export function Nav({ name, monogram, tagline, links, phone }: { name: string; m
                 href={l.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-baseline gap-4 py-2 text-4xl font-bold uppercase tracking-tight text-white transition-transform duration-700",
+                  "flex py-2 text-4xl font-bold uppercase tracking-tight text-white transition-transform duration-700",
                   open ? "translate-y-0" : "translate-y-full",
                 )}
                 style={{ transitionDelay: open ? `${200 + i * 60}ms` : "0ms" }}
               >
-                <span className="text-sm text-me-orange">0{i + 1}</span>
                 {l.label}
               </a>
             </li>

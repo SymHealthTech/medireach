@@ -48,7 +48,7 @@ import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
-import type { StockPhoto } from "@/templates/shared/specialty-photos";
+import { specialtyPhotos, type SpecialtyPhotos } from "@/templates/shared/specialty-photos";
 import type { PortfolioTemplateProps, PublicDoctor } from "@/templates/types";
 import { ClinicTabs } from "./serene/ClinicTabs";
 import { HeroSlides } from "./serene/HeroSlides";
@@ -59,8 +59,8 @@ import { Nav, type NavLink } from "./serene/Nav";
  * deep plum, rose, blush and cream with a thin gold line and Fraunces
  * headings. Light and airy where Clinic Modern (design 2) is dark and bold:
  *
- * frosted nav → light hero over a cross-fading photo carousel (the same
- * photos for every specialty), arched portrait with a rotating name ring and
+ * frosted nav → light hero over a cross-fading photo carousel (photos chosen
+ * by specialty), arched portrait with a rotating name ring and
  * drifting petals → welcome cards → about (pull quote, photo collage,
  * credentials) → services (feature photo + cards) → numbers → conditions
  * (arched photo + chips) → education (horizontal timeline) → clinics (tabs,
@@ -76,12 +76,14 @@ import { Nav, type NavLink } from "./serene/Nav";
  */
 
 /**
- * Photos for every Serene Care site, whatever the specialty: women doctors in
- * everyday consultations (physician, skin, gynaecology and others all fit).
- * Pexels, see public/templates/serene-care/CREDITS.md.
+ * Serene Care's own general photos (women doctors in everyday consultations),
+ * used when the doctor's specialty has no photo set of its own
+ * (templates/shared/specialty-photos.ts). Pexels, see
+ * public/templates/serene-care/CREDITS.md.
  */
 const IMG = "/templates/serene-care";
-const PHOTOS: { hero: StockPhoto[]; band: StockPhoto; side: StockPhoto; feature: StockPhoto } = {
+const PHOTOS: SpecialtyPhotos = {
+  key: "general",
   hero: [
     { src: `${IMG}/hero-1.jpg`, alt: "A doctor checking a patient in a bright clinic" },
     { src: `${IMG}/hero-2.jpg`, alt: "A doctor talking with a patient" },
@@ -256,7 +258,7 @@ function faqs(d: PublicDoctor): { q: string; a: string }[] {
 // ---------------------------------------------------------------------------
 
 export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplateProps) {
-  const photos = PHOTOS;
+  const photos = specialtyPhotos(d, PHOTOS);
   const clinic = d.clinics[0];
   const phone = d.phone ?? clinic?.phone;
   const cardHref = d.cardUrl ?? `${d.url}/card`;

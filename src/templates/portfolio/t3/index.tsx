@@ -46,7 +46,7 @@ import { ServicesRail } from "./ServicesRail";
  * glance" grid → about (framed portrait) → services rail → conditions
  * (numbered, dark) → training (stacking cards) → clinics (all open,
  * alternating) → appointment → recognition → beyond medicine (split screen)
- * → health tips → gallery → FAQ → footer with the name in outline type.
+ * → health tips → gallery → FAQ → footer.
  *
  * Every section hides itself when its data is empty. Presentation only: the
  * H1, intro sentence, nearby doctors and JSON-LD come from the shared
@@ -257,7 +257,7 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
                     className="inline-flex h-14 items-center gap-3 px-6 font-bold text-white ring-1 ring-white/30 backdrop-blur transition hover:bg-white hover:text-me-ink"
                   >
                     <Phone aria-hidden className="size-5" strokeWidth={2} />
-                    {formatPhone(phone)}
+                    Call the clinic
                   </a>
                 )}
                 {waHref && (
@@ -350,7 +350,7 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
                 <p className="mt-1 font-bold text-me-ink">{reg}</p>
               </div>
             )}
-            <div className="cm-reveal bg-white p-7 ring-1 ring-me-line md:col-span-2" style={delay(120)}>
+            <div className="cm-reveal bg-white p-7 ring-1 ring-me-line md:col-span-3" style={delay(120)}>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-me-muted">Numbers</p>
               <dl className="mt-3 grid grid-cols-3 gap-4">
                 {[
@@ -372,11 +372,11 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
             </div>
             <a
               href="#appointment"
-              className="cm-reveal group flex flex-col justify-between bg-me-orange p-7 text-white transition hover:bg-me-orange-2 md:col-span-2"
+              className="cm-reveal group flex flex-col justify-between bg-me-orange p-7 text-white transition hover:bg-me-orange-2 md:col-span-1"
               style={delay(200)}
             >
               <ArrowUpRight aria-hidden className="size-8 self-end transition duration-500 group-hover:rotate-45" strokeWidth={2} />
-              <span className="text-2xl font-bold uppercase leading-tight tracking-tight sm:text-3xl">Request an appointment</span>
+              <span className="text-xl font-bold uppercase leading-tight tracking-tight">Request an appointment</span>
             </a>
           </div>
         </section>
@@ -833,7 +833,7 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
                   href={`tel:+${phone}`}
                   className="inline-flex h-14 items-center gap-2 px-6 font-bold text-white ring-1 ring-white/25 transition hover:bg-white hover:text-me-ink"
                 >
-                  <Phone aria-hidden className="size-5" /> {formatPhone(phone)}
+                  <Phone aria-hidden className="size-5" /> Call the clinic
                 </a>
               )}
             </div>
@@ -931,14 +931,9 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
             </div>
           </div>
 
-          <p aria-hidden className="me-outline-white select-none whitespace-nowrap text-[16vw] font-bold uppercase leading-[0.85] tracking-tighter lg:text-[210px]">
-            {d.lastName}
-          </p>
-
           <div className="space-y-2 border-t border-white/10 py-7 text-sm text-white/50">
             <p>
-              Information provided by the doctor.
-              {reg ? ` Registration: ${reg}.` : ""} In a medical emergency, call 108 or go to the nearest hospital.
+              Information provided by the doctor. In a medical emergency, call 108 or go to the nearest hospital.
             </p>
             <p className="flex flex-wrap gap-x-5 gap-y-1">
               <span>
