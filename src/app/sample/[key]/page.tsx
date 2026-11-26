@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ProfileView } from "@/components/public/ProfileView";
 import { DesignSwitcher } from "@/components/public/DesignSwitcher";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
@@ -9,7 +9,8 @@ import { SAMPLE_KEYS, SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 /**
  * Public sample pages (/sample/gp, /sample/consultant) linked from the
  * homepage. Fictional doctors rendered with the real templates; `?design=t2`
- * picks a design, and the floating switcher flips between them in one click.
+ * picks a design. The floating switcher opens each design with its own demo
+ * doctor (SAMPLE_DESIGNS[].sample), so the five demos show five doctors.
  * noindex, clearly labelled, and without the doctor JSON-LD.
  */
 export function generateStaticParams() {
@@ -44,6 +45,9 @@ export default async function SamplePage({
     SAMPLE_DESIGNS.find((d) => d.key === doctor.portfolioTemplateId && d.ready) ??
     SAMPLE_DESIGNS[0]!;
   const demo = doctor.id.startsWith("demo-");
+  // Each design has its own demo doctor: a demo doctor asked for in another
+  // design opens that design's own doctor instead (old ?design= links).
+  if (demo && current.key !== doctor.portfolioTemplateId && current.sample !== key) redirect(`/sample/${current.sample}?design=${current.key}`);
 
   return (
     <>
@@ -54,7 +58,7 @@ export default async function SamplePage({
         </Link>
       </div>
       <ProfileView doctor={{ ...doctor, portfolioTemplateId: current.key }} nearby={[]} jsonLd={false} />
-      <DesignSwitcher basePath={`/sample/${key}`} current={current.key} />
+      <DesignSwitcher current={current.key} />
     </>
   );
 }

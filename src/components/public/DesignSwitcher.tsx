@@ -9,20 +9,22 @@ import type { TemplateKey } from "@/lib/constants";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
 
 /**
- * Floating pill on sample pages: one tap switches the design (?design=…).
+ * Floating pill on sample pages: one tap opens another design with its own
+ * demo doctor (SAMPLE_DESIGNS[].sample), so each design shows a different
+ * doctor, specialty and story.
  * Always fixed to the screen: bottom centre on phones (above the sticky
  * contact bar), bottom right on larger screens. Rendered into <body> through
  * a portal, so no transformed or blurred ancestor can turn "fixed" into
  * "scrolls with the page".
  */
-export function DesignSwitcher({ basePath, current }: { basePath: string; current: TemplateKey }) {
+export function DesignSwitcher({ current }: { current: TemplateKey }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
-  return createPortal(<Switcher basePath={basePath} current={current} />, document.body);
+  return createPortal(<Switcher current={current} />, document.body);
 }
 
-function Switcher({ basePath, current }: { basePath: string; current: TemplateKey }) {
+function Switcher({ current }: { current: TemplateKey }) {
   const active = SAMPLE_DESIGNS.find((d) => d.key === current) ?? SAMPLE_DESIGNS[0]!;
   return (
     <nav
@@ -46,8 +48,7 @@ function Switcher({ basePath, current }: { basePath: string; current: TemplateKe
             <li key={d.key}>
               {d.ready ? (
                 <Link
-                  href={`${basePath}?design=${d.key}`}
-                  scroll={false}
+                  href={`/sample/${d.sample}?design=${d.key}`}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={`Design ${label}: ${d.name}`}
                   title={d.name}
