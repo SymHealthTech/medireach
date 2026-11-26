@@ -13,6 +13,7 @@
     "seed:masters": "node --env-file-if-exists=.env.local --import tsx scripts/seed-masters.ts",
     "seed:samples": "node --env-file-if-exists=.env.local --import tsx scripts/seed-samples.ts",
     "seed:demo": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo.ts",
+    "seed:demo-sites": "node --env-file-if-exists=.env.local --import tsx scripts/seed-demo-sites.ts",
     "sync:templates": "node --env-file-if-exists=.env.local --import tsx scripts/sync-templates.ts",
     "backfill:uids": "node --env-file-if-exists=.env.local --import tsx scripts/backfill-uids.ts",
     "seed:admin": "node --env-file-if-exists=.env.local --import tsx scripts/seed-admin.ts",
