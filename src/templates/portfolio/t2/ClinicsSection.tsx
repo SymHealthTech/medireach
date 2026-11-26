@@ -8,7 +8,7 @@ import { formatPhone } from "@/lib/phone";
 import { DAY_NAMES, DAY_SHORT, formatTime, isOpenAt, nowInIndia, slotsForDay, WEEK_ORDER, type DayTimings } from "@/lib/timings";
 import type { PublicClinic } from "@/templates/types";
 
-const TYPE_LABEL: Record<PublicClinic["type"], string> = {
+export const TYPE_LABEL: Record<PublicClinic["type"], string> = {
   own_clinic: "Own clinic",
   hospital_visiting: "Visiting consultant",
   other: "Clinic",
@@ -20,7 +20,7 @@ const toMin = (hhmm: string) => {
 };
 
 /** "Open now · closes 1:30 pm" / "Closed · opens Mon 9:30 am", in India time. */
-function status(timings: DayTimings[], at: { day: number; minutes: number }): { open: boolean; text: string } {
+export function status(timings: DayTimings[], at: { day: number; minutes: number }): { open: boolean; text: string } {
   if (isOpenAt(timings, at)) {
     const slot = slotsForDay(timings, at.day).find((s) => toMin(s.open) <= at.minutes && at.minutes < toMin(s.close));
     return { open: true, text: slot ? `Closes at ${formatTime(slot.close)}` : "Open now" };
@@ -40,7 +40,7 @@ function SessionIcon({ open }: { open: string }) {
 }
 
 /** The week at a glance: today highlighted, sessions as chips, live open/closed status. */
-function TimingsBoard({ timings }: { timings: DayTimings[] }) {
+export function TimingsBoard({ timings }: { timings: DayTimings[] }) {
   const [now, setNow] = useState<{ day: number; minutes: number } | null>(null);
   useEffect(() => {
     setNow(nowInIndia());

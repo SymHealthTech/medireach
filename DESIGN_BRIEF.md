@@ -236,19 +236,15 @@ Goal: as good as Linear or Notion, but warmer. Calm, fast, never cluttered, full
 
 ---
 
-## 7. Classic doctor portfolio (default)
+## 7. Doctor portfolio designs
 
-1. **Header:** circular photo with thin marigold ring; name (Fraunces H1); specialty · area, city; degrees; registration line (muted). Action row: Call · WhatsApp · Directions · Save contact (sticky bottom bar on mobile).
-2. Intro sentence (factual, auto-generated) + short bio.
-3. **Clinics:** card per clinic with type chip, address, map button, today's timings with Open now / Closed badge, expandable week, fee if shown. Clinic name links to the clinic's MediReach site if it has one.
-4. Services and conditions as sage chips.
-5. Qualifications timeline.
-6. Awards and memberships (with awarding body and year).
-7. Gallery (max 5), lightbox, captions.
-8. Beyond medicine: interests chips.
-9. Quick facts Q&A.
-10. Other doctors nearby.
-11. Footer strip: "Information provided by the doctor. Registration: {council} {number}" · "Website by MediReach".
+Five design slots (`classic`, `t2`–`t5`); a slot only renders for real doctors once it is "Ready" in Dashboard → Design templates (`classic` always is). Each design has its own palette (not the MediReach brand), uses local Pexels photos (credits in `public/templates/*/CREDITS.md`) and has a fictional demo doctor in `src/fixtures/demo-doctors`. Every section hides itself when its data is empty; H1, intro sentence, nearby doctors and JSON-LD come from the shared wrapper. No ratings, reviews, testimonials, patient counts or superlatives.
+
+- **Design 1 — Serene Care** (`templates/portfolio/classic`, default): soft and elegant. Deep plum, rose actions, blush/cream washes, a thin gold line, Fraunces headings. Light hero over a cross-fading photo carousel, arched portrait with a rotating name ring and drifting petals, welcome cards, about with pull quote and photo collage, services cards, numbers, conditions chips, horizontal education timeline, clinic tabs (timings + map), appointment form, recognition, beyond medicine, health tips, gallery, FAQ. Demo: Dr. Rhea Sardesai, gynaecologist (`/sample/rhea-sardesai`). Card: Classic with the doctor's card colour style (demo uses DOC-PLUM).
+- **Design 2 — Clinic Modern** (`t2`): dark navy hero, teal actions, bold sans. Demo: Dr. Arnav Deshpande, general physician.
+- **Design 3 — Modern Edge** (`t3`): bold and editorial. Near-black ink, cobalt and signal-orange, square corners, big uppercase type, numbered sections. Hero carousel that wipes in from the right, services ticker, bento "at a glance", framed portrait, services rail, numbered conditions, stacking education cards, all clinics open side by side, recognition by year, split-screen beyond medicine, footer name in outline type. Matching card `card/t3`. Demo: Dr. Siddharth Rane, orthopaedic surgeon (`/sample/siddharth-rane`).
+- Existing databases: `npm run sync:templates` renames the built slots (only while they still have their old default names) and marks them ready; safe to re-run.
+- Hero and band photos in designs 1 and 3 follow the specialty (`templates/shared/specialty-photos.ts`): women's health, orthopaedics, else general clinic photos.
 
 ## 8. Classic clinic and hospital sites (default layouts + themes)
 

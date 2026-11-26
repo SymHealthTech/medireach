@@ -102,6 +102,8 @@ export const RESERVED_SUBDOMAINS = [
   "draditisample",
   // Demo doctors (fixtures/demo-doctors).
   "drarnavdeshpande",
+  "drrheasardesai",
+  "drsiddharthrane",
 ] as const;
 
 /**
@@ -113,6 +115,8 @@ export const RESERVED_SUBDOMAINS = [
 export const SAMPLE_SUBDOMAINS: Record<string, string> = {
   draditisample: "gp",
   drarnavdeshpande: "arnav-deshpande",
+  drrheasardesai: "rhea-sardesai",
+  drsiddharthrane: "siddharth-rane",
 };
 
 /** Prefix that marks a top-level doctor short slug (`/dr-amit-shah`). */

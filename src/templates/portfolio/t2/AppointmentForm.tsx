@@ -180,7 +180,7 @@ export function AppointmentForm({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-cm-teal px-6 font-semibold text-white shadow-[0_14px_30px_-12px_rgb(13_148_136/0.9)] transition hover:-translate-y-0.5 hover:bg-cm-teal-2 disabled:translate-y-0 disabled:opacity-70"
+          className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-cm-teal px-6 font-semibold text-white shadow-lg shadow-cm-teal/35 transition hover:-translate-y-0.5 hover:bg-cm-teal-2 disabled:translate-y-0 disabled:opacity-70"
         >
           {pending ? <Loader2 aria-hidden className="size-5 animate-spin" /> : <Send aria-hidden className="size-[18px]" strokeWidth={2} />}
           {pending ? "Sending…" : "Request appointment"}

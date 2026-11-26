@@ -239,11 +239,11 @@ export const SEED_COUNCILS: readonly { name: string; state?: string; slug?: stri
  * rest are reserved and shown as "Coming soon".
  */
 export const SEED_TEMPLATE_SLOTS = {
-  portfolio: ["Classic", "Clinic Modern", "Minimal Mono", "Warm Heritage", "Specialist Pro"],
+  portfolio: ["Serene Care", "Clinic Modern", "Modern Edge", "Warm Heritage", "Specialist Pro"],
   clinic: ["Classic", "Bold Photo", "Calm Minimal", "Heritage", "Multi-doctor Grid"],
   // DESIGN_BRIEF.md §11: hospital slots 2–5 are reserved without names yet.
   hospital: ["Classic", "Hospital Design 2", "Hospital Design 3", "Hospital Design 4", "Hospital Design 5"],
-  card: ["Classic", "Ink Bold", "Minimal", "Heritage", "Photo Card"],
+  card: ["Classic", "Clinic Modern", "Modern Edge", "Heritage", "Photo Card"],
 } as const;
 
 /**

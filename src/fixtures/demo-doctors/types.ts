@@ -89,4 +89,6 @@ export interface DemoDoctor {
   inquiries: DemoInquiry[];
   portfolioTemplateId: TemplateKey;
   cardTemplateId: TemplateKey;
+  /** Visiting card colour style code (lib/cards/styles.ts), e.g. "DOC-PLUM". */
+  cardStyle?: string;
 }

@@ -5,6 +5,8 @@ import { absUrl, paths, subdomainUrl } from "@/lib/site";
 import { doctorShortSlugBase, doctorSlug } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
 import { ARNAV_DESHPANDE } from "./arnav-deshpande";
+import { RHEA_SARDESAI } from "./rhea-sardesai";
+import { SIDDHARTH_RANE } from "./siddharth-rane";
 import type { DemoDoctor } from "./types";
 
 export type { DemoDoctor } from "./types";
@@ -17,7 +19,7 @@ export type { DemoDoctor } from "./types";
  * at /sample/{key} (no database needed), and `npm run seed:demo` copies it
  * into a database for the doctor login demo.
  */
-export const DEMO_DOCTORS: readonly DemoDoctor[] = [ARNAV_DESHPANDE];
+export const DEMO_DOCTORS: readonly DemoDoctor[] = [ARNAV_DESHPANDE, RHEA_SARDESAI, SIDDHARTH_RANE];
 
 export const demoFullName = (d: DemoDoctor) => ["Dr.", d.firstName, d.middleName, d.lastName].filter(Boolean).join(" ");
 
@@ -96,6 +98,7 @@ function toPublic(d: DemoDoctor): PublicDoctor {
     loginUrl: `/sample/${d.key}/login`,
     portfolioTemplateId: d.portfolioTemplateId,
     cardTemplateId: d.cardTemplateId,
+    ...(d.cardStyle ? { cardStyle: d.cardStyle } : {}),
     seo: { noindex: true },
     updatedAt: "2026-11-25T00:00:00.000Z",
   };
