@@ -10,8 +10,8 @@ import type { PublicClinic } from "@/templates/types";
 
 /**
  * Serene Care clinics: pill tabs (one per clinic, with a live open/closed
- * dot), and one panel at a time: address card, weekly timings and a small
- * map. Arrow keys move between tabs.
+ * dot), and one panel at a time: address card (buttons with a small map
+ * beside them) and weekly timings. Arrow keys move between tabs.
  */
 export function ClinicTabs({ clinics }: { clinics: PublicClinic[] }) {
   const [active, setActive] = useState(0);
@@ -78,7 +78,7 @@ export function ClinicTabs({ clinics }: { clinics: PublicClinic[] }) {
         className="cm-rise mt-10 grid items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-10"
       >
         <div className="min-w-0">
-          <div className="space-y-5">
+          <div>
             <div className="relative overflow-hidden rounded-[28px] bg-white p-6 shadow-sc-lg ring-1 ring-sc-line sm:p-8">
               <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sc-gold via-sc-pink to-sc-rose" />
               <span className="inline-block rounded-full bg-sc-blush px-3.5 py-1 text-xs font-bold uppercase tracking-[0.16em] text-sc-rose">{TYPE_LABEL[c.type]}</span>
@@ -118,39 +118,41 @@ export function ClinicTabs({ clinics }: { clinics: PublicClinic[] }) {
                 )}
               </ul>
               {c.appointmentNote && <p className="mt-5 rounded-2xl border border-dashed border-sc-gold/60 bg-sc-cream px-4 py-3 text-sm text-sc-plum">{c.appointmentNote}</p>}
-              <div className="mt-5 flex flex-wrap gap-2">
-                <a
-                  href={c.directionsUrl}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex min-h-11 items-center gap-2 rounded-full bg-sc-plum px-5 text-sm font-semibold text-white transition hover:bg-sc-plum-2"
-                >
-                  <Navigation aria-hidden className="size-4" strokeWidth={2} /> Directions
-                </a>
-                {c.phone && (
+              <div className={cn("mt-5 grid gap-4", c.mapEmbedUrl && "sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]")}>
+                <div className="flex flex-col gap-2.5">
                   <a
-                    href={`tel:+${c.phone}`}
-                    className="inline-flex min-h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold text-sc-plum ring-1 ring-sc-line transition hover:bg-sc-blush"
+                    href={c.directionsUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-sc-plum px-5 text-sm font-semibold text-white transition hover:bg-sc-plum-2"
                   >
-                    <Phone aria-hidden className="size-4" strokeWidth={2} /> Call
+                    <Navigation aria-hidden className="size-4" strokeWidth={2} /> Directions
                   </a>
-                )}
-                {c.site && (
-                  <a href={c.site.url} className="inline-flex min-h-11 items-center gap-1 px-2 text-sm font-semibold text-sc-rose hover:underline">
-                    {c.site.name} website <ArrowUpRight aria-hidden className="size-4" />
-                  </a>
+                  {c.phone && (
+                    <a
+                      href={`tel:+${c.phone}`}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-sc-plum ring-1 ring-sc-line transition hover:bg-sc-blush"
+                    >
+                      <Phone aria-hidden className="size-4" strokeWidth={2} /> Call
+                    </a>
+                  )}
+                  {c.site && (
+                    <a href={c.site.url} className="inline-flex min-h-11 items-center justify-center gap-1 px-2 text-sm font-semibold text-sc-rose hover:underline">
+                      {c.site.name} website <ArrowUpRight aria-hidden className="size-4" />
+                    </a>
+                  )}
+                </div>
+                {c.mapEmbedUrl && (
+                  <iframe
+                    title={`Map showing ${c.name}`}
+                    src={c.mapEmbedUrl}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="block h-36 w-full rounded-2xl border-0 ring-1 ring-sc-line sm:h-full sm:min-h-[104px]"
+                  />
                 )}
               </div>
             </div>
-            {c.mapEmbedUrl && (
-              <iframe
-                title={`Map showing ${c.name}`}
-                src={c.mapEmbedUrl}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="block h-56 w-full rounded-[28px] border-0 shadow-sc ring-1 ring-sc-line"
-              />
-            )}
           </div>
         </div>
 

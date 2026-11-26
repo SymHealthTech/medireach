@@ -322,22 +322,11 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
   return (
     <div id="sc-top" className="sc-theme overflow-x-clip bg-sc-cream font-sans text-sc-text">
       <RevealObserver rootId="sc-top" />
-      <Nav
-        name={d.fullName}
-        monogram={initials(d.fullName)}
-        tagline={d.primarySpecialty?.name}
-        links={nav}
-        phone={phone}
-        phoneLabel={phone ? formatPhone(phone) : undefined}
-      />
+      <Nav name={d.fullName} monogram={initials(d.fullName)} tagline={d.primarySpecialty?.name} links={nav} phone={phone} phoneLabel={phone ? formatPhone(phone) : undefined} />
 
       <main>
         {/* ── Hero: light overlay on a cross-fading photo carousel ── */}
-        <section
-          id="top"
-          aria-label="Introduction"
-          className="relative isolate -mt-[78px] flex min-h-[720px] items-center overflow-hidden pb-24 pt-32 md:pt-36 lg:min-h-[860px]"
-        >
+        <section id="top" aria-label="Introduction" className="relative isolate -mt-[78px] flex min-h-[720px] items-center overflow-hidden pb-24 pt-32 md:pt-36 lg:min-h-[860px]">
           <HeroSlides slides={photos.hero} />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-sc-cream/95 via-sc-cream/80 to-sc-cream/20 lg:from-sc-cream/90 lg:via-sc-cream/55 lg:to-sc-cream/0" />
           <div aria-hidden className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-sc-cream to-transparent" />
@@ -411,7 +400,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
                     <span className="flex size-10 items-center justify-center rounded-full bg-sc-blush text-sc-rose">
                       <Phone aria-hidden className="size-[18px]" strokeWidth={2} />
                     </span>
-                    {formatPhone(phone)}
+                    Call the clinic
                   </a>
                 )}
                 {waHref && (
@@ -548,26 +537,77 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
 
         {/* ── About ── */}
         <Section id="about">
-          <div className="grid items-center gap-16 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20">
-            {/* Collage */}
-            <div className="cm-reveal cm-left relative mx-auto w-full max-w-[520px] pb-16 pl-8 sm:pl-12">
-              <div aria-hidden className="sc-blob absolute left-0 top-10 size-[85%] bg-sc-blush" />
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[32px] shadow-sc-lg">
-                <Image src={collage.url} alt={collage.alt} fill sizes="(min-width: 1024px) 460px, 86vw" className="object-cover transition duration-[1.4s] hover:scale-105" />
-              </div>
-              {d.photo && (
-                <div className="absolute bottom-0 left-0 w-[44%] overflow-hidden rounded-[28px] border-[6px] border-sc-cream shadow-sc-lg">
-                  <div className="relative aspect-square bg-sc-blush">
-                    <Image src={d.photo.url} alt={d.photo.alt} fill sizes="240px" className="object-cover object-top" />
+          <div className="grid items-start gap-16 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20">
+            <div className="mx-auto w-full max-w-[520px] min-w-0">
+              {/* Collage */}
+              <div className="cm-reveal cm-left relative pb-16 pl-8 sm:pl-12">
+                <div aria-hidden className="sc-blob absolute left-0 top-10 size-[85%] bg-sc-blush" />
+                <div className="relative aspect-[4/5] overflow-hidden rounded-[32px] shadow-sc-lg">
+                  <Image src={collage.url} alt={collage.alt} fill sizes="(min-width: 1024px) 460px, 86vw" className="object-cover transition duration-[1.4s] hover:scale-105" />
+                </div>
+                {d.photo && (
+                  <div className="absolute bottom-0 left-0 w-[44%] overflow-hidden rounded-[28px] border-[6px] border-sc-cream shadow-sc-lg">
+                    <div className="relative aspect-square bg-sc-blush">
+                      <Image src={d.photo.url} alt={d.photo.alt} fill sizes="240px" className="object-cover object-top" />
+                    </div>
                   </div>
+                )}
+                {years && years > 0 ? (
+                  <div className="cm-float absolute right-4 top-4 rounded-2xl bg-white/95 px-5 py-3 text-center shadow-sc-lg ring-1 ring-sc-line backdrop-blur">
+                    <span className="block font-display text-3xl font-semibold leading-none text-sc-rose">{years}+</span>
+                    <span className="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-sc-plum">years of care</span>
+                  </div>
+                ) : null}
+              </div>
+              <dl className="cm-reveal relative mt-8 divide-y divide-sc-line overflow-hidden rounded-[28px] bg-white shadow-sc ring-1 ring-sc-line">
+                <span aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sc-gold via-sc-pink to-sc-rose" />
+                {reg && (
+                  <div className="px-6 py-4">
+                    <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sc-muted">
+                      <BadgeCheck aria-hidden className="size-4 text-sc-gold" /> Registration
+                    </dt>
+                    <dd className="mt-1 font-semibold text-sc-plum">
+                      {reg}
+                      {regMore && <span className="block text-sm font-normal text-sc-muted">{regMore}</span>}
+                    </dd>
+                  </div>
+                )}
+                <div className="px-6 py-4">
+                  <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sc-muted">
+                    <HeartHandshake aria-hidden className="size-4 text-sc-gold" /> Practice
+                  </dt>
+                  <dd className="mt-1 font-semibold text-sc-plum">{d.practitionerType === "consultant" ? "Consultant" : "General practitioner"}</dd>
                 </div>
-              )}
-              {years && years > 0 ? (
-                <div className="cm-float absolute right-4 top-4 rounded-2xl bg-white/95 px-5 py-3 text-center shadow-sc-lg ring-1 ring-sc-line backdrop-blur">
-                  <span className="block font-display text-3xl font-semibold leading-none text-sc-rose">{years}+</span>
-                  <span className="mt-1 block text-[11px] font-semibold uppercase tracking-wider text-sc-plum">years of care</span>
-                </div>
-              ) : null}
+                {d.systemLabel && (
+                  <div className="px-6 py-4">
+                    <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sc-muted">
+                      <Sparkles aria-hidden className="size-4 text-sc-gold" /> System of medicine
+                    </dt>
+                    <dd className="mt-1 font-semibold text-sc-plum">{d.systemLabel}</dd>
+                  </div>
+                )}
+                {(d.primarySpecialty || d.secondarySpecialties.length > 0) && (
+                  <div className="px-6 py-4">
+                    <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sc-muted">
+                      <Stethoscope aria-hidden className="size-4 text-sc-gold" /> Specialties
+                    </dt>
+                    <dd className="mt-1 font-semibold text-sc-plum">
+                      {[d.primarySpecialty, ...d.secondarySpecialties]
+                        .filter(Boolean)
+                        .map((s) => s!.name)
+                        .join(", ")}
+                    </dd>
+                  </div>
+                )}
+                {d.languages.length > 0 && (
+                  <div className="px-6 py-4">
+                    <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sc-muted">
+                      <Languages aria-hidden className="size-4 text-sc-gold" /> Languages
+                    </dt>
+                    <dd className="mt-1 font-semibold text-sc-plum">{d.languages.join(", ")}</dd>
+                  </div>
+                )}
+              </dl>
             </div>
 
             <div className="min-w-0">
@@ -584,55 +624,6 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
                   />
                 )}
               </div>
-
-              <dl className="cm-reveal mt-8 divide-y divide-sc-line border-y border-sc-line">
-                {reg && (
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
-                    <dt className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sc-muted">
-                      <BadgeCheck aria-hidden className="size-4 text-sc-gold" /> Registration
-                    </dt>
-                    <dd className="text-right font-semibold text-sc-plum">
-                      {reg}
-                      {regMore && <span className="block text-sm font-normal text-sc-muted">{regMore}</span>}
-                    </dd>
-                  </div>
-                )}
-                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
-                  <dt className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sc-muted">
-                    <HeartHandshake aria-hidden className="size-4 text-sc-gold" /> Practice
-                  </dt>
-                  <dd className="text-right font-semibold text-sc-plum">{d.practitionerType === "consultant" ? "Consultant" : "General practitioner"}</dd>
-                </div>
-                {d.systemLabel && (
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
-                    <dt className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sc-muted">
-                      <Sparkles aria-hidden className="size-4 text-sc-gold" /> System of medicine
-                    </dt>
-                    <dd className="text-right font-semibold text-sc-plum">{d.systemLabel}</dd>
-                  </div>
-                )}
-                {(d.primarySpecialty || d.secondarySpecialties.length > 0) && (
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
-                    <dt className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sc-muted">
-                      <Stethoscope aria-hidden className="size-4 text-sc-gold" /> Specialties
-                    </dt>
-                    <dd className="text-right font-semibold text-sc-plum">
-                      {[d.primarySpecialty, ...d.secondarySpecialties]
-                        .filter(Boolean)
-                        .map((s) => s!.name)
-                        .join(", ")}
-                    </dd>
-                  </div>
-                )}
-                {d.languages.length > 0 && (
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-4">
-                    <dt className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-sc-muted">
-                      <Languages aria-hidden className="size-4 text-sc-gold" /> Languages
-                    </dt>
-                    <dd className="text-right font-semibold text-sc-plum">{d.languages.join(", ")}</dd>
-                  </div>
-                )}
-              </dl>
 
               <div className="cm-reveal mt-8 flex flex-wrap gap-3">
                 <a
@@ -1098,7 +1089,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
                   href={`tel:+${phone}`}
                   className="inline-flex min-h-12 items-center gap-2 rounded-full px-6 font-semibold text-white ring-1 ring-white/30 transition hover:bg-white/10"
                 >
-                  <Phone aria-hidden className="size-[18px]" /> {formatPhone(phone)}
+                  <Phone aria-hidden className="size-[18px]" /> Call now
                 </a>
               )}
             </div>
@@ -1207,9 +1198,7 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
           </div>
 
           <div className="space-y-2 border-t border-white/10 py-7 text-sm text-white/50">
-            <p>
-              Information provided by the doctor. In a medical emergency, call 108 or go to the nearest hospital.
-            </p>
+            <p>Information provided by the doctor. In a medical emergency, call 108 or go to the nearest hospital.</p>
             <p className="flex flex-wrap gap-x-5 gap-y-1">
               <span>
                 © {new Date().getFullYear()} {d.fullName}
