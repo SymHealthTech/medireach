@@ -16,7 +16,7 @@ import { CARD_SIZE, type CardTemplateProps, type CardVariant, type PublicDoctor,
  * rendered to PNG with Satori (via next/og) using the brand fonts, and the
  * PNG is wrapped into a PDF (print: exactly 85 × 55 mm). Both PDFs have a
  * clickable link over each of the card's buttons (Call, WhatsApp, Directions,
- * Save, Website).
+ * Website).
  */
 
 const FONT_DIR = join(process.cwd(), "src", "assets", "fonts");

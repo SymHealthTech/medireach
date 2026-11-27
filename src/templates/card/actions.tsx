@@ -1,10 +1,9 @@
-import { absUrl } from "@/lib/site";
 import { Icon, type ICONS } from "@/templates/card/parts";
 import { CARD_SIZE, type PublicDoctor, type PublicEstablishment } from "@/templates/types";
 
 /**
- * One-tap buttons on the cards: Call, WhatsApp, Directions, Save contact and
- * Website. Every design draws them in its own colours, in a row of tiles (the
+ * One-tap buttons on the cards: Call, WhatsApp, Directions and Website
+ * (hospitals: also Emergency). Every design draws them in its own colours, in a row of tiles (the
  * "dock") at a FIXED place on the phone card (1080 × 1920, `PHONE_DOCK`, on
  * the bottom edge of the header, above the contact details) and
  * on the print card (1004 × 650, `PRINT_DOCK`, smaller tiles), so:
@@ -17,7 +16,7 @@ import { CARD_SIZE, type PublicDoctor, type PublicEstablishment } from "@/templa
  * Satori-safe: absolute positions, flexbox, inline <svg> only.
  */
 
-export type CardActionKey = "call" | "emergency" | "whatsapp" | "directions" | "save" | "website";
+export type CardActionKey = "call" | "emergency" | "whatsapp" | "directions" | "website";
 
 export interface CardAction {
   key: CardActionKey;
@@ -100,10 +99,9 @@ export function dockSlots(dock: CardDock, n: number): Rect[] {
 const labelSize = (label: string, upper?: boolean, small?: boolean) =>
   small ? (upper ? (label.length > 8 ? 12 : 13) : label.length > 8 ? 14 : 15) : upper ? (label.length > 8 ? 21 : 23) : label.length > 8 ? 25 : 27;
 
-const abs = (url: string) => (url.startsWith("/") ? absUrl(url) : url);
 const waLink = (number: string, text: string) => `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 
-/** A doctor's buttons: Call, WhatsApp, Directions (first clinic), Save contact, Website. */
+/** A doctor's buttons: Call, WhatsApp, Directions (first clinic), Website. Four at most: five tiles looked crowded. */
 export function doctorCardActions(d: PublicDoctor): CardAction[] {
   const phone = d.phone ?? d.clinics[0]?.phone;
   const clinic = d.clinics[0];
@@ -111,7 +109,6 @@ export function doctorCardActions(d: PublicDoctor): CardAction[] {
     ...(phone ? [{ key: "call" as const, label: "Call", href: `tel:+${phone}`, icon: "phone" as const }] : []),
     ...(d.whatsapp ? [{ key: "whatsapp" as const, label: "WhatsApp", href: waLink(d.whatsapp, `Hello ${d.fullName}, I got your visiting card.`), icon: "chat" as const }] : []),
     ...(clinic ? [{ key: "directions" as const, label: "Directions", href: clinic.directionsUrl, icon: "nav" as const }] : []),
-    { key: "save", label: "Save", href: abs(d.vcfUrl), icon: "userPlus" },
     { key: "website", label: "Website", href: d.shareUrl, icon: "globe" },
   ];
 }
@@ -171,9 +168,8 @@ export function ActionDock({ actions, dock, style: st, links, small }: { actions
           <a
             key={a.key}
             href={a.href}
-            aria-label={a.key === "save" ? "Save contact" : a.label}
+            aria-label={a.label}
             {...(a.href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}
-            {...(a.key === "save" ? { download: "" } : {})}
             style={box}
           >
             {children}

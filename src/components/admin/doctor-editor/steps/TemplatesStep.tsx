@@ -32,7 +32,7 @@ export function TemplatesStep({ form: f, set, readOnly, hints }: StepProps) {
           <IdCard className="mt-0.5 size-4 shrink-0 text-lagoon" aria-hidden />
           <span>
             The digital visiting card comes with the website design{chosen ? <> (<strong className="text-ink">{chosen}</strong>)</> : null}: same colours and style, with
-            Call, WhatsApp, Directions, Save and Website buttons. The card page, WhatsApp image and PDFs all follow it.
+            Call, WhatsApp, Directions and Website buttons. The card page, WhatsApp image and PDFs all follow it.
           </span>
         </p>
         <SwitchField

@@ -65,16 +65,15 @@ describe("the visiting card follows the website design", () => {
 describe("card buttons", () => {
   const d = DEMO_PUBLIC_DOCTORS["arnav-deshpande"]!;
 
-  it("gives a doctor Call, WhatsApp, Directions, Save and Website", () => {
+  it("gives a doctor Call, WhatsApp, Directions and Website", () => {
     const actions = doctorCardActions(d);
-    expect(actions.map((a) => a.key)).toEqual(["call", "whatsapp", "directions", "save", "website"]);
+    expect(actions.map((a) => a.key)).toEqual(["call", "whatsapp", "directions", "website"]);
     expect(actions[0]!.href).toBe(`tel:+${d.phone}`);
     expect(actions[1]!.href).toMatch(new RegExp(`^https://wa\\.me/${d.whatsapp}\\?text=`));
     expect(actions[2]!.href).toBe(d.clinics[0]!.directionsUrl);
-    expect(actions[3]!.href).toMatch(/^https?:\/\/.+\/contact\.vcf$/); // absolute, so it works from a PDF
-    expect(actions[4]!.href).toBe(d.shareUrl);
-    // Nothing to call or visit: just Save and Website.
-    expect(doctorCardActions({ ...d, phone: undefined, whatsapp: undefined, clinics: [] }).map((a) => a.key)).toEqual(["save", "website"]);
+    expect(actions[3]!.href).toBe(d.shareUrl);
+    // Nothing to call or visit: just Website.
+    expect(doctorCardActions({ ...d, phone: undefined, whatsapp: undefined, clinics: [] }).map((a) => a.key)).toEqual(["website"]);
   });
 
   it("gives a hospital a separate Emergency button when it has its own number", () => {

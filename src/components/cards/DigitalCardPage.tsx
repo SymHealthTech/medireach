@@ -16,7 +16,7 @@ import type { PublicDoctor } from "@/templates/types";
  *
  * The live card is the phone card of the doctor's website design (same
  * colours and style as the website), with working Call, WhatsApp,
- * Directions, Save and Website buttons, exactly as in the PNG and PDF.
+ * Directions and Website buttons, exactly as in the PNG and PDF.
  *  - Doctor view (doctor's account after login, sample doctor preview): the
  *    card plus the toolkit to send it: link, WhatsApp image, print-ready PDF
  *    and PNG files, and previews of the downloads.
@@ -127,7 +127,7 @@ export function DoctorCardView({
   const file = (name: string) => `${filesBase}/${name}?${v}download=1`;
   const downloads = [
     { href: file("phone.png"), icon: ImageIcon, title: "Card image", meta: "PNG · 1080 × 1920", note: "For WhatsApp status and sharing" },
-    { href: file("phone.pdf"), icon: FileText, title: "Full card PDF", meta: "PDF · whole card", note: "The whole card as a PDF; its Call, WhatsApp, Directions, Save and Website buttons work" },
+    { href: file("phone.pdf"), icon: FileText, title: "Full card PDF", meta: "PDF · whole card", note: "The whole card as a PDF; its Call, WhatsApp, Directions and Website buttons work" },
     { href: file("print.pdf"), icon: FileText, title: "Print-ready PDF", meta: "PDF · 85 × 55 mm", note: "Send to any printer; its buttons also work on screen" },
     { href: file("print.png"), icon: Download, title: "Print card image", meta: "PNG · 300 dpi", note: "For designers and printers" },
   ];

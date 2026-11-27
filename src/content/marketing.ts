@@ -135,7 +135,7 @@ export const VISITING_CARDS = {
   },
   faq: [
     { q: "Is the visiting card extra?", a: "No. A digital visiting card is included in every plan." },
-    { q: "Do the buttons work in the PDF?", a: "Yes. In both the full card PDF and the print-ready PDF, tap Call, WhatsApp, Directions, Save or Website and it opens, just like on the card page." },
+    { q: "Do the buttons work in the PDF?", a: "Yes. In both the full card PDF and the print-ready PDF, tap Call, WhatsApp, Directions or Website and it opens, just like on the card page." },
   ],
   help: "Questions about the card? Ask us on WhatsApp",
   helpText: "Hi, I have a question about the MediReach visiting card.",
