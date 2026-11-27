@@ -191,5 +191,4 @@ export const ARNAV_DESHPANDE: DemoDoctor = {
     },
   ],
   portfolioTemplateId: "t2",
-  cardTemplateId: "t2",
 };

@@ -7,7 +7,6 @@ import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { SiteCardView } from "@/components/cards/SiteCardView";
 import { isObjectId, pageOf, param, searchRegex, type SearchParams } from "@/lib/admin/list";
-import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { loadSiteForCard } from "@/lib/cards/admin";
 import { getSettings } from "@/lib/settings";
 import { fillShareTemplate } from "@/lib/share-message";
@@ -16,35 +15,9 @@ import { CardTools } from "./CardTools";
 
 const PER_PAGE = 12;
 
-/** Card switcher: doctors, clinics and hospitals each have their own cards and styles (as on the website). */
+/** Card switcher: doctors, clinics and hospitals each have their own cards (in the colours of their website design). */
 export function CardTabs({ active }: { active: ProductKind }) {
   return <KindTabs label="Card type" active={active} hrefFor={(k) => (k === "doctor" ? "/admin/cards" : `/admin/cards?type=${k}`)} />;
-}
-
-/** The style codes offered to this product on the website (what applicants pick in Get started). */
-export function CardStyleCodes({ kind }: { kind: ProductKind }) {
-  return (
-    <details className="rounded-xl border border-line bg-card p-4 shadow-soft">
-      <summary className="cursor-pointer text-sm font-semibold text-ink">Card colour styles for {kind === "doctor" ? "doctors" : kind === "clinic" ? "clinics" : "hospitals"}</summary>
-      <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {CARD_STYLES_BY_GROUP[kind].map((s) => (
-          <li key={s.code} className="flex items-center gap-3 rounded-lg border border-line p-2">
-            <span aria-hidden className="flex shrink-0 -space-x-1.5">
-              {s.swatches.map((c, i) => (
-                <span key={i} className="size-5 rounded-full border-2 border-white shadow-sm" style={{ background: c }} />
-              ))}
-            </span>
-            <span className="min-w-0">
-              <span className="block font-mono text-sm font-semibold">{s.code}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {s.name} · {s.colours}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </details>
-  );
 }
 
 /** Clinic/hospital visiting cards: preview, downloads, QR and share message. */
@@ -84,10 +57,9 @@ export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic"
     <div className="space-y-5">
       <CardTabs active={kind} />
       <p className="max-w-2xl text-muted-foreground">
-        Each {kind}&apos;s card in its chosen colours (or its specialty design colours). The QR opens the website address (or the site page). Download the
-        PDF for the printer, or the phone PNG to share on WhatsApp.
+        Each {kind}&apos;s card, in the colours of its website design. The QR opens the website address (or the site page). Download the print PDF
+        for the printer, the phone PNG to share on WhatsApp, or the full card PDF (its buttons work).
       </p>
-      <CardStyleCodes kind={kind} />
       <ListToolbar placeholder={`Search ${kind}s…`} />
       {cards.length === 0 ? (
         <EmptyState icon={IdCard} title={`No ${kind} cards yet`} description={`A card is created automatically for every ${kind}.`} />
@@ -108,13 +80,13 @@ export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic"
                 <>
                   <p className="break-all text-xs text-muted-foreground">QR opens {c.site.shareUrl}</p>
                   <div className="flex flex-wrap gap-2">
-                    {(["print.pdf", "print.png", "phone.png"] as const).map((f) => (
+                    {(["print.pdf", "phone.pdf", "print.png", "phone.png"] as const).map((f) => (
                       <a
                         key={f}
                         className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40"
                         href={`/admin/cards/site/${c.id}/${f}?download=1`}
                       >
-                        {f === "print.pdf" ? "PDF (print)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+                        {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card, buttons work)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
                       </a>
                     ))}
                     <a className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-ink hover:underline" href={`/admin/cards/site/${c.id}/phone.png`} target="_blank" rel="noopener">
@@ -163,9 +135,9 @@ async function OneSiteCard({ id }: { id: string }) {
           </div>
           <p className="break-all text-xs text-muted-foreground">QR opens {site.shareUrl}</p>
           <div className="flex flex-wrap gap-2">
-            {(["print.pdf", "print.png", "phone.png"] as const).map((f) => (
+            {(["print.pdf", "phone.pdf", "print.png", "phone.png"] as const).map((f) => (
               <a key={f} className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/site/${id}/${f}?download=1`}>
-                {f === "print.pdf" ? "PDF (print)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+                {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card, buttons work)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
               </a>
             ))}
           </div>

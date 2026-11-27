@@ -84,17 +84,17 @@ describe("doctor editor (server)", () => {
     expect(docToForm(doc.toObject()).approval).toEqual({ doctorApprovedAt: "2026-11-15", approvedVia: "whatsapp" });
   });
 
-  it("saves the visiting card style code and clears it again", async () => {
+  it("has no separate visiting card choice: an old card code sent with the design is ignored", async () => {
     const f = emptyDoctorForm();
     f.firstName = "Ravi";
     f.lastName = "Kale";
     const doc = new DoctorProfile({ firstName: "x", lastName: "x" });
     await save(doc, "basics", f);
-    await save(doc, "templates", { ...f, cardStyle: "DOC-AMBER" });
-    expect((await DoctorProfile.findById(doc._id).lean())!.cardStyle).toBe("DOC-AMBER");
-    expect(docToForm(doc.toObject()).cardStyle).toBe("DOC-AMBER");
-    await save(doc, "templates", { ...f, cardStyle: "" });
-    expect((await DoctorProfile.findById(doc._id).lean())!.cardStyle).toBeUndefined();
+    await save(doc, "templates", { ...f, cardStyle: "DOC-AMBER", cardTemplateId: "t2" } as typeof f);
+    const saved = (await DoctorProfile.findById(doc._id).lean()) as Record<string, unknown>;
+    expect(saved.cardStyle).toBeUndefined();
+    expect(saved.cardTemplateId).toBeUndefined();
+    expect(docToForm(doc.toObject())).not.toHaveProperty("cardStyle");
   });
 
   it("saves and removes the Beyond medicine photo and story", async () => {

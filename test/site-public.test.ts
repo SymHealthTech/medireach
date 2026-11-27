@@ -145,7 +145,7 @@ describe("public clinic/hospital sites", () => {
   });
 
   it("renders Classic for design slots that aren't ready", () => {
-    expect(resolveSiteTemplate("clinic", "t3", { portfolio: [], card: [], clinic: ["classic"] })).toBe(ClinicClassic);
+    expect(resolveSiteTemplate("clinic", "t3", { portfolio: [], clinic: ["classic"] })).toBe(ClinicClassic);
     expect(resolveSiteTemplate("clinic", "classic")).toBe(ClinicClassic);
   });
 });

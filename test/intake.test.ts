@@ -79,6 +79,7 @@ function fullDoctor(): IntakeData {
     interests: "Running, trekking",
     beyondTitle: "My first marathon",
     websiteDesign: "classic",
+    // An answer from forms made before the card followed the design (dropped now).
     cardStyle: "doc-amber",
     designDecision: "discuss",
     beyondStory: "First paragraph.\r\n\r\n\r\nSecond paragraph.\u200B",
@@ -112,10 +113,11 @@ describe("form definitions", () => {
 
   it("asks for the design decision, and drops unknown design codes instead of failing", () => {
     expect(missingForSubmit("doctor", { ...fullDoctor(), designDecision: "" }).map((m) => m.key)).toEqual(["designDecision"]);
-    const d = intakeDataSchema("doctor").parse({ ...fullDoctor(), websiteDesign: "t9", cardStyle: "BLUE-ish" });
+    const d = intakeDataSchema("doctor").parse({ ...fullDoctor(), websiteDesign: "t9" });
     expect(d.websiteDesign).toBe(""); // not a design
-    expect(d.cardStyle).toBe("");
-    expect(intakeDataSchema("doctor").parse(fullDoctor()).cardStyle).toBe("DOC-AMBER");
+    // No card question any more: the card comes in the website design, and an old card answer is dropped.
+    expect(intakeDataSchema("doctor").parse(fullDoctor())).not.toHaveProperty("cardStyle");
+    expect(INTAKE_SECTIONS.doctor.find((s) => s.key === "design")!.fields.map((f) => f.key)).not.toContain("cardStyle");
     expect(intakeDataSchema("clinic").parse({ websiteDesign: "dental" }).websiteDesign).toBe("dental");
     expect(intakeDataSchema("doctor").safeParse({ designDecision: "maybe" }).success).toBe(false);
   });
@@ -482,7 +484,7 @@ describe("creating the website draft", () => {
     expect(doc!.clinics[0]!.timings.find((t) => t.day === 1)?.slots).toEqual([{ open: "10:00", close: "13:00" }]);
     expect(doc!.clinics[0]!.timings.find((t) => t.day === 0)?.slots ?? []).toEqual([]);
     expect(doc!.portfolioTemplateId).toBe("classic");
-    expect(doc!.cardStyle).toBe("DOC-AMBER");
+    expect((doc as Record<string, unknown>).cardStyle).toBeUndefined();
     expect(doc!.internalNotes).toContain("NOT FINAL");
     expect(doc!.links.instagram).toBe("https://instagram.com/drasha");
     expect(doc!.citySlug).toBe("pune");

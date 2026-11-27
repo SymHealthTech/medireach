@@ -4,7 +4,7 @@ import { MiniProfile } from "@/components/marketing/Mockups";
 import { CARD_SPOTLIGHT, HERO, MARQUEE, MULTI_DOCTOR, type Audience } from "@/content/marketing";
 import { cardProps } from "@/lib/cards/render";
 import { cn } from "@/lib/cn";
-import { QrBlock } from "@/templates/card/classic";
+import { QrBlock } from "@/templates/card/parts";
 import { resolveCardTemplate } from "@/templates/registry";
 import { CARD_SIZE, type PublicDoctor } from "@/templates/types";
 import { THEME_ICONS } from "@/themes/icons";
@@ -33,7 +33,7 @@ function ScanLine({ className }: { className?: string }) {
 
 /** Front: the doctor's real Classic print card (same template as the PDF), with the scan line. */
 export function CardFront({ doctor, className, fallbackScale = 0.24 }: { doctor: PublicDoctor; className?: string; fallbackScale?: number }) {
-  const Card = resolveCardTemplate(doctor.cardTemplateId);
+  const Card = resolveCardTemplate(doctor.portfolioTemplateId);
   const { width, height } = CARD_SIZE.print;
   return (
     <div className={cn("relative", className)}>

@@ -1,5 +1,4 @@
 import mongoose, { Schema, type Model, type Types } from "mongoose";
-import { DOCTOR_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import {
   APPROVAL_CHANNELS,
   CLINIC_TYPES,
@@ -161,11 +160,8 @@ export interface DoctorProfileDoc {
   /** Tips the doctor chose; empty = picked automatically from their specialty. */
   healthTipSlugs: string[];
 
-  // Templates
+  // Templates. The visiting card always comes in the website design (no separate card choice).
   portfolioTemplateId: TemplateKey;
-  cardTemplateId: TemplateKey;
-  /** Visiting card colour style code ("DOC-…", lib/cards/styles.ts). */
-  cardStyle?: string;
 
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
 
@@ -374,8 +370,6 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
     healthTipSlugs: { type: [String], default: [] },
 
     portfolioTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
-    cardTemplateId: { type: String, enum: TEMPLATE_KEYS, default: DEFAULT_TEMPLATE_KEY },
-    cardStyle: { type: String, enum: DOCTOR_CARD_STYLE_CODES },
 
     seo: {
       titleOverride: { type: String, trim: true },

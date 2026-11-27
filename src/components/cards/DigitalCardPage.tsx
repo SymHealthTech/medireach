@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowLeft, Download, FileText, ImageIcon } from "lucide-react";
 import { CardShare, PatientShare } from "@/components/cards/CardShare";
 import { CardView } from "@/components/cards/CardView";
-import { DigitalCard } from "@/components/cards/DigitalCard";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { cn } from "@/lib/cn";
 import { absUrl } from "@/lib/site";
@@ -14,6 +13,10 @@ import type { PublicDoctor } from "@/templates/types";
  *
  *  - Patient view (public card page, sample patient preview): the live card
  *    and one Share button. This is all patients ever see.
+ *
+ * The live card is the phone card of the doctor's website design (same
+ * colours and style as the website), with working Call, WhatsApp,
+ * Directions, Save and Website buttons, exactly as in the PNG and PDF.
  *  - Doctor view (doctor's account after login, sample doctor preview): the
  *    card plus the toolkit to send it: link, WhatsApp image, print-ready PDF
  *    and PNG files, and previews of the downloads.
@@ -77,12 +80,25 @@ export function CardPageFooter({ className }: { className?: string }) {
   );
 }
 
-/** What patients see: the card and one Share button. */
-export function PatientCardView({ doctor: d, websiteUrl, cardUrl }: { doctor: PublicDoctor; websiteUrl: string; cardUrl: string }) {
+/** The live card: the design's phone card with working buttons. */
+function LiveCard({ doctor: d, ready }: { doctor: PublicDoctor; ready?: ReadyTemplates }) {
   return (
-    // A floating card at its natural size, with Share underneath. The footer sits at the bottom of the screen.
+    <>
+      <h1 className="sr-only">
+        {d.fullName}
+        {d.primarySpecialty ? `, ${d.primarySpecialty.name}` : ""} – digital visiting card
+      </h1>
+      <CardView doctor={d} variant="phone" ready={ready} links className="rounded-[28px] shadow-lift ring-ink/5" />
+    </>
+  );
+}
+
+/** What patients see: the card and one Share button. */
+export function PatientCardView({ doctor: d, cardUrl, ready }: { doctor: PublicDoctor; cardUrl: string; ready?: ReadyTemplates }) {
+  return (
+    // The card as large as a phone screen allows, with Share underneath. The footer sits at the bottom of the screen.
     <main className="mx-auto flex w-full max-w-[460px] flex-col gap-4 px-4 pb-4 pt-5 sm:gap-5 sm:py-12">
-      <DigitalCard doctor={d} websiteUrl={websiteUrl} />
+      <LiveCard doctor={d} ready={ready} />
       <div>
         <PatientShare url={cardUrl} title={`${d.fullName}${d.primarySpecialty ? `, ${d.primarySpecialty.name}` : ""}`} />
       </div>
@@ -93,14 +109,12 @@ export function PatientCardView({ doctor: d, websiteUrl, cardUrl }: { doctor: Pu
 /** What the doctor sees after login: the card plus share, download and print tools. */
 export function DoctorCardView({
   doctor: d,
-  websiteUrl,
   cardUrl,
   filesBase,
   version,
   ready,
 }: {
   doctor: PublicDoctor;
-  websiteUrl: string;
   /** Link to share for this card page. */
   cardUrl: string;
   /** Base path of the card files (…/phone.png, …/print.pdf, …/print.png). */
@@ -113,7 +127,7 @@ export function DoctorCardView({
   const file = (name: string) => `${filesBase}/${name}?${v}download=1`;
   const downloads = [
     { href: file("phone.png"), icon: ImageIcon, title: "Card image", meta: "PNG · 1080 × 1920", note: "For WhatsApp status and sharing" },
-    { href: file("phone.pdf"), icon: FileText, title: "Full card PDF", meta: "PDF · whole card", note: "The full card image as a PDF, to save or share" },
+    { href: file("phone.pdf"), icon: FileText, title: "Full card PDF", meta: "PDF · whole card", note: "The whole card as a PDF; its Call, WhatsApp, Directions, Save and Website buttons work" },
     { href: file("print.pdf"), icon: FileText, title: "Print-ready PDF", meta: "PDF · 85 × 55 mm", note: "Send to any printer" },
     { href: file("print.png"), icon: Download, title: "Print card image", meta: "PNG · 300 dpi", note: "For designers and printers" },
   ];
@@ -121,7 +135,7 @@ export function DoctorCardView({
   return (
     <main className="mx-auto grid w-full max-w-content gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[420px_minmax(0,1fr)] lg:gap-14 lg:py-14">
       <div className="lg:sticky lg:top-8 lg:self-start">
-        <DigitalCard doctor={d} websiteUrl={websiteUrl} />
+        <LiveCard doctor={d} ready={ready} />
       </div>
 
       <div className="min-w-0 space-y-8">

@@ -2,7 +2,6 @@ import type { AdminRole } from "@/lib/constants";
 import type { EstablishmentForm, StepKey } from "@/lib/establishments/form";
 import type { EstablishmentEditorOptions } from "@/lib/establishments/options";
 import type { SiteFormHints } from "@/lib/intake/hints";
-import type { CardFace } from "@/components/intake/IntakeContext";
 
 export interface EStepProps {
   form: EstablishmentForm;
@@ -15,8 +14,6 @@ export interface EStepProps {
   role: AdminRole;
   /** Answers from the website form ("Get started") this draft was made from. */
   hints?: SiteFormHints;
-  /** Server-rendered sample visiting cards per style code (the Design step's picker). */
-  cardFaces?: Record<string, CardFace>;
   /** "owner": the owner's own dashboard (hides team-only controls). */
   audience?: "admin" | "owner";
 }

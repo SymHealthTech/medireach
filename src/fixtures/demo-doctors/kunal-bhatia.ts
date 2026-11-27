@@ -188,5 +188,4 @@ export const KUNAL_BHATIA: DemoDoctor = {
     },
   ],
   portfolioTemplateId: "t5",
-  cardTemplateId: "t5",
 };

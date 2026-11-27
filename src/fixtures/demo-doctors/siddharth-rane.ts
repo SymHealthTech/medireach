@@ -277,5 +277,4 @@ export const SIDDHARTH_RANE: DemoDoctor = {
     },
   ],
   portfolioTemplateId: "t3",
-  cardTemplateId: "t3",
 };

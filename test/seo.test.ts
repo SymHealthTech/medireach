@@ -60,7 +60,6 @@ function doctor(overrides: Partial<PublicDoctor> = {}): PublicDoctor {
     interests: [],
     gallery: [],
     portfolioTemplateId: "classic",
-    cardTemplateId: "classic",
     seo: { noindex: false },
     updatedAt: "2026-11-01T00:00:00.000Z",
     ...overrides,

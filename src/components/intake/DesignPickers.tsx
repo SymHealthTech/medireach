@@ -4,14 +4,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, ExternalLink, Expand, HelpCircle, Monitor, Smartphone, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ThemeMiniPreview } from "@/components/public/ThemeMiniPreview";
-import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { cn } from "@/lib/cn";
 import type { IntakeKind } from "@/lib/constants";
 import { DESIGN_GROUPS, DESIGN_OPTIONS, DESIGN_TYPE_FIELD, NOT_SURE, type DesignGroup, type FieldDef } from "@/lib/intake/form";
 import { BrandLoader } from "@/components/loading/BrandLoader";
 import { THEME_ICONS } from "@/themes/icons";
 import { getTheme } from "@/themes/specialty";
-import { useOptionalIntakeContext, type CardFace } from "./IntakeContext";
 
 const tile = (selected: boolean, disabled?: boolean) =>
   cn(
@@ -437,102 +435,6 @@ function TypedDesignPicker({
           onChoose={() => onChange(current.value)}
           onClose={() => setViewing(null)}
         />
-      )}
-    </>
-  );
-}
-
-/** Visiting card style: tiles with View (phone and print card, full screen) and Select, plus "Not decided". */
-export function CardStylePicker({
-  id,
-  field,
-  value,
-  onChange,
-  cardFaces: cardFacesProp,
-  undecided = true,
-}: {
-  id: string;
-  field: FieldDef;
-  value: string;
-  onChange: (v: string) => void;
-  /** Sample cards outside the form (the product pages); in the form they come from its context. */
-  cardFaces?: Record<string, CardFace>;
-  undecided?: boolean;
-}) {
-  const styles = CARD_STYLES_BY_GROUP[field.kind ?? "doctor"];
-  const ctx = useOptionalIntakeContext();
-  const cardFaces = cardFacesProp ?? ctx?.cardFaces;
-  const [viewing, setViewing] = useState<string | null>(null);
-  const [face, setFace] = useState<"phone" | "print">("phone");
-  const current = styles.find((c) => c.code === viewing);
-  const faces = current ? cardFaces?.[current.code] : undefined;
-  const swatches = (c: (typeof styles)[number], tall?: boolean) => (
-    <span className={cn("flex overflow-hidden rounded-md", tall ? "aspect-[85/55] w-full max-w-md" : "h-10")} aria-hidden>
-      <span className="flex-[3]" style={{ background: c.swatches[0] }} />
-      <span className="flex-1" style={{ background: c.swatches[1] }} />
-      <span className="flex-1" style={{ background: c.swatches[2] }} />
-    </span>
-  );
-  return (
-    <>
-      <div id={id} role="group" aria-label={field.label} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {styles.map((c) => (
-          <OptionTile
-            key={c.code}
-            name={c.name}
-            sub={c.code}
-            preview={
-              cardFaces?.[c.code] ? (
-                <span className="pointer-events-none block rounded-md p-1.5" style={{ background: c.swatches[2] }}>
-                  {cardFaces[c.code]!.thumb}
-                </span>
-              ) : (
-                swatches(c)
-              )
-            }
-            selected={value === c.code}
-            onView={() => {
-              setFace("phone");
-              setViewing(c.code);
-            }}
-            onSelect={() => onChange(c.code)}
-          />
-        ))}
-        {undecided && <NotSureTile selected={value === NOT_SURE} onSelect={() => onChange(NOT_SURE)} text="Help me choose" />}
-      </div>
-      {current && (
-        <FullScreenViewer
-          open
-          onClose={() => setViewing(null)}
-          title={`${current.name} (${current.code})`}
-          subtitle={current.colours}
-          tabs={
-            faces && (
-              <div role="tablist" aria-label="Card" className="flex rounded-full bg-white/10 p-1">
-                <button type="button" role="tab" aria-selected={face === "phone"} onClick={() => setFace("phone")} className={switchTab(face === "phone")}>
-                  Phone
-                </button>
-                <button type="button" role="tab" aria-selected={face === "print"} onClick={() => setFace("print")} className={switchTab(face === "print")}>
-                  Print
-                </button>
-              </div>
-            )
-          }
-          selected={value === current.code}
-          chooseLabel="Choose this card"
-          onChoose={() => onChange(current.code)}
-          extra="Sample card with made-up details. Yours will have your own."
-        >
-          {faces ? (
-            face === "phone" ? (
-              <div className="w-[min(88vw,calc((100dvh-200px)*0.5625),460px)] overflow-hidden rounded-2xl shadow-2xl">{faces.phone}</div>
-            ) : (
-              <div className="w-[min(92vw,calc((100dvh-200px)*1.545),960px)] overflow-hidden rounded-xl shadow-2xl">{faces.print}</div>
-            )
-          ) : (
-            swatches(current, true)
-          )}
-        </FullScreenViewer>
       )}
     </>
   );

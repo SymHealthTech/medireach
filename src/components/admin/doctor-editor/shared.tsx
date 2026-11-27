@@ -7,7 +7,6 @@ import type { AdminRole } from "@/lib/constants";
 import type { DoctorForm, StepKey } from "@/lib/doctors/form";
 import type { EditorOptions } from "@/lib/doctors/options";
 import type { DoctorFormHints } from "@/lib/intake/hints";
-import type { CardFace } from "@/components/intake/IntakeContext";
 
 export interface StepProps {
   form: DoctorForm;
@@ -21,8 +20,6 @@ export interface StepProps {
   doctorId?: string;
   /** Answers from the website form ("Get started") this draft was made from. */
   hints?: DoctorFormHints;
-  /** Server-rendered visiting cards per style code (the Design step's picker). */
-  cardFaces?: Record<string, CardFace>;
   /** "owner": the doctor's own dashboard (hides team-only controls such as the login email). */
   audience?: "admin" | "owner";
 }

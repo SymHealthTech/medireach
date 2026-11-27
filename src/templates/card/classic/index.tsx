@@ -1,71 +1,71 @@
-import { alpha, DEFAULT_DOCTOR_CARD_STYLE, doctorCardPalette, type DoctorCardPalette } from "@/lib/cards/styles";
 import { formatPhone } from "@/lib/phone";
 import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
 import { DevBanner } from "@/templates/DevBanner";
-import { CARD_SIZE, type CardQr, type CardTemplateProps } from "@/templates/types";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, type DockStyle } from "@/templates/card/actions";
+import { alpha, clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
+import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
- * Classic visiting card (design 1). Colours come from the doctor's card style
- * code (`cardStyle`, see lib/cards/styles.ts); without one it is the Lagoon
- * style: deep teal panel, amber accents, light paper.
+ * Visiting card design 1 — "Serene Care", the card that comes with portfolio
+ * design 1, in its plum and rose colours.
  *
- *  - print (85 × 55 mm): colour panel on the left with the photo and QR code;
+ *  - print (85 × 55 mm): plum panel on the left with the photo and QR code;
  *    name, specialty, degrees and contact rows on the right.
- *  - phone (1080 × 1920): colour header with photo and name, a white
- *    contact panel (phone, clinic, timings, website) and a large QR code.
+ *  - phone (1080 × 1920): plum header with photo and name, a white contact
+ *    panel (phone, clinic, timings), the QR code and the one-tap buttons.
  *
  * Satori-safe: inline styles, flexbox only, inline <svg> icons (see
  * CardTemplateProps). Rendered as HTML on the card page and as PNG / PDF.
  */
 
-const INK = DEFAULT_DOCTOR_CARD_STYLE.palette.ink;
 const MUTED = "#5B6573";
 const LINE = "#E5E7EB";
 
-type Palette = DoctorCardPalette;
+/** Serene Care colours (the website's plum / rose). */
+const P = {
+  /** Header / side panel gradient: light → mid → deep. */
+  panel: ["#74407A", "#55275A", "#38163C"],
+  /** On the panel: photo ring, "Digital visiting card" label, specialty. */
+  highlight: "#F6A8BC",
+  /** On paper: the short bar under the name, and the bottom stripe (to `accent2`). */
+  accent: "#E0789A",
+  accent2: "#F6C3D1",
+  /** Name and icons on paper, QR code. */
+  ink: "#55275A",
+  /** Specialty and website on paper. */
+  brand: "#8E3F84",
+  /** Icon bubbles and photo background. */
+  soft: "#F5E8F3",
+  paper: "#FCF8FB",
+} as const;
+type Palette = typeof P;
 
 const panelGradient = (p: Palette) => `linear-gradient(160deg, ${p.panel[0]} 0%, ${p.panel[1]} 55%, ${p.panel[2]} 100%)`;
 
-// Lucide-style 24px icon paths (stroke only).
-export const ICONS = {
-  phone:
-    "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z",
-  pin: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0zM15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
-  chat: "M7.9 20A9 9 0 1 0 4 16.1L2 22Z",
-  user: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
-  clock: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0zM12 6v6l4 2",
-  globe: "M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
-} as const;
-
-export function Icon({ name, size, color }: { name: keyof typeof ICONS; size: number; color: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <path d={ICONS[name]} />
-    </svg>
-  );
-}
-
-export function QrBlock({ qr, px, radius = 16, color = INK }: { qr: CardQr; px: number; radius?: number; color?: string }) {
-  const quiet = 2.5;
-  return (
-    <div style={{ display: "flex", background: "#FFFFFF", padding: Math.round((px / (qr.size + quiet * 2)) * quiet), borderRadius: radius }}>
-      <svg width={px} height={px} viewBox={`0 0 ${qr.size} ${qr.size}`} shapeRendering="crispEdges">
-        <path d={qr.path} fill={color} />
-      </svg>
-    </div>
-  );
-}
+const FOOTER = 100;
+/** Where the buttons sit on the phone card (also used for the PDF links). */
+export const PHONE_DOCK = dockAboveFooter(FOOTER);
+const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
+  primaryBg: P.panel[1],
+  primaryText: "#FFFFFF",
+  tileBg: "#FFFFFF",
+  tileText: P.ink,
+  iconColor: P.brand,
+  border: `2px solid ${P.soft}`,
+  radius: 32,
+  font: fonts.body,
+  shadow: "0 18px 36px -22px rgba(56,22,60,0.45)",
+});
 
 function initials(name: string): string {
   const parts = name.replace(/^Dr\.?\s+/i, "").split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? "") + (parts.at(-1)?.[0] ?? "")).toUpperCase();
 }
 
-export const shortUrl = (url: string) => url.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
-
 /** Shrink long names so they fit. */
-const nameSize = (name: string, base: number) => (name.length > 26 ? Math.round(base * 0.76) : name.length > 20 ? Math.round(base * 0.88) : base);
+const nameSize = (name: string, base: number) =>
+  name.length > 28 ? Math.round(base * 0.66) : name.length > 26 ? Math.round(base * 0.76) : name.length > 20 ? Math.round(base * 0.88) : base;
 
 function Photo({ url, name, size, ring, fonts, p }: { url?: string; name: string; size: number; ring: number; fonts: CardTemplateProps["fonts"]; p: Palette }) {
   const inner = size - ring * 2;
@@ -93,9 +93,6 @@ function Photo({ url, name, size, ring, fonts, p }: { url?: string; name: string
     </div>
   );
 }
-
-/** Shortened to `max` characters with "…" (card rows have a fixed width). */
-export const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text);
 
 /**
  * The doctor's numbers, labelled: "Call or WhatsApp" only when WhatsApp is the
@@ -151,7 +148,7 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
   const labelled = numbers.length > 1 || numbers.some((n) => n.label !== "Call");
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
   const spec = specialtyLine(d);
-  const p = doctorCardPalette(d.cardStyle);
+  const p = P;
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: p.paper, color: p.ink, fontFamily: fonts.body }}>
       {devBanner && <DevBanner name={devBanner} />}
@@ -225,7 +222,7 @@ function PhoneRow({ icon, label, value, note, last, tight, p }: { icon: keyof ty
   );
 }
 
-function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
+function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
   const clinic = d.clinics[0];
   // The second place they see patients (a second clinic, or a hospital they visit), then "+N more".
@@ -246,9 +243,9 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
   if (full) for (const r of rows) if (r.place && clinic) r.value = `${clinic.area.name}, ${clinic.city.name}`;
   // Tighter rows and a smaller photo and QR when full, or when four rows include a street that wraps.
   const tight = full || (rows.length > 3 && rows.some((r) => r.place && r.value.length > 40));
-  const p = doctorCardPalette(d.cardStyle);
+  const p = P;
   return (
-    <div style={{ width, height, display: "flex", flexDirection: "column", background: p.paper, color: p.ink, fontFamily: fonts.body }}>
+    <div style={{ width, height, display: "flex", flexDirection: "column", background: p.paper, color: p.ink, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
 
       {/* Colour header */}
@@ -258,8 +255,8 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           flexDirection: "column",
           alignItems: "center",
           // The registration line needs a taller header so the contact panel doesn't cover it (a full card has a smaller photo instead).
-          height: tight ? 860 : reg ? 990 : 940,
-          paddingTop: tight ? 72 : 96,
+          height: tight ? 790 : reg ? 870 : 830,
+          paddingTop: tight ? 60 : 76,
           backgroundImage: panelGradient(p),
           position: "relative",
           overflow: "hidden",
@@ -271,14 +268,14 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         <div style={{ display: "flex", position: "absolute", bottom: 40, left: -160, width: 420, height: 420, borderRadius: 999, background: alpha(p.highlight, 0.12) }} />
 
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: p.highlight }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: tight ? 40 : 56 }}>
-          <Photo url={photoUrl} name={d.fullName} size={tight ? 280 : 340} ring={10} fonts={fonts} p={p} />
+        <div style={{ display: "flex", marginTop: tight ? 34 : 44 }}>
+          <Photo url={photoUrl} name={d.fullName} size={tight ? 236 : 280} ring={10} fonts={fonts} p={p} />
         </div>
-        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 86), lineHeight: 1.08, color: "#FFFFFF", marginTop: tight ? 40 : 52 }}>
+        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 86), lineHeight: 1.08, color: "#FFFFFF", marginTop: tight ? 30 : 40 }}>
           {d.fullName}
         </div>
         {spec && <div style={{ display: "flex", fontSize: 42, fontWeight: 700, color: p.highlight, marginTop: 18 }}>{spec}</div>}
-        {d.degreesLine && <div style={{ display: "flex", fontSize: 32, color: "rgba(255,255,255,0.8)", marginTop: 12 }}>{d.degreesLine}</div>}
+        {d.degreesLine && <div style={{ display: "flex", fontSize: 32, color: "rgba(255,255,255,0.8)", marginTop: 12, padding: "0 60px" }}>{clip(d.degreesLine, 54)}</div>}
         {reg && <div style={{ display: "flex", fontSize: 26, color: "rgba(255,255,255,0.65)", marginTop: 10, padding: "0 60px" }}>Reg. {reg}</div>}
       </div>
 
@@ -302,20 +299,23 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 32 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
       {/* QR */}
       <div style={{ display: "flex", alignItems: "center", padding: "0 96px" }}>
-        <div style={{ display: "flex", padding: 10, borderRadius: 28, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={tight ? 220 : 260} radius={20} color={p.ink} />
+        <div style={{ display: "flex", padding: 8, borderRadius: 26, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
+          <QrBlock qr={qr} px={tight ? 150 : 200} radius={18} color={p.ink} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", marginLeft: 48, flex: 1 }}>
-          <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 48, lineHeight: 1.12 }}>Scan to visit my website</div>
-          <div style={{ display: "flex", fontSize: 28, color: MUTED, marginTop: 14, lineHeight: 1.35 }}>Timings, directions and contact in one place.</div>
-          <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: p.brand, marginTop: 18 }}>{shortUrl(qr.url)}</div>
+        <div style={{ display: "flex", flexDirection: "column", marginLeft: 44, flex: 1 }}>
+          <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 44, lineHeight: 1.12 }}>Scan to visit my website</div>
+          <div style={{ display: "flex", fontSize: 27, color: MUTED, marginTop: 10, lineHeight: 1.35 }}>Timings, directions and contact in one place.</div>
+          <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: p.brand, marginTop: 12 }}>{shortUrl(qr.url)}</div>
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
+      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
+      <div style={{ display: "flex", height: DOCK_SPACE }} />
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 100, background: p.panel[2], color: "#FFFFFF", fontSize: 24 }}>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 28 }}>MediReach</div>

@@ -10,7 +10,7 @@ export const PRODUCT_LABEL: Record<ProductKind, string> = { doctor: "Doctors", c
 /**
  * Doctors / Clinics / Hospitals switcher, the same split as the public
  * website (Get started, /designs, visiting cards). Each product has its own
- * forms, designs and card styles.
+ * forms, designs and visiting cards (in the colours of their website design).
  */
 export function KindTabs({
   label,

@@ -306,8 +306,6 @@ export function toPublicDoctor(d: LeanDoctor, masters: Masters, sites?: SiteLink
       : {}),
 
     portfolioTemplateId: d.portfolioTemplateId,
-    cardTemplateId: d.cardTemplateId,
-    ...(d.cardStyle ? { cardStyle: d.cardStyle } : {}),
     seo: {
       ...(d.seo?.titleOverride ? { titleOverride: d.seo.titleOverride } : {}),
       ...(d.seo?.descriptionOverride ? { descriptionOverride: d.seo.descriptionOverride } : {}),

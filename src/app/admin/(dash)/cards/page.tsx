@@ -17,7 +17,7 @@ import { CardView } from "@/components/cards/CardView";
 import { loadDoctorForCard } from "@/lib/cards/admin";
 import { getReadyTemplates } from "@/lib/public/templates";
 import { CardTools } from "./CardTools";
-import { CardStyleCodes, CardTabs, SiteCards } from "./SiteCards";
+import { CardTabs, SiteCards } from "./SiteCards";
 
 export const metadata: Metadata = { title: "Visiting cards" };
 
@@ -44,7 +44,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
       .sort({ updatedAt: -1 })
       .skip((page - 1) * PER_PAGE)
       .limit(PER_PAGE)
-      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, cardTemplateId: 1 })
+      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1 })
       .lean(),
   ]);
 
@@ -83,10 +83,9 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
     <div className="space-y-5">
       <CardTabs active="doctor" />
       <p className="max-w-2xl text-muted-foreground">
-        Each doctor&apos;s card in their chosen design. The QR opens their website address (or short link). Download the PDF for the
-        printer, or the phone PNG to share on WhatsApp.
+        Each doctor&apos;s card, in the same design as their website. The QR opens their website address (or short link). Download the
+        print PDF for the printer, the phone PNG to share on WhatsApp, or the full card PDF (its buttons work).
       </p>
-      <CardStyleCodes kind="doctor" />
       <ListToolbar placeholder="Search doctors…" />
       {cards.length === 0 ? (
         <EmptyState icon={IdCard} title="No cards yet" description="A card is created automatically for every doctor." />
@@ -108,6 +107,9 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
                 <div className="flex flex-wrap gap-2">
                   <a className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${c.id}/print.pdf?download=1`}>
                     PDF (print)
+                  </a>
+                  <a className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${c.id}/phone.pdf?download=1`}>
+                    PDF (full card)
                   </a>
                   <a className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${c.id}/print.png?download=1`}>
                     PNG (print)
@@ -167,9 +169,9 @@ async function OneDoctorCard({ id }: { id: string }) {
           </div>
           <p className="break-all text-xs text-muted-foreground">QR opens {shareUrl}</p>
           <div className="flex flex-wrap gap-2">
-            {(["print.pdf", "print.png", "phone.png"] as const).map((f) => (
+            {(["print.pdf", "phone.pdf", "print.png", "phone.png"] as const).map((f) => (
               <a key={f} className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${id}/${f}?download=1`}>
-                {f === "print.pdf" ? "PDF (print)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+                {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card, buttons work)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
               </a>
             ))}
           </div>

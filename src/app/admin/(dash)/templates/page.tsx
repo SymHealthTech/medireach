@@ -4,7 +4,6 @@ import { KindTabs, type ProductKind } from "@/components/admin/KindTabs";
 import { rolesFor } from "@/components/admin/nav";
 import { ThemeMiniPreview } from "@/components/public/ThemeMiniPreview";
 import { requireAdminPage } from "@/lib/auth/admin";
-import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import type { SiteTemplateType } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
 import { DESIGN_GROUPS, DESIGN_OPTIONS } from "@/lib/intake/form";
@@ -21,7 +20,7 @@ const ROW_TITLE: Record<SiteTemplateType, string> = {
   portfolio: "Doctor portfolio layouts",
   clinic: "Clinic site layouts",
   hospital: "Hospital site layouts",
-  card: "Visiting card layouts",
+  card: "Visiting card layouts (not used: the card follows the website design)",
 };
 
 type Counts = { _id: string; n: number }[];
@@ -38,8 +37,8 @@ const NOUN: Record<ProductKind, string> = { doctor: "doctors", clinic: "clinics"
  * Designs & themes (MEDIREACH_BUILD_PROMPT.md Phase 4.5), split like the
  * public /designs page: Doctors / Clinics / Hospitals (?for=…). Each tab has
  * that product's page layouts (5 slots), the designs applicants see in the
- * website form (clinics and hospitals: per type), the visiting card layouts,
- * the product's card colour styles and its specialty designs. Only "ready"
+ * website form (clinics and hospitals: per type), a note on visiting cards
+ * (they follow the website design) and its specialty designs. Only "ready"
  * slots can be chosen; the rest fall back to Classic. Themes are
  * configuration (src/themes/specialty.ts), edited in code.
  */
@@ -51,24 +50,16 @@ export default async function DesignsAdminPage({ searchParams }: { searchParams:
   const kind: ProductKind = isKind(sp.for) ? sp.for : "doctor";
   const noun = NOUN[kind];
   const group = (field: string, match: Record<string, unknown> = {}) => [{ $match: match }, { $group: { _id: `$${field}`, n: { $sum: 1 } } }];
-  const [slots, portfolioUse, doctorCardUse, siteUse, siteCardUse, themeUse] = await Promise.all([
-    TemplateSlot.find({ type: { $in: [SITE_TYPE[kind], "card"] } }).sort({ type: 1, key: 1 }).lean(),
+  const [slots, portfolioUse, siteUse, themeUse] = await Promise.all([
+    TemplateSlot.find({ type: SITE_TYPE[kind] }).sort({ key: 1 }).lean(),
     kind === "doctor" ? DoctorProfile.aggregate<Counts[number]>(group("portfolioTemplateId")) : Promise.resolve([]),
-    kind === "doctor" ? DoctorProfile.aggregate<Counts[number]>(group("cardTemplateId")) : Promise.resolve([]),
     kind === "doctor" ? Promise.resolve([]) : Establishment.aggregate<Counts[number]>(group("siteTemplateId", { kind })),
-    kind === "doctor" ? Promise.resolve([]) : Establishment.aggregate<Counts[number]>(group("cardTemplateId", { kind })),
     kind === "doctor" ? Promise.resolve([]) : Establishment.aggregate<Counts[number]>(group("themeKey", { kind })),
   ]);
   const one = kind === "doctor" ? "doctor" : kind;
 
-  const usage = (type: SiteTemplateType, key: string): string =>
-    plural(countOf(type === "card" ? (kind === "doctor" ? doctorCardUse : siteCardUse) : kind === "doctor" ? portfolioUse : siteUse, key), one, noun);
-  const previewHref = (type: SiteTemplateType, key: string) =>
-    type === "portfolio"
-      ? `/admin/templates/preview/${key}`
-      : type === "card"
-        ? `/admin/templates/preview/${key}?type=card`
-        : `/admin/templates/preview/site/${type}/${key}`;
+  const usage = (key: string): string => plural(countOf(kind === "doctor" ? portfolioUse : siteUse, key), one, noun);
+  const previewHref = (type: SiteTemplateType, key: string) => (type === "portfolio" ? `/admin/templates/preview/${key}` : `/admin/templates/preview/site/${type}/${key}`);
 
   const view = (type: SiteTemplateType): SlotView[] =>
     slots
@@ -80,7 +71,7 @@ export default async function DesignsAdminPage({ searchParams }: { searchParams:
         status: s.status,
         isDefault: s.isDefault,
         ...(s.previewImage?.url ? { preview: { publicId: s.previewImage.publicId, url: s.previewImage.url } } : {}),
-        usage: usage(type, s.key),
+        usage: usage(s.key),
         previewHref: previewHref(type, s.key),
       }));
 
@@ -167,33 +158,25 @@ export default async function DesignsAdminPage({ searchParams }: { searchParams:
         </section>
       )}
 
-      {slotRow("card", `Card layouts are shared by doctors, clinics and hospitals; usage here counts ${noun}.`)}
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="font-display text-xl font-semibold text-ink">Visiting card colours for {noun}</h2>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            The style codes {noun} can pick on the website and in their form. They live in
-            <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">src/lib/cards/styles.ts</code>.
-          </p>
-        </div>
-        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {CARD_STYLES_BY_GROUP[kind].map((s) => (
-            <li key={s.code} className="flex items-center gap-3 rounded-xl border border-line bg-card p-3 shadow-soft">
-              <span aria-hidden className="flex shrink-0 -space-x-1.5">
-                {s.swatches.map((c, i) => (
-                  <span key={i} className="size-6 rounded-full border-2 border-white shadow-sm" style={{ background: c }} />
-                ))}
-              </span>
-              <span className="min-w-0">
-                <span className="block font-mono text-sm font-semibold">{s.code}</span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {s.name} · {s.colours}
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
+      <section className="space-y-2 rounded-xl border border-line bg-card p-4 shadow-soft">
+        <h2 className="font-display text-xl font-semibold text-ink">Visiting cards</h2>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          {kind === "doctor"
+            ? "Each doctor design comes with its own visiting card in the same colours and style; there is no separate card choice. A design that isn't ready shows the Classic card."
+            : `Every ${kind} card takes the colours of the site's specialty design; there is no separate card choice.`}{" "}
+          Phone cards carry Call, WhatsApp, Directions{kind === "doctor" ? ", Save" : ""} and Website buttons, which also work in the PDF.
+        </p>
+        {kind === "doctor" && (
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-sm">
+            {DESIGN_OPTIONS.doctor.map((d) => (
+              <li key={d.value}>
+                <a href={`/admin/templates/preview/${d.value}?type=card`} target="_blank" rel="noopener" className="inline-flex items-center gap-1 font-semibold text-ink hover:underline">
+                  <ExternalLink className="size-3.5" /> {d.label} card
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {themes.length > 0 && (

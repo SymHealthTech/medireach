@@ -286,6 +286,4 @@ export const RHEA_SARDESAI: DemoDoctor = {
     },
   ],
   portfolioTemplateId: "classic",
-  cardTemplateId: "classic",
-  cardStyle: "DOC-PLUM",
 };

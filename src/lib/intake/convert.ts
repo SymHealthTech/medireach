@@ -1,6 +1,5 @@
 import "server-only";
 import mongoose, { type Types } from "mongoose";
-import { DOCTOR_CARD_STYLE_CODES, SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { LIMITS, PRACTITIONER_TYPES, SYSTEMS_OF_MEDICINE, GENDERS, TEMPLATE_KEYS, type IntakeKind, type TemplateKey } from "@/lib/constants";
 import { getTheme, isThemeKey } from "@/themes/specialty";
 import { DEFAULT_HOSPITAL_CATEGORY } from "@/data/masters";
@@ -140,7 +139,7 @@ function notesFor(intake: Pick<IntakeDoc, "ref" | "kind" | "data" | "photos" | "
   const ds = designSummary(intake.kind, intake.data as IntakeData);
   const head = [
     `From website form ${intake.ref}.`,
-    `Design: website ${ds.website}, visiting card ${ds.card}. ${ds.final ? "Final choice." : "NOT FINAL: talk to them before finalising the design."}`,
+    `Design: website ${ds.website} (the visiting card comes in the same design). ${ds.final ? "Final choice." : "NOT FINAL: talk to them before finalising the design."}`,
     skipped.length ? `Please enter in the editor: ${skipped.join(", ")}.` : "",
     intake.photos?.viaWhatsapp ? "Applicant is sending (some) photos on WhatsApp." : "",
     intake.adminNotes ? `Review notes: ${intake.adminNotes}` : "",
@@ -268,7 +267,6 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
   const ownerFree = !(await DoctorProfile.exists({ ownerEmail: intake.email }));
   const system = (SYSTEMS_OF_MEDICINE as readonly string[]).includes(str(d.systemOfMedicine)) ? (str(d.systemOfMedicine) as (typeof SYSTEMS_OF_MEDICINE)[number]) : undefined;
   const gender = (GENDERS as readonly string[]).includes(str(d.gender)) ? (str(d.gender) as (typeof GENDERS)[number]) : undefined;
-  const cardStyle = str(d.cardStyle).toUpperCase();
   const fullName = `Dr. ${name.firstName} ${name.lastName}`;
 
   const doc = new DoctorProfile({
@@ -310,7 +308,6 @@ async function createDoctor(intake: Pick<IntakeDoc, "_id" | "ref" | "kind" | "em
     ...(intake.photos?.beyond ? { interestsPhoto: { ...image(intake.photos.beyond, str(d.beyondTitle) || "Beyond medicine")!, caption: str(d.beyondTitle).slice(0, 120) || undefined } } : {}),
     ...(story || str(d.beyondTitle) ? { interestsStory: { title: str(d.beyondTitle).slice(0, 200) || "Beyond medicine", ...(story ? { body: story.slice(0, LIMITS.storyBody) } : {}) } } : {}),
     gallery: gallery(allGallery, photoRoom),
-    ...((DOCTOR_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
     ...((TEMPLATE_KEYS as readonly string[]).includes(str(d.websiteDesign)) ? { portfolioTemplateId: str(d.websiteDesign) as TemplateKey } : {}),
     showHealthTips: str(d.healthTips) !== "no",
     plan: "doctor",
@@ -436,7 +433,6 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
   const bedSum = bedTypes.reduce((n, b) => n + (b.count ?? 0), 0);
   const beds = /^\d+$/.test(str(d.beds)) ? Math.max(Number(str(d.beds)), bedSum) : bedSum || undefined;
   if (beds !== undefined && beds > LIMITS.hospitalBedsMax) skipped.push(`beds (form says ${beds})`);
-  const cardStyle = str(d.cardStyle).toUpperCase();
   const insurance = splitLines(d.insurance);
   const label = kind === "clinic" ? "clinic" : "hospital";
   // Open 24×7: the site shows "Open 24 hours", not the week, so hours typed in the form (OPD, or a clinic's consultation hours) go in the appointment note.
@@ -497,7 +493,6 @@ async function createEstablishment(intake: Pick<IntakeDoc, "_id" | "ref" | "kind
     languages: splitList(d.languages),
     gallery: gallery(intake.photos?.gallery ?? [], kind === "clinic" ? LIMITS.clinicGalleryMax : LIMITS.hospitalGalleryMax),
     links: links(d, ["googleBusiness", "practo", "instagram", "facebook", "youtube", "website"]),
-    ...((SITE_CARD_STYLE_CODES as readonly string[]).includes(cardStyle) ? { cardStyle } : {}),
     source: "inbound",
     contactPerson: { name: str(d.contactName) || undefined, phone: mobile(d.mobile), email: intake.email },
     ownerEmail: intake.email,

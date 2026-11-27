@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowRight, Check } from "lucide-react";
-import { sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { DrawLine } from "@/components/home/Draw";
 import { HOW_IT_WORKS, PICK_DESIGNS } from "@/content/marketing";
 import type { IntakeKind } from "@/lib/constants";
@@ -85,7 +84,7 @@ export function PickDesignsSection({ kind, waNumber }: { kind: IntakeKind; waNum
           <SectionTitle id="designs-title">{PICK_DESIGNS.title[kind]}</SectionTitle>
           <p className="mx-auto mt-3 max-w-2xl text-lg text-body/85">{PICK_DESIGNS.text[kind]}</p>
         </div>
-        <PickDesigns kind={kind} cardFaces={sampleCardFaces(kind)} waNumber={waNumber} />
+        <PickDesigns kind={kind} waNumber={waNumber} placement={`for_${kind}s_picks`} />
       </div>
     </Reveal>
   );

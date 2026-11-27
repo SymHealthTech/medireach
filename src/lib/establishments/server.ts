@@ -71,8 +71,6 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
     shortDescription: s(d.shortDescription),
     about: s(d.about),
     siteTemplateId: d.siteTemplateId ?? "classic",
-    cardTemplateId: d.cardTemplateId ?? "classic",
-    cardStyle: d.cardStyle ?? "",
     address: {
       line1: s(d.address?.line1),
       line2: s(d.address?.line2),
@@ -197,8 +195,8 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
     case "design": {
       const d = input as SectionData<"design">;
       await assertTemplateReady(doc.kind, d.siteTemplateId);
-      await assertTemplateReady("card", d.cardTemplateId);
-      doc.set({ themeKey: d.themeKey, siteTemplateId: d.siteTemplateId, cardTemplateId: d.cardTemplateId, cardStyle: d.cardStyle });
+      // The visiting card follows the design (theme colours): nothing to choose for it.
+      doc.set({ themeKey: d.themeKey, siteTemplateId: d.siteTemplateId });
       break;
     }
     case "location": {

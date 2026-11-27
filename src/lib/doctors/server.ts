@@ -169,8 +169,6 @@ export function docToForm(d: DoctorProfileDoc): DoctorForm {
     source: d.source ?? "",
     internalNotes: s(d.internalNotes),
     portfolioTemplateId: d.portfolioTemplateId,
-    cardTemplateId: d.cardTemplateId,
-    cardStyle: d.cardStyle ?? "",
     showHealthTips: d.showHealthTips !== false,
     approval: {
       doctorApprovedAt: d.compliance?.doctorApprovedAt ? toDateInput(d.compliance.doctorApprovedAt) : "",
@@ -347,9 +345,8 @@ export async function applySection<K extends StepKey>(
       const ready = await TemplateSlot.find({ status: "ready" }).select({ type: 1, key: 1 }).lean();
       const ok = (type: string, key: string) => ready.some((r) => r.type === type && r.key === key);
       if (!ok("portfolio", d.portfolioTemplateId)) throw new ActionError("That portfolio design isn't ready yet.");
-      if (!ok("card", d.cardTemplateId)) throw new ActionError("That card design isn't ready yet.");
-      // cardStyle is undefined when the default is chosen, which clears the field.
-      doc.set({ portfolioTemplateId: d.portfolioTemplateId, cardTemplateId: d.cardTemplateId, cardStyle: d.cardStyle, showHealthTips: d.showHealthTips });
+      // The visiting card follows the website design: nothing to choose for it.
+      doc.set({ portfolioTemplateId: d.portfolioTemplateId, showHealthTips: d.showHealthTips });
       break;
     }
     case "review":

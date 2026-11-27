@@ -13,7 +13,9 @@ import { CARD_SIZE, type PublicEstablishment } from "@/templates/types";
 /**
  * Clinic/hospital visiting card: the public card page (/[city]/clinic/[slug]/card,
  * also {subdomain}.medireach.co.in/card; noindex) and its downloads
- * (phone.png, print.png, print.pdf).
+ * (phone.png, phone.pdf, print.png, print.pdf). The page shows the phone card
+ * in the colours of the site's design, with working Call / WhatsApp /
+ * Directions / Website buttons (they work in phone.pdf too).
  */
 
 type Params = { city: string; slug: string };
@@ -41,15 +43,15 @@ export function siteCardRoute(kind: "clinic" | "hospital") {
   async function Page({ params }: { params: Promise<Params> }) {
     const s = await load(params);
     if (!s) notFound();
-    const Card = resolveSiteCardTemplate(s.cardTemplateId);
+    const Card = resolveSiteCardTemplate(s.siteTemplateId);
     const { width, height } = CARD_SIZE.phone;
     return (
       <div className="flex min-h-dvh flex-col bg-mist">
         <CardPageHeader backHref={s.url} backLabel="Back" />
         <main className="mx-auto flex w-full max-w-[420px] flex-col gap-4 px-4 pb-4 pt-5 sm:py-12">
           <h1 className="sr-only">{s.name} – visiting card</h1>
-          <CardFrame width={width} height={height} label={`${s.name} – visiting card`} className="rounded-3xl">
-            <Card {...siteCardProps(s, "phone", "html")} />
+          <CardFrame width={width} height={height} label={`${s.name} – visiting card`} className="rounded-3xl" interactive fallbackScale={0.33}>
+            <Card {...siteCardProps(s, "phone", "html", { links: true })} />
           </CardFrame>
           <PatientShare url={siteCardPageUrl(s)} title={s.name} />
         </main>

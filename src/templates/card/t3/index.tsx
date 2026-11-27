@@ -1,8 +1,9 @@
 import { formatPhone } from "@/lib/phone";
 import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
-import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/classic";
+import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -13,7 +14,8 @@ import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
  *  - print (85 × 55 mm): ink column on the left with the square photo and an
  *    orange bar; name, specialty and contact rows on ivory; QR bottom right.
  *  - phone (1080 × 1920): ink header with a large square photo framed in
- *    orange, contact rows on ivory, then the QR code on a cobalt panel.
+ *    orange, contact rows on ivory, the QR code on a cobalt panel and the
+ *    one-tap buttons.
  *
  * Satori-safe: inline styles, flexbox only, <img> and inline <svg>.
  */
@@ -28,6 +30,20 @@ const STEEL = "#ECEFF5";
 const TEXT = "#18202E";
 const MUTED = "#5D6677";
 const LINE = "#E2E5EC";
+
+const FOOTER = 96;
+/** Where the buttons sit on the phone card (also used for the PDF links). */
+export const PHONE_DOCK = dockAboveFooter(FOOTER, 80);
+const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
+  primaryBg: ORANGE,
+  primaryText: "#FFFFFF",
+  tileBg: INK,
+  tileText: "#FFFFFF",
+  iconColor: SKY,
+  radius: 0,
+  font: fonts.body,
+  uppercase: true,
+});
 
 function initials(name: string): string {
   const parts = name
@@ -341,7 +357,7 @@ function PhoneRow({ icon, label, value, last }: { icon: keyof typeof ICONS; labe
       style={{
         display: "flex",
         alignItems: "center",
-        padding: "24px 0",
+        padding: "20px 0",
         borderBottom: last ? "none" : `2px solid ${LINE}`,
       }}
     >
@@ -387,7 +403,7 @@ function PhoneRow({ icon, label, value, last }: { icon: keyof typeof ICONS; labe
   );
 }
 
-function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
+function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
   const clinic = d.clinics[0];
   const hours = clinic ? (openDaysSummary(clinic.timings).split(" | ")[0] ?? "") : "";
@@ -428,6 +444,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         background: IVORY,
         color: TEXT,
         fontFamily: fonts.body,
+        position: "relative",
       }}
     >
       {devBanner && <DevBanner name={devBanner} />}
@@ -435,8 +452,8 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         style={{
           display: "flex",
           flexDirection: "column",
-          height: 1040,
-          padding: "90px 80px 0 80px",
+          height: 850,
+          padding: "70px 80px 0 80px",
           background: INK,
           position: "relative",
           overflow: "hidden",
@@ -478,19 +495,19 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
             DIGITAL VISITING CARD
           </div>
         </div>
-        <div style={{ display: "flex", marginTop: 60, position: "relative" }}>
+        <div style={{ display: "flex", marginTop: 44, position: "relative" }}>
           <div
             style={{
               display: "flex",
               position: "absolute",
-              left: 24,
-              top: 24,
-              width: 400,
-              height: 400,
+              left: 20,
+              top: 20,
+              width: 300,
+              height: 300,
               border: `6px solid ${ORANGE}`,
             }}
           />
-          <Photo url={photoUrl} name={d.fullName} size={400} fonts={fonts} />
+          <Photo url={photoUrl} name={d.fullName} size={300} fonts={fonts} />
         </div>
         <div
           style={{
@@ -499,7 +516,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
             fontSize: nameSize(d.fullName, 86),
             lineHeight: 1,
             color: "#FFFFFF",
-            marginTop: 76,
+            marginTop: 56,
             letterSpacing: -2,
             textTransform: "uppercase",
           }}
@@ -564,12 +581,12 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           display: "flex",
           alignItems: "center",
           margin: "0 80px",
-          padding: 36,
+          padding: 28,
           background: COBALT,
         }}
       >
         <div style={{ display: "flex", padding: 8, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={220} radius={0} color={INK} />
+          <QrBlock qr={qr} px={170} radius={0} color={INK} />
         </div>
         <div
           style={{
@@ -616,14 +633,17 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", flex: 1 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
+      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
+      <div style={{ display: "flex", height: DOCK_SPACE }} />
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
 
       <div
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          height: 96,
+          height: FOOTER,
           background: INK,
           color: "#FFFFFF",
           fontSize: 24,

@@ -145,7 +145,6 @@ function toPublic(s: SampleDoctorInput): PublicDoctor {
     interests: s.interests,
     ...EXTRAS[s.key],
     portfolioTemplateId: "classic",
-    cardTemplateId: "classic",
     seo: { noindex: true },
     updatedAt: "2026-11-01T00:00:00.000Z",
   };

@@ -1,9 +1,10 @@
 import type { ComponentType } from "react";
-import CardClassic from "@/templates/card/classic";
-import CardT2 from "@/templates/card/t2";
-import CardT3 from "@/templates/card/t3";
-import CardT4 from "@/templates/card/t4";
-import CardT5 from "@/templates/card/t5";
+import CardClassic, { PHONE_DOCK as DOCK_CLASSIC } from "@/templates/card/classic";
+import CardT2, { PHONE_DOCK as DOCK_T2 } from "@/templates/card/t2";
+import CardT3, { PHONE_DOCK as DOCK_T3 } from "@/templates/card/t3";
+import CardT4, { PHONE_DOCK as DOCK_T4 } from "@/templates/card/t4";
+import CardT5, { PHONE_DOCK as DOCK_T5 } from "@/templates/card/t5";
+import type { CardDock } from "@/templates/card/actions";
 import ClassicPortfolio from "@/templates/portfolio/classic";
 import PortfolioT2 from "@/templates/portfolio/t2";
 import PortfolioT3 from "@/templates/portfolio/t3";
@@ -27,6 +28,10 @@ import { DEFAULT_TEMPLATE_KEY, type TemplateKey } from "@/lib/constants";
  * replace the slot's component (e.g. templates/portfolio/t2/index.tsx) and set
  * the slot to "Ready" in Dashboard → Design templates. Until then any slot
  * that isn't ready renders Classic, so data never needs to change.
+ *
+ * Each doctor design comes with its own visiting card (`card[key]`, same
+ * colours and style): there is no separate card choice. The card follows the
+ * website design, so a design that isn't ready shows the Classic card too.
  */
 export const registry: {
   portfolio: Record<TemplateKey, ComponentType<PortfolioTemplateProps>>;
@@ -40,21 +45,27 @@ export const registry: {
   card: { classic: CardClassic, t2: CardT2, t3: CardT3, t4: CardT4, t5: CardT5 },
 };
 
+/** Where each card design draws its buttons on the phone card (for the clickable PDF). */
+export const cardDocks: Record<TemplateKey, CardDock> = { classic: DOCK_CLASSIC, t2: DOCK_T2, t3: DOCK_T3, t4: DOCK_T4, t5: DOCK_T5 };
+
 /** Back-compat alias used by the dashboard's template page. */
 export const portfolioTemplates = registry.portfolio;
 
 /** Keys whose slot status is "ready", per type (see lib/public/templates.ts). */
 export interface ReadyTemplates {
   portfolio: readonly string[];
-  card: readonly string[];
   clinic?: readonly string[];
   hospital?: readonly string[];
 }
 
-function resolve<T>(map: Record<TemplateKey, T>, key: string, ready: readonly string[] | undefined): T {
+/** The slot key that renders: `key` when it exists and is ready, else Classic. */
+function resolveKey(map: Record<TemplateKey, unknown>, key: string, ready: readonly string[] | undefined): TemplateKey {
   const k = key as TemplateKey;
-  if (map[k] && (k === DEFAULT_TEMPLATE_KEY || !ready || ready.includes(k))) return map[k];
-  return map[DEFAULT_TEMPLATE_KEY];
+  return map[k] && (k === DEFAULT_TEMPLATE_KEY || !ready || ready.includes(k)) ? k : DEFAULT_TEMPLATE_KEY;
+}
+
+function resolve<T>(map: Record<TemplateKey, T>, key: string, ready: readonly string[] | undefined): T {
+  return map[resolveKey(map, key, ready)];
 }
 
 /** Slot → component; a slot that isn't ready falls back to Classic. */
@@ -67,6 +78,12 @@ export function resolveSiteTemplate(kind: "clinic" | "hospital", key: string, re
   return resolve(registry[kind], key, ready ? (ready[kind] ?? []) : undefined);
 }
 
-export function resolveCardTemplate(key: string, ready?: ReadyTemplates): ComponentType<CardTemplateProps> {
-  return resolve(registry.card, key, ready?.card);
+/** The card of a website design (`portfolioTemplateId`); Classic when that design isn't ready. */
+export function resolveCardTemplate(designKey: string, ready?: ReadyTemplates): ComponentType<CardTemplateProps> {
+  return resolve(registry.card, designKey, ready?.portfolio);
+}
+
+/** Where that card's buttons are on the phone card. */
+export function resolveCardDock(designKey: string, ready?: ReadyTemplates): CardDock {
+  return cardDocks[resolveKey(registry.card, designKey, ready?.portfolio)];
 }

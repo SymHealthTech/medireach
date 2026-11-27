@@ -27,7 +27,6 @@ import {
 } from "@/lib/doctors/form";
 import type { EditorOptions } from "@/lib/doctors/options";
 import type { DoctorFormHints } from "@/lib/intake/hints";
-import type { CardFace } from "@/components/intake/IntakeContext";
 import type { AdminRole } from "@/lib/constants";
 import { timeAgo } from "@/lib/format";
 import { absUrl, paths } from "@/lib/site";
@@ -65,7 +64,6 @@ export function DoctorEditor({
   initialStep = "basics",
   leadId,
   hints,
-  cardFaces,
 }: {
   initial: DoctorForm;
   options: EditorOptions;
@@ -74,8 +72,6 @@ export function DoctorEditor({
   leadId?: string;
   /** Answers from the website form this draft was made from. */
   hints?: DoctorFormHints;
-  /** Visiting cards per style code, server-rendered (the Design step). */
-  cardFaces?: Record<string, CardFace>;
 }) {
   const [form, setForm] = useState<DoctorForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -226,7 +222,7 @@ export function DoctorEditor({
     toast.success(ok);
   }
 
-  const stepProps: StepProps = { form, set, err, options, readOnly, role, doctorId: form.id, hints, cardFaces };
+  const stepProps: StepProps = { form, set, err, options, readOnly, role, doctorId: form.id, hints };
   const name = [form.title, form.firstName, form.lastName].filter(Boolean).join(" ").trim();
   const liveUrl = form.status === "published" && form.slug && form.citySlug ? absUrl(paths.doctor(form.citySlug, form.slug)) : undefined;
 

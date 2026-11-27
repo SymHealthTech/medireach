@@ -36,7 +36,7 @@ describe("template registry", () => {
   });
 
   it("falls back to Classic unless the slot is ready", () => {
-    const ready = { portfolio: ["classic"], card: ["classic"] };
+    const ready = { portfolio: ["classic"] };
     expect(resolvePortfolioTemplate("t3", ready)).toBe(registry.portfolio.classic);
     expect(resolveCardTemplate("t2", ready)).toBe(registry.card.classic);
     expect(resolvePortfolioTemplate("t3", { ...ready, portfolio: ["classic", "t3"] })).toBe(registry.portfolio.t3);

@@ -106,8 +106,6 @@ async function seedOne(d: DemoDoctor, opts: SeedDemoOptions & { owner: boolean }
     gallery: d.gallery.map((g) => ({ ...demoImage(g.url, g.alt), caption: g.caption })),
     showHealthTips: d.showHealthTips,
     portfolioTemplateId: d.portfolioTemplateId,
-    cardTemplateId: d.cardTemplateId,
-    ...(d.cardStyle ? { cardStyle: d.cardStyle } : {}),
     seo: { noindex: true },
     internalNotes: "FICTIONAL DEMO DOCTOR (fixtures/demo-doctors) — not a real person.",
     compliance: { lastScanAt: now, issues: [], doctorApprovedAt: now, approvedVia: "in_person" },

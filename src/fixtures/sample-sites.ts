@@ -170,7 +170,6 @@ function build(theme: SpecialtyTheme): PublicEstablishment {
     gallery: [],
     links: {},
     siteTemplateId: "classic",
-    cardTemplateId: "classic",
     seo: { noindex: true },
     updatedAt: "2026-11-17T00:00:00.000Z",
   };

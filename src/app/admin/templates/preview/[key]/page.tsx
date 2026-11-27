@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Design preview" };
 /**
  * Preview any design slot with a fictional sample doctor:
  *   /admin/templates/preview/<key>            portfolio page
- *   /admin/templates/preview/<key>?type=card  print + phone cards
+ *   /admin/templates/preview/<key>?type=card  print + phone cards of that design
  * Add &doctor=consultant for the consultant sample. Slots render even when not
  * ready (that's what the preview is for); placeholder slots show Classic.
  */
@@ -45,7 +45,7 @@ export default async function TemplatePreviewPage({
   );
 
   if (isCard) {
-    const d = { ...sample, cardTemplateId: key };
+    const d = { ...sample, portfolioTemplateId: key };
     return (
       <>
         {banner}

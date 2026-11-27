@@ -73,13 +73,13 @@ describe("clinic/hospital editor (server)", () => {
     expect(publishProblems(doc, scanEstablishment(doc, DEFAULT_BANNED_PHRASES))).toEqual([]);
   });
 
-  it("saves the visiting card style code (clinic or hospital styles)", async () => {
+  it("has no separate visiting card choice: the card follows the design", async () => {
     const { doc, f } = await clinicReady("Card Style Clinic");
-    await save(doc, "design", { ...f, cardStyle: "HSP-NAVY" });
-    expect((await Establishment.findById(doc._id).lean())!.cardStyle).toBe("HSP-NAVY");
-    expect(docToForm(doc.toObject()).cardStyle).toBe("HSP-NAVY");
-    await save(doc, "design", { ...f, cardStyle: "" });
-    expect((await Establishment.findById(doc._id).lean())!.cardStyle).toBeUndefined();
+    await save(doc, "design", { ...f, cardStyle: "HSP-NAVY", cardTemplateId: "t2" } as typeof f);
+    const saved = (await Establishment.findById(doc._id).lean()) as Record<string, unknown>;
+    expect(saved.cardStyle).toBeUndefined();
+    expect(saved.cardTemplateId).toBeUndefined();
+    expect(docToForm(doc.toObject())).not.toHaveProperty("cardStyle");
   });
 
   it("keeps the kind fixed, moves the design with the category, and saves the design step separately", async () => {

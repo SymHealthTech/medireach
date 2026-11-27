@@ -79,7 +79,6 @@ export async function seedDemoSites(): Promise<{ url: string; kind: string; name
       ...(site.insurance ? { insurance: site.insurance } : {}),
       languages: site.languages,
       siteTemplateId: site.siteTemplateId,
-      cardTemplateId: site.cardTemplateId,
       seo: { noindex: true },
       internalNotes: "FICTIONAL DEMO SITE (fixtures/sample-sites) — not a real clinic or hospital.",
       compliance: { lastScanAt: now, issues: [], ownerApprovedAt: now, approvedVia: "in_person" },

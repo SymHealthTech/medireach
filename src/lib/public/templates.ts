@@ -12,7 +12,6 @@ export const getReadyTemplates = unstable_cache(
     const slots = await TemplateSlot.find({ status: "ready" }).select({ type: 1, key: 1 }).lean();
     return {
       portfolio: slots.filter((s) => s.type === "portfolio").map((s) => s.key),
-      card: slots.filter((s) => s.type === "card").map((s) => s.key),
       clinic: slots.filter((s) => s.type === "clinic").map((s) => s.key),
       hospital: slots.filter((s) => s.type === "hospital").map((s) => s.key),
     };

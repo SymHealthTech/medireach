@@ -2,18 +2,21 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, PDFName, PDFString, type PDFPage } from "pdf-lib";
 import { cloudinaryJpg } from "@/lib/cards/photo";
 import { absUrl } from "@/lib/site";
 import { qrForUrl } from "@/lib/cards/qr";
-import { resolveCardTemplate, type ReadyTemplates } from "@/templates/registry";
-import ClassicSiteCard from "@/templates/card/classic/site";
+import { resolveCardDock, resolveCardTemplate, type ReadyTemplates } from "@/templates/registry";
+import { doctorCardActions, dockSlots, siteCardActions, type CardAction, type CardDock } from "@/templates/card/actions";
+import ClassicSiteCard, { PHONE_DOCK as SITE_PHONE_DOCK } from "@/templates/card/classic/site";
 import { CARD_SIZE, type CardTemplateProps, type CardVariant, type PublicDoctor, type PublicEstablishment, type SiteCardTemplateProps } from "@/templates/types";
 
 /**
  * Server-side card rendering: the same card template used on the card page is
  * rendered to PNG with Satori (via next/og) using the brand fonts, and the
- * print PNG is wrapped into an exact 85 × 55 mm PDF.
+ * PNG is wrapped into a PDF (print: exactly 85 × 55 mm). The phone card's PDF
+ * has a clickable link over each of its buttons (Call, WhatsApp, Directions,
+ * Save, Website); the print PDF opens the website when tapped.
  */
 
 const FONT_DIR = join(process.cwd(), "src", "assets", "fonts");
@@ -46,13 +49,14 @@ export const HTML_FONTS = {
   body: "var(--font-jakarta), system-ui, sans-serif",
 } as const;
 
-/** Props for a card in either renderer. */
-export function cardProps(doctor: PublicDoctor, variant: CardVariant, renderer: "html" | "image"): CardTemplateProps {
+/** Props for a card in either renderer. `links`: real links on the buttons (the live card page). */
+export function cardProps(doctor: PublicDoctor, variant: CardVariant, renderer: "html" | "image", opts: { links?: boolean } = {}): CardTemplateProps {
   return {
     doctor,
     variant,
     qr: qrForUrl(doctor.shareUrl),
     fonts: renderer === "image" ? IMAGE_FONTS : HTML_FONTS,
+    ...(opts.links && renderer === "html" ? { links: true } : {}),
     // Bundled photos (demo doctors) are site paths; the image renderer needs absolute URLs.
     ...(doctor.photo ? { photoUrl: doctor.photo.url.startsWith("/") ? absUrl(doctor.photo.url) : cloudinaryJpg(doctor.photo.url, 600) } : {}),
   };
@@ -60,7 +64,7 @@ export function cardProps(doctor: PublicDoctor, variant: CardVariant, renderer: 
 
 /** PNG of a card (print: 300 dpi, phone: 1080 × 1920). */
 export async function renderCardPng(doctor: PublicDoctor, variant: CardVariant, ready?: ReadyTemplates): Promise<ArrayBuffer> {
-  const Card = resolveCardTemplate(doctor.cardTemplateId, ready);
+  const Card = resolveCardTemplate(doctor.portfolioTemplateId, ready);
   const { width, height } = CARD_SIZE[variant];
   const res = new ImageResponse(<Card {...cardProps(doctor, variant, "image")} />, { width, height, fonts: await cardFonts() });
   return res.arrayBuffer();
@@ -71,9 +75,26 @@ const MM_TO_PT = 72 / 25.4;
 /** Page sizes for the PDFs: the print card exactly 85 × 55 mm; the full phone card 90 × 160 mm (same 9:16 shape). */
 const PDF_MM: Record<CardVariant, [number, number]> = { print: [85, 55], phone: [90, 160] };
 
-/** PDF of a card: one page, the card image filling it (print: print-ready 85 × 55 mm; phone: the full card). */
+/** PDF of a card: one page, the card image filling it (print: print-ready 85 × 55 mm; phone: the full card, with working buttons). */
 export async function renderCardPdf(doctor: PublicDoctor, ready?: ReadyTemplates, variant: CardVariant = "print"): Promise<Uint8Array> {
-  return pdfFromPng(await renderCardPng(doctor, variant, ready), `${doctor.fullName} – visiting card`, variant);
+  const links = cardPdfLinks(variant, doctor.shareUrl, doctorCardActions(doctor), resolveCardDock(doctor.portfolioTemplateId, ready));
+  return pdfFromPng(await renderCardPng(doctor, variant, ready), `${doctor.fullName} – visiting card`, variant, links);
+}
+
+/** A clickable area of a card, in card pixels. */
+export interface CardLink {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  url: string;
+}
+
+/** The PDF's clickable areas: each button of the phone card; the whole print card opens the website. */
+export function cardPdfLinks(variant: CardVariant, websiteUrl: string, actions: CardAction[], dock: CardDock): CardLink[] {
+  if (variant === "print") return [{ x: 0, y: 0, ...CARD_SIZE.print, url: websiteUrl }];
+  const slots = dockSlots(dock, actions.length);
+  return actions.map((a, i) => ({ ...slots[i]!, url: a.href }));
 }
 
 export const CARD_FILES = {
@@ -110,33 +131,34 @@ export async function cardFileResponse(
 // ---------------------------------------------------------------------------
 
 /**
- * Card designs for clinics/hospitals. Only Classic exists; the other card
- * slots (t2–t5) are doctor-card placeholders, so every site renders Classic
- * until a site version of a slot is designed.
+ * Card design for clinics/hospitals. Every site layout (`siteTemplateId`)
+ * shares the Classic site card, painted in the colours of the site's design
+ * (its specialty theme), so the card always matches the website.
  */
-export function resolveSiteCardTemplate(_key: string) {
+export function resolveSiteCardTemplate(_siteTemplateId: string) {
   return ClassicSiteCard;
 }
 
 /** Props for a site card in either renderer. The QR opens the subdomain, else the site page. */
-export function siteCardProps(site: PublicEstablishment, variant: CardVariant, renderer: "html" | "image"): SiteCardTemplateProps {
+export function siteCardProps(site: PublicEstablishment, variant: CardVariant, renderer: "html" | "image", opts: { links?: boolean } = {}): SiteCardTemplateProps {
   return {
     site,
     variant,
     qr: qrForUrl(site.shareUrl),
     fonts: renderer === "image" ? IMAGE_FONTS : HTML_FONTS,
+    ...(opts.links && renderer === "html" ? { links: true } : {}),
     ...(site.logo ? { logoUrl: cloudinaryJpg(site.logo.url, 600) } : {}),
   };
 }
 
 export async function renderSiteCardPng(site: PublicEstablishment, variant: CardVariant): Promise<ArrayBuffer> {
-  const Card = resolveSiteCardTemplate(site.cardTemplateId);
+  const Card = resolveSiteCardTemplate(site.siteTemplateId);
   const { width, height } = CARD_SIZE[variant];
   const res = new ImageResponse(<Card {...siteCardProps(site, variant, "image")} />, { width, height, fonts: await cardFonts() });
   return res.arrayBuffer();
 }
 
-async function pdfFromPng(png: ArrayBuffer, title: string, variant: CardVariant): Promise<Uint8Array> {
+async function pdfFromPng(png: ArrayBuffer, title: string, variant: CardVariant, links: CardLink[] = []): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
   pdf.setCreator("MediReach");
@@ -146,7 +168,26 @@ async function pdfFromPng(png: ArrayBuffer, title: string, variant: CardVariant)
   const height = PDF_MM[variant][1] * MM_TO_PT;
   const page = pdf.addPage([width, height]);
   page.drawImage(image, { x: 0, y: 0, width, height });
+  addLinks(pdf, page, links, width / CARD_SIZE[variant].width);
   return pdf.save();
+}
+
+/** URI link annotations over the card (card pixels to PDF points; PDF y runs upwards). */
+function addLinks(pdf: PDFDocument, page: PDFPage, links: CardLink[], scale: number) {
+  if (!links.length) return;
+  const pageHeight = page.getHeight();
+  const refs = links.map((l) =>
+    pdf.context.register(
+      pdf.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [l.x * scale, pageHeight - (l.y + l.height) * scale, (l.x + l.width) * scale, pageHeight - l.y * scale],
+        Border: [0, 0, 0],
+        A: { Type: "Action", S: "URI", URI: PDFString.of(l.url) },
+      }),
+    ),
+  );
+  page.node.set(PDFName.of("Annots"), pdf.context.obj(refs));
 }
 
 /** Download response for one clinic/hospital card file. */
@@ -157,7 +198,8 @@ export async function siteCardFileResponse(
 ): Promise<Response> {
   const { type, variant } = CARD_FILES[file];
   const png = await renderSiteCardPng(site, variant);
-  const body = type === "application/pdf" ? await pdfFromPng(png, `${site.name} – visiting card`, variant) : png;
+  const links = cardPdfLinks(variant, site.shareUrl, siteCardActions(site), SITE_PHONE_DOCK);
+  const body = type === "application/pdf" ? await pdfFromPng(png, `${site.name} – visiting card`, variant, links) : png;
   const name = `${site.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
   return new Response(body as BodyInit, {
     headers: {

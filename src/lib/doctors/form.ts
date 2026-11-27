@@ -14,7 +14,6 @@ import {
   type DoctorStatus,
   type RenewalStatus,
 } from "@/lib/constants";
-import { DOCTOR_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { htmlToText } from "@/lib/compliance/scan";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
 
@@ -140,11 +139,8 @@ export interface DoctorForm {
   source: "" | (typeof DOCTOR_SOURCES)[number];
   internalNotes: string;
 
-  // 9 Templates
+  // 9 Templates (the visiting card comes in the same design as the website)
   portfolioTemplateId: string;
-  cardTemplateId: string;
-  /** Visiting card colour style code ("" = default, DOC-LAGOON). */
-  cardStyle: string;
   /** Show the "Health tips" section (general articles) in designs that have one. */
   showHealthTips: boolean;
 
@@ -234,8 +230,6 @@ export function emptyDoctorForm(): DoctorForm {
     source: "",
     internalNotes: "",
     portfolioTemplateId: "classic",
-    cardTemplateId: "classic",
-    cardStyle: "",
     showHealthTips: true,
     approval: { doctorApprovedAt: "", approvedVia: "" },
   };
@@ -285,7 +279,7 @@ export function stepComplete(step: StepKey, f: DoctorForm): boolean {
     case "business":
       return Boolean(f.plan);
     case "templates":
-      return Boolean(f.portfolioTemplateId && f.cardTemplateId);
+      return Boolean(f.portfolioTemplateId);
     case "review":
       return publishBlockers(f).every((b) => b.field === "publish");
     case "publish":
@@ -615,8 +609,6 @@ export const sectionSchemas = {
   }),
   templates: z.object({
     portfolioTemplateId: z.enum(TEMPLATE_KEYS),
-    cardTemplateId: z.enum(TEMPLATE_KEYS),
-    cardStyle: z.enum(["", ...DOCTOR_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
     showHealthTips: z.boolean().default(true),
   }),
   review: approvalSchema,
@@ -643,7 +635,7 @@ export function sectionPayload(step: StepKey, f: DoctorForm): unknown {
     case "business":
       return { plan: f.plan, founding: f.founding, setupPaidAt: f.setupPaidAt, renewalPrice: f.renewalPrice, renewalDueDate: f.renewalDueDate, freeUpdateUsed: f.freeUpdateUsed, ownDomain: f.ownDomain, establishmentIds: f.establishmentIds, salesExecutive: f.salesExecutive, salesExecutiveId: f.salesExecutiveId, source: f.source, internalNotes: f.internalNotes };
     case "templates":
-      return { portfolioTemplateId: f.portfolioTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle, showHealthTips: f.showHealthTips };
+      return { portfolioTemplateId: f.portfolioTemplateId, showHealthTips: f.showHealthTips };
     case "review":
     case "publish":
       return { approval: f.approval };

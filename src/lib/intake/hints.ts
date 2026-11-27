@@ -30,9 +30,8 @@ export interface DoctorFormHints {
   qualifications: ParsedQualification[];
   /** Per clinic, in form order; hospitals they visit as a consultant come last (type "visiting"). */
   clinics: FormClinic[];
-  /** Design choices: website design key, card style code, "final" / "discuss". */
+  /** Design choices: website design key (the card comes in the same design), "final" / "discuss". */
   websiteDesign?: string;
-  cardStyle?: string;
   designDecision?: string;
   /** "yes" / "no": add the Health tips section. */
   healthTips?: string;
@@ -90,7 +89,6 @@ export interface SiteFormHints {
   websiteName?: string;
   notes?: string;
   websiteDesign?: string;
-  cardStyle?: string;
   designDecision?: string;
 }
 
@@ -162,7 +160,6 @@ export function doctorHints(ref: string, data: IntakeData, intakeId?: string): D
     ...(str(data.specialty) ? { specialty: str(data.specialty) } : {}),
     ...(str(data.systemOfMedicine) === "other" && str(data.systemOther) ? { systemOther: str(data.systemOther) } : {}),
     ...(str(data.websiteDesign) ? { websiteDesign: str(data.websiteDesign) } : {}),
-    ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
     ...(str(data.designDecision) ? { designDecision: str(data.designDecision) } : {}),
     ...(str(data.healthTips) ? { healthTips: str(data.healthTips) } : {}),
     qualificationLines: lines,
@@ -194,7 +191,6 @@ export function siteHints(ref: string, kind: "clinic" | "hospital", data: Intake
     ...opt("websiteName", data.websiteName),
     ...opt("notes", data.notes),
     ...opt("websiteDesign", data.websiteDesign),
-    ...(str(data.cardStyle) ? { cardStyle: str(data.cardStyle).toUpperCase() } : {}),
     ...opt("designDecision", data.designDecision),
     awards: splitLines(data.awards),
     // Names only ("Name – short description" rows); the import copies the descriptions too.

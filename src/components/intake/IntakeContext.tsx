@@ -1,23 +1,14 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext } from "react";
 import type { UploadSigner } from "@/lib/client/upload-image";
 import type { IntakeKind } from "@/lib/constants";
 
-/** Sample visiting cards for one style, server-rendered: a small preview, and the full phone and print cards. */
-export interface CardFace {
-  thumb: ReactNode;
-  phone: ReactNode;
-  print: ReactNode;
-}
-
-/** What fields deep in the form need from the form itself (uploads, server-rendered card previews). */
+/** What fields deep in the form need from the form itself (uploads, answers, lists). */
 export interface IntakeContextValue {
   /** Photos need a saved form; saves it first (false if it can't). */
   ensureSaved: () => Promise<boolean>;
   sign: UploadSigner;
-  /** Card style code → sample cards. Without them the picker shows colour swatches. */
-  cardFaces?: Record<string, CardFace>;
   errors: Record<string, string>;
   /** Which form this is (picks the suggestion lists). */
   kind?: IntakeKind;

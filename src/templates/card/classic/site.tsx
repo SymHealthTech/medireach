@@ -4,19 +4,20 @@ import { openDaysSummary } from "@/lib/timings";
 import { DevBanner } from "@/templates/DevBanner";
 import { CARD_SIZE, type SiteCardTemplateProps } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
-import { siteCardPalette } from "@/lib/cards/styles";
-import { clip, Icon, QrBlock, shortUrl, type ICONS } from "./index";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, siteCardActions, type DockStyle } from "@/templates/card/actions";
+import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 
 /**
  * Classic visiting card for clinics and hospitals (DESIGN_BRIEF.md §10):
  * logo, name, category, address, timings summary (or "24×7"), phone and QR,
- * in the colours of the site's card style code (`cardStyle`, see
- * lib/cards/styles.ts), else its specialty theme colours.
+ * always in the colours of the site's website design (its specialty theme),
+ * so the card matches the website. There is no separate card choice.
  *
  *  - print (85 × 55 mm): theme panel on the left with the logo and QR code;
  *    name, category and contact rows on the right.
  *  - phone (1080 × 1920): theme header with the logo and name, a white
- *    contact panel and a large QR code.
+ *    contact panel, the QR code and the one-tap buttons (Call, WhatsApp,
+ *    Directions, Website).
  *
  * Satori-safe (inline styles, flexbox only), like the doctor card. Prints
  * legibly in black and white: dark text on white, QR in the primary colour.
@@ -26,6 +27,24 @@ const PAPER = "#F7F9FA";
 const MUTED = "#5B6573";
 const LINE = "#E5E7EB";
 const TEXT = "#1F2933";
+
+const FOOTER = 100;
+/** Where the buttons sit on the phone card (also used for the PDF links). */
+export const PHONE_DOCK = dockAboveFooter(FOOTER, 72);
+const dockStyle = (primary: string, soft: string, fonts: SiteCardTemplateProps["fonts"]): DockStyle => ({
+  primaryBg: primary,
+  primaryText: "#FFFFFF",
+  tileBg: "#FFFFFF",
+  tileText: TEXT,
+  iconColor: primary,
+  border: `2px solid ${soft}`,
+  radius: 30,
+  font: fonts.body,
+  shadow: "0 18px 36px -24px rgba(0,0,0,0.35)",
+});
+
+/** The site's colours: those of its website design. */
+const sitePalette = (s: SiteCardTemplateProps["site"]) => getTheme(s.themeKey, s.kind).palette;
 
 function initials(name: string): string {
   const words = name.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w));
@@ -96,7 +115,7 @@ function PrintRow({ icon, children, strong, soft, primary, label }: { icon: keyo
 
 function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
-  const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
+  const { primary, accent, soft } = sitePalette(s);
   const numbers = cardNumbers(s);
   // One plain number needs no label; several (or a shared WhatsApp) are labelled.
   const labelled = numbers.length > 1 || numbers.some((n) => n.label !== "Call");
@@ -185,17 +204,19 @@ function PhoneRow({
   );
 }
 
-function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
+function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
-  const { primary, accent, soft } = siteCardPalette(s.cardStyle) ?? getTheme(s.themeKey, s.kind).palette;
+  const { primary, accent, soft } = sitePalette(s);
   const what = typeName(s);
   const street = [s.address.line1, s.address.line2].filter(Boolean).join(", ");
   // Clinics: the doctors (up to 2 named, then "+N more"), so the card says who you will see.
   const clinic = s.kind === "clinic";
   const doctors = clinic ? s.doctors.filter((d) => d.name.trim()) : [];
   // One line per doctor: name and specialty, or the name alone when both don't fit.
-  const doctorLines = doctors.slice(0, 2).map((d, i) => {
-    const more = i === 1 && doctors.length > 2 ? ` +${doctors.length - 2} more` : "";
+  // With three numbers (emergency, call, WhatsApp) there is room for one doctor line ("+N more").
+  const shown = cardNumbers(s).length > 2 ? 1 : 2;
+  const doctorLines = doctors.slice(0, shown).map((d, i) => {
+    const more = i === shown - 1 && doctors.length > shown ? ` +${doctors.length - shown} more` : "";
     const room = 40 - more.length;
     const full = [d.name, d.specialty].filter(Boolean).join(" · ");
     return (full.length <= room ? full : clip(d.name, room)) + more;
@@ -214,19 +235,20 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
     { icon: "clock", label: "Timings", value: hoursText(s), ...(note ? { note } : {}) },
   ];
   // Five rows (emergency, call, WhatsApp, address, timings): tighter rows and a smaller QR so it all fits.
-  const tight = rows.length > 4;
+  // (or four rows with doctors or a note: the buttons need room under them too)
+  const tight = rows.length > 4 || (rows.length > 3 && (doctorLines.length > 0 || Boolean(note)));
   // A full clinic card (doctors and an appointment note, or five rows plus doctors): a shorter header too.
-  const compact = (tight && (doctorLines.length > 0 || Boolean(note))) || (doctorLines.length > 1 && Boolean(note));
+  const compact = (tight && (doctorLines.length > 0 || Boolean(note))) || (doctorLines.length > 0 && Boolean(note));
   return (
-    <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body }}>
+    <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: compact ? 780 : 900, paddingTop: compact ? 64 : 96, background: primary, position: "relative", overflow: "hidden", textAlign: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: compact ? (s.name.length > 30 ? 690 : 650) : 800, paddingTop: compact ? 50 : 76, background: primary, position: "relative", overflow: "hidden", textAlign: "center" }}>
         <div style={{ display: "flex", position: "absolute", top: -220, right: -200, width: 640, height: 640, borderRadius: 999, border: "3px solid rgba(255,255,255,0.08)" }} />
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: accent }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: compact ? 36 : 56 }}>
-          <Logo url={logoUrl} name={s.name} size={compact ? 220 : 280} primary={primary} soft={soft} fonts={fonts} />
+        <div style={{ display: "flex", marginTop: compact ? 30 : 44 }}>
+          <Logo url={logoUrl} name={s.name} size={compact ? 160 : 230} primary={primary} soft={soft} fonts={fonts} />
         </div>
-        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(s.name, 80), lineHeight: 1.08, color: "#FFFFFF", marginTop: compact ? 32 : 48, padding: "0 60px" }}>{s.name}</div>
+        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(s.name, 80), lineHeight: 1.08, color: "#FFFFFF", marginTop: compact ? 28 : 40, padding: "0 60px" }}>{s.name}</div>
         <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: accent, marginTop: 18 }}>{what}</div>
         <div style={{ display: "flex", fontSize: 32, color: "rgba(255,255,255,0.82)", marginTop: 10 }}>
           {s.address.area.name}, {s.address.city.name}
@@ -241,19 +263,22 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 32 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
       <div style={{ display: "flex", alignItems: "center", padding: "0 96px" }}>
-        <div style={{ display: "flex", padding: 10, borderRadius: 28, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={tight ? 220 : 260} radius={20} color={primary} />
+        <div style={{ display: "flex", padding: 8, borderRadius: 26, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
+          <QrBlock qr={qr} px={tight ? 160 : 190} radius={18} color={primary} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 48, flex: 1 }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 46, lineHeight: 1.12, color: primary }}>Scan for timings and directions</div>
           <div style={{ display: "flex", fontSize: 30, fontWeight: 700, color: TEXT, marginTop: 18 }}>{shortUrl(qr.url)}</div>
         </div>
       </div>
-      <div style={{ display: "flex", flex: 1 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
+      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
+      <div style={{ display: "flex", height: DOCK_SPACE }} />
+      <ActionDock actions={siteCardActions(s)} dock={PHONE_DOCK} style={dockStyle(primary, soft, fonts)} links={links} />
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 100, background: primary, color: "#FFFFFF", fontSize: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: FOOTER, background: primary, color: "#FFFFFF", fontSize: 24 }}>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", width: 8, height: 8, borderRadius: 999, background: accent, marginLeft: 4, marginTop: 10 }} />
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(255,255,255,0.7)" }}>{ROOT_HOSTNAME}</div>

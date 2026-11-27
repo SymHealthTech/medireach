@@ -39,7 +39,6 @@ export default async function SampleCardDoctorPage({ params }: { params: Promise
       />
       <DoctorCardView
         doctor={doctor}
-        websiteUrl={`/sample/${key}`}
         cardUrl={absUrl(`/sample/${key}/card`)}
         filesBase={`/sample/${key}/card`}
         version={doctor.updatedAt}

@@ -133,7 +133,6 @@ describe("doctor page: name and map", () => {
       interests: [],
       gallery: [],
       portfolioTemplateId: "classic",
-      cardTemplateId: "classic",
       seo: { noindex: false },
       updatedAt: new Date(),
       ...extra,

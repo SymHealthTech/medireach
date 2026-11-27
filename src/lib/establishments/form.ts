@@ -10,7 +10,6 @@ import {
   type EstablishmentKind,
   type RenewalStatus,
 } from "@/lib/constants";
-import { SITE_CARD_STYLE_CODES } from "@/lib/cards/styles";
 import { htmlToText } from "@/lib/compliance/scan";
 import { chips, dateStr, email, HHMM, image, optOid, phone, t, url, type ImageValue } from "@/lib/doctors/form";
 import { SLUG_RE, SUBDOMAIN_RE } from "@/lib/slug";
@@ -54,10 +53,8 @@ export interface EstablishmentForm {
 
   // Design (as in the doctor editor)
   themeKey: ThemeKey;
+  /** Page layout. The visiting card follows the design (theme colours). */
   siteTemplateId: string;
-  cardTemplateId: string;
-  /** Visiting card colour style code ("" = the specialty theme colours). */
-  cardStyle: string;
 
   // 2 Location and contact
   address: { line1: string; line2: string; cityId: string; areaId: string; state: string; pincode: string; landmark: string; parkingNote: string };
@@ -169,8 +166,6 @@ export function emptyEstablishmentForm(kind: EstablishmentKind = "clinic"): Esta
     shortDescription: "",
     about: "",
     siteTemplateId: "classic",
-    cardTemplateId: "classic",
-    cardStyle: "",
     address: { line1: "", line2: "", cityId: "", areaId: "", state: "Maharashtra", pincode: "", landmark: "", parkingNote: "" },
     mapsUrl: "",
     lat: "",
@@ -269,7 +264,7 @@ export function stepComplete(step: StepKey, f: EstablishmentForm): boolean {
     case "business":
       return f.kind === "hospital" ? Boolean(f.source) : true;
     case "design":
-      return Boolean(f.themeKey && f.siteTemplateId && f.cardTemplateId);
+      return Boolean(f.themeKey && f.siteTemplateId);
     case "review":
       return publishBlockers(f).every((b) => b.field === "publish");
     case "publish":
@@ -398,8 +393,6 @@ export const sectionSchemas = {
   design: z.object({
     themeKey: z.enum(THEME_KEYS as [ThemeKey, ...ThemeKey[]]),
     siteTemplateId: z.enum(TEMPLATE_KEYS),
-    cardTemplateId: z.enum(TEMPLATE_KEYS),
-    cardStyle: z.enum(["", ...SITE_CARD_STYLE_CODES] as [string, ...string[]]).transform((s) => s || undefined),
   }),
   location: z
     .object({
@@ -544,7 +537,7 @@ export function sectionPayload(step: StepKey, f: EstablishmentForm): unknown {
         about: f.about,
       };
     case "design":
-      return { themeKey: f.themeKey, siteTemplateId: f.siteTemplateId, cardTemplateId: f.cardTemplateId, cardStyle: f.cardStyle };
+      return { themeKey: f.themeKey, siteTemplateId: f.siteTemplateId };
     case "location":
       return {
         address: f.address,

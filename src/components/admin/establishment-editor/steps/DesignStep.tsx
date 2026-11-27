@@ -1,45 +1,36 @@
 "use client";
 
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, IdCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, NativeSelect } from "@/components/admin/form/fields";
-import { CardStylePicker, DesignPicker } from "@/components/intake/DesignPickers";
+import { DesignPicker } from "@/components/intake/DesignPickers";
 import { Group } from "@/components/admin/doctor-editor/shared";
-import { CARD_STYLES_BY_GROUP, findCardStyle } from "@/lib/cards/styles";
 import { DESIGN_TYPE_FIELD, INTAKE_SECTIONS, hospitalTypeFor } from "@/lib/intake/form";
 import { getTheme, isThemeKey, type ThemeKey } from "@/themes/specialty";
 import type { EStepProps } from "../shared";
 
-// The same pickers as the website forms and the homepage (Get started → Clinic / Hospital).
-const fieldsFor = (kind: "clinic" | "hospital") => {
-  const design = INTAKE_SECTIONS[kind].find((s) => s.key === "design")!.fields;
-  return { website: design.find((x) => x.key === "websiteDesign")!, card: design.find((x) => x.key === "cardStyle")! };
-};
+// The same picker as the website forms and the homepage (Get started → Clinic / Hospital).
+const websiteField = (kind: "clinic" | "hospital") => INTAKE_SECTIONS[kind].find((s) => s.key === "design")!.fields.find((x) => x.key === "websiteDesign")!;
 
-/** Website design and visiting card (moved out of Basics, as in the doctor editor). */
-export function DesignStep({ form: f, set, options, readOnly, hints, cardFaces }: EStepProps) {
+/** Website design (moved out of Basics, as in the doctor editor). The visiting card follows it: nothing to choose for the card. */
+export function DesignStep({ form: f, set, options, readOnly, hints }: EStepProps) {
   const kind = f.kind;
-  const { website, card } = fieldsFor(kind);
+  const website = websiteField(kind);
   const category = options.categories.find((c) => c.id === f.categoryId);
   const theme = getTheme(f.themeKey, kind);
   const layouts = options.templates.filter((t) => t.type === kind && t.status === "ready");
-  const cardLayouts = options.templates.filter((t) => t.type === "card" && t.status === "ready");
-  const picked = f.cardStyle ? findCardStyle(f.cardStyle) : undefined;
-  // An older pick from the other list (clinic vs hospital styles) stays visible.
-  const otherGroup = picked && picked.group !== kind && picked.group !== "doctor" ? picked.group : undefined;
 
   const formDesign = hints?.websiteDesign && isThemeKey(hints.websiteDesign) ? getTheme(hints.websiteDesign, kind).name : undefined;
-  const formCard = hints?.cardStyle ? findCardStyle(hints.cardStyle) : undefined;
-  const canUseForm = (formDesign && hints?.websiteDesign !== f.themeKey) || (formCard && formCard.code !== f.cardStyle);
+  const canUseForm = formDesign && hints?.websiteDesign !== f.themeKey;
 
   return (
     <fieldset disabled={readOnly} className="min-w-0 space-y-5">
-      {hints && (formDesign || formCard || hints.designDecision) && (
+      {hints && (formDesign || hints.designDecision) && (
         <div className="flex flex-col gap-2 rounded-lg bg-sage/60 px-3 py-2 text-sm text-ink sm:flex-row sm:items-center sm:justify-between">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <ClipboardList className="size-4 shrink-0" aria-hidden />
             <span>
-              Website form {hints.ref}: website <strong>{formDesign ?? "not decided"}</strong>, card <strong>{formCard ? `${formCard.name} (${formCard.code})` : "not decided"}</strong>
+              Website form {hints.ref}: website <strong>{formDesign ?? "not decided"}</strong>
               {hints.designDecision === "discuss" ? " · Not final: talk to them first." : hints.designDecision === "final" ? " · Final choice." : ""}
             </span>
           </p>
@@ -49,12 +40,7 @@ export function DesignStep({ form: f, set, options, readOnly, hints, cardFaces }
               size="sm"
               variant="outline"
               className="shrink-0"
-              onClick={() =>
-                set({
-                  ...(formDesign ? { themeKey: hints.websiteDesign as ThemeKey } : {}),
-                  ...(formCard && CARD_STYLES_BY_GROUP[kind].some((c) => c.code === formCard.code) ? { cardStyle: formCard.code } : {}),
-                })
-              }
+              onClick={() => set({ themeKey: hints.websiteDesign as ThemeKey })}
             >
               Use their choice
             </Button>
@@ -97,44 +83,13 @@ export function DesignStep({ form: f, set, options, readOnly, hints, cardFaces }
         )}
       </Group>
 
-      <Group title="Visiting card" description="View shows the phone and print card. The card page, WhatsApp image and print PDF all use the chosen colours.">
-        <CardStylePicker id="cardStyle" field={card} value={f.cardStyle} onChange={(code) => code && set({ cardStyle: code })} cardFaces={cardFaces} undecided={false} />
-        {otherGroup && (
-          <p className="text-sm text-clay-text">
-            Current card {picked!.name} ({picked!.code}) is a {otherGroup} style. Pick one above to switch.
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-          {picked ? (
-            <>
-              <span>
-                Chosen: <strong className="text-ink">{picked.name}</strong> <span className="font-mono">{picked.code}</span>
-              </span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => set({ cardStyle: "" })}>
-                Use the website design&apos;s colours instead
-              </Button>
-            </>
-          ) : (
-            <span>Default: the card uses the colours of the website design ({theme.name}).</span>
-          )}
-        </div>
-        {cardLayouts.length > 1 ? (
-          <Field label="Card layout" htmlFor="cardTemplateId">
-            <NativeSelect id="cardTemplateId" value={f.cardTemplateId} onChange={(e) => set({ cardTemplateId: e.target.value })}>
-              {options.templates
-                .filter((t) => t.type === "card")
-                .map((t) => (
-                  <option key={t.key} value={t.key} disabled={t.status !== "ready"}>
-                    {t.name}
-                    {t.status !== "ready" ? " (coming soon)" : ""}
-                  </option>
-                ))}
-            </NativeSelect>
-          </Field>
-        ) : (
-          <p className="text-xs text-muted-foreground">Card layout: {cardLayouts[0]?.name ?? "Classic"}. More layouts are coming.</p>
-        )}
-      </Group>
+      <p className="flex items-start gap-2 rounded-lg bg-mist px-3 py-2 text-sm text-body">
+        <IdCard className="mt-0.5 size-4 shrink-0 text-lagoon" aria-hidden />
+        <span>
+          The digital visiting card comes with the website design (<strong className="text-ink">{theme.name}</strong>): same colours, with Call, WhatsApp,
+          Directions and Website buttons. The card page, WhatsApp image and PDFs all follow it.
+        </span>
+      </p>
     </fieldset>
   );
 }

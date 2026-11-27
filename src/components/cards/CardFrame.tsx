@@ -6,18 +6,25 @@ import { cn } from "@/lib/cn";
 /**
  * Shows a card designed at a fixed pixel size (e.g. 1004 × 650) scaled down to
  * fit its container, keeping the exact layout the PNG/PDF will have.
+ * `interactive`: the card's buttons are real links (the live card page), so
+ * the card is a labelled group rather than a picture.
  */
 export function CardFrame({
   width,
   height,
   label,
   className,
+  interactive,
+  fallbackScale,
   children,
 }: {
   width: number;
   height: number;
   label: string;
   className?: string;
+  interactive?: boolean;
+  /** Scale before the frame is measured, so the card shows without waiting for JavaScript (else it stays hidden until then). */
+  fallbackScale?: number;
   children: ReactNode;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -36,13 +43,13 @@ export function CardFrame({
   return (
     <div
       ref={box}
-      role="img"
+      role={interactive ? "group" : "img"}
       aria-label={label}
       className={cn("relative w-full overflow-hidden rounded-xl shadow-soft ring-1 ring-line", className)}
       style={{ aspectRatio: `${width} / ${height}` }}
     >
       <div
-        aria-hidden
+        aria-hidden={interactive ? undefined : true}
         // Absolutely positioned so the full-size card never widens the layout.
         style={{
           position: "absolute",
@@ -50,9 +57,9 @@ export function CardFrame({
           left: 0,
           width,
           height,
-          transform: `scale(${scale})`,
+          transform: `scale(${scale || fallbackScale || 0})`,
           transformOrigin: "top left",
-          visibility: scale ? "visible" : "hidden",
+          visibility: scale || fallbackScale ? "visible" : "hidden",
         }}
       >
         {children}

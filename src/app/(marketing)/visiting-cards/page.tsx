@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Check } from "lucide-react";
-import { SampleCardFace } from "@/components/cards/SampleCardFace";
+import { DoctorDesignCard, SiteDesignCard } from "@/components/cards/SampleCardFace";
 import { CardViewer } from "@/components/marketing/CardViewer";
 import { PageIntro } from "@/components/marketing/PageIntro";
 import { WhatsAppIcon, WhatsAppLink } from "@/components/marketing/WhatsAppLink";
 import { VISITING_CARDS } from "@/content/marketing";
-import { CARD_STYLE_GROUPS, CARD_STYLES_BY_GROUP, cardStyleWhatsappText, type CardStyle, type CardStyleGroup } from "@/lib/cards/styles";
+import { SAMPLE_SITES } from "@/fixtures/sample-sites";
 import { getPublicSiteData, whatsappHref } from "@/lib/public/site-data";
+import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
 import { absUrl } from "@/lib/site";
+import { SPECIALTY_THEMES } from "@/themes/specialty";
+import type { CardVariant, PublicEstablishment } from "@/templates/types";
 
 /**
- * Visiting card gallery: five colour styles each for doctors, clinics and
- * hospitals, each with a code name (lib/cards/styles.ts). People pick one and
- * send us the code; the admin sets it on their page/site (`cardStyle`), which
- * links that look to their card. Cards are the real templates with sample data.
+ * Visiting card gallery: the card that comes with each website design. There
+ * is no separate card choice: a doctor's card is the card of their website
+ * design, and a clinic's or hospital's card takes its design's colours. Cards
+ * are the real templates with each design's demo doctor or sample site.
  */
 
 export const revalidate = 600;
@@ -21,37 +25,68 @@ export const revalidate = 600;
 export const metadata: Metadata = {
   title: { absolute: "Digital visiting cards for doctors, clinics and hospitals – MediReach" },
   description:
-    "Choose a digital visiting card style for your doctor profile, clinic or hospital website: five colour styles each, with a phone card, WhatsApp image and print-ready PDF.",
+    "Every MediReach website design comes with its own digital visiting card in the same colours: a card link, a WhatsApp image and PDFs with working Call, WhatsApp and Directions buttons.",
   alternates: { canonical: absUrl("/visiting-cards") },
 };
 
-const GROUP_ID: Record<CardStyleGroup, string> = { doctor: "doctors", clinic: "clinics", hospital: "hospitals" };
+type Group = "doctor" | "clinic" | "hospital";
+const GROUPS: Group[] = ["doctor", "clinic", "hospital"];
+const GROUP_ID: Record<Group, string> = { doctor: "doctors", clinic: "clinics", hospital: "hospitals" };
 
-function StyleItem({ style, waNumber }: { style: CardStyle; waNumber: string }) {
+interface Item {
+  id: string;
+  name: string;
+  subtitle: string;
+  swatches: readonly string[];
+  designHref: string;
+  face: (variant: CardVariant, full?: boolean) => ReactNode;
+}
+
+/** Doctors: one card per ready website design, with its demo doctor. */
+const doctorItems = (): Item[] =>
+  SAMPLE_DESIGNS.filter((d) => d.ready).map((d) => ({
+    id: `doctor-${d.key}`,
+    name: d.name,
+    subtitle: d.colours,
+    swatches: d.swatches,
+    designHref: `/sample/${d.sample}?design=${d.key}`,
+    face: (variant, full) => <DoctorDesignCard designKey={d.key} sample={d.sample} variant={variant} full={full} />,
+  }));
+
+/** Clinics / hospitals: one card per specialty design, with its sample site. */
+const siteItems = (kind: "clinic" | "hospital"): Item[] =>
+  SPECIALTY_THEMES.filter((t) => t.kind === kind).flatMap((t) => {
+    const site: PublicEstablishment | undefined = Object.values(SAMPLE_SITES).find((s) => s.themeKey === t.key && s.kind === kind);
+    if (!site) return [];
+    return [
+      {
+        id: `${kind}-${t.key}`,
+        name: t.name,
+        subtitle: `${t.name} website design colours`,
+        swatches: [t.palette.primary, t.palette.accent, t.palette.soft],
+        designHref: `/designs/${t.key}`,
+        face: (variant: CardVariant, full?: boolean) => <SiteDesignCard site={site} variant={variant} full={full} />,
+      },
+    ];
+  });
+
+function CardItem({ item }: { item: Item }) {
   return (
-    <li
-      id={style.code.toLowerCase()}
-      className="flex w-full scroll-mt-36 flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft target:ring-2 target:ring-marigold md:w-[calc(50%-10px)] sm:p-5"
-    >
+    <li id={item.id} className="flex w-full scroll-mt-36 flex-col rounded-2xl border border-line bg-surface p-4 shadow-soft target:ring-2 target:ring-marigold md:w-[calc(50%-10px)] sm:p-5">
       <CardViewer
-        name={style.name}
-        code={style.code}
-        colours={style.colours}
-        swatches={style.swatches}
-        chooseHref={whatsappHref(waNumber, cardStyleWhatsappText(style.code))}
-        placement={`visiting_card_${style.code.toLowerCase()}`}
+        name={item.name}
+        subtitle={item.subtitle}
+        swatches={item.swatches}
+        designHref={item.designHref}
         preview={
           // Phone card beside the print card, at the same height (9:16 next to 85:55).
-          <span
-            className="grid select-none items-end gap-3 rounded-xl p-3 sm:gap-4 sm:p-4"
-            style={{ gridTemplateColumns: "minmax(0,0.364fr) minmax(0,1fr)", background: style.swatches[2] }}
-          >
-            <SampleCardFace style={style} variant="phone" />
-            <SampleCardFace style={style} variant="print" />
+          <span className="grid select-none items-end gap-3 rounded-xl p-3 sm:gap-4 sm:p-4" style={{ gridTemplateColumns: "minmax(0,0.364fr) minmax(0,1fr)", background: item.swatches[2] }}>
+            {item.face("phone")}
+            {item.face("print")}
           </span>
         }
-        phone={<SampleCardFace style={style} variant="phone" full />}
-        print={<SampleCardFace style={style} variant="print" full />}
+        phone={item.face("phone", true)}
+        print={item.face("print", true)}
       />
     </li>
   );
@@ -86,7 +121,7 @@ export default async function VisitingCardsPage() {
       <nav aria-label={C.jumpLabel} className="sticky top-16 z-30 border-y border-line bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-content items-center gap-2 overflow-x-auto px-4 py-2.5 sm:px-6">
           <span className="mr-1 hidden shrink-0 text-sm text-muted-foreground sm:inline">{C.jumpLabel}</span>
-          {CARD_STYLE_GROUPS.map((g) => (
+          {GROUPS.map((g) => (
             <a
               key={g}
               href={`#${GROUP_ID[g]}`}
@@ -98,7 +133,7 @@ export default async function VisitingCardsPage() {
         </div>
       </nav>
 
-      {CARD_STYLE_GROUPS.map((g, i) => (
+      {GROUPS.map((g, i) => (
         <section key={g} id={GROUP_ID[g]} aria-labelledby={`${g}-title`} className={`scroll-mt-28 px-4 py-14 sm:px-6 lg:py-20 ${i % 2 ? "bg-surface" : ""}`}>
           <div className="mx-auto max-w-content">
             <div className="mb-8 max-w-2xl">
@@ -108,8 +143,8 @@ export default async function VisitingCardsPage() {
               <p className="mt-2 text-lg text-body/85">{C.groups[g].text}</p>
             </div>
             <ul className="flex flex-wrap justify-center gap-5">
-              {CARD_STYLES_BY_GROUP[g].map((s) => (
-                <StyleItem key={s.code} style={s} waNumber={site.whatsappNumber} />
+              {(g === "doctor" ? doctorItems() : siteItems(g)).map((item) => (
+                <CardItem key={item.id} item={item} />
               ))}
             </ul>
             <p className="mt-6 text-center text-sm text-muted-foreground">{C.sampleNote}</p>

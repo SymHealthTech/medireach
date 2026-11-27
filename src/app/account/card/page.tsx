@@ -47,9 +47,9 @@ export default async function AccountCardPage({ searchParams }: { searchParams: 
         <CardViewToggle current={current} patientHref="/account/card?view=patient" doctorHref="/account/card" />
       </div>
       {current === "patient" ? (
-        <PatientCardView doctor={d} websiteUrl={d.url} cardUrl={cardUrl} />
+        <PatientCardView doctor={d} cardUrl={cardUrl} ready={await getReadyTemplates()} />
       ) : (
-        <DoctorCardView doctor={d} websiteUrl={d.url} cardUrl={cardUrl} filesBase={cardPath} version={d.updatedAt} ready={await getReadyTemplates()} />
+        <DoctorCardView doctor={d} cardUrl={cardUrl} filesBase={cardPath} version={d.updatedAt} ready={await getReadyTemplates()} />
       )}
     </div>
   );

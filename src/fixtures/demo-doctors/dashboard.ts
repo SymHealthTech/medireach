@@ -112,7 +112,6 @@ export function demoDoctorForm(d: DemoDoctor): DoctorForm {
     interestsStory: { title: d.interestsStory.title, body: d.interestsStory.body },
     gallery: d.gallery.map((g) => ({ publicId: "demo", url: g.url, caption: g.caption })),
     portfolioTemplateId: d.portfolioTemplateId,
-    cardTemplateId: d.cardTemplateId,
     showHealthTips: d.showHealthTips,
   };
 }

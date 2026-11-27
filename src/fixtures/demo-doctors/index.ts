@@ -99,8 +99,6 @@ function toPublic(d: DemoDoctor): PublicDoctor {
     ...(d.showHealthTips ? { healthTips: pickHealthTips(`demo-${d.key}`, [d.primarySpecialty.slug, ...d.secondarySpecialties.map((s) => s.slug)]) } : {}),
     loginUrl: `/sample/${d.key}/login`,
     portfolioTemplateId: d.portfolioTemplateId,
-    cardTemplateId: d.cardTemplateId,
-    ...(d.cardStyle ? { cardStyle: d.cardStyle } : {}),
     seo: { noindex: true },
     updatedAt: "2026-11-25T00:00:00.000Z",
   };

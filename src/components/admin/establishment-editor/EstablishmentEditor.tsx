@@ -33,7 +33,6 @@ import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { absUrl, paths } from "@/lib/site";
 import { getTheme } from "@/themes/specialty";
-import type { CardFace } from "@/components/intake/IntakeContext";
 import type { EStepProps } from "./shared";
 import { BasicsStep } from "./steps/BasicsStep";
 import { DesignStep } from "./steps/DesignStep";
@@ -57,14 +56,12 @@ export function EstablishmentEditor({
   role,
   initialStep = "basics",
   hints,
-  cardFaces,
 }: {
   initial: EstablishmentForm;
   options: EstablishmentEditorOptions;
   role: AdminRole;
   initialStep?: StepKey;
   hints?: SiteFormHints;
-  cardFaces?: Record<string, CardFace>;
 }) {
   const [form, setForm] = useState<EstablishmentForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -223,7 +220,7 @@ export function EstablishmentEditor({
     toast.success(ok);
   }
 
-  const stepProps: EStepProps = { form, set, err, options, readOnly, role, hints, cardFaces };
+  const stepProps: EStepProps = { form, set, err, options, readOnly, role, hints };
   const theme = getTheme(form.themeKey, form.kind);
   const kindLabel = form.kind === "hospital" ? "hospital" : "clinic";
 

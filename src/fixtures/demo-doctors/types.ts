@@ -87,8 +87,6 @@ export interface DemoDoctor {
   showHealthTips: boolean;
   /** Appointment requests seeded with the doctor, so the account page has something to show. */
   inquiries: DemoInquiry[];
+  /** Website design; the visiting card comes in the same design. */
   portfolioTemplateId: TemplateKey;
-  cardTemplateId: TemplateKey;
-  /** Visiting card colour style code (lib/cards/styles.ts), e.g. "DOC-PLUM". */
-  cardStyle?: string;
 }

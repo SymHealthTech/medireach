@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ClipboardPaste, HelpCircle, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { cleanPastedText, emptyItem, fieldId, isRepeatValue, isRequired, isShown, type DoctorEntry, type FieldDef, type FieldValue, type IntakeData, type RepeatItem, type SectionDef } from "@/lib/intake/form";
-import { CardStylePicker, ChoiceCards, DesignPicker } from "./DesignPickers";
+import { ChoiceCards, DesignPicker } from "./DesignPickers";
 import { DoctorPickField, DoctorsField } from "./DoctorsField";
 import { LocationField } from "./LocationField";
 import { RowsField } from "./RowsField";
@@ -107,8 +107,6 @@ export function IntakeField({
         <DoctorPickField id={id} value={v} onChange={onChange} describedBy={describedBy} />
       ) : f.type === "design" ? (
         <DesignPicker id={id} field={f} value={v} onChange={onChange} context={context} />
-      ) : f.type === "card" ? (
-        <CardStylePicker id={id} field={f} value={v} onChange={onChange} />
       ) : f.type === "choice" ? (
         <ChoiceCards id={id} field={f} value={v} onChange={onChange} />
       ) : f.type === "location" ? (

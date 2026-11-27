@@ -204,7 +204,6 @@ async function migrateHospitals(db: Db, c: Collector, prices: V2Prices, dropLega
       gallery: [],
       links: {},
       siteTemplateId: "classic",
-      cardTemplateId: "classic",
       seo: { noindex: false },
       plan: "hospital",
       founding: false,

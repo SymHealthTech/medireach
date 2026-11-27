@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Mail, MessageCircle, Phone } from "lucide-react";
 import { Pill } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
-import { sampleCardFaces } from "@/components/cards/SampleCardFace";
 import { IntakeForm } from "@/components/intake/IntakeForm";
 import { Button } from "@/components/ui/button";
 import { requireAdminPage } from "@/lib/auth/admin";
@@ -69,7 +68,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
               {view.photos.viaWhatsapp ? " · the applicant chose to send photos on WhatsApp (search the chats for the ref)" : ""}
             </p>
             <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              Design: website <strong className="text-ink">{design.website}</strong> · visiting card <strong className="text-ink">{design.card}</strong>
+              Design: website <strong className="text-ink">{design.website}</strong> (visiting card in the same design)
               <Pill tone={design.final ? "leaf" : "marigold"}>{design.final ? "Final" : design.decision}</Pill>
             </p>
           </div>
@@ -114,7 +113,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
         <IntakeReviewControls id={view.id} status={view.status} notes={doc.adminNotes ?? ""} draftHref={draftHref} canDelete={admin.role !== "sales"} kind={view.kind} />
       </section>
 
-      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" cardFaces={sampleCardFaces(view.kind)} places={places} siteTypes={view.kind === "doctor" ? undefined : await intakeSiteTypes(view.kind)} />
+      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" places={places} siteTypes={view.kind === "doctor" ? undefined : await intakeSiteTypes(view.kind)} />
     </div>
   );
 }

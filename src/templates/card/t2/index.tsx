@@ -1,8 +1,9 @@
 import { formatPhone } from "@/lib/phone";
 import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
-import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/classic";
+import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -13,7 +14,7 @@ import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
  *  - print (85 × 55 mm): navy band with name and specialty over white; photo
  *    and QR code down the right; contact rows bottom left.
  *  - phone (1080 × 1920): tall navy header with a large photo, white contact
- *    panel overlapping it, then the QR code.
+ *    panel overlapping it, the QR code and the one-tap buttons.
  *
  * Satori-safe: inline styles, flexbox only, <img> and inline <svg>.
  * Body font only (bold Jakarta), so it reads as one family with the website.
@@ -31,6 +32,21 @@ const SKY = "#F3F8FD";
 const MINT = "#E7F6F3";
 
 const band = `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_2} 70%, #164A7A 100%)`;
+
+const FOOTER = 96;
+/** Where the buttons sit on the phone card (also used for the PDF links). */
+export const PHONE_DOCK = dockAboveFooter(FOOTER, 70);
+const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
+  primaryBg: TEAL,
+  primaryText: "#FFFFFF",
+  tileBg: "#FFFFFF",
+  tileText: NAVY,
+  iconColor: BLUE,
+  border: `2px solid ${LINE}`,
+  radius: 30,
+  font: fonts.body,
+  shadow: "0 18px 36px -24px rgba(11,37,69,0.45)",
+});
 
 function initials(name: string): string {
   const parts = name.replace(/^Dr\.?\s+/i, "").split(/\s+/).filter(Boolean);
@@ -164,7 +180,7 @@ function PhoneRow({ icon, label, value, last }: { icon: keyof typeof ICONS; labe
   );
 }
 
-function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
+function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
   const clinic = d.clinics[0];
   const hours = clinic ? openDaysSummary(clinic.timings).split(" | ")[0] ?? "" : "";
@@ -176,19 +192,19 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
   const spec = specialtyLine(d);
   return (
-    <div style={{ width, height, display: "flex", flexDirection: "column", background: "#FFFFFF", color: TEXT, fontFamily: fonts.body }}>
+    <div style={{ width, height, display: "flex", flexDirection: "column", background: "#FFFFFF", color: TEXT, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: 1010, paddingTop: 90, backgroundImage: band, position: "relative", overflow: "hidden", textAlign: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: 850, paddingTop: 66, backgroundImage: band, position: "relative", overflow: "hidden", textAlign: "center" }}>
         <div style={{ display: "flex", position: "absolute", top: -260, right: -220, width: 700, height: 700, borderRadius: 999, border: "3px solid rgba(255,255,255,0.07)" }} />
         <div style={{ display: "flex", position: "absolute", top: 380, left: -260, width: 560, height: 560, borderRadius: 999, background: "rgba(13,148,136,0.16)" }} />
         <div style={{ display: "flex", position: "absolute", left: 0, top: 300 }}>
           <Ecg width={1080} height={160} color={TEAL_LIGHT} opacity={0.3} />
         </div>
         <div style={{ display: "flex", alignItems: "center", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: TEAL_LIGHT }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: 54 }}>
-          <Photo url={photoUrl} name={d.fullName} size={380} radius={70} border={12} fonts={fonts} />
+        <div style={{ display: "flex", marginTop: 40 }}>
+          <Photo url={photoUrl} name={d.fullName} size={280} radius={56} border={10} fonts={fonts} />
         </div>
-        <div style={{ display: "flex", fontWeight: 700, fontSize: nameSize(d.fullName, 82), lineHeight: 1.08, color: "#FFFFFF", marginTop: 50 }}>{d.fullName}</div>
+        <div style={{ display: "flex", fontWeight: 700, fontSize: nameSize(d.fullName, 82), lineHeight: 1.08, color: "#FFFFFF", marginTop: 36 }}>{d.fullName}</div>
         {spec && <div style={{ display: "flex", fontSize: 42, fontWeight: 600, color: TEAL_LIGHT, marginTop: 16 }}>{spec}</div>}
         {d.degreesLine && <div style={{ display: "flex", fontSize: 30, color: "rgba(255,255,255,0.8)", marginTop: 12, padding: "0 70px" }}>{clip(d.degreesLine, 60)}</div>}
         {reg && <div style={{ display: "flex", fontSize: 25, color: "rgba(255,255,255,0.6)", marginTop: 10, padding: "0 60px" }}>Reg. {reg}</div>}
@@ -202,20 +218,23 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 30 }} />
-      <div style={{ display: "flex", alignItems: "center", margin: "0 70px", padding: 34, borderRadius: 40, background: SKY }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
+      <div style={{ display: "flex", alignItems: "center", margin: "0 70px", padding: 28, borderRadius: 40, background: SKY }}>
         <div style={{ display: "flex", padding: 10, borderRadius: 26, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={230} radius={18} color={NAVY} />
+          <QrBlock qr={qr} px={180} radius={18} color={NAVY} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 40, flex: 1 }}>
-          <div style={{ display: "flex", fontWeight: 700, fontSize: 44, lineHeight: 1.12, color: NAVY }}>Scan to visit my website</div>
-          <div style={{ display: "flex", fontSize: 27, color: MUTED, marginTop: 12, lineHeight: 1.35 }}>Timings, directions and appointment requests.</div>
-          <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: TEAL, marginTop: 16 }}>{shortUrl(qr.url)}</div>
+          <div style={{ display: "flex", fontWeight: 700, fontSize: 42, lineHeight: 1.12, color: NAVY }}>Scan to visit my website</div>
+          <div style={{ display: "flex", fontSize: 27, color: MUTED, marginTop: 10, lineHeight: 1.35 }}>Timings, directions and appointment requests.</div>
+          <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: TEAL, marginTop: 12 }}>{shortUrl(qr.url)}</div>
         </div>
       </div>
-      <div style={{ display: "flex", flex: 1 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
+      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
+      <div style={{ display: "flex", height: DOCK_SPACE }} />
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 96, background: NAVY, color: "#FFFFFF", fontSize: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: FOOTER, background: NAVY, color: "#FFFFFF", fontSize: 24 }}>
         <div style={{ display: "flex", fontWeight: 700, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(255,255,255,0.65)" }}>{ROOT_HOSTNAME}</div>
       </div>

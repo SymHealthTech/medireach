@@ -2,17 +2,19 @@ import { Clock, Globe, MapPin, MessageCircle, Phone, UserPlus } from "lucide-rea
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import { qrForUrl } from "@/lib/cards/qr";
-import { alpha, DEFAULT_DOCTOR_CARD_STYLE, doctorCardPalette } from "@/lib/cards/styles";
 import { cn } from "@/lib/cn";
 import { formatPhone } from "@/lib/phone";
 import { openDaysSummary } from "@/lib/timings";
 import type { PublicDoctor } from "@/templates/types";
 
+/** MediReach brand colours (teal and amber). */
+const BRAND = { highlight: "#F2994A", ink: "#0A3F3F", brand: "#0E7C7B", soft: "#E0F2F1" };
+
 /**
- * The live digital visiting card (HTML): photo, name, one-tap Call /
- * WhatsApp / Directions / Save contact, clinic, timings and a QR code to the
- * doctor's website. Shown to patients and in the doctor's card tools, and as
- * a preview on the homepage (`nameAs="p"`, `priority={false}`).
+ * A digital visiting card in MediReach colours (HTML): photo, name, one-tap
+ * Call / WhatsApp / Directions / Save contact, clinic, timings and a QR code.
+ * Only the homepage preview uses it (`nameAs="p"`, `priority={false}`): real
+ * doctors' cards are the phone card of their website design (CardView).
  */
 export function DigitalCard({
   doctor: d,
@@ -36,13 +38,8 @@ export function DigitalCard({
   const phone = d.phone ?? clinic?.phone;
   const hours = clinic ? openDaysSummary(clinic.timings) : "";
   const qr = qrForUrl(d.shareUrl);
-  // Card style colours (lib/cards/styles.ts) as CSS variables; the default (Lagoon) keeps the brand ink background.
-  const p = doctorCardPalette(d.cardStyle);
-  const isDefault = p === DEFAULT_DOCTOR_CARD_STYLE.palette;
+  const p = BRAND;
   const vars = { "--dc-hl": p.highlight, "--dc-ink": p.ink, "--dc-brand": p.brand, "--dc-soft": p.soft } as CSSProperties;
-  const headerBg = isDefault
-    ? undefined
-    : { background: `radial-gradient(55% 70% at 100% 0%, ${alpha(p.highlight, 0.16)}, transparent 70%), linear-gradient(160deg, ${p.panel[0]} 0%, ${p.panel[1]} 55%, ${p.panel[2]} 100%)` };
 
   const actions = [
     ...(phone ? [{ label: "Call", href: `tel:+${phone}`, icon: Phone, external: false }] : []),
@@ -63,7 +60,7 @@ export function DigitalCard({
         className,
       )}
     >
-      <div className={cn("relative overflow-hidden px-6 text-center", isDefault ? "mr-ink-bg text-paper" : "text-white", compact ? "pb-16 pt-6" : "pb-20 pt-8")} style={headerBg}>
+      <div className={cn("mr-ink-bg relative overflow-hidden px-6 text-center text-paper", compact ? "pb-16 pt-6" : "pb-20 pt-8")}>
         <span aria-hidden className="absolute -right-16 -top-16 size-56 rounded-full border border-paper/10" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-(--dc-hl)">Digital visiting card</p>
         <div className={cn("mx-auto rounded-full bg-(--dc-hl) p-[5px]", compact ? "mt-4 size-[96px] p-1" : "mt-6 size-[132px]")}>

@@ -31,7 +31,7 @@ import {
 } from "@/lib/intake/form";
 import type { IntakeView } from "@/lib/intake/server";
 import { IntakeCodeForm } from "./IntakeCodeForm";
-import { IntakeContextProvider, type CardFace } from "./IntakeContext";
+import { IntakeContextProvider } from "./IntakeContext";
 import { IntakeSection, SectionCard, inputClass } from "./IntakeFields";
 import { AwardPhotos, IntakePhotosSection, SectionPhoto } from "./IntakePhotos";
 import { ROWS } from "@/lib/intake/rows";
@@ -62,7 +62,6 @@ export function IntakeForm({
   waNumber,
   mode = "public",
   savedRef,
-  cardFaces,
   prefill,
   places,
   siteTypes,
@@ -74,10 +73,8 @@ export function IntakeForm({
   mode?: "public" | "admin";
   /** A blank form, while this browser already has a saved form of this kind (its reference). */
   savedRef?: string;
-  /** Sample visiting cards per style code (server-rendered), for the card picker. */
-  cardFaces?: Record<string, CardFace>;
   /** A new form's answers picked before it opened (the designs chosen on a product page). */
-  prefill?: Partial<Record<"websiteDesign" | "cardStyle", string>>;
+  prefill?: { websiteDesign?: string };
   /** City name → area names (master lists) for the city and area dropdowns. */
   places?: Record<string, string[]>;
   /** Clinic or hospital types from the live category list. */
@@ -358,7 +355,7 @@ export function IntakeForm({
         </div>
       )}
 
-      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, cardFaces, errors, kind, data, places, siteTypes }}>
+      <IntakeContextProvider value={{ ensureSaved, sign: admin ? adminSign : publicSign, errors, kind, data, places, siteTypes }}>
         <form onSubmit={(e) => e.preventDefault()} noValidate>
           <fieldset disabled={!editable} className="min-w-0 space-y-5">
             <SectionCard id="section-email" title={admin ? "Applicant email" : "Your email"}>

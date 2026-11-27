@@ -1,8 +1,9 @@
 import { formatPhone } from "@/lib/phone";
 import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
-import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/classic";
+import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -26,6 +27,20 @@ const PAPER = "#F4EBDB";
 const TEXT = "#2B2620";
 const MUTED = "#6D6252";
 const LINE = "#E5D7BF";
+
+const FOOTER = 96;
+/** Where the buttons sit on the phone card (also used for the PDF links). */
+export const PHONE_DOCK = dockAboveFooter(FOOTER, 80);
+const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
+  primaryBg: TERRA,
+  primaryText: "#FFFFFF",
+  tileBg: PAPER,
+  tileText: FOREST,
+  iconColor: TERRA,
+  border: `2px solid ${LINE}`,
+  radius: 30,
+  font: fonts.body,
+});
 
 function initials(name: string): string {
   const parts = name
@@ -170,7 +185,7 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
 
 function PhoneRow({ icon, label, value, last }: { icon: keyof typeof ICONS; label: string; value: string; last?: boolean }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: "22px 0", borderBottom: last ? "none" : `2px dashed ${LINE}` }}>
+    <div style={{ display: "flex", alignItems: "center", padding: "18px 0", borderBottom: last ? "none" : `2px dashed ${LINE}` }}>
       <div
         style={{
           display: "flex",
@@ -193,7 +208,7 @@ function PhoneRow({ icon, label, value, last }: { icon: keyof typeof ICONS; labe
   );
 }
 
-function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
+function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.phone;
   const clinic = d.clinics[0];
   const hours = clinic ? (openDaysSummary(clinic.timings).split(" | ")[0] ?? "") : "";
@@ -205,15 +220,15 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
   const spec = specialtyLine(d);
   return (
-    <div style={{ width, height, display: "flex", flexDirection: "column", background: CREAM, color: TEXT, fontFamily: fonts.body }}>
+    <div style={{ width, height, display: "flex", flexDirection: "column", background: CREAM, color: TEXT, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          height: 1000,
-          paddingTop: 80,
+          height: 800,
+          paddingTop: 60,
           background: FOREST,
           position: "relative",
           overflow: "hidden",
@@ -221,11 +236,11 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         }}
       >
         <div style={{ display: "flex", fontSize: 26, fontWeight: 700, letterSpacing: 9, color: SAFFRON }}>NAMASTE</div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 600, height: 600, marginTop: 10, position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 440, height: 440, marginTop: 6, position: "relative" }}>
           <div style={{ display: "flex", position: "absolute", left: 0, top: 0 }}>
-            <Mandala size={600} color={SAFFRON} opacity={0.6} />
+            <Mandala size={440} color={SAFFRON} opacity={0.6} />
           </div>
-          <Photo url={photoUrl} name={d.fullName} size={360} fonts={fonts} />
+          <Photo url={photoUrl} name={d.fullName} size={270} fonts={fonts} />
         </div>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 80), lineHeight: 1.05, color: CREAM, marginTop: 0 }}>
           {d.fullName}
@@ -242,10 +257,10 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         ))}
       </div>
 
-      <div style={{ display: "flex", flex: 1 }} />
-      <div style={{ display: "flex", alignItems: "center", margin: "0 80px", padding: 32, background: PAPER, border: `3px solid ${SAFFRON}`, borderRadius: 30 }}>
-        <div style={{ display: "flex", padding: 10, background: "#FFFFFF", borderRadius: 20 }}>
-          <QrBlock qr={qr} px={210} radius={14} color={FOREST} />
+      <div style={{ display: "flex", flex: 1, minHeight: 20 }} />
+      <div style={{ display: "flex", alignItems: "center", margin: "0 80px", padding: 24, background: PAPER, border: `3px solid ${SAFFRON}`, borderRadius: 30 }}>
+        <div style={{ display: "flex", padding: 8, background: "#FFFFFF", borderRadius: 20 }}>
+          <QrBlock qr={qr} px={160} radius={14} color={FOREST} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 36, flex: 1 }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 44, lineHeight: 1.1, color: FOREST }}>Scan to visit my website</div>
@@ -253,8 +268,11 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
           <div style={{ display: "flex", fontSize: 26, fontWeight: 700, color: TERRA, marginTop: 12 }}>{clip(shortUrl(qr.url), 34)}</div>
         </div>
       </div>
-      <div style={{ display: "flex", flex: 1 }} />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 96, background: FOREST, color: CREAM, fontSize: 24 }}>
+      <div style={{ display: "flex", flex: 1, minHeight: 20 }} />
+      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
+      <div style={{ display: "flex", height: DOCK_SPACE }} />
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: FOOTER, background: FOREST, color: CREAM, fontSize: 24 }}>
         <div style={{ display: "flex", fontWeight: 700, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(251,245,234,0.6)" }}>{ROOT_HOSTNAME}</div>
       </div>

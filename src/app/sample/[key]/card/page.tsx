@@ -37,7 +37,7 @@ export default async function SampleCardPage({ params }: { params: Promise<{ key
         backLabel="Back"
         toggle={{ current: "patient", patientHref: `/sample/${key}/card`, doctorHref: `/sample/${key}/card/doctor` }}
       />
-      <PatientCardView doctor={doctor} websiteUrl={`/sample/${key}`} cardUrl={absUrl(`/sample/${key}/card`)} />
+      <PatientCardView doctor={doctor} cardUrl={absUrl(`/sample/${key}/card`)} />
       <CardPageFooter />
     </div>
   );

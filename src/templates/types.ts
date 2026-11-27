@@ -128,10 +128,8 @@ export interface PublicDoctor {
   /** Where "Doctor login" in the footer goes (demo pages have their own); defaults to the standalone login. */
   loginUrl?: string;
 
+  /** Website design; the visiting card always comes in the same design (templates/registry.ts). */
   portfolioTemplateId: string;
-  cardTemplateId: string;
-  /** Visiting card colour style code, e.g. "DOC-AMBER" (lib/cards/styles.ts); absent = Lagoon. */
-  cardStyle?: string;
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
   /** Renewal not paid after the grace period: the page shows a "temporarily unavailable" notice instead. */
   lapsed?: boolean;
@@ -215,6 +213,8 @@ export interface CardTemplateProps {
   photoUrl?: string;
   /** Show the dev-only "not designed yet" banner (placeholder slots). */
   devBanner?: string;
+  /** Make the phone card's buttons real links (the live card page; never in images or scaled previews). */
+  links?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,10 +297,8 @@ export interface PublicEstablishment {
   gallery: PublicImage[];
   links: Partial<Record<"googleBusiness" | "practo" | "instagram" | "facebook" | "youtube" | "website", string>>;
 
+  /** Page layout; the visiting card follows the site's design (theme colours). */
   siteTemplateId: string;
-  cardTemplateId: string;
-  /** Visiting card colour style code, e.g. "CLN-OCEAN" (lib/cards/styles.ts); absent = specialty theme colours. */
-  cardStyle?: string;
   seo: { titleOverride?: string; descriptionOverride?: string; noindex: boolean };
   /** Renewal not paid after the grace period: the page shows a "temporarily unavailable" notice instead. */
   lapsed?: boolean;
@@ -351,4 +349,6 @@ export interface SiteCardTemplateProps {
   /** Logo URL safe for both renderers (JPEG); undefined when there's no logo. */
   logoUrl?: string;
   devBanner?: string;
+  /** Real links on the phone card's buttons (the live card page only). */
+  links?: boolean;
 }

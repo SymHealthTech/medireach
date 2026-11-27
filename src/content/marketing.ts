@@ -98,45 +98,48 @@ export const CARD_SPOTLIGHT = {
   digitalLabel: "Digital card: opens on any phone",
   printLabel: "Print card",
   /** Link to /visiting-cards. */
-  allStyles: "See all 15 card styles",
+  allStyles: "See the card for each design",
 };
 
-/** Visiting card gallery (/visiting-cards): five colour styles per audience, each with a code name. */
+/** Visiting card gallery (/visiting-cards): the card that comes with each website design. */
 export const VISITING_CARDS = {
   eyebrow: "Digital visiting cards",
-  title: "Pick the visiting card you like",
-  text: "Five colour styles each for doctors, clinics and hospitals. Every style has a code name: tell us the code when you ask for your website, and we link the card to it.",
+  title: "Your visiting card comes with your website design",
+  text: "There is no separate card to choose. Pick a website design and your digital visiting card comes in the same colours and style, with buttons patients can tap.",
   steps: [
-    { title: "Pick a style", text: "Look through the cards below and note the code name, like DOC-AMBER." },
-    { title: "Send us the code", text: "Open a card with “View full card” and tap “Choose this card”, or mention the code on WhatsApp with your website request." },
-    { title: "We link it to your website", text: "Your card gets your own name, photo or logo and contact details. Its QR code opens your website." },
+    { title: "Pick a website design", text: "Choose the design you like for your website. The card below each design is the one that comes with it." },
+    { title: "Your card matches it", text: "Same colours and style as your website, with your own name, photo or logo and contact details." },
+    { title: "Share, save or print", text: "Send the card link, post the image on WhatsApp, or download the PDF. Its buttons work in the PDF too." },
   ],
   jumpLabel: "Show cards for",
   groups: {
-    doctor: { tab: "Doctors", title: "Visiting cards for doctors", text: "With your photo, specialty, qualifications, clinic and timings." },
-    clinic: { tab: "Clinics", title: "Visiting cards for clinics", text: "With your logo, clinic type, timings and address." },
-    hospital: { tab: "Hospitals", title: "Visiting cards for hospitals", text: "With your logo, emergency number, timings and address." },
+    doctor: { tab: "Doctors", title: "Visiting cards for doctors", text: "Each doctor website design has its own card, with your photo, specialty, qualifications, clinic and timings." },
+    clinic: { tab: "Clinics", title: "Visiting cards for clinics", text: "The card takes the colours of your clinic's website design, with your logo, timings and address." },
+    hospital: { tab: "Hospitals", title: "Visiting cards for hospitals", text: "The card takes the colours of your hospital's website design, with your logo, emergency number, timings and address." },
   },
-  codeLabel: "Code name",
-  copy: "Copy code",
-  copied: "Copied",
   view: "View full card",
   close: "Close",
-  choose: "Choose this card",
+  seeDesign: "See this website design",
   phoneLabel: "Phone card",
   printLabel: "Print card",
   sampleNote: "Sample details. Your card shows your own name, photo or logo and contact details.",
   included: {
     title: "Every card comes with",
-    points: ["A card link to share on WhatsApp", "A phone image for WhatsApp status", "A print-ready PDF (85 × 55 mm)", "A QR code that opens your website", "One-tap call and directions"],
+    points: [
+      "A card link to share on WhatsApp",
+      "A phone image for WhatsApp status",
+      "A full card PDF with working Call, WhatsApp, Directions and Website buttons",
+      "A print-ready PDF (85 × 55 mm)",
+      "A QR code that opens your website",
+    ],
   },
   faq: [
     { q: "Is the visiting card extra?", a: "No. A digital visiting card is included in every plan." },
-    { q: "Can I change the colours later?", a: "Yes. Send us another code name and we switch it. Your card link and QR code stay the same." },
-    { q: "Can a clinic use a hospital style?", a: "Yes. Clinic and hospital cards share the same layout, so either set of styles works." },
+    { q: "Can I choose a different card style?", a: "The card always matches your website design. Change the website design and the card changes with it. Your card link and QR code stay the same." },
+    { q: "Do the buttons work in the PDF?", a: "Yes. In the full card PDF, tap Call, WhatsApp, Directions, Save or Website and it opens, just like on the card page." },
   ],
-  help: "Not sure which one? Ask us on WhatsApp",
-  helpText: "Hi, I need help choosing a MediReach visiting card.",
+  help: "Questions about the card? Ask us on WhatsApp",
+  helpText: "Hi, I have a question about the MediReach visiting card.",
 };
 
 export const HOW_IT_WORKS = {
@@ -309,36 +312,30 @@ export const FOR_CLINICS = {
  */
 export const PICK_DESIGNS = {
   title: {
-    doctor: "Pick your website design and visiting card",
-    clinic: "Pick your clinic's website design and visiting card",
-    hospital: "Pick your hospital's website design and visiting card",
+    doctor: "Pick your website design",
+    clinic: "Pick your clinic's website design",
+    hospital: "Pick your hospital's website design",
   },
   text: {
-    doctor: "Open a design to see a full sample portfolio website on a computer or a phone. Pick one of each and your form starts with them filled in.",
-    clinic: "Choose your type of clinic to see the designs made for it, then open one to see a full sample website. Pick one of each and your form starts with them filled in.",
-    hospital: "Choose your type of hospital to see the designs made for it, then open one to see a full sample website. Pick one of each and your form starts with them filled in.",
+    doctor: "Open a design to see a full sample portfolio website on a computer or a phone. Pick one and your form starts with it filled in. Your visiting card comes in the same design.",
+    clinic: "Choose your type of clinic to see the designs made for it, then open one to see a full sample website. Pick one and your form starts with it filled in. Your visiting card comes in the same design.",
+    hospital: "Choose your type of hospital to see the designs made for it, then open one to see a full sample website. Pick one and your form starts with it filled in. Your visiting card comes in the same design.",
   },
   website: { doctor: "Portfolio website design", clinic: "Clinic website design", hospital: "Hospital website design" },
   websiteText: "Personalised with your own name, photo or logo, colours and details.",
-  card: "Visiting card",
-  cardText: "Share it on WhatsApp or print it. The QR code opens your website, so patients always see your current timings.",
-  yourPicks: "Your picks",
+  cardText: "Your digital visiting card comes in the same design and colours, with Call, WhatsApp and Directions buttons. Nothing extra to choose.",
   yourPick: "Your pick",
   designLabel: "Website",
-  cardLabel: "Card",
   notPicked: "Not picked yet",
-  start: "Start my form with these",
   startDesign: "Start my form with this design",
   startEmpty: "Start my website form",
-  whatsapp: "Send my picks on WhatsApp",
   whatsappDesign: "Send it on WhatsApp",
-  /** `{what}` = the product; `{design}` / `{card}` = the picks. */
-  whatsappText: "Hi, I'd like a MediReach {what}. Website design: {design}. Visiting card: {card}.",
+  /** `{what}` = the product; `{design}` = the pick. */
   whatsappTextDesign: "Hi, I'd like a MediReach {what}. Website design: {design}.",
   whatsappWhat: { doctor: "portfolio website", clinic: "website for my clinic", hospital: "website for our hospital" },
   undecided: "not decided yet",
   note: "Not sure yet? Leave it for now. You can pick in the form, or we'll help you choose.",
-  allCards: "All visiting card styles",
+  allCards: "See the card for each design",
 };
 
 /** /for-hospitals (was /hospitals). */

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CardPageFooter, CardPageHeader, PatientCardView } from "@/components/cards/DigitalCardPage";
 import { getLiveDoctor } from "@/lib/public/data";
+import { getReadyTemplates } from "@/lib/public/templates";
 import { SLUG_RE } from "@/lib/slug";
 import { absUrl, paths } from "@/lib/site";
 
@@ -42,7 +43,7 @@ export default async function CardPage({ params }: { params: Promise<Params> }) 
   return (
     <div className="flex min-h-dvh flex-col bg-mist">
       <CardPageHeader backHref={d.url} backLabel="Back" />
-      <PatientCardView doctor={d} websiteUrl={d.url} cardUrl={cardUrl} />
+      <PatientCardView doctor={d} cardUrl={cardUrl} ready={await getReadyTemplates()} />
       <CardPageFooter />
     </div>
   );

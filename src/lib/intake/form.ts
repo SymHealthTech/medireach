@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { CARD_STYLES_BY_GROUP } from "@/lib/cards/styles";
 import { LIMITS, type IntakeKind } from "@/lib/constants";
 import { SEED_CLINIC_CATEGORIES } from "@/data/masters";
 import { SAMPLE_DESIGNS } from "@/lib/sample-designs";
@@ -45,8 +44,6 @@ export type FieldType =
   | "location"
   /** Website design picker (doctor portfolio designs, or clinic/hospital specialty designs). */
   | "design"
-  /** Visiting card style picker (code names like DOC-AMBER). */
-  | "card"
   /** One of a few options, shown as large radio cards. */
   | "choice"
   /** A list of doctors (name, designation, education, role, portfolio link, photo). `max` = how many. */
@@ -289,8 +286,8 @@ export const DESIGN_DECISIONS = [
 
 const designSection = (kind: IntakeKind): SectionDef => ({
   key: "design",
-  title: "Website and visiting card design",
-  description: "Pick what you like. Not sure? Choose “Not decided” and we'll help you choose.",
+  title: "Website design",
+  description: "Pick what you like. Your digital visiting card comes in the same design and colours. Not sure? Choose “Not decided” and we'll help you choose.",
   fields: [
     {
       key: "websiteDesign",
@@ -299,14 +296,6 @@ const designSection = (kind: IntakeKind): SectionDef => ({
       kind,
       wide: true,
       options: DESIGN_OPTIONS[kind].filter((d) => d.ready).map((d) => ({ value: d.value, label: d.label })),
-    },
-    {
-      key: "cardStyle",
-      label: "Visiting card",
-      type: "card",
-      kind,
-      wide: true,
-      options: CARD_STYLES_BY_GROUP[kind].map((c) => ({ value: c.code, label: c.name })),
     },
     ...(kind === "doctor"
       ? [
@@ -1032,7 +1021,6 @@ const MAX: Record<FieldType, number> = {
   story: LIMITS.storyBody,
   location: 40,
   design: 40,
-  card: 40,
   choice: 40,
   doctors: 0,
   doctorPick: 3000,
@@ -1146,7 +1134,6 @@ function fieldSchema(f: FieldDef): z.ZodTypeAny {
     case "location":
       return base.refine((v) => v === "" || parseLocation(v) !== null, "Pick the location again.");
     case "design":
-    case "card":
     case "select":
       // Unknown or retired codes (e.g. typed by hand in older forms) become "not decided" instead of blocking the save.
       return base.transform(
@@ -1338,12 +1325,10 @@ export function photosWhatsappText(ref: string | undefined, email: string, name:
 }
 
 /** The applicant's design choices in words, for the admin (review page and draft notes). */
-export function designSummary(kind: IntakeKind, data: IntakeData): { website: string; card: string; decision: string; final: boolean } {
+export function designSummary(kind: IntakeKind, data: IntakeData): { website: string; decision: string; final: boolean } {
   const design = DESIGN_OPTIONS[kind].find((d) => d.value === data.websiteDesign);
-  const card = CARD_STYLES_BY_GROUP[kind].find((c) => c.code === data.cardStyle);
   return {
     website: design ? design.label : "Not decided",
-    card: card ? `${card.name} (${card.code})` : "Not decided",
     decision: data.designDecision === "final" ? "Final" : data.designDecision === "discuss" ? "Not final: talk to them before finalising" : "Not answered",
     final: data.designDecision === "final",
   };

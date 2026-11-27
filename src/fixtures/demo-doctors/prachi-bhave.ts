@@ -191,5 +191,4 @@ export const PRACHI_BHAVE: DemoDoctor = {
     },
   ],
   portfolioTemplateId: "t4",
-  cardTemplateId: "t4",
 };

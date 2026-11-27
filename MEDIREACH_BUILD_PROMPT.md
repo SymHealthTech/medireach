@@ -119,7 +119,7 @@ publications?: [{ title, journal?, year?, url? }]
 interests: string[]          // extra-curricular
 gallery: [{ publicId, url, caption, alt }]   // max 5 (awards photos count toward this)
 // Templates
-portfolioTemplateId (default 'classic'), cardTemplateId (default 'classic')
+portfolioTemplateId (default 'classic')   // the visiting card always comes in this same design (no separate card choice)
 // SEO
 seo { titleOverride?, descriptionOverride?, noindex: boolean }
 // Business
@@ -163,7 +163,7 @@ doctors: [{ doctorProfileId?, name?, qualifications?, specialty?, role? }]  // l
 languages: string[]
 gallery: [{ publicId, url, caption, alt }]   // clinic max 8, hospital max 12; no patients
 links { googleBusiness?, practo?, instagram?, facebook?, youtube?, website? }
-siteTemplateId (default 'classic'), cardTemplateId (default 'classic')
+siteTemplateId (default 'classic')   // the visiting card takes the site's design colours (no separate card choice)
 seo { titleOverride?, descriptionOverride?, noindex }
 // Business
 plan: 'clinic' | 'hospital'
