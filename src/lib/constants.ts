@@ -102,7 +102,7 @@ export type LeadStatus = (typeof LEAD_STATUSES)[number];
 /** Who the website is for. */
 export const INTAKE_KINDS = PRODUCTS;
 export type IntakeKind = Product;
-/** draft = saved but not sent; submitted = sent for review; done = website created. */
+/** draft = saved but not sent; submitted = sent for review; in_review = website draft made; done = website published. */
 export const INTAKE_STATUSES = ["draft", "submitted", "in_review", "done", "archived"] as const;
 export type IntakeStatus = (typeof INTAKE_STATUSES)[number];
 /** The applicant can keep editing until the team marks the form done or archived. */

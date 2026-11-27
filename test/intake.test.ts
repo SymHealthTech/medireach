@@ -9,6 +9,7 @@ import { createSessionToken } from "@/lib/auth/session";
 import { seedMasters } from "@/lib/seed/masters";
 import { checkIntakeCode, createIntakeCode, INTAKE_CODE_MAX_ATTEMPTS } from "@/lib/intake/code";
 import { createSiteFromIntake, splitDoctorName } from "@/lib/intake/convert";
+import { intakeSites, syncIntakeForSite, syncPublishedIntakes } from "@/lib/intake/site-status";
 import { ClinicCategory } from "@/models/ClinicCategory";
 import { intakeCodeEmail, intakeSavedEmail } from "@/lib/intake/emails";
 import {
@@ -713,6 +714,35 @@ describe("creating the website draft", () => {
     expect((await make("ent@example.com", "ent")).slug).toBe("ent-hospital");
     expect((await make("notype@example.com", "")).slug).toBe("small-hospital");
     expect(siteHints("MR-9", "hospital", { ...emptyIntakeData("hospital"), hospitalType: "children" }).category).toBe("Children's Hospital");
+  });
+
+  it("keeps the form's status in step with its website: live → done, unpublished → in review, deleted draft → none", async () => {
+    const r = await saveIntake({ kind: "clinic", email: "sync@example.com", data: { ...emptyIntakeData("clinic"), name: "Sync Clinic", mobile: "9876500001", city: "Pune", area: "Kothrud" }, photos: { logo: photo(30) } }, null);
+    const id = r.ok ? r.intake.id : "";
+    const made = await createSiteFromIntake((await Intake.findById(id).lean())!);
+    await Intake.updateOne({ _id: id }, { $set: { status: "in_review", convertedTo: { kind: "clinic", id: made.id } } });
+
+    const rows = await Intake.find({ _id: id }).select({ convertedTo: 1 }).lean();
+    expect((await intakeSites(rows)).get(id)).toMatchObject({ href: `/admin/establishments/${made.id}`, status: "draft" });
+
+    // Published elsewhere (or before the sync existed): the list's sync marks the form done.
+    await Establishment.updateOne({ _id: made.id }, { $set: { status: "published" } });
+    await syncPublishedIntakes("clinic");
+    expect((await Intake.findById(id).lean())!.status).toBe("done");
+
+    await syncIntakeForSite(made.id, false);
+    expect((await Intake.findById(id).lean())!.status).toBe("in_review");
+    await syncIntakeForSite(made.id, true);
+    expect((await Intake.findById(id).lean())!.status).toBe("done");
+
+    // An archived form stays archived.
+    await Intake.updateOne({ _id: id }, { $set: { status: "archived" } });
+    await syncIntakeForSite(made.id, false);
+    expect((await Intake.findById(id).lean())!.status).toBe("archived");
+
+    // A deleted draft no longer counts as the form's website.
+    await Establishment.deleteOne({ _id: made.id });
+    expect((await intakeSites(rows)).size).toBe(0);
   });
 
   it("refuses a doctor form without a full name", async () => {

@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
+import { syncIntakeForSite } from "@/lib/intake/site-status";
 import { ActionError, adminAction, auditCtx, fieldErrorsOf } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { can } from "@/lib/auth/admin";
@@ -152,6 +153,7 @@ export const publishEstablishmentAction = adminAction({ schema: z.object({ id })
     diff: { url: `/${doc.citySlug}/${doc.kind}/${doc.slug}` },
   });
   revalidatePublic({ kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
+  await syncIntakeForSite(doc._id, true);
   return { form: docToForm(doc.toObject()) };
 });
 
@@ -163,7 +165,10 @@ const statusChange = (to: "draft" | "review" | "suspended", action: string, role
     doc.status = to;
     await doc.save();
     await audit(auditCtx(admin), `${doc.kind}.${action}`, { entity: "Establishment", entityId: doc._id, diff: { status: { from, to } } });
-    if (from === "published") revalidatePublic({ kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
+    if (from === "published") {
+      revalidatePublic({ kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
+      await syncIntakeForSite(doc._id, false);
+    }
     return { form: docToForm(doc.toObject()) };
   });
 

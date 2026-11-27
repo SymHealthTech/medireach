@@ -13,6 +13,7 @@ import { Payment } from "@/models/Payment";
 import { UpdateRequest } from "@/models/UpdateRequest";
 import { Establishment } from "@/models/Establishment";
 import { Intake } from "@/models/Intake";
+import { syncPublishedIntakes } from "@/lib/intake/site-status";
 import { RENEWAL_DUE_SOON_DAYS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -95,6 +96,8 @@ function ProductCard({ label, icon: Icon, counts, href }: { label: string; icon:
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const admin = await requireAdminPage();
   await connectToDatabase();
+  // Forms whose website is already live leave the "to review" counts.
+  await syncPublishedIntakes();
   const { denied } = await searchParams;
   const showMoney = can.seePaymentTotals(admin.role);
   const monthStart = startOfMonthIST(0);

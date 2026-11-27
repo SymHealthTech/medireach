@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Mail, MessageCircle, Phone } from "lucide-react";
-import { Pill } from "@/components/admin/StatusBadge";
+import { ArrowLeft, ListChecks, Mail, MessageCircle, Phone } from "lucide-react";
+import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
-import { IntakeForm } from "@/components/intake/IntakeForm";
 import { Button } from "@/components/ui/button";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { isObjectId } from "@/lib/admin/list";
@@ -12,29 +11,34 @@ import { INTAKE_STATUS_LABEL, INTAKE_STATUS_TONE } from "@/lib/admin/labels";
 import { connectToDatabase } from "@/lib/db";
 import { formatDateTime } from "@/lib/format";
 import { INTAKE_KIND_LABEL, allPhotos, designSummary, missingForSubmit, str } from "@/lib/intake/form";
-import { intakePlaces, intakeSiteTypes } from "@/lib/intake/places";
 import { toView } from "@/lib/intake/server";
-import { getPublicSiteData } from "@/lib/public/site-data";
+import { intakeSites, syncPublishedIntakes } from "@/lib/intake/site-status";
 import { Intake } from "@/models/Intake";
 import { IntakeReviewControls } from "./IntakeReviewControls";
 
 export const metadata: Metadata = { title: "Website form" };
 
-/** Review one form: contact the applicant, fill gaps (same form, admin mode), then create the draft site. */
+/**
+ * One website form: contact the applicant, status and notes, and the button to
+ * create / open the website draft. The answers themselves are checked in the
+ * draft editor, step by step (each step shows the form's answers), so the
+ * form is not repeated here.
+ */
 export default async function IntakeReviewPage({ params }: { params: Promise<{ id: string }> }) {
   const admin = await requireAdminPage(rolesFor("/admin/intakes"));
   const { id } = await params;
   if (!isObjectId(id)) notFound();
   await connectToDatabase();
-  const [doc, site, places] = await Promise.all([Intake.findById(id).lean(), getPublicSiteData(), intakePlaces()]);
+  await syncPublishedIntakes();
+  const doc = await Intake.findById(id).lean();
   if (!doc) notFound();
+  const draft = (await intakeSites([doc])).get(String(doc._id));
   const view = toView(doc);
   const missing = missingForSubmit(view.kind, view.data);
   const photos = allPhotos(view.photos, view.kind, view.data);
   const mobile = str(view.data.mobile);
   const wa = str(view.data.whatsapp) || mobile;
   const name = doc.name || view.email;
-  const draftHref = doc.convertedTo ? (doc.convertedTo.kind === "doctor" ? `/admin/doctors/${doc.convertedTo.id}` : `/admin/establishments/${doc.convertedTo.id}`) : undefined;
   const design = designSummary(view.kind, view.data);
   const waText = `Hello ${name}, this is MediReach about your website form ${view.ref}.`;
 
@@ -56,13 +60,18 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
               {doc.submittedAt ? ` · sent ${formatDateTime(doc.submittedAt)}` : " · not sent yet"}
               {` · last saved ${formatDateTime(doc.lastSavedAt)}`}
             </p>
-            <p className="text-sm">
-              {missing.length ? (
-                <span className="text-clay-text">Missing: {missing.map((m) => m.label).join(", ")}</span>
-              ) : (
-                <span className="text-leaf-text">All required fields filled.</span>
-              )}
-            </p>
+            {/* Once the website is live, gaps in the form were filled in the website itself. */}
+            {draft?.status !== "published" && (
+              <p className="text-sm">
+                {missing.length ? (
+                  <span className="text-clay-text">
+                    {draft ? "Not in the form (fill in the website draft)" : "Missing"}: {missing.map((m) => m.label).join(", ")}
+                  </span>
+                ) : (
+                  <span className="text-leaf-text">All required fields filled.</span>
+                )}
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">
               Photos: {photos.length} uploaded
               {view.photos.viaWhatsapp ? " · the applicant chose to send photos on WhatsApp (search the chats for the ref)" : ""}
@@ -110,10 +119,25 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
             ))}
           </ul>
         )}
-        <IntakeReviewControls id={view.id} status={view.status} notes={doc.adminNotes ?? ""} draftHref={draftHref} canDelete={admin.role !== "sales"} kind={view.kind} />
+        <IntakeReviewControls id={view.id} status={view.status} notes={doc.adminNotes ?? ""} draftHref={draft?.href} canDelete={admin.role !== "sales"} kind={view.kind} />
       </section>
 
-      <IntakeForm kind={view.kind} initial={view} waNumber={site.whatsappNumber} mode="admin" places={places} siteTypes={view.kind === "doctor" ? undefined : await intakeSiteTypes(view.kind)} />
+      <section className="flex items-start gap-3 rounded-xl border border-line bg-sage/50 p-4 text-sm text-ink">
+        <ListChecks className="mt-0.5 size-4 shrink-0" aria-hidden />
+        {draft ? (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            Website draft <StatusBadge status={draft.status} />
+            <span className="text-muted-foreground">
+              Open it and go through each step: the form&apos;s answers are shown with <em>Use</em> / <em>{view.kind === "doctor" ? "Fill" : "Add"}</em> buttons, so you can confirm or change them, then publish from the last step.
+              {draft.status === "published" ? " Publishing marked this form done." : ""}
+            </span>
+          </p>
+        ) : (
+          <p className="text-muted-foreground">
+            <strong className="text-ink">Create the website draft</strong> to review this form. The draft is filled from the answers; you then check it step by step (each step shows the form&apos;s answers to confirm or change) and publish it.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

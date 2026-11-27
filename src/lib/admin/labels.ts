@@ -16,7 +16,7 @@ export const INTAKE_STATUS_LABEL: Record<IntakeStatus, string> = {
   draft: "In progress",
   submitted: "Submitted",
   in_review: "In review",
-  done: "Website created",
+  done: "Website live",
   archived: "Archived",
 };
 

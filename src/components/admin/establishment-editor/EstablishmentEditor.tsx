@@ -305,12 +305,12 @@ export function EstablishmentEditor({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-sage/50 px-4 py-3 text-sm text-ink">
             <ClipboardList className="size-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1">
-              Made from website form <strong>{hints.ref}</strong>. Its answers are shown in each step with <em>Use</em> / <em>Add</em> buttons.
+              Made from website form <strong>{hints.ref}</strong>. Go through each step to confirm or change its answers (shown with <em>Use</em> / <em>Add</em> buttons), then publish from the last step.
             </span>
             {hints.intakeId && (
               <Button asChild size="sm" variant="outline">
                 <Link href={`/admin/intakes/${hints.intakeId}`} target="_blank">
-                  <ExternalLink /> Open website form
+                  <ExternalLink /> Form details &amp; contact
                 </Link>
               </Button>
             )}

@@ -2,6 +2,7 @@
 
 import { Types } from "mongoose";
 import { z } from "zod";
+import { syncIntakeForSite } from "@/lib/intake/site-status";
 import { ActionError, adminAction, auditCtx } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hitRateLimit } from "@/lib/api/rate-limit";
@@ -165,6 +166,7 @@ export const publishDoctorAction = adminAction(
       diff: { url: `/${doc.citySlug}/doctor/${doc.slug}` },
     });
     revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
+    await syncIntakeForSite(doc._id, true);
     return { form: docToForm(doc.toObject()) };
   },
 );
@@ -177,7 +179,10 @@ const statusChange = (to: "draft" | "review" | "suspended", action: string, role
     doc.status = to;
     await doc.save();
     await audit(auditCtx(admin), action, { entity: "DoctorProfile", entityId: doc._id, diff: { status: { from, to } } });
-    if (from === "published") revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
+    if (from === "published") {
+      revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
+      await syncIntakeForSite(doc._id, false);
+    }
     return { form: docToForm(doc.toObject()) };
   });
 

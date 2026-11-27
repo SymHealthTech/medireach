@@ -6,6 +6,7 @@ import { audit } from "@/lib/api/audit";
 import { INTAKE_STATUSES } from "@/lib/constants";
 import { ConvertError, createSiteFromIntake } from "@/lib/intake/convert";
 import { saveIntake, type IntakeView } from "@/lib/intake/server";
+import { intakeSites } from "@/lib/intake/site-status";
 import { Intake } from "@/models/Intake";
 
 const roles = ["superadmin", "admin", "sales"] as const;
@@ -50,9 +51,9 @@ export const saveIntakeNotesAction = adminAction(
 export const createSiteFromIntakeAction = adminAction({ schema: z.object({ id: objectId }), roles }, async ({ id }, admin) => {
   const intake = await Intake.findById(id).lean();
   if (!intake) throw new ActionError("Form not found.");
-  if (intake.convertedTo) {
-    return { href: intake.convertedTo.kind === "doctor" ? `/admin/doctors/${intake.convertedTo.id}` : `/admin/establishments/${intake.convertedTo.id}` };
-  }
+  // Already made (and not deleted since): open it.
+  const existing = (await intakeSites([intake])).get(String(intake._id));
+  if (existing) return { href: existing.href };
   let made;
   try {
     made = await createSiteFromIntake(intake);

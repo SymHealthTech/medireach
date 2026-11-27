@@ -14,7 +14,7 @@ const STATUS: Record<IntakeStatus, { label: string; tone: string }> = {
   draft: { label: "Not sent yet", tone: "bg-marigold/15 text-ink" },
   submitted: { label: "Sent for review", tone: "bg-lagoon/10 text-lagoon" },
   in_review: { label: "In review", tone: "bg-lagoon/10 text-lagoon" },
-  done: { label: "Website created", tone: "bg-leaf/15 text-leaf-text" },
+  done: { label: "Website live", tone: "bg-leaf/15 text-leaf-text" },
   archived: { label: "Closed", tone: "bg-line text-body" },
 };
 
