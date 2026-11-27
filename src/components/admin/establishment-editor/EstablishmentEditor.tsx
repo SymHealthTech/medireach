@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
+import { welcomeToast } from "@/components/admin/welcome-toast";
 import {
   publishEstablishmentAction,
   saveEstablishmentSectionAction,
@@ -209,7 +210,7 @@ export function EstablishmentEditor({
     return phrases ? `Not allowed (NMC): “${phrases.join("”, “")}”. Rephrase factually.` : undefined;
   };
 
-  async function runStatus(action: typeof publishEstablishmentAction, ok: string) {
+  async function runStatus(action: typeof unpublishEstablishmentAction, ok: string) {
     if (!form.id) return;
     setBusy(true);
     await flush();
@@ -218,6 +219,8 @@ export function EstablishmentEditor({
     if (!res.ok) return toast.error(res.error);
     setForm((prev) => ({ ...prev, status: res.data.form.status, publishedAt: res.data.form.publishedAt, slug: res.data.form.slug, shortSlug: res.data.form.shortSlug, citySlug: res.data.form.citySlug }));
     toast.success(ok);
+    // First publish emails the welcome (website link and login) automatically.
+    welcomeToast(res.data);
   }
 
   const stepProps: EStepProps = { form, set, err, options, readOnly, role, hints };

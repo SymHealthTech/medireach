@@ -6,6 +6,7 @@ import { startNavigationProgress } from "@/components/loading/NavigationProgress
 import { useTransition } from "react";
 import { Ban, Copy, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, Send, Undo2 } from "lucide-react";
 import { toast } from "sonner";
+import { welcomeToast } from "@/components/admin/welcome-toast";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -104,7 +105,7 @@ export function DoctorRowActions({ doctor, canPublish }: { doctor: DoctorRowInfo
                 <Undo2 /> Unpublish
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onSelect={() => run(() => publishDoctorAction({ id: doctor.id }), "Published")}>
+              <DropdownMenuItem onSelect={() => run(() => publishDoctorAction({ id: doctor.id }).then((r) => (r.ok && welcomeToast(r.data), r)), "Published")}>
                 <Send /> Publish
               </DropdownMenuItem>
             )}

@@ -1,5 +1,6 @@
 "use server";
 
+import type { Types } from "mongoose";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { syncIntakeForSite, welcomeSiteFor } from "@/lib/intake/site-status";
@@ -144,6 +145,7 @@ export const publishEstablishmentAction = adminAction({ schema: z.object({ id })
     throw new ActionError(`Can't publish yet: ${problems.join("; ")}.`);
   }
   const wasPublished = doc.status === "published";
+  const firstPublish = !doc.publishedAt;
   doc.status = "published";
   doc.publishedAt = doc.publishedAt ?? new Date();
   await doc.save();
@@ -154,8 +156,34 @@ export const publishEstablishmentAction = adminAction({ schema: z.object({ id })
   });
   revalidatePublic({ kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug });
   await syncIntakeForSite(doc._id, true);
-  return { form: docToForm(doc.toObject()) };
+  const welcome = firstPublish ? await welcomeOnFirstPublish(doc, admin) : undefined;
+  return { form: docToForm(doc.toObject()), welcome };
 });
+
+/**
+ * First publish: email the owner the welcome (website link, website form ref,
+ * UID and login). Needs the owner's login email; never fails the publish.
+ */
+async function welcomeOnFirstPublish(
+  doc: { _id: Types.ObjectId; kind: string; ownerEmail?: string; uid?: string; status: string; citySlug?: string; slug?: string },
+  admin: Parameters<typeof auditCtx>[0],
+): Promise<{ sent?: string; note?: string }> {
+  const kind = doc.kind === "hospital" ? "hospital" : "clinic";
+  if (!doc.ownerEmail) return { note: "No welcome email sent: save the owner's login email on the Business step, then use Send login email." };
+  try {
+    const sent = await sendLoginLink(doc.ownerEmail, {
+      welcome: true,
+      uid: await ensureUid(Establishment as never, doc, kind),
+      site: await welcomeSiteFor({ _id: doc._id, kind, status: doc.status, citySlug: doc.citySlug, slug: doc.slug }),
+    });
+    if (!sent) return { note: "The welcome email couldn't be sent. Use Send login email on the Business step to try again." };
+    await audit(auditCtx(admin), "establishment.send_login_email", { entity: "Establishment", entityId: doc._id, diff: { to: doc.ownerEmail, on: "first publish" } });
+    return { sent: doc.ownerEmail };
+  } catch (err) {
+    console.error("[publish] welcome email failed", err);
+    return { note: "The welcome email couldn't be sent. Use Send login email on the Business step to try again." };
+  }
+}
 
 const statusChange = (to: "draft" | "review" | "suspended", action: string, roles?: readonly ("superadmin" | "admin" | "sales")[]) =>
   adminAction({ schema: z.object({ id }), ...(roles ? { roles } : {}) }, async ({ id: establishmentId }, admin) => {

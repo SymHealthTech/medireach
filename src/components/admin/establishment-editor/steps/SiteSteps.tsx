@@ -271,7 +271,7 @@ export function BusinessStep({ form: f, set, err, readOnly, role }: EStepProps) 
         </Group>
       )}
 
-      <Group title="Owner login" description="Lets the owner log in at /login and update everything on their site (full update access). One email can own several sites.">
+      <Group title="Owner login" description="Lets the owner log in at /login and update everything on their site (full update access). One email can own several sites. The welcome email (site link and login) goes out by itself when the site is first published.">
         <div className={grid2}>
           <Field
             label="Owner login email"

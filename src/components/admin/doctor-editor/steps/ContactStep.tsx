@@ -86,7 +86,7 @@ export function ContactStep({ form: f, set, err, readOnly, doctorId, audience }:
             <Button type="button" variant="outline" onClick={sendLogin} disabled={sending || !doctorId || !f.ownerEmail}>
               <Mail /> {sending ? "Sending…" : "Send welcome / login email"}
             </Button>
-            <p className="text-xs text-muted-foreground">Sends a one-time login link to the saved login email (valid 24 hours).</p>
+            <p className="text-xs text-muted-foreground">Sends a one-time login link to the saved login email (valid 24 hours). The welcome email goes out by itself when the page is first published.</p>
           </div>
         )}
         </Group>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Ban, Copy, CreditCard, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, Send, Undo2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { welcomeToast } from "@/components/admin/welcome-toast";
 import { startNavigationProgress } from "@/components/loading/NavigationProgress";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,7 +123,7 @@ export function EstablishmentRowActions({ site, canPublish, showMoney }: { site:
                 <Undo2 /> Unpublish
               </DropdownMenuItem>
             ) : (
-              <DropdownMenuItem onSelect={() => run(() => publishEstablishmentAction({ id: site.id }), "Published")}>
+              <DropdownMenuItem onSelect={() => run(() => publishEstablishmentAction({ id: site.id }).then((r) => (r.ok && welcomeToast(r.data), r)), "Published")}>
                 <Send /> Publish
               </DropdownMenuItem>
             )}

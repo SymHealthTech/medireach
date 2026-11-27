@@ -157,6 +157,7 @@ export const publishDoctorAction = adminAction(
       throw new ActionError(`Can't publish yet: ${problems.join("; ")}.`);
     }
     const wasPublished = doc.status === "published";
+    const firstPublish = !doc.publishedAt;
     doc.status = "published";
     doc.publishedAt = doc.publishedAt ?? new Date();
     await doc.save();
@@ -167,9 +168,34 @@ export const publishDoctorAction = adminAction(
     });
     revalidateDoctorPages({ citySlug: doc.citySlug, slug: doc.slug });
     await syncIntakeForSite(doc._id, true);
-    return { form: docToForm(doc.toObject()) };
+    const welcome = firstPublish ? await welcomeOnFirstPublish(doc, admin) : undefined;
+    return { form: docToForm(doc.toObject()), welcome };
   },
 );
+
+/**
+ * First publish: email the doctor the welcome (website link, website form ref,
+ * UID and login). Needs the doctor's login email; never fails the publish.
+ */
+async function welcomeOnFirstPublish(
+  doc: { _id: Types.ObjectId; ownerEmail?: string; uid?: string; status: string; citySlug?: string; slug?: string },
+  admin: Parameters<typeof auditCtx>[0],
+): Promise<{ sent?: string; note?: string }> {
+  if (!doc.ownerEmail) return { note: "No welcome email sent: turn on the doctor's login on the Contact step, then use Send login email." };
+  try {
+    const sent = await sendLoginLink(doc.ownerEmail, {
+      welcome: true,
+      uid: await ensureUid(DoctorProfile as never, doc, "doctor"),
+      site: await welcomeSiteFor({ _id: doc._id, kind: "doctor", status: doc.status, citySlug: doc.citySlug, slug: doc.slug }),
+    });
+    if (!sent) return { note: "The welcome email couldn't be sent. Use Send login email on the Contact step to try again." };
+    await audit(auditCtx(admin), "doctor.send_login_email", { entity: "DoctorProfile", entityId: doc._id, diff: { to: doc.ownerEmail, on: "first publish" } });
+    return { sent: doc.ownerEmail };
+  } catch (err) {
+    console.error("[publish] welcome email failed", err);
+    return { note: "The welcome email couldn't be sent. Use Send login email on the Contact step to try again." };
+  }
+}
 
 const statusChange = (to: "draft" | "review" | "suspended", action: string, roles?: readonly ("superadmin" | "admin" | "sales")[]) =>
   adminAction({ schema: z.object({ id }), ...(roles ? { roles } : {}) }, async ({ id: doctorId }, admin) => {
