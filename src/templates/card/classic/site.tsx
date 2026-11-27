@@ -4,7 +4,7 @@ import { openDaysSummary } from "@/lib/timings";
 import { DevBanner } from "@/templates/DevBanner";
 import { CARD_SIZE, type SiteCardTemplateProps } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, printDock, siteCardActions, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, BELOW_DOCK, dockOnHeader, printDock, siteCardActions, type CardDock, type DockStyle } from "@/templates/card/actions";
 import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 
 /**
@@ -15,9 +15,9 @@ import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/part
  *
  *  - print (85 × 55 mm): theme panel on the left with the logo and QR code;
  *    name, category and contact rows on the right.
- *  - phone (1080 × 1920): theme header with the logo and name, a white
- *    contact panel, the QR code and the one-tap buttons (Call, WhatsApp,
- *    Directions, Website).
+ *  - phone (1080 × 1920): theme header with the logo and name, the one-tap
+ *    buttons (Call, WhatsApp, Directions, Website) on its edge, then a white
+ *    contact panel and the QR code.
  *
  * Satori-safe (inline styles, flexbox only), like the doctor card. Prints
  * legibly in black and white: dark text on white, QR in the primary colour.
@@ -29,8 +29,6 @@ const LINE = "#E5E7EB";
 const TEXT = "#1F2933";
 
 const FOOTER = 100;
-/** Where the buttons sit on the phone card (also used for the PDF links). */
-export const PHONE_DOCK = dockAboveFooter(FOOTER, 72);
 /** Where the buttons sit on the print card: the free band between the name and the contact rows. */
 export const PRINT_DOCK = printDock(346, 958, 268);
 const dockStyle = (primary: string, soft: string, fonts: SiteCardTemplateProps["fonts"]): DockStyle => ({
@@ -53,7 +51,8 @@ function initials(name: string): string {
   return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase() || "M";
 }
 
-const nameSize = (name: string, base: number) => (name.length > 28 ? Math.round(base * 0.72) : name.length > 20 ? Math.round(base * 0.86) : base);
+const nameSize = (name: string, base: number) =>
+  name.length > 40 ? Math.round(base * 0.62) : name.length > 28 ? Math.round(base * 0.72) : name.length > 20 ? Math.round(base * 0.86) : base;
 
 function Logo({ url, name, size, primary, soft, fonts }: { url?: string; name: string; size: number; primary: string; soft: string; fonts: SiteCardTemplateProps["fonts"] }) {
   return (
@@ -187,7 +186,7 @@ function PhoneRow({
   tight?: boolean;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: tight ? "18px 0" : "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
+    <div style={{ display: "flex", alignItems: "center", padding: tight ? "14px 0" : "24px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: 999, background: soft, marginRight: 28 }}>
         <Icon name={icon} size={38} color={primary} />
       </div>
@@ -208,10 +207,10 @@ function PhoneRow({
   );
 }
 
-function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTemplateProps) {
-  const { width, height } = CARD_SIZE.phone;
-  const { primary, accent, soft } = sitePalette(s);
-  const what = typeName(s);
+type PhoneRowData = { icon: keyof typeof ICONS; label: string; value: string | string[]; note?: string };
+
+/** The phone card's contact rows and how much room they need (shared by the card and the dock position). */
+function phoneLayout(s: SiteCardTemplateProps["site"]): { rows: PhoneRowData[]; tight: boolean; compact: boolean; header: number } {
   const street = [s.address.line1, s.address.line2].filter(Boolean).join(", ");
   // Clinics: the doctors (up to 2 named, then "+N more"), so the card says who you will see.
   const clinic = s.kind === "clinic";
@@ -227,7 +226,7 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
   });
   // The appointment note (a hospital's OPD hours when it is open 24×7), under the timings.
   const note = s.appointmentNote ? clip(s.appointmentNote, 48) : undefined;
-  const rows: { icon: keyof typeof ICONS; label: string; value: string | string[]; note?: string }[] = [
+  const rows: PhoneRowData[] = [
     ...cardNumbers(s).map((n) => ({ icon: n.icon, label: n.label, value: formatPhone(n.value) })),
     ...(doctorLines.length ? [{ icon: "user" as const, label: doctors.length > 1 ? "Doctors" : "Doctor", value: doctorLines }] : []),
     {
@@ -243,14 +242,28 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
   const tight = rows.length > 4 || (rows.length > 3 && (doctorLines.length > 0 || Boolean(note)));
   // A full clinic card (doctors and an appointment note, or five rows plus doctors): a shorter header too.
   const compact = (tight && (doctorLines.length > 0 || Boolean(note))) || (doctorLines.length > 0 && Boolean(note));
+  // The header is a fixed height (the buttons sit on its edge): shorter for a full card.
+  return { rows, tight, compact, header: compact ? 640 : 760 };
+}
+
+/** Where the buttons sit on this site's phone card: on the header's bottom edge, above the contact details (also used for the PDF links). */
+export function sitePhoneDock(s: SiteCardTemplateProps["site"]): CardDock {
+  return dockOnHeader(phoneLayout(s).header, 72);
+}
+
+function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTemplateProps) {
+  const { width, height } = CARD_SIZE.phone;
+  const { primary, accent, soft } = sitePalette(s);
+  const what = typeName(s);
+  const { rows, tight, compact, header } = phoneLayout(s);
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: compact ? (s.name.length > 30 ? 690 : 650) : 800, paddingTop: compact ? 50 : 76, background: primary, position: "relative", overflow: "hidden", textAlign: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", height: header, paddingTop: compact ? 48 : 70, background: primary, position: "relative", overflow: "hidden", textAlign: "center" }}>
         <div style={{ display: "flex", position: "absolute", top: -220, right: -200, width: 640, height: 640, borderRadius: 999, border: "3px solid rgba(255,255,255,0.08)" }} />
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: accent }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: compact ? 30 : 44 }}>
-          <Logo url={logoUrl} name={s.name} size={compact ? 160 : 230} primary={primary} soft={soft} fonts={fonts} />
+        <div style={{ display: "flex", marginTop: compact ? 28 : 40 }}>
+          <Logo url={logoUrl} name={s.name} size={compact ? 150 : 210} primary={primary} soft={soft} fonts={fonts} />
         </div>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(s.name, 80), lineHeight: 1.08, color: "#FFFFFF", marginTop: compact ? 28 : 40, padding: "0 60px" }}>{s.name}</div>
         <div style={{ display: "flex", fontSize: 40, fontWeight: 700, color: accent, marginTop: 18 }}>{what}</div>
@@ -259,7 +272,8 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
         </div>
       </div>
 
-      <div style={{ display: "flex", padding: "0 72px", marginTop: -110, position: "relative" }}>
+      {/* Contact panel, under the buttons with clear space */}
+      <div style={{ display: "flex", padding: "0 72px", marginTop: BELOW_DOCK }}>
         <div style={{ display: "flex", flexDirection: "column", width: "100%", background: "#FFFFFF", borderRadius: 40, padding: "18px 48px", boxShadow: "0 30px 60px -20px rgba(0,0,0,0.25)" }}>
           {rows.map((r, i) => (
             <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} note={r.note} last={i === rows.length - 1} soft={soft} primary={primary} tight={tight} />
@@ -270,7 +284,7 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
       <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
       <div style={{ display: "flex", alignItems: "center", padding: "0 96px" }}>
         <div style={{ display: "flex", padding: 8, borderRadius: 26, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={tight ? 160 : 190} radius={18} color={primary} />
+          <QrBlock qr={qr} px={tight ? 140 : 180} radius={18} color={primary} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 48, flex: 1 }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 46, lineHeight: 1.12, color: primary }}>Scan for timings and directions</div>
@@ -278,15 +292,14 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
         </div>
       </div>
       <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
-      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
-      <div style={{ display: "flex", height: DOCK_SPACE }} />
-      <ActionDock actions={siteCardActions(s)} dock={PHONE_DOCK} style={dockStyle(primary, soft, fonts)} links={links} />
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: FOOTER, background: primary, color: "#FFFFFF", fontSize: 24 }}>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", width: 8, height: 8, borderRadius: 999, background: accent, marginLeft: 4, marginTop: 10 }} />
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(255,255,255,0.7)" }}>{ROOT_HOSTNAME}</div>
       </div>
+      {/* Buttons on the header's edge, at a fixed place (the PDF links line up with them). Last, so they draw on top. */}
+      <ActionDock actions={siteCardActions(s)} dock={sitePhoneDock(s)} style={dockStyle(primary, soft, fonts)} links={links} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
 import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, BELOW_DOCK, dockOnHeader, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -12,8 +12,9 @@ import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
  *
  *  - print (85 × 55 mm): slate panel on the left with the photo and QR code,
  *    name, specialty and contact rows on white.
- *  - phone (1080 × 1920): slate header with photo and credentials, white
- *    contact rows, crimson QR panel and the one-tap buttons.
+ *  - phone (1080 × 1920): slate header with photo and credentials, the
+ *    one-tap buttons on its edge, then white contact rows and the crimson QR
+ *    panel.
  *
  * Satori-safe: inline styles, flexbox only, <img> and inline <svg>.
  */
@@ -28,8 +29,10 @@ const MUTED = "#5A6A7F";
 const LINE = "#E0E6EE";
 
 const FOOTER = 96;
-/** Where the buttons sit on the phone card (also used for the PDF links). */
-export const PHONE_DOCK = dockAboveFooter(FOOTER, 80);
+/** Phone header height: the same for every doctor, so the buttons on its edge are always in the same place. */
+const HEADER = 850;
+/** Where the buttons sit on the phone card: on the header's bottom edge, above the contact details (also used for the PDF links). */
+export const PHONE_DOCK = dockOnHeader(HEADER, 80);
 /** Where the buttons sit on the print card: the free band between the name and the contact rows. */
 export const PRINT_DOCK = printDock(338, 946, 226);
 const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
@@ -38,7 +41,9 @@ const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
   tileBg: ICE,
   tileText: SLATE,
   iconColor: CRIMSON,
+  border: `2px solid ${LINE}`,
   radius: 24,
+  shadow: "0 18px 36px -22px rgba(15,27,45,0.5)",
   font: fonts.body,
 });
 
@@ -216,7 +221,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
   return (
     <div style={{ width, height, display: "flex", flexDirection: "column", background: "#FFFFFF", color: TEXT, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
-      <div style={{ display: "flex", flexDirection: "column", height: 820, padding: "70px 80px 0", background: SLATE, position: "relative", overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: HEADER, padding: "66px 80px 0", background: SLATE, position: "relative", overflow: "hidden" }}>
         <div style={{ display: "flex", position: "absolute", left: 0, top: 440 }}>
           <Ecg width={1080} height={160} color={ROSE} opacity={0.3} />
         </div>
@@ -225,7 +230,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
           <div style={{ display: "flex", fontSize: 26, fontWeight: 700, letterSpacing: 7, color: ROSE }}>DIGITAL VISITING CARD</div>
         </div>
         <div style={{ display: "flex", marginTop: 44 }}>
-          <Photo url={photoUrl} name={d.fullName} size={300} radius={48} fonts={fonts} />
+          <Photo url={photoUrl} name={d.fullName} size={280} radius={46} fonts={fonts} />
         </div>
         <div style={{ display: "flex", fontWeight: 700, fontSize: nameSize(d.fullName, 84), lineHeight: 1.04, color: "#FFFFFF", marginTop: 44, letterSpacing: -2 }}>
           {d.fullName}
@@ -235,7 +240,8 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         {reg && <div style={{ display: "flex", fontSize: 23, color: "rgba(255,255,255,0.5)", marginTop: 10 }}>Reg. {clip(reg, 60)}</div>}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", padding: "14px 80px" }}>
+      {/* Contact rows, under the buttons with clear space */}
+      <div style={{ display: "flex", flexDirection: "column", padding: "0 80px", marginTop: BELOW_DOCK - 18 }}>
         {rows.map((r, i) => (
           <PhoneRow key={`${r.label}-${i}`} icon={r.icon} label={r.label} value={r.value} last={i === rows.length - 1} />
         ))}
@@ -253,13 +259,12 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         </div>
       </div>
       <div style={{ display: "flex", flex: 1, minHeight: 20 }} />
-      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
-      <div style={{ display: "flex", height: DOCK_SPACE }} />
-      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: FOOTER, background: SLATE, color: "#FFFFFF", fontSize: 24 }}>
         <div style={{ display: "flex", fontWeight: 700, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(255,255,255,0.6)" }}>{ROOT_HOSTNAME}</div>
       </div>
+      {/* Buttons on the header's edge, at a fixed place (the PDF links line up with them). Last, so they draw on top. */}
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
     </div>
   );
 }

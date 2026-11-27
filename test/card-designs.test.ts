@@ -12,7 +12,7 @@ import { TEMPLATE_KEYS } from "@/lib/constants";
 import { cardDocks, registry, resolveCardDock, resolveCardTemplate } from "@/templates/registry";
 import { DOCK_HEIGHT, PRINT_DOCK_HEIGHT, doctorCardActions, dockSlots, siteCardActions } from "@/templates/card/actions";
 import ClassicCard from "@/templates/card/classic";
-import ClassicSiteCard, { PHONE_DOCK as SITE_DOCK, PRINT_DOCK as SITE_PRINT_DOCK } from "@/templates/card/classic/site";
+import ClassicSiteCard, { PRINT_DOCK as SITE_PRINT_DOCK, sitePhoneDock } from "@/templates/card/classic/site";
 import { CARD_SIZE, type PublicDoctor } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
 
@@ -84,17 +84,18 @@ describe("card buttons", () => {
   });
 
   it("sit inside the phone and print cards without overlapping tiles", () => {
-    const all = [...Object.values(cardDocks), { phone: SITE_DOCK, print: SITE_PRINT_DOCK }];
+    const all = [...Object.values(cardDocks), ...Object.values(SAMPLE_SITES).map((s) => ({ phone: sitePhoneDock(s), print: SITE_PRINT_DOCK }))];
     for (const variant of ["phone", "print"] as const) {
-      const { width, height } = CARD_SIZE[variant];
+      const { width } = CARD_SIZE[variant];
       for (const docks of all) {
         const slots = dockSlots(docks[variant], 5);
         expect(slots).toHaveLength(5);
         for (const [i, r] of slots.entries()) {
           expect(r.x).toBeGreaterThanOrEqual(0);
           expect(r.x + r.width).toBeLessThanOrEqual(width);
-          // Phone: above the footer. Print: in the band between the name and the contact rows.
-          expect(r.y + r.height).toBeLessThanOrEqual(variant === "phone" ? height - 90 : 400);
+          // Phone: on the header's edge, above the contact details. Print: in the band between the name and the contact rows.
+          expect(r.y).toBeGreaterThanOrEqual(variant === "phone" ? 500 : 150);
+          expect(r.y + r.height).toBeLessThanOrEqual(variant === "phone" ? 1000 : 400);
           expect(r.height).toBe(variant === "phone" ? DOCK_HEIGHT : PRINT_DOCK_HEIGHT);
           if (i) expect(r.x).toBeGreaterThan(slots[i - 1]!.x + slots[i - 1]!.width);
         }

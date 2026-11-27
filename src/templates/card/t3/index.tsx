@@ -3,7 +3,7 @@ import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
 import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, BELOW_DOCK, dockOnHeader, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -14,8 +14,8 @@ import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
  *  - print (85 × 55 mm): ink column on the left with the square photo and an
  *    orange bar; name, specialty and contact rows on ivory; QR bottom right.
  *  - phone (1080 × 1920): ink header with a large square photo framed in
- *    orange, contact rows on ivory, the QR code on a cobalt panel and the
- *    one-tap buttons.
+ *    orange, the one-tap buttons on its edge, then contact rows on ivory and
+ *    the QR code on a cobalt panel.
  *
  * Satori-safe: inline styles, flexbox only, <img> and inline <svg>.
  */
@@ -32,17 +32,22 @@ const MUTED = "#5D6677";
 const LINE = "#E2E5EC";
 
 const FOOTER = 96;
-/** Where the buttons sit on the phone card (also used for the PDF links). */
-export const PHONE_DOCK = dockAboveFooter(FOOTER, 80);
+/** Phone header height: the same for every doctor, so the buttons on its edge are always in the same place. */
+const HEADER = 850;
+/** Where the buttons sit on the phone card: on the header's bottom edge, above the contact details (also used for the PDF links). */
+export const PHONE_DOCK = dockOnHeader(HEADER, 80);
 /** Where the buttons sit on the print card: the free band between the name and the contact rows. */
 export const PRINT_DOCK = printDock(348, 956, 240);
 const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
   primaryBg: ORANGE,
   primaryText: "#FFFFFF",
-  tileBg: INK,
-  tileText: "#FFFFFF",
-  iconColor: SKY,
+  // White tiles: they sit on the ink header's edge.
+  tileBg: "#FFFFFF",
+  tileText: INK,
+  iconColor: COBALT,
+  border: `2px solid ${LINE}`,
   radius: 0,
+  shadow: "0 18px 36px -22px rgba(13,20,34,0.55)",
   font: fonts.body,
   uppercase: true,
 });
@@ -456,8 +461,8 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         style={{
           display: "flex",
           flexDirection: "column",
-          height: 850,
-          padding: "70px 80px 0 80px",
+          height: HEADER,
+          padding: "66px 80px 0 80px",
           background: INK,
           position: "relative",
           overflow: "hidden",
@@ -504,14 +509,14 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
             style={{
               display: "flex",
               position: "absolute",
-              left: 20,
-              top: 20,
-              width: 300,
-              height: 300,
+              left: 18,
+              top: 18,
+              width: 270,
+              height: 270,
               border: `6px solid ${ORANGE}`,
             }}
           />
-          <Photo url={photoUrl} name={d.fullName} size={300} fonts={fonts} />
+          <Photo url={photoUrl} name={d.fullName} size={270} fonts={fonts} />
         </div>
         <div
           style={{
@@ -520,7 +525,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
             fontSize: nameSize(d.fullName, 86),
             lineHeight: 1,
             color: "#FFFFFF",
-            marginTop: 56,
+            marginTop: 46,
             letterSpacing: -2,
             textTransform: "uppercase",
           }}
@@ -571,7 +576,9 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         style={{
           display: "flex",
           flexDirection: "column",
-          padding: "16px 80px",
+          padding: "0 80px",
+          // Clear space under the buttons.
+          marginTop: BELOW_DOCK - 16,
         }}
       >
         {rows.map((r, i) => (
@@ -638,9 +645,6 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         </div>
       </div>
       <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
-      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
-      <div style={{ display: "flex", height: DOCK_SPACE }} />
-      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
 
       <div
         style={{
@@ -664,6 +668,8 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
           {ROOT_HOSTNAME}
         </div>
       </div>
+      {/* Buttons on the header's edge, at a fixed place (the PDF links line up with them). Last, so they draw on top. */}
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
     </div>
   );
 }

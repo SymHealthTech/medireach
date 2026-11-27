@@ -2,7 +2,7 @@ import { formatPhone } from "@/lib/phone";
 import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
 import { DevBanner } from "@/templates/DevBanner";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, BELOW_DOCK, dockOnHeader, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
 import { alpha, clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
@@ -12,8 +12,9 @@ import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
  *
  *  - print (85 × 55 mm): plum panel on the left with the photo and QR code;
  *    name, specialty, degrees and contact rows on the right.
- *  - phone (1080 × 1920): plum header with photo and name, a white contact
- *    panel (phone, clinic, timings), the QR code and the one-tap buttons.
+ *  - phone (1080 × 1920): plum header with photo and name, the one-tap
+ *    buttons on its edge, then a white contact panel (phone, clinic,
+ *    timings) and the QR code.
  *
  * Satori-safe: inline styles, flexbox only, inline <svg> icons (see
  * CardTemplateProps). Rendered as HTML on the card page and as PNG / PDF.
@@ -44,8 +45,10 @@ type Palette = typeof P;
 const panelGradient = (p: Palette) => `linear-gradient(160deg, ${p.panel[0]} 0%, ${p.panel[1]} 55%, ${p.panel[2]} 100%)`;
 
 const FOOTER = 100;
-/** Where the buttons sit on the phone card (also used for the PDF links). */
-export const PHONE_DOCK = dockAboveFooter(FOOTER);
+/** Phone header height: the same for every doctor, so the buttons on its edge are always in the same place. */
+const HEADER = 800;
+/** Where the buttons sit on the phone card: on the header's bottom edge, above the contact details (also used for the PDF links). */
+export const PHONE_DOCK = dockOnHeader(HEADER);
 /** Where the buttons sit on the print card: the free band between the name and the contact rows. */
 export const PRINT_DOCK = printDock(370, 954, 300);
 const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
@@ -213,7 +216,7 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
 
 function PhoneRow({ icon, label, value, note, last, tight, p }: { icon: keyof typeof ICONS; label: string; value: string; note?: string; last?: boolean; tight?: boolean; p: Palette }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", padding: tight ? "18px 0" : "26px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
+    <div style={{ display: "flex", alignItems: "center", padding: tight ? "13px 0" : "24px 0", borderBottom: last ? "none" : `2px solid ${LINE}` }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 76, height: 76, borderRadius: 999, background: p.soft, marginRight: 28 }}>
         <Icon name={icon} size={38} color={p.ink} />
       </div>
@@ -258,9 +261,9 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          // The registration line needs a taller header so the contact panel doesn't cover it (a full card has a smaller photo instead).
-          height: tight ? 790 : reg ? 870 : 830,
-          paddingTop: tight ? 60 : 76,
+          // One height for every card (the buttons sit on its edge); a full card has a smaller photo instead.
+          height: HEADER,
+          paddingTop: tight ? 56 : 66,
           backgroundImage: panelGradient(p),
           position: "relative",
           overflow: "hidden",
@@ -272,10 +275,10 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         <div style={{ display: "flex", position: "absolute", bottom: 40, left: -160, width: 420, height: 420, borderRadius: 999, background: alpha(p.highlight, 0.12) }} />
 
         <div style={{ display: "flex", fontSize: 26, fontWeight: 600, letterSpacing: 8, color: p.highlight }}>DIGITAL VISITING CARD</div>
-        <div style={{ display: "flex", marginTop: tight ? 34 : 44 }}>
-          <Photo url={photoUrl} name={d.fullName} size={tight ? 236 : 280} ring={10} fonts={fonts} p={p} />
+        <div style={{ display: "flex", marginTop: tight ? 30 : 40 }}>
+          <Photo url={photoUrl} name={d.fullName} size={tight ? 210 : 250} ring={10} fonts={fonts} p={p} />
         </div>
-        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 86), lineHeight: 1.08, color: "#FFFFFF", marginTop: tight ? 30 : 40 }}>
+        <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: nameSize(d.fullName, 86), lineHeight: 1.08, color: "#FFFFFF", marginTop: tight ? 26 : 34 }}>
           {d.fullName}
         </div>
         {spec && <div style={{ display: "flex", fontSize: 42, fontWeight: 700, color: p.highlight, marginTop: 18 }}>{spec}</div>}
@@ -283,9 +286,8 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         {reg && <div style={{ display: "flex", fontSize: 26, color: "rgba(255,255,255,0.65)", marginTop: 10, padding: "0 60px" }}>Reg. {reg}</div>}
       </div>
 
-      {/* Contact panel, overlapping the header */}
-      {/* position: relative keeps the panel above the (positioned) header in HTML previews. */}
-      <div style={{ display: "flex", padding: "0 72px", marginTop: -110, position: "relative" }}>
+      {/* Contact panel, under the buttons with clear space */}
+      <div style={{ display: "flex", padding: "0 72px", marginTop: BELOW_DOCK }}>
         <div
           style={{
             display: "flex",
@@ -293,7 +295,7 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
             width: "100%",
             background: "#FFFFFF",
             borderRadius: 40,
-            padding: "18px 48px",
+            padding: tight ? "10px 48px" : "16px 48px",
             boxShadow: "0 30px 60px -20px rgba(6,34,56,0.35)",
           }}
         >
@@ -303,11 +305,11 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
+      <div style={{ display: "flex", flex: 1, minHeight: 18 }} />
       {/* QR */}
       <div style={{ display: "flex", alignItems: "center", padding: "0 96px" }}>
         <div style={{ display: "flex", padding: 8, borderRadius: 26, border: `3px solid ${LINE}`, background: "#FFFFFF" }}>
-          <QrBlock qr={qr} px={tight ? 150 : 200} radius={18} color={p.ink} />
+          <QrBlock qr={qr} px={tight ? 128 : 190} radius={18} color={p.ink} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginLeft: 44, flex: 1 }}>
           <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 44, lineHeight: 1.12 }}>Scan to visit my website</div>
@@ -316,16 +318,15 @@ function PhoneCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTem
         </div>
       </div>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 24 }} />
-      {/* Room for the buttons (drawn at a fixed place, so the PDF links line up). */}
-      <div style={{ display: "flex", height: DOCK_SPACE }} />
-      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
+      <div style={{ display: "flex", flex: 1, minHeight: 18 }} />
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 100, background: p.panel[2], color: "#FFFFFF", fontSize: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: FOOTER, background: p.panel[2], color: "#FFFFFF", fontSize: 24 }}>
         <div style={{ display: "flex", fontFamily: fonts.display, fontWeight: 600, fontSize: 28 }}>MediReach</div>
         <div style={{ display: "flex", width: 8, height: 8, borderRadius: 999, background: p.highlight, marginLeft: 4, marginTop: 10 }} />
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(255,255,255,0.7)" }}>{ROOT_HOSTNAME}</div>
       </div>
+      {/* Buttons on the header's edge, at a fixed place (the PDF links line up with them). Last, so they draw on top. */}
+      <ActionDock actions={doctorCardActions(d)} dock={PHONE_DOCK} style={DOCK_STYLE(fonts)} links={links} />
     </div>
   );
 }

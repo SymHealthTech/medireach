@@ -8,7 +8,7 @@ import { absUrl } from "@/lib/site";
 import { qrForUrl } from "@/lib/cards/qr";
 import { resolveCardDock, resolveCardTemplate, type ReadyTemplates } from "@/templates/registry";
 import { doctorCardActions, dockSlots, siteCardActions, type CardAction, type CardDocks } from "@/templates/card/actions";
-import ClassicSiteCard, { PHONE_DOCK as SITE_PHONE_DOCK, PRINT_DOCK as SITE_PRINT_DOCK } from "@/templates/card/classic/site";
+import ClassicSiteCard, { PRINT_DOCK as SITE_PRINT_DOCK, sitePhoneDock } from "@/templates/card/classic/site";
 import { CARD_SIZE, type CardTemplateProps, type CardVariant, type PublicDoctor, type PublicEstablishment, type SiteCardTemplateProps } from "@/templates/types";
 
 /**
@@ -197,7 +197,7 @@ export async function siteCardFileResponse(
 ): Promise<Response> {
   const { type, variant } = CARD_FILES[file];
   const png = await renderSiteCardPng(site, variant);
-  const links = cardPdfLinks(variant, siteCardActions(site), { phone: SITE_PHONE_DOCK, print: SITE_PRINT_DOCK });
+  const links = cardPdfLinks(variant, siteCardActions(site), { phone: sitePhoneDock(site), print: SITE_PRINT_DOCK });
   const body = type === "application/pdf" ? await pdfFromPng(png, `${site.name} – visiting card`, variant, links) : png;
   const name = `${site.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
   return new Response(body as BodyInit, {

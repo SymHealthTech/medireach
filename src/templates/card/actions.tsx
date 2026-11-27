@@ -5,7 +5,8 @@ import { CARD_SIZE, type PublicDoctor, type PublicEstablishment } from "@/templa
 /**
  * One-tap buttons on the cards: Call, WhatsApp, Directions, Save contact and
  * Website. Every design draws them in its own colours, in a row of tiles (the
- * "dock") at a FIXED place on the phone card (1080 × 1920, `PHONE_DOCK`) and
+ * "dock") at a FIXED place on the phone card (1080 × 1920, `PHONE_DOCK`, on
+ * the bottom edge of the header, above the contact details) and
  * on the print card (1004 × 650, `PRINT_DOCK`, smaller tiles), so:
  *
  *  - on the card page (HTML) they are real links;
@@ -60,20 +61,19 @@ export interface DockStyle {
   shadow?: string;
 }
 
-const FOOTER_GAP = 30;
 export const DOCK_HEIGHT = 150;
 
 /**
- * The standard dock: full width less the side margin, just above a footer of
- * `footer` px. Designs reserve `dockSpace(footer)` at the bottom of their flow.
+ * The phone dock straddling the bottom edge of a header `header` px tall:
+ * the buttons come first, right under the name, above the contact details.
  */
-export function dockAboveFooter(footer: number, margin = 64): CardDock {
-  const { width, height } = CARD_SIZE.phone;
-  return { x: margin, y: height - footer - FOOTER_GAP - DOCK_HEIGHT, width: width - margin * 2, height: DOCK_HEIGHT, gap: 16 };
+export function dockOnHeader(header: number, margin = 64): CardDock {
+  const { width } = CARD_SIZE.phone;
+  return { x: margin, y: header - DOCK_HEIGHT / 2, width: width - margin * 2, height: DOCK_HEIGHT, gap: 16 };
 }
 
-/** Height a design keeps free at the end of its flow, just above the footer, for the dock (and the gap under it). */
-export const DOCK_SPACE = DOCK_HEIGHT + FOOTER_GAP;
+/** Space from the header's bottom edge to the content under a `dockOnHeader` dock (its lower half plus a clear gap). */
+export const BELOW_DOCK = DOCK_HEIGHT / 2 + 44;
 
 /** Tile height on the print card. */
 export const PRINT_DOCK_HEIGHT = 64;
