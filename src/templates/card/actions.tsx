@@ -46,21 +46,15 @@ export interface Rect {
 
 /** Colours and shape of a design's buttons. */
 export interface DockStyle {
-  /** The first button (Call), filled. */
-  primaryBg: string;
-  primaryText: string;
-  /** The other buttons. */
+  /**
+   * All buttons, Call included, are the same tile: the row straddles the
+   * header's edge, where a filled button blends into the header.
+   */
   tileBg: string;
   tileText: string;
   iconColor: string;
   /** Optional tile border, e.g. "2px solid #E2E5EC". */
   border?: string;
-  /**
-   * Ring round the filled first button (default white). The buttons straddle
-   * the header's edge, and a filled button in the header's own colour family
-   * would melt into it; the ring sets it apart like the white tiles beside it.
-   */
-  primaryRing?: string;
   radius: number;
   font: string;
   uppercase?: boolean;
@@ -147,8 +141,7 @@ export function ActionDock({ actions, dock, style: st, links, small }: { actions
     <div style={{ display: "flex", position: "absolute", left: dock.x, top: dock.y, width: dock.width, height: dock.height }}>
       {actions.map((a, i) => {
         const r = slots[i]!;
-        const primary = i === 0;
-        const color = primary ? st.primaryText : st.tileText;
+        const color = st.tileText;
         const box = {
           display: "flex",
           flexDirection: "column" as const,
@@ -160,16 +153,16 @@ export function ActionDock({ actions, dock, style: st, links, small }: { actions
           width: r.width,
           height: r.height,
           borderRadius: radius,
-          background: primary ? st.primaryBg : st.tileBg,
+          background: st.tileBg,
           boxSizing: "border-box" as const,
-          ...(primary ? { border: `${small ? 3 : 6}px solid ${st.primaryRing ?? "#FFFFFF"}` } : st.border ? { border: st.border } : {}),
+          ...(st.border ? { border: st.border } : {}),
           ...(st.shadow && !small ? { boxShadow: st.shadow } : {}),
           color,
           fontFamily: st.font,
           textDecoration: "none",
         };
         const children = [
-          <Icon key="icon" name={a.icon} size={small ? 24 : 52} color={primary ? st.primaryText : st.iconColor} />,
+          <Icon key="icon" name={a.icon} size={small ? 24 : 52} color={st.iconColor} />,
           <div key="label" style={{ display: "flex", marginTop: small ? 5 : 14, fontSize: labelSize(a.label, st.uppercase, small), fontWeight: 700, letterSpacing: st.uppercase ? (small ? 0.5 : 1) : 0, color }}>
             {st.uppercase ? a.label.toUpperCase() : a.label}
           </div>,

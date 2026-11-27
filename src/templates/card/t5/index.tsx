@@ -36,8 +36,6 @@ export const PHONE_DOCK = dockOnHeader(HEADER, 80);
 /** Where the buttons sit on the print card: the free band between the name and the contact rows. */
 export const PRINT_DOCK = printDock(338, 946, 226);
 const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
-  primaryBg: CRIMSON,
-  primaryText: "#FFFFFF",
   tileBg: ICE,
   tileText: SLATE,
   iconColor: CRIMSON,
