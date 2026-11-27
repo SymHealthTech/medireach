@@ -11,6 +11,7 @@ import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admi
 import { ConfirmButton, FormDialog } from "@/components/admin/FormDialog";
 import { Pill } from "@/components/admin/StatusBadge";
 import { ADMIN_ROLES, GST_MODES, type AdminRole, type PriceKey } from "@/lib/constants";
+import { LoginDetailsDialog, PasswordInput, type LoginDetails } from "./LoginDetails";
 import {
   createAdminUserAction,
   deleteAdminUserAction,
@@ -217,42 +218,48 @@ function UserFieldsForm({ v, setV, errors, idPrefix, lockRole }: { v: UserFields
 export function NewAdminUserButton({ role = "sales", label = "Add user", lockRole = false }: { role?: AdminRole; label?: string; lockRole?: boolean }) {
   const blank = { name: "", email: "", mobile: "", role, password: "" };
   const [v, setV] = useState(blank);
+  const [details, setDetails] = useState<LoginDetails | null>(null);
   return (
-    <FormDialog
-      trigger={
-        <Button>
-          <Plus /> {label}
-        </Button>
-      }
-      title={v.role === "sales" ? "Add sales executive" : "Add super admin"}
-      description={
-        v.role === "sales"
-          ? "They get a staff ID (e.g. MRS-1001) to log in with, and this password. Share both privately. They can't change the password; you can reset it any time."
-          : "A super admin can do everything, including payments, publishing and managing users."
-      }
-      submitLabel="Add"
-      successMessage="User added"
-      onSubmit={() => createAdminUserAction(v)}
-      onSuccess={(d) => {
-        toast.success(`${d.name}: log in with ${d.loginId}`, { description: "Share the login ID and password privately.", duration: 20000 });
-        setV(blank);
-      }}
-    >
-      {(errors) => (
-        <>
-          <UserFieldsForm v={v} setV={(x) => setV({ ...v, ...x })} errors={errors} idPrefix="u" lockRole={lockRole} />
-          <Field label="Password" htmlFor="u-pw" required help="At least 12 characters." error={errors.password}>
-            <Input id="u-pw" type="text" autoComplete="new-password" value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} />
-          </Field>
-        </>
-      )}
-    </FormDialog>
+    <>
+      <FormDialog
+        trigger={
+          <Button>
+            <Plus /> {label}
+          </Button>
+        }
+        title={v.role === "sales" ? "Add sales executive" : "Add super admin"}
+        description={
+          v.role === "sales"
+            ? "They get a staff ID (e.g. MRS-1001) to log in with, and this password. Share both privately. They can't change the password; you can reset it any time."
+            : "A super admin can do everything, including payments, publishing and managing users."
+        }
+        submitLabel="Add"
+        successMessage="User added"
+        onSubmit={() => createAdminUserAction(v)}
+        onSuccess={(d) => {
+          // Show the login details once, to copy or send on WhatsApp (the password can't be read back later).
+          setDetails({ name: d.name, loginId: d.loginId, password: v.password, mobile: v.mobile });
+          setV(blank);
+        }}
+      >
+        {(errors) => (
+          <>
+            <UserFieldsForm v={v} setV={(x) => setV({ ...v, ...x })} errors={errors} idPrefix="u" lockRole={lockRole} />
+            <Field label="Password" htmlFor="u-pw" required help="At least 12 characters. Generate makes a strong one. You'll see it again on the next screen to share." error={errors.password}>
+              <PasswordInput id="u-pw" value={v.password} onChange={(password) => setV({ ...v, password })} />
+            </Field>
+          </>
+        )}
+      </FormDialog>
+      <LoginDetailsDialog details={details} onClose={() => setDetails(null)} />
+    </>
   );
 }
 
 export function AdminUserActions({ user }: { user: AdminUserRow }) {
   const [v, setV] = useState({ name: user.name, email: user.email, mobile: user.mobile, role: user.role, active: user.active });
   const [pw, setPw] = useState("");
+  const [details, setDetails] = useState<LoginDetails | null>(null);
   return (
     <div className="flex gap-1">
       <FormDialog
@@ -262,7 +269,7 @@ export function AdminUserActions({ user }: { user: AdminUserRow }) {
           </Button>
         }
         title={`Edit ${user.name}`}
-        description={user.staffId ? `Staff ID ${user.staffId} (used to log in; it never changes).` : undefined}
+        description={`${user.staffId ? `Staff ID ${user.staffId} (used to log in; it never changes). ` : ""}To give them a password, use the key button (New password).`}
         successMessage="User updated"
         onSubmit={() => updateAdminUserAction({ id: user.id, ...v })}
       >
@@ -280,18 +287,22 @@ export function AdminUserActions({ user }: { user: AdminUserRow }) {
           </Button>
         }
         title={`New password for ${user.name}`}
-        description={user.staffId ? `They log in with ${user.staffId} and this password.` : undefined}
+        description={`${user.staffId ? `They log in with ${user.staffId}. ` : ""}Passwords can't be shown once saved (they are stored one-way), so set a new one here and share it.`}
         submitLabel="Set password"
         successMessage="Password updated"
         onSubmit={() => resetAdminPasswordAction({ id: user.id, password: pw })}
-        onSuccess={() => setPw("")}
+        onSuccess={() => {
+          setDetails({ name: user.name, loginId: user.staffId || user.email, password: pw, mobile: user.mobile });
+          setPw("");
+        }}
       >
         {(errors) => (
-          <Field label="New password" htmlFor={`pw-${user.id}`} help="At least 12 characters." error={errors.password}>
-            <Input id={`pw-${user.id}`} type="text" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+          <Field label="New password" htmlFor={`pw-${user.id}`} help="At least 12 characters. The old password stops working at once." error={errors.password}>
+            <PasswordInput id={`pw-${user.id}`} value={pw} onChange={setPw} />
           </Field>
         )}
       </FormDialog>
+      <LoginDetailsDialog details={details} onClose={() => setDetails(null)} />
       {!user.isMe && (
         <ConfirmButton
           trigger={
