@@ -10,9 +10,9 @@ import { SAMPLE_PUBLIC_DOCTORS } from "@/fixtures/sample-public";
 import { SAMPLE_SITES } from "@/fixtures/sample-sites";
 import { TEMPLATE_KEYS } from "@/lib/constants";
 import { cardDocks, registry, resolveCardDock, resolveCardTemplate } from "@/templates/registry";
-import { DOCK_HEIGHT, doctorCardActions, dockSlots, siteCardActions } from "@/templates/card/actions";
+import { DOCK_HEIGHT, PRINT_DOCK_HEIGHT, doctorCardActions, dockSlots, siteCardActions } from "@/templates/card/actions";
 import ClassicCard from "@/templates/card/classic";
-import ClassicSiteCard, { PHONE_DOCK as SITE_DOCK } from "@/templates/card/classic/site";
+import ClassicSiteCard, { PHONE_DOCK as SITE_DOCK, PRINT_DOCK as SITE_PRINT_DOCK } from "@/templates/card/classic/site";
 import { CARD_SIZE, type PublicDoctor } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
 
@@ -83,17 +83,21 @@ describe("card buttons", () => {
     expect(siteCardActions({ ...s, emergencyPhone: "919800000001" }).map((a) => a.key)).not.toContain("emergency");
   });
 
-  it("sits inside the phone card, above the footer, without overlapping tiles", () => {
-    const { width, height } = CARD_SIZE.phone;
-    for (const dock of [...Object.values(cardDocks), SITE_DOCK]) {
-      const slots = dockSlots(dock, 5);
-      expect(slots).toHaveLength(5);
-      for (const [i, r] of slots.entries()) {
-        expect(r.x).toBeGreaterThanOrEqual(0);
-        expect(r.x + r.width).toBeLessThanOrEqual(width);
-        expect(r.y + r.height).toBeLessThanOrEqual(height - 90);
-        expect(r.height).toBe(DOCK_HEIGHT);
-        if (i) expect(r.x).toBeGreaterThan(slots[i - 1]!.x + slots[i - 1]!.width);
+  it("sit inside the phone and print cards without overlapping tiles", () => {
+    const all = [...Object.values(cardDocks), { phone: SITE_DOCK, print: SITE_PRINT_DOCK }];
+    for (const variant of ["phone", "print"] as const) {
+      const { width, height } = CARD_SIZE[variant];
+      for (const docks of all) {
+        const slots = dockSlots(docks[variant], 5);
+        expect(slots).toHaveLength(5);
+        for (const [i, r] of slots.entries()) {
+          expect(r.x).toBeGreaterThanOrEqual(0);
+          expect(r.x + r.width).toBeLessThanOrEqual(width);
+          // Phone: above the footer. Print: in the band between the name and the contact rows.
+          expect(r.y + r.height).toBeLessThanOrEqual(variant === "phone" ? height - 90 : 400);
+          expect(r.height).toBe(variant === "phone" ? DOCK_HEIGHT : PRINT_DOCK_HEIGHT);
+          if (i) expect(r.x).toBeGreaterThan(slots[i - 1]!.x + slots[i - 1]!.width);
+        }
       }
     }
   });
@@ -102,6 +106,8 @@ describe("card buttons", () => {
     for (const key of TEMPLATE_KEYS) {
       const Card = registry.card[key];
       const doctor: PublicDoctor = { ...d, photo: undefined, portfolioTemplateId: key };
+      const print = renderToStaticMarkup(createElement(Card, cardProps(doctor, "print", "html")));
+      expect(print.toLowerCase(), key).toContain(">directions<"); // the print card has them too
       const live = renderToStaticMarkup(createElement(Card, cardProps(doctor, "phone", "html", { links: true })));
       expect(live, key).toContain(`href="tel:+${d.phone}"`);
       expect(live, key).toContain("https://wa.me/");
@@ -119,31 +125,30 @@ describe("clickable PDFs", () => {
   // Satori can't fetch the bundled demo photo in tests.
   const d: PublicDoctor = { ...DEMO_PUBLIC_DOCTORS["kunal-bhatia"]!, photo: undefined };
 
-  it("puts a working link over every button of the full card PDF", async () => {
-    const links = await pdfLinks(await renderCardPdf(d, undefined, "phone"));
-    const actions = doctorCardActions(d);
-    expect(links.map((l) => l.url)).toEqual(actions.map((a) => a.href));
-    // Same place as the drawn tiles: card pixels scaled to the 90 × 160 mm page, y flipped.
-    const scale = ((90 / 25.4) * 72) / CARD_SIZE.phone.width;
-    const pageHeight = (160 / 25.4) * 72;
-    const expected = cardPdfLinks("phone", d.shareUrl, actions, resolveCardDock(d.portfolioTemplateId));
-    for (const [i, l] of links.entries()) {
-      const e = expected[i]!;
-      expect(l.rect[0]).toBeCloseTo(e.x * scale, 1);
-      expect(l.rect[3]).toBeCloseTo(pageHeight - e.y * scale, 1);
-    }
-  }, 60_000);
-
-  it("makes the print PDF open the website", async () => {
-    const links = await pdfLinks(await renderCardPdf(d, undefined, "print"));
-    expect(links).toHaveLength(1);
-    expect(links[0]!.url).toBe(d.shareUrl);
-  }, 60_000);
+  // Same place as the drawn tiles: card pixels scaled to the page (phone 90 × 160 mm, print 85 × 55 mm), y flipped.
+  const PAGE_MM = { phone: [90, 160], print: [85, 55] } as const;
+  for (const variant of ["phone", "print"] as const) {
+    it(`puts a working link over every button of the ${variant} PDF`, async () => {
+      const links = await pdfLinks(await renderCardPdf(d, undefined, variant));
+      const actions = doctorCardActions(d);
+      expect(links.map((l) => l.url)).toEqual(actions.map((a) => a.href));
+      const scale = ((PAGE_MM[variant][0] / 25.4) * 72) / CARD_SIZE[variant].width;
+      const pageHeight = (PAGE_MM[variant][1] / 25.4) * 72;
+      const expected = cardPdfLinks(variant, actions, resolveCardDock(d.portfolioTemplateId));
+      for (const [i, l] of links.entries()) {
+        const e = expected[i]!;
+        expect(l.rect[0]).toBeCloseTo(e.x * scale, 1);
+        expect(l.rect[3]).toBeCloseTo(pageHeight - e.y * scale, 1);
+      }
+    }, 60_000);
+  }
 
   it("does the same for clinic and hospital cards", async () => {
     const s = { ...SAMPLE_SITES["small-hospital"]!, logo: undefined };
-    const res = await siteCardFileResponse(s, "phone.pdf", { cacheControl: "no-store", download: false });
-    const links = await pdfLinks(new Uint8Array(await res.arrayBuffer()));
-    expect(links.map((l) => l.url)).toEqual(siteCardActions(s).map((a) => a.href));
+    for (const file of ["phone.pdf", "print.pdf"] as const) {
+      const res = await siteCardFileResponse(s, file, { cacheControl: "no-store", download: false });
+      const links = await pdfLinks(new Uint8Array(await res.arrayBuffer()));
+      expect(links.map((l) => l.url), file).toEqual(siteCardActions(s).map((a) => a.href));
+    }
   }, 60_000);
 });

@@ -15,7 +15,7 @@ import { CARD_SIZE, type PublicEstablishment } from "@/templates/types";
  * also {subdomain}.medireach.co.in/card; noindex) and its downloads
  * (phone.png, phone.pdf, print.png, print.pdf). The page shows the phone card
  * in the colours of the site's design, with working Call / WhatsApp /
- * Directions / Website buttons (they work in phone.pdf too).
+ * Directions / Website buttons (they work in both PDFs too).
  */
 
 type Params = { city: string; slug: string };

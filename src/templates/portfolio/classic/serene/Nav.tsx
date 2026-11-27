@@ -76,7 +76,8 @@ export function Nav({
               <span className="absolute inset-1 rounded-full bg-sc-blush transition group-hover:bg-sc-pink/40" />
               <span className="relative">{monogram}</span>
             </span>
-            <span className="min-w-0 leading-tight">
+            {/* Phones: the hero already shows the name, so the bar shows it only after scrolling. */}
+            <span className={cn("min-w-0 leading-tight transition-[opacity,visibility] duration-300", !(scrolled || open) && "max-md:invisible max-md:opacity-0")}>
               <span className="block truncate font-display text-[19px] font-semibold text-sc-plum">{name}</span>
               {tagline && <span className="block truncate text-xs font-medium uppercase tracking-[0.18em] text-sc-rose">{tagline}</span>}
             </span>

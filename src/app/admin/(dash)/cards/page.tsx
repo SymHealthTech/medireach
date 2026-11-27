@@ -84,7 +84,7 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
       <CardTabs active="doctor" />
       <p className="max-w-2xl text-muted-foreground">
         Each doctor&apos;s card, in the same design as their website. The QR opens their website address (or short link). Download the
-        print PDF for the printer, the phone PNG to share on WhatsApp, or the full card PDF (its buttons work).
+        print PDF for the printer, the phone PNG to share on WhatsApp, or the full card PDF. The buttons work in both PDFs.
       </p>
       <ListToolbar placeholder="Search doctors…" />
       {cards.length === 0 ? (
@@ -171,7 +171,7 @@ async function OneDoctorCard({ id }: { id: string }) {
           <div className="flex flex-wrap gap-2">
             {(["print.pdf", "phone.pdf", "print.png", "phone.png"] as const).map((f) => (
               <a key={f} className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/${id}/${f}?download=1`}>
-                {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card, buttons work)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+                {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
               </a>
             ))}
           </div>

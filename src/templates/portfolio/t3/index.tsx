@@ -51,7 +51,7 @@ import { ServicesRail } from "./ServicesRail";
  * → health tips → gallery → FAQ → footer.
  *
  * Every section hides itself when its data is empty. Presentation only: the
- * H1, intro sentence, nearby doctors and JSON-LD come from the shared
+ * H1, intro sentence, and JSON-LD come from the shared
  * wrapper. Shared widgets from design 2 (form, timings, health tips) are
  * re-coloured by `.me-theme` (globals.css).
  *
@@ -810,11 +810,6 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
           </Section>
         )}
 
-        {seo.nearby && (
-          <section className="bg-me-ivory px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-[1280px]">{seo.nearby}</div>
-          </section>
-        )}
       </main>
 
       {/* ── Footer ── */}

@@ -179,9 +179,10 @@ design never touches customer data:
    `variant="phone"` (1080 × 1920)). A doctor's card is always the card slot
    with the same key as their website design (there is no separate card
    choice); clinic and hospital cards take the site's design colours. Phone
-   cards draw the one-tap buttons with `ActionDock` at a fixed `PHONE_DOCK`
-   (`templates/card/actions.tsx`), so the PDF can put working links over them;
-   export it from the card module and list it in `cardDocks`. Place `seo.heading` and `seo.intro` in your
+   and print cards draw the one-tap buttons with `ActionDock` at a fixed
+   `PHONE_DOCK` / `PRINT_DOCK` (`templates/card/actions.tsx`), so the PDFs can
+   put working links over them; export both from the card module (the registry
+   reads them for `cardDocks`). Place `seo.heading` and `seo.intro` in your
    layout: metadata, JSON-LD, breadcrumbs and quick facts are added by the
    shared wrapper, so SEO stays identical across designs. Clinic and hospital
    designs read the specialty theme's colours from the `--theme-primary`,

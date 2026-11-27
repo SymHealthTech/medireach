@@ -138,7 +138,7 @@ export interface PublicDoctor {
   publishedAt?: string;
 }
 
-/** Small card used on hubs and "Other doctors nearby". */
+/** Small card used on hubs (city, specialty and area pages). */
 export interface DoctorCardData {
   id: string;
   url: string;
@@ -165,8 +165,6 @@ export interface ProfileSeoSlots {
   heading: ReactNode;
   /** The auto-generated factual intro sentence. */
   intro: ReactNode;
-  /** "Other doctors nearby" (internal links); templates place it before their footer. */
-  nearby?: ReactNode;
 }
 
 export interface PortfolioTemplateProps {

@@ -90,10 +90,12 @@ describe("hospital visiting card shows what the admin editor asks", () => {
 
   it("folds a shared WhatsApp into the call label, and keeps a single number unlabelled on print", () => {
     const shared = { ...h, emergencyPhone: undefined, phones: ["919800000002"], whatsapp: "919800000002" };
-    expect(card(shared, "print")).toContain("call or whatsapp");
+    expect(card(shared, "print")).toMatch(/margin-right:10px">call or whatsapp</);
     expect(card(shared, "phone")).toContain("call or whatsapp");
     const single = card({ ...h, emergencyPhone: undefined, phones: ["912027000002"], whatsapp: undefined }, "print");
-    expect(single).not.toContain(">call<");
+    // No "Call" label beside the number (the Call button below it is separate).
+    expect(single).not.toMatch(/margin-right:10px">call</);
+    expect(single).toContain(">call<"); // the button
     expect(single).not.toContain("emergency");
   });
 });

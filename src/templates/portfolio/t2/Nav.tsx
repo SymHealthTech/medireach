@@ -61,7 +61,8 @@ export function Nav({
     >
       <div className="mx-auto flex h-[72px] max-w-[1240px] items-center gap-4 px-4 sm:px-6">
         <a href="#top" className="flex min-w-0 items-center gap-3" onClick={() => setOpen(false)}>
-          <span className="min-w-0 leading-tight">
+          {/* Phones: the hero already shows the name, so the bar shows it only once it turns white. */}
+          <span className={cn("min-w-0 leading-tight transition-[opacity,visibility] duration-300", !light && "max-md:invisible max-md:opacity-0")}>
             <span className={cn("block truncate text-base font-extrabold tracking-tight transition-colors sm:text-lg", light ? "text-cm-navy" : "text-white")}>{name}</span>
             {tagline && <span className={cn("block truncate text-xs font-medium transition-colors", light ? "text-cm-teal" : "text-white/75")}>{tagline}</span>}
           </span>

@@ -3,7 +3,7 @@ import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
 import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -30,6 +30,8 @@ const LINE = "#E0E6EE";
 const FOOTER = 96;
 /** Where the buttons sit on the phone card (also used for the PDF links). */
 export const PHONE_DOCK = dockAboveFooter(FOOTER, 80);
+/** Where the buttons sit on the print card: the free band between the name and the contact rows. */
+export const PRINT_DOCK = printDock(338, 946, 226);
 const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
   primaryBg: CRIMSON,
   primaryText: "#FFFFFF",
@@ -116,7 +118,7 @@ function Row({ icon, children, strong }: { icon: keyof typeof ICONS; children: R
   );
 }
 
-function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
+function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
   const clinic = d.clinics[0];
   const reg = [d.registration.council, d.registration.number].filter(Boolean).join(" · ");
@@ -167,6 +169,8 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         {reg && <div style={{ display: "flex", fontSize: 14, color: MUTED, marginTop: 14 }}>Reg. {clip(reg, 62)}</div>}
       </div>
       <div style={{ display: "flex", position: "absolute", right: 0, top: 0, width: 10, height, background: CRIMSON }} />
+      {/* Buttons, at a fixed place in the free band (the print PDF puts links on them). */}
+      <ActionDock actions={doctorCardActions(d)} dock={PRINT_DOCK} style={DOCK_STYLE(fonts)} links={links} small />
     </div>
   );
 }

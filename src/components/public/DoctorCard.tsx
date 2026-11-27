@@ -2,7 +2,7 @@ import { ChevronRight } from "lucide-react";
 import { DoctorAvatar } from "@/components/public/DoctorAvatar";
 import type { DoctorCardData } from "@/templates/types";
 
-/** Compact doctor card for hubs and "Other doctors nearby". No ratings, ever. */
+/** Compact doctor card for hubs (city, specialty and area pages). No ratings, ever. */
 export function DoctorCard({ doctor }: { doctor: DoctorCardData }) {
   const meta = [doctor.primarySpecialty?.name, doctor.area?.name].filter(Boolean).join(" · ");
   return (

@@ -128,7 +128,7 @@ export function DoctorCardView({
   const downloads = [
     { href: file("phone.png"), icon: ImageIcon, title: "Card image", meta: "PNG · 1080 × 1920", note: "For WhatsApp status and sharing" },
     { href: file("phone.pdf"), icon: FileText, title: "Full card PDF", meta: "PDF · whole card", note: "The whole card as a PDF; its Call, WhatsApp, Directions, Save and Website buttons work" },
-    { href: file("print.pdf"), icon: FileText, title: "Print-ready PDF", meta: "PDF · 85 × 55 mm", note: "Send to any printer" },
+    { href: file("print.pdf"), icon: FileText, title: "Print-ready PDF", meta: "PDF · 85 × 55 mm", note: "Send to any printer; its buttons also work on screen" },
     { href: file("print.png"), icon: Download, title: "Print card image", meta: "PNG · 300 dpi", note: "For designers and printers" },
   ];
 

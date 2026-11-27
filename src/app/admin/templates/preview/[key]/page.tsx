@@ -66,7 +66,7 @@ export default async function TemplatePreviewPage({
   return (
     <>
       {banner}
-      <ProfileView doctor={{ ...sample, portfolioTemplateId: key }} nearby={[]} />
+      <ProfileView doctor={{ ...sample, portfolioTemplateId: key }} />
     </>
   );
 }

@@ -67,7 +67,7 @@ import { Divider, Mandala, Rosette } from "./Ornaments";
  *
  * Every section hides itself when its data is empty. Photos follow the
  * specialty (templates/shared/specialty-photos.ts). Presentation only: H1,
- * intro, nearby doctors and JSON-LD come from the shared wrapper. Shared
+ * intro, and JSON-LD come from the shared wrapper. Shared
  * widgets from design 2 are re-coloured by `.wh-theme` (globals.css).
  *
  * NMC: no ratings, reviews, testimonials, patient counts or superlatives.
@@ -762,11 +762,6 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
           </Section>
         )}
 
-        {seo.nearby && (
-          <section className="bg-wh-paper px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-[1180px]">{seo.nearby}</div>
-          </section>
-        )}
       </main>
 
       {/* ── Footer ── */}

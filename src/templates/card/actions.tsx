@@ -3,9 +3,10 @@ import { Icon, type ICONS } from "@/templates/card/parts";
 import { CARD_SIZE, type PublicDoctor, type PublicEstablishment } from "@/templates/types";
 
 /**
- * One-tap buttons on the phone card: Call, WhatsApp, Directions, Save contact
- * and Website. Every design draws them in its own colours, in a row of tiles
- * (the "dock") at a FIXED place on the 1080 × 1920 card, so:
+ * One-tap buttons on the cards: Call, WhatsApp, Directions, Save contact and
+ * Website. Every design draws them in its own colours, in a row of tiles (the
+ * "dock") at a FIXED place on the phone card (1080 × 1920, `PHONE_DOCK`) and
+ * on the print card (1004 × 650, `PRINT_DOCK`, smaller tiles), so:
  *
  *  - on the card page (HTML) they are real links;
  *  - in the PNG they are part of the picture;
@@ -74,6 +75,20 @@ export function dockAboveFooter(footer: number, margin = 64): CardDock {
 /** Height a design keeps free at the end of its flow, just above the footer, for the dock (and the gap under it). */
 export const DOCK_SPACE = DOCK_HEIGHT + FOOTER_GAP;
 
+/** Tile height on the print card. */
+export const PRINT_DOCK_HEIGHT = 64;
+
+/** A print card dock: a row of small tiles from `x` to `right`, at `y` (in the card's free band between the name and the contact rows). */
+export function printDock(x: number, right: number, y: number): CardDock {
+  return { x, y, width: right - x, height: PRINT_DOCK_HEIGHT, gap: 10 };
+}
+
+/** The phone and print docks of one card design. */
+export interface CardDocks {
+  phone: CardDock;
+  print: CardDock;
+}
+
 /** Each tile's rectangle (card pixels). Shared by the drawing and the PDF links. */
 export function dockSlots(dock: CardDock, n: number): Rect[] {
   if (n <= 0) return [];
@@ -82,7 +97,8 @@ export function dockSlots(dock: CardDock, n: number): Rect[] {
 }
 
 /** Label size that fits a tile (uppercase is wider). */
-const labelSize = (label: string, upper?: boolean) => (upper ? (label.length > 8 ? 21 : 23) : label.length > 8 ? 25 : 27);
+const labelSize = (label: string, upper?: boolean, small?: boolean) =>
+  small ? (upper ? (label.length > 8 ? 12 : 13) : label.length > 8 ? 14 : 15) : upper ? (label.length > 8 ? 21 : 23) : label.length > 8 ? 25 : 27;
 
 const abs = (url: string) => (url.startsWith("/") ? absUrl(url) : url);
 const waLink = (number: string, text: string) => `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
@@ -117,8 +133,10 @@ export function siteCardActions(s: PublicEstablishment): CardAction[] {
  * is position: relative). `links` makes them real links (card page only).
  * No fragments: Satori draws nothing for a component that returns one.
  */
-export function ActionDock({ actions, dock, style: st, links }: { actions: CardAction[]; dock: CardDock; style: DockStyle; links?: boolean }) {
+export function ActionDock({ actions, dock, style: st, links, small }: { actions: CardAction[]; dock: CardDock; style: DockStyle; links?: boolean; small?: boolean }) {
   const slots = dockSlots(dock, actions.length);
+  // The print card's tiles are small: no shadow, smaller icon and label, tighter corners.
+  const radius = small ? Math.round(st.radius * 0.4) : st.radius;
   return (
     <div style={{ display: "flex", position: "absolute", left: dock.x, top: dock.y, width: dock.width, height: dock.height }}>
       {actions.map((a, i) => {
@@ -135,17 +153,17 @@ export function ActionDock({ actions, dock, style: st, links }: { actions: CardA
           top: r.y - dock.y,
           width: r.width,
           height: r.height,
-          borderRadius: st.radius,
+          borderRadius: radius,
           background: primary ? st.primaryBg : st.tileBg,
           ...(st.border && !primary ? { border: st.border } : {}),
-          ...(st.shadow ? { boxShadow: st.shadow } : {}),
+          ...(st.shadow && !small ? { boxShadow: st.shadow } : {}),
           color,
           fontFamily: st.font,
           textDecoration: "none",
         };
         const children = [
-          <Icon key="icon" name={a.icon} size={52} color={primary ? st.primaryText : st.iconColor} />,
-          <div key="label" style={{ display: "flex", marginTop: 14, fontSize: labelSize(a.label, st.uppercase), fontWeight: 700, letterSpacing: st.uppercase ? 1 : 0, color }}>
+          <Icon key="icon" name={a.icon} size={small ? 24 : 52} color={primary ? st.primaryText : st.iconColor} />,
+          <div key="label" style={{ display: "flex", marginTop: small ? 5 : 14, fontSize: labelSize(a.label, st.uppercase, small), fontWeight: 700, letterSpacing: st.uppercase ? (small ? 0.5 : 1) : 0, color }}>
             {st.uppercase ? a.label.toUpperCase() : a.label}
           </div>,
         ];

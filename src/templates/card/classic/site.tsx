@@ -4,7 +4,7 @@ import { openDaysSummary } from "@/lib/timings";
 import { DevBanner } from "@/templates/DevBanner";
 import { CARD_SIZE, type SiteCardTemplateProps } from "@/templates/types";
 import { getTheme } from "@/themes/specialty";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, siteCardActions, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, printDock, siteCardActions, type DockStyle } from "@/templates/card/actions";
 import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 
 /**
@@ -31,6 +31,8 @@ const TEXT = "#1F2933";
 const FOOTER = 100;
 /** Where the buttons sit on the phone card (also used for the PDF links). */
 export const PHONE_DOCK = dockAboveFooter(FOOTER, 72);
+/** Where the buttons sit on the print card: the free band between the name and the contact rows. */
+export const PRINT_DOCK = printDock(346, 958, 268);
 const dockStyle = (primary: string, soft: string, fonts: SiteCardTemplateProps["fonts"]): DockStyle => ({
   primaryBg: primary,
   primaryText: "#FFFFFF",
@@ -113,7 +115,7 @@ function PrintRow({ icon, children, strong, soft, primary, label }: { icon: keyo
   );
 }
 
-function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateProps) {
+function PrintCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
   const { primary, accent, soft } = sitePalette(s);
   const numbers = cardNumbers(s);
@@ -121,7 +123,7 @@ function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
   const labelled = numbers.length > 1 || numbers.some((n) => n.label !== "Call");
   const what = typeName(s);
   return (
-    <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body }}>
+    <div style={{ width, height, display: "flex", flexDirection: "column", background: PAPER, color: TEXT, fontFamily: fonts.body, position: "relative" }}>
       {devBanner && <DevBanner name={devBanner} />}
       <div style={{ display: "flex", flex: 1 }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 300, background: primary, position: "relative", overflow: "hidden" }}>
@@ -154,6 +156,8 @@ function PrintCard({ site: s, qr, fonts, logoUrl, devBanner }: SiteCardTemplateP
         </div>
       </div>
       <div style={{ display: "flex", height: 10, background: accent }} />
+      {/* Buttons, at a fixed place in the free band (the print PDF puts links on them). */}
+      <ActionDock actions={siteCardActions(s)} dock={PRINT_DOCK} style={dockStyle(primary, soft, fonts)} links={links} small />
     </div>
   );
 }

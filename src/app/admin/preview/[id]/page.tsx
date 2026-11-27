@@ -29,7 +29,7 @@ export default async function PreviewPage({ params }: { params: Promise<{ id: st
       <div className="flex items-center justify-center gap-2 bg-marigold px-4 py-2 text-center text-sm font-semibold text-white">
         <Eye className="size-4" /> Preview — {doc.status === "published" ? "this page is live" : `not published (${doc.status})`}
       </div>
-      <ProfileView doctor={doctor} nearby={[]} ready={await getReadyTemplates()} />
+      <ProfileView doctor={doctor} ready={await getReadyTemplates()} />
     </>
   );
 }

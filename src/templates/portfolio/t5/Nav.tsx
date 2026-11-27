@@ -53,7 +53,8 @@ export function Nav({ name, tagline, links }: { name: string; tagline?: string; 
             <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-sp-crimson text-white">
               <HeartPulse className="sp-beat size-5" strokeWidth={2.2} />
             </span>
-            <span className="min-w-0 leading-tight">
+            {/* Phones: the hero already shows the name, so the bar shows it only after scrolling. */}
+            <span className={cn("min-w-0 leading-tight transition-[opacity,visibility] duration-300", !(scrolled || open) && "max-md:invisible max-md:opacity-0")}>
               <span className="block truncate text-[17px] font-bold tracking-tight text-sp-slate">{name}</span>
               {tagline && <span className="block truncate text-xs font-semibold text-sp-cyan">{tagline}</span>}
             </span>

@@ -3,7 +3,7 @@ import { ROOT_HOSTNAME } from "@/lib/site";
 import { openDaysSummary } from "@/lib/timings";
 import { clip, Icon, QrBlock, shortUrl, type ICONS } from "@/templates/card/parts";
 import { DevBanner } from "@/templates/DevBanner";
-import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, type DockStyle } from "@/templates/card/actions";
+import { ActionDock, DOCK_SPACE, dockAboveFooter, doctorCardActions, printDock, type DockStyle } from "@/templates/card/actions";
 import { CARD_SIZE, type CardTemplateProps } from "@/templates/types";
 
 /**
@@ -36,6 +36,8 @@ const band = `linear-gradient(135deg, ${NAVY} 0%, ${NAVY_2} 70%, #164A7A 100%)`;
 const FOOTER = 96;
 /** Where the buttons sit on the phone card (also used for the PDF links). */
 export const PHONE_DOCK = dockAboveFooter(FOOTER, 70);
+/** Where the buttons sit on the print card: the free band between the name and the contact rows. */
+export const PRINT_DOCK = printDock(56, 736, 272);
 const DOCK_STYLE = (fonts: CardTemplateProps["fonts"]): DockStyle => ({
   primaryBg: TEAL,
   primaryText: "#FFFFFF",
@@ -113,7 +115,7 @@ function Row({ icon, children, strong }: { icon: keyof typeof ICONS; children: R
   );
 }
 
-function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplateProps) {
+function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner, links }: CardTemplateProps) {
   const { width, height } = CARD_SIZE.print;
   const clinic = d.clinics[0];
   const nums = numbers(d);
@@ -140,7 +142,7 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
 
       {/* Contact rows + QR */}
       <div style={{ display: "flex", flex: 1, padding: "16px 56px 30px 56px" }}>
-        <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "flex-end" }}>
           {nums.map((n) => (
             <Row key={n.label} icon={n.icon} strong={n.icon === "phone"}>
               {formatPhone(n.value)}
@@ -158,6 +160,8 @@ function PrintCard({ doctor: d, qr, fonts, photoUrl, devBanner }: CardTemplatePr
         </div>
       </div>
       <div style={{ display: "flex", height: 10, backgroundImage: `linear-gradient(90deg, ${TEAL}, ${BLUE})` }} />
+      {/* Buttons, at a fixed place in the free band (the print PDF puts links on them). */}
+      <ActionDock actions={doctorCardActions(d)} dock={PRINT_DOCK} style={DOCK_STYLE(fonts)} links={links} small />
     </div>
   );
 }

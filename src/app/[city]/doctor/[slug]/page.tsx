@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LAPSED_METADATA, LapsedNotice } from "@/components/public/LapsedNotice";
 import { ProfileView } from "@/components/public/ProfileView";
-import { getCityDoctorCards, getPublishedDoctor, getPublishedRoutes } from "@/lib/public/data";
+import { getPublishedDoctor, getPublishedRoutes } from "@/lib/public/data";
 import { getReadyTemplates } from "@/lib/public/templates";
-import { primaryClinic, profileDescription, profileTitle } from "@/lib/seo/profile";
+import { profileDescription, profileTitle } from "@/lib/seo/profile";
 import { SLUG_RE } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
 
@@ -17,8 +17,9 @@ import type { PublicDoctor } from "@/templates/types";
  * unpaid after the grace period) → "temporarily unavailable" notice, noindex.
  *
  * This file is the shared SEO wrapper: metadata, JSON-LD, H1, intro,
- * breadcrumbs, quick facts and nearby doctors are rendered here, identically
- * for every template. The template only lays out the content.
+ * breadcrumbs and quick facts are rendered here, identically for every
+ * template. The template only lays out the content. It is the doctor's own
+ * website, so it lists no other doctors.
  */
 
 export const revalidate = 86400; // safety net; on-demand revalidation is primary
@@ -62,18 +63,5 @@ export default async function DoctorProfilePage({ params }: { params: Promise<Pa
   if (!d) notFound();
   if (d.lapsed) return <LapsedNotice />;
 
-  const clinic = primaryClinic(d);
-  const nearby =
-    clinic && d.primarySpecialty
-      ? (await getCityDoctorCards(d.citySlug))
-          .filter(
-            (c) =>
-              c.id !== d.id &&
-              c.specialtySlugs.includes(d.primarySpecialty!.slug) &&
-              c.areaSlugs.includes(clinic.area.slug),
-          )
-          .slice(0, 6)
-      : [];
-
-  return <ProfileView doctor={d} nearby={nearby} ready={await getReadyTemplates()} />;
+  return <ProfileView doctor={d} ready={await getReadyTemplates()} />;
 }

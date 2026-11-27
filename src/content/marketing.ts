@@ -128,15 +128,15 @@ export const VISITING_CARDS = {
     points: [
       "A card link to share on WhatsApp",
       "A phone image for WhatsApp status",
-      "A full card PDF with working Call, WhatsApp, Directions and Website buttons",
-      "A print-ready PDF (85 × 55 mm)",
+      "A full card PDF and a print-ready PDF (85 × 55 mm)",
+      "Call, WhatsApp, Directions and Website buttons that work in both PDFs",
       "A QR code that opens your website",
     ],
   },
   faq: [
     { q: "Is the visiting card extra?", a: "No. A digital visiting card is included in every plan." },
     { q: "Can I choose a different card style?", a: "The card always matches your website design. Change the website design and the card changes with it. Your card link and QR code stay the same." },
-    { q: "Do the buttons work in the PDF?", a: "Yes. In the full card PDF, tap Call, WhatsApp, Directions, Save or Website and it opens, just like on the card page." },
+    { q: "Do the buttons work in the PDF?", a: "Yes. In both the full card PDF and the print-ready PDF, tap Call, WhatsApp, Directions, Save or Website and it opens, just like on the card page." },
   ],
   help: "Questions about the card? Ask us on WhatsApp",
   helpText: "Hi, I have a question about the MediReach visiting card.",

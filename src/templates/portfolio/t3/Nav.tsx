@@ -55,7 +55,8 @@ export function Nav({ name, monogram, tagline, links, phone }: { name: string; m
             >
               <span className="transition-transform duration-500 group-hover:-rotate-90">{monogram}</span>
             </span>
-            <span className="min-w-0 leading-tight">
+            {/* Phones: the hero already shows the name, so the bar shows it only once it turns solid. */}
+            <span className={cn("min-w-0 leading-tight transition-[opacity,visibility] duration-300", !(scrolled || open) && "max-md:invisible max-md:opacity-0")}>
               <span className="block truncate text-base font-bold uppercase tracking-[0.04em] text-white">{name}</span>
               {tagline && <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.22em] text-me-sky">{tagline}</span>}
             </span>

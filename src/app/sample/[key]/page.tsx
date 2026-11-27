@@ -57,7 +57,7 @@ export default async function SamplePage({
           {demo ? "Get a website like this" : "Get your own page"}
         </Link>
       </div>
-      <ProfileView doctor={{ ...doctor, portfolioTemplateId: current.key }} nearby={[]} jsonLd={false} />
+      <ProfileView doctor={{ ...doctor, portfolioTemplateId: current.key }} jsonLd={false} />
       <DesignSwitcher current={current.key} />
     </>
   );

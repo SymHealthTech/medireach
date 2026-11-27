@@ -70,7 +70,7 @@ import { Nav, type NavLink } from "./serene/Nav";
  * medicine → health tips → gallery → FAQ → footer, plus a mobile bar.
  *
  * Every section hides itself when its data is empty, so it works for any
- * doctor. Presentation only: the H1, intro sentence, nearby doctors and
+ * doctor. Presentation only: the H1, intro sentence, and
  * JSON-LD come from the shared wrapper. Shared widgets from design 2 (form,
  * timings, health tips) are re-coloured by `.sc-theme` (globals.css).
  *
@@ -1068,11 +1068,6 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
           </Section>
         )}
 
-        {seo.nearby && (
-          <section className="bg-white px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-[1200px]">{seo.nearby}</div>
-          </section>
-        )}
       </main>
 
       {/* ── Footer ── */}

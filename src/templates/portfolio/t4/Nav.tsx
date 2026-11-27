@@ -72,7 +72,12 @@ export function Nav({ name, tagline, links, phone }: { name: string; tagline?: s
           </nav>
           <span className="lg:hidden" />
 
-          <a href="#top" onClick={() => setOpen(false)} className="min-w-0 text-center leading-tight">
+          {/* Phones: the hero already shows the name, so the bar shows it only once it turns cream. */}
+          <a
+            href="#top"
+            onClick={() => setOpen(false)}
+            className={cn("min-w-0 text-center leading-tight transition-[opacity,visibility] duration-300", !light && "max-md:invisible max-md:opacity-0")}
+          >
             <span className={cn("block truncate font-display text-xl font-semibold transition-colors sm:text-[22px]", light ? "text-wh-forest" : "text-wh-cream")}>{name}</span>
             {tagline && (
               <span

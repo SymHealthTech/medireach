@@ -69,7 +69,7 @@ import { Nav, type NavLink } from "./Nav";
  * (optional, general articles) → gallery → FAQ → footer, plus a mobile bar.
  *
  * Every section hides itself when its data is empty. Presentation only: the
- * H1, intro sentence, nearby doctors and JSON-LD come from the shared wrapper.
+ * H1, intro sentence, and JSON-LD come from the shared wrapper.
  *
  * NMC: no ratings, reviews, testimonials, patient counts or superlatives.
  * Numbers shown are facts the doctor entered (years, clinics, languages).
@@ -882,11 +882,6 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
           </Section>
         )}
 
-        {seo.nearby && (
-          <section className="bg-cm-sky px-4 py-16 sm:px-6">
-            <div className="mx-auto max-w-[1240px]">{seo.nearby}</div>
-          </section>
-        )}
       </main>
 
       {/* ── Footer ── */}

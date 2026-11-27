@@ -56,7 +56,7 @@ export default async function PreviewLinkPage({ params }: { params: Promise<{ to
     return (
       <>
         <Banner live={doc.status === "published"} what="website" />
-        <ProfileView doctor={doctor} nearby={[]} ready={ready} />
+        <ProfileView doctor={doctor} ready={ready} />
         <CardSection>
           <CardView doctor={doctor} variant="print" ready={ready} />
           <CardView doctor={doctor} variant="phone" ready={ready} />

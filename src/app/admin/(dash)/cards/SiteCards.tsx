@@ -58,7 +58,7 @@ export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic"
       <CardTabs active={kind} />
       <p className="max-w-2xl text-muted-foreground">
         Each {kind}&apos;s card, in the colours of its website design. The QR opens the website address (or the site page). Download the print PDF
-        for the printer, the phone PNG to share on WhatsApp, or the full card PDF (its buttons work).
+        for the printer, the phone PNG to share on WhatsApp, or the full card PDF. The buttons work in both PDFs.
       </p>
       <ListToolbar placeholder={`Search ${kind}s…`} />
       {cards.length === 0 ? (
@@ -86,7 +86,7 @@ export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic"
                         className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40"
                         href={`/admin/cards/site/${c.id}/${f}?download=1`}
                       >
-                        {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card, buttons work)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+                        {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
                       </a>
                     ))}
                     <a className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-ink hover:underline" href={`/admin/cards/site/${c.id}/phone.png`} target="_blank" rel="noopener">
@@ -137,7 +137,7 @@ async function OneSiteCard({ id }: { id: string }) {
           <div className="flex flex-wrap gap-2">
             {(["print.pdf", "phone.pdf", "print.png", "phone.png"] as const).map((f) => (
               <a key={f} className="inline-flex h-9 items-center rounded-lg border border-line bg-card px-3 text-sm font-semibold hover:border-ink/40" href={`/admin/cards/site/${id}/${f}?download=1`}>
-                {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card, buttons work)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
+                {f === "print.pdf" ? "PDF (print)" : f === "phone.pdf" ? "PDF (full card)" : f === "print.png" ? "PNG (print)" : "PNG (phone)"}
               </a>
             ))}
           </div>

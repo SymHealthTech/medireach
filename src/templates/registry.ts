@@ -1,10 +1,10 @@
 import type { ComponentType } from "react";
-import CardClassic, { PHONE_DOCK as DOCK_CLASSIC } from "@/templates/card/classic";
-import CardT2, { PHONE_DOCK as DOCK_T2 } from "@/templates/card/t2";
-import CardT3, { PHONE_DOCK as DOCK_T3 } from "@/templates/card/t3";
-import CardT4, { PHONE_DOCK as DOCK_T4 } from "@/templates/card/t4";
-import CardT5, { PHONE_DOCK as DOCK_T5 } from "@/templates/card/t5";
-import type { CardDock } from "@/templates/card/actions";
+import CardClassic, * as classicCard from "@/templates/card/classic";
+import CardT2, * as t2Card from "@/templates/card/t2";
+import CardT3, * as t3Card from "@/templates/card/t3";
+import CardT4, * as t4Card from "@/templates/card/t4";
+import CardT5, * as t5Card from "@/templates/card/t5";
+import type { CardDocks } from "@/templates/card/actions";
 import ClassicPortfolio from "@/templates/portfolio/classic";
 import PortfolioT2 from "@/templates/portfolio/t2";
 import PortfolioT3 from "@/templates/portfolio/t3";
@@ -45,8 +45,16 @@ export const registry: {
   card: { classic: CardClassic, t2: CardT2, t3: CardT3, t4: CardT4, t5: CardT5 },
 };
 
-/** Where each card design draws its buttons on the phone card (for the clickable PDF). */
-export const cardDocks: Record<TemplateKey, CardDock> = { classic: DOCK_CLASSIC, t2: DOCK_T2, t3: DOCK_T3, t4: DOCK_T4, t5: DOCK_T5 };
+const docks = (m: { PHONE_DOCK: CardDocks["phone"]; PRINT_DOCK: CardDocks["print"] }): CardDocks => ({ phone: m.PHONE_DOCK, print: m.PRINT_DOCK });
+
+/** Where each card design draws its buttons on the phone and print cards (for the clickable PDFs). */
+export const cardDocks: Record<TemplateKey, CardDocks> = {
+  classic: docks(classicCard),
+  t2: docks(t2Card),
+  t3: docks(t3Card),
+  t4: docks(t4Card),
+  t5: docks(t5Card),
+};
 
 /** Back-compat alias used by the dashboard's template page. */
 export const portfolioTemplates = registry.portfolio;
@@ -83,7 +91,7 @@ export function resolveCardTemplate(designKey: string, ready?: ReadyTemplates): 
   return resolve(registry.card, designKey, ready?.portfolio);
 }
 
-/** Where that card's buttons are on the phone card. */
-export function resolveCardDock(designKey: string, ready?: ReadyTemplates): CardDock {
+/** Where that card's buttons are on the phone and print cards. */
+export function resolveCardDock(designKey: string, ready?: ReadyTemplates): CardDocks {
   return cardDocks[resolveKey(registry.card, designKey, ready?.portfolio)];
 }

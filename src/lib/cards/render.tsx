@@ -7,16 +7,16 @@ import { cloudinaryJpg } from "@/lib/cards/photo";
 import { absUrl } from "@/lib/site";
 import { qrForUrl } from "@/lib/cards/qr";
 import { resolveCardDock, resolveCardTemplate, type ReadyTemplates } from "@/templates/registry";
-import { doctorCardActions, dockSlots, siteCardActions, type CardAction, type CardDock } from "@/templates/card/actions";
-import ClassicSiteCard, { PHONE_DOCK as SITE_PHONE_DOCK } from "@/templates/card/classic/site";
+import { doctorCardActions, dockSlots, siteCardActions, type CardAction, type CardDocks } from "@/templates/card/actions";
+import ClassicSiteCard, { PHONE_DOCK as SITE_PHONE_DOCK, PRINT_DOCK as SITE_PRINT_DOCK } from "@/templates/card/classic/site";
 import { CARD_SIZE, type CardTemplateProps, type CardVariant, type PublicDoctor, type PublicEstablishment, type SiteCardTemplateProps } from "@/templates/types";
 
 /**
  * Server-side card rendering: the same card template used on the card page is
  * rendered to PNG with Satori (via next/og) using the brand fonts, and the
- * PNG is wrapped into a PDF (print: exactly 85 × 55 mm). The phone card's PDF
- * has a clickable link over each of its buttons (Call, WhatsApp, Directions,
- * Save, Website); the print PDF opens the website when tapped.
+ * PNG is wrapped into a PDF (print: exactly 85 × 55 mm). Both PDFs have a
+ * clickable link over each of the card's buttons (Call, WhatsApp, Directions,
+ * Save, Website).
  */
 
 const FONT_DIR = join(process.cwd(), "src", "assets", "fonts");
@@ -75,9 +75,9 @@ const MM_TO_PT = 72 / 25.4;
 /** Page sizes for the PDFs: the print card exactly 85 × 55 mm; the full phone card 90 × 160 mm (same 9:16 shape). */
 const PDF_MM: Record<CardVariant, [number, number]> = { print: [85, 55], phone: [90, 160] };
 
-/** PDF of a card: one page, the card image filling it (print: print-ready 85 × 55 mm; phone: the full card, with working buttons). */
+/** PDF of a card: one page, the card image filling it (print: print-ready 85 × 55 mm; phone: the full card), with working buttons. */
 export async function renderCardPdf(doctor: PublicDoctor, ready?: ReadyTemplates, variant: CardVariant = "print"): Promise<Uint8Array> {
-  const links = cardPdfLinks(variant, doctor.shareUrl, doctorCardActions(doctor), resolveCardDock(doctor.portfolioTemplateId, ready));
+  const links = cardPdfLinks(variant, doctorCardActions(doctor), resolveCardDock(doctor.portfolioTemplateId, ready));
   return pdfFromPng(await renderCardPng(doctor, variant, ready), `${doctor.fullName} – visiting card`, variant, links);
 }
 
@@ -90,10 +90,9 @@ export interface CardLink {
   url: string;
 }
 
-/** The PDF's clickable areas: each button of the phone card; the whole print card opens the website. */
-export function cardPdfLinks(variant: CardVariant, websiteUrl: string, actions: CardAction[], dock: CardDock): CardLink[] {
-  if (variant === "print") return [{ x: 0, y: 0, ...CARD_SIZE.print, url: websiteUrl }];
-  const slots = dockSlots(dock, actions.length);
+/** The PDF's clickable areas: each button of the card (phone or print). */
+export function cardPdfLinks(variant: CardVariant, actions: CardAction[], docks: CardDocks): CardLink[] {
+  const slots = dockSlots(docks[variant], actions.length);
   return actions.map((a, i) => ({ ...slots[i]!, url: a.href }));
 }
 
@@ -198,7 +197,7 @@ export async function siteCardFileResponse(
 ): Promise<Response> {
   const { type, variant } = CARD_FILES[file];
   const png = await renderSiteCardPng(site, variant);
-  const links = cardPdfLinks(variant, site.shareUrl, siteCardActions(site), SITE_PHONE_DOCK);
+  const links = cardPdfLinks(variant, siteCardActions(site), { phone: SITE_PHONE_DOCK, print: SITE_PRINT_DOCK });
   const body = type === "application/pdf" ? await pdfFromPng(png, `${site.name} – visiting card`, variant, links) : png;
   const name = `${site.slug}-card-${file.replace(".", "-")}`.replace(/-(png|pdf)$/, `.$1`);
   return new Response(body as BodyInit, {
