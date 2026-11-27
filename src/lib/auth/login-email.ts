@@ -21,11 +21,36 @@ export interface LoginEmail {
   text: string;
 }
 
-export function loginEmail({ name, url, welcome = false, uid }: { name: string; url: string; welcome?: boolean; uid?: string }): LoginEmail {
-  const subject = welcome ? "Manage your MediReach website" : "Your MediReach login link";
-  const intro = welcome
-    ? "Your website dashboard is ready. Log in to update everything on your website yourself: details, photos, services, clinics, timings and more, whenever you like."
-    : "Here is your link to log in to MediReach.";
+/** The website a welcome email is about: its public link once published, and the website form it was made from. */
+export interface WelcomeSite {
+  /** Public website link; set only when the website is published. */
+  liveUrl?: string;
+  /** Ref of the website form (Get started) the website was made from. */
+  formRef?: string;
+}
+
+export function loginEmail({
+  name,
+  url,
+  welcome = false,
+  uid,
+  site,
+}: {
+  name: string;
+  url: string;
+  welcome?: boolean;
+  uid?: string;
+  site?: WelcomeSite;
+}): LoginEmail {
+  const live = welcome && Boolean(site?.liveUrl);
+  const subject = !welcome ? "Your MediReach login link" : live ? "Your MediReach website is live" : "Manage your MediReach website";
+  const fromForm = welcome && site?.formRef ? ` We made it from the website form you sent (ref ${site.formRef}).` : "";
+  const intro = !welcome
+    ? "Here is your link to log in to MediReach."
+    : live
+      ? `Your website is live.${fromForm} Have a look, and log in whenever you like to update everything on it yourself: details, photos, services, clinics, timings and more.`
+      : `Your website dashboard is ready.${fromForm} Log in to check your details and update everything on your website yourself: details, photos, services, clinics, timings and more. We'll let you know when it goes live.`;
+  const liveUrl = live ? site!.liveUrl! : "";
   const uidNote = welcome && uid ? `Your website UID is ${uid}. Please save it: quote it whenever you contact us, and we can find your website at once.` : "";
   const n = esc(name);
   const u = esc(url);
@@ -43,6 +68,7 @@ export function loginEmail({ name, url, welcome = false, uid }: { name: string; 
 <tr><td style="padding:24px 32px 0 32px;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:16px;line-height:24px;color:#1F2933;">
 <p style="margin:0 0 12px 0;">Hello ${n},</p>
 <p style="margin:0 0 24px 0;">${esc(intro)}</p>
+${liveUrl ? `<p style="margin:0 0 24px 0;padding:12px 16px;border:1px solid ${LINE};border-radius:10px;">Your website:<br><a href="${esc(liveUrl)}" style="font-weight:bold;color:#0E7C7B;word-break:break-all;">${esc(liveUrl)}</a><br><span style="font-size:14px;color:${MUTED};">Share this link with your patients, on WhatsApp and Google.</span></p>` : ""}
 ${uidNote ? `<p style="margin:0 0 24px 0;padding:12px 16px;background:#ECF6F5;border-radius:10px;">Your website UID: <strong style="font-family:monospace;font-size:17px;color:${INK};">${esc(uid!)}</strong><br><span style="font-size:14px;color:${MUTED};">Please save it. Quote it whenever you contact us, and we can find your website at once.</span></p>` : ""}
 </td></tr>
 <tr><td align="center" style="padding:0 32px;">
@@ -68,6 +94,7 @@ Didn't request this? Ignore this email. Nobody can log in without this link.<br>
     `Hello ${name},`,
     "",
     intro,
+    ...(liveUrl ? ["", "Your website:", liveUrl] : []),
     ...(uidNote ? ["", uidNote] : []),
     "",
     "Log in to MediReach:",

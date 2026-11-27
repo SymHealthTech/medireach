@@ -1,6 +1,8 @@
 import "server-only";
 import type { Types } from "mongoose";
+import type { WelcomeSite } from "@/lib/auth/login-email";
 import type { IntakeKind } from "@/lib/constants";
+import { absUrl, sitePath } from "@/lib/site";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { Intake } from "@/models/Intake";
@@ -56,4 +58,23 @@ export async function intakeSites(rows: { _id: Types.ObjectId; convertedTo?: { k
   for (const d of doctors) out.set(String(d._id), { href: `/admin/doctors/${d._id}`, status: d.status, photo: d.photo?.url });
   for (const s of sites) out.set(String(s._id), { href: `/admin/establishments/${s._id}`, status: s.status, photo: s.logo?.url ?? s.coverPhoto?.url });
   return new Map(rows.filter((r) => r.convertedTo && out.has(String(r.convertedTo.id))).map((r) => [String(r._id), out.get(String(r.convertedTo!.id))!]));
+}
+
+/**
+ * What the welcome (login) email says about a website: its public link once
+ * published, and the ref of the website form it was made from.
+ */
+export async function welcomeSiteFor(site: {
+  _id: Types.ObjectId | string;
+  kind: IntakeKind;
+  status: string;
+  citySlug?: string;
+  slug?: string;
+}): Promise<WelcomeSite> {
+  const intake = await Intake.findOne({ "convertedTo.id": site._id }).sort({ updatedAt: -1 }).select({ ref: 1 }).lean();
+  const live = site.status === "published" && site.citySlug && site.slug;
+  return {
+    ...(live ? { liveUrl: absUrl(sitePath({ kind: site.kind, citySlug: site.citySlug!, slug: site.slug! })) } : {}),
+    ...(intake?.ref ? { formRef: intake.ref } : {}),
+  };
 }

@@ -65,6 +65,23 @@ describe("login email", () => {
     expect(m.text).toContain("Didn't request this? Ignore this email.");
     expect(loginEmail({ name: "x", url: "u", welcome: true }).subject).toBe("Manage your MediReach website");
   });
+
+  it("welcome: says the website is live with its link once published, and names the website form", () => {
+    const live = loginEmail({ name: "Asha", url: "u", welcome: true, uid: "D1234", site: { liveUrl: "https://medireach.co.in/pune/doctor/asha", formRef: "MR-7K3QPA" } });
+    expect(live.subject).toBe("Your MediReach website is live");
+    expect(live.html).toContain('href="https://medireach.co.in/pune/doctor/asha"');
+    expect(live.text).toContain("https://medireach.co.in/pune/doctor/asha");
+    expect(live.text).toContain("ref MR-7K3QPA");
+    expect(live.text).toContain("D1234");
+
+    const draft = loginEmail({ name: "Asha", url: "u", welcome: true, site: { formRef: "MR-7K3QPA" } });
+    expect(draft.subject).toBe("Manage your MediReach website");
+    expect(draft.text).toContain("We'll let you know when it goes live.");
+    expect(draft.text).toContain("ref MR-7K3QPA");
+    expect(draft.text).not.toContain("Your website:");
+    // A plain login link never talks about the website.
+    expect(loginEmail({ name: "Asha", url: "u", site: { liveUrl: "https://x.example" } }).text).not.toContain("x.example");
+  });
 });
 
 describe("login links", () => {

@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 import { hitRateLimit } from "@/lib/api/rate-limit";
 import { sendEmail } from "@/lib/integrations/email";
 import { absUrl } from "@/lib/site";
-import { loginEmail } from "@/lib/auth/login-email";
+import { loginEmail, type WelcomeSite } from "@/lib/auth/login-email";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 
@@ -122,13 +122,13 @@ export async function loginTokenValid(token: string, email: string): Promise<boo
  * silent no-op (callers always show the same neutral message). Returns the
  * link that was emailed, or null when nothing was sent.
  */
-export async function sendLoginLink(email: string, opts: { welcome?: boolean; uid?: string } = {}): Promise<{ url: string } | null> {
+export async function sendLoginLink(email: string, opts: { welcome?: boolean; uid?: string; site?: WelcomeSite } = {}): Promise<{ url: string } | null> {
   const owner = await loginOwnerFor(email);
   if (!owner) return null;
   const to = normalizeEmail(email);
   const token = await createLoginToken(to);
   const url = verifyPageUrl(token, to);
-  const msg = loginEmail({ name: owner.name, url, welcome: opts.welcome, ...(opts.uid ? { uid: opts.uid } : {}) });
+  const msg = loginEmail({ name: owner.name, url, welcome: opts.welcome, ...(opts.uid ? { uid: opts.uid } : {}), ...(opts.site ? { site: opts.site } : {}) });
   const sent = await sendEmail({ to, ...msg });
   return sent.ok ? { url } : null;
 }

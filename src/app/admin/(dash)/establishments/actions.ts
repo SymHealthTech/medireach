@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import { syncIntakeForSite } from "@/lib/intake/site-status";
+import { syncIntakeForSite, welcomeSiteFor } from "@/lib/intake/site-status";
 import { ActionError, adminAction, auditCtx, fieldErrorsOf } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { can } from "@/lib/auth/admin";
@@ -177,16 +177,21 @@ export const suspendEstablishmentAction = statusChange("suspended", "suspend", [
 export const submitEstablishmentForReviewAction = statusChange("review", "submit_review");
 
 /**
- * Email the owner a login link for self-editing (welcome wording). Uses the
+ * Email the owner a login link for self-editing (welcome wording: says the
+ * website is live, with its link, once published). Uses the
  * saved owner email, so it must be saved on the Business step first.
  */
 export const sendEstablishmentLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
-  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1 }).lean();
+  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1, status: 1, citySlug: 1, slug: 1 }).lean();
   if (!doc) throw new ActionError("Clinic or hospital not found.");
   if (!doc.ownerEmail) throw new ActionError("Save the owner's login email first.");
   const limit = await hitRateLimit(`login-link:admin:${establishmentId}`, 5, 60 * 60_000);
   if (!limit.allowed) throw new ActionError("Several login emails were sent in the last hour. Please wait before sending another.");
-  const sent = await sendLoginLink(doc.ownerEmail, { welcome: true, uid: await ensureUid(Establishment as never, doc, doc.kind === "hospital" ? "hospital" : "clinic") });
+  const sent = await sendLoginLink(doc.ownerEmail, {
+    welcome: true,
+    uid: await ensureUid(Establishment as never, doc, doc.kind === "hospital" ? "hospital" : "clinic"),
+    site: await welcomeSiteFor({ ...doc, kind: doc.kind === "hospital" ? "hospital" : "clinic" }),
+  });
   if (!sent) throw new ActionError("The email couldn't be sent. Check the email settings (RESEND_API_KEY) and try again.");
   await audit(auditCtx(admin), "establishment.send_login_email", { entity: "Establishment", entityId: establishmentId, diff: { to: doc.ownerEmail } });
   return { to: doc.ownerEmail };

@@ -2,7 +2,7 @@
 
 import { Types } from "mongoose";
 import { z } from "zod";
-import { syncIntakeForSite } from "@/lib/intake/site-status";
+import { syncIntakeForSite, welcomeSiteFor } from "@/lib/intake/site-status";
 import { ActionError, adminAction, auditCtx } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hitRateLimit } from "@/lib/api/rate-limit";
@@ -229,16 +229,21 @@ export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, a
 });
 
 /**
- * Email the doctor a login link for self-editing (welcome wording). Uses the
+ * Email the doctor a login link for self-editing (welcome wording: says the
+ * website is live, with its link, once published). Uses the
  * saved login email, so the toggle and email must be saved first.
  */
 export const sendDoctorLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: doctorId }, admin) => {
-  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1 }).lean();
+  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1, status: 1, citySlug: 1, slug: 1 }).lean();
   if (!doc) throw new ActionError("Doctor not found.");
   if (!doc.ownerEmail) throw new ActionError("Turn on self-edit login and save the doctor's email first.");
   const limit = await hitRateLimit(`login-link:admin:${doctorId}`, 5, 60 * 60_000);
   if (!limit.allowed) throw new ActionError("Several login emails were sent in the last hour. Please wait before sending another.");
-  const sent = await sendLoginLink(doc.ownerEmail, { welcome: true, uid: await ensureUid(DoctorProfile as never, doc, "doctor") });
+  const sent = await sendLoginLink(doc.ownerEmail, {
+    welcome: true,
+    uid: await ensureUid(DoctorProfile as never, doc, "doctor"),
+    site: await welcomeSiteFor({ ...doc, kind: "doctor" }),
+  });
   if (!sent) throw new ActionError("The email couldn't be sent. Check the email settings (RESEND_API_KEY) and try again.");
   await audit(auditCtx(admin), "doctor.send_login_email", { entity: "DoctorProfile", entityId: doctorId, diff: { to: doc.ownerEmail } });
   return { to: doc.ownerEmail };
