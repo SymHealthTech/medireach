@@ -44,7 +44,6 @@ import { formatPhone } from "@/lib/phone";
 import { absUrl } from "@/lib/site";
 import { DAY_SHORT, formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER } from "@/lib/timings";
 import { describeService, type ServiceIcon } from "@/content/service-descriptions";
-import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
@@ -1217,7 +1216,6 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
             </p>
           </div>
         </div>
-        <div aria-hidden className="h-20 sm:hidden" />
       </footer>
 
       {/* Floating WhatsApp (larger screens) */}
@@ -1234,37 +1232,6 @@ export default function SereneCarePortfolio({ doctor: d, seo }: PortfolioTemplat
         </a>
       )}
 
-      {/* Mobile contact bar, once the hero buttons scroll away */}
-      <ShowAfter targetId="sc-hero-actions">
-        <nav
-          aria-label="Contact"
-          className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-3 gap-1.5 rounded-full bg-white/95 p-1.5 shadow-sc-lg ring-1 ring-sc-line backdrop-blur transition-transform duration-300 group-data-[hidden]/show:translate-y-[150%] sm:hidden"
-          style={{ marginBottom: "env(safe-area-inset-bottom)" }}
-        >
-          {phone ? (
-            <a href={`tel:+${phone}`} className="flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-sc-blush text-sm font-semibold text-sc-plum">
-              <Phone aria-hidden className="size-4" /> Call
-            </a>
-          ) : (
-            <span />
-          )}
-          {waHref ? (
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noopener"
-              className="flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-[#25D366] text-sm font-semibold text-white"
-            >
-              <MessageCircle aria-hidden className="size-4" /> WhatsApp
-            </a>
-          ) : (
-            <span />
-          )}
-          <a href="#appointment" className="flex min-h-12 items-center justify-center gap-1.5 rounded-full bg-sc-rose text-sm font-semibold text-white">
-            <CalendarHeart aria-hidden className="size-4" /> Book
-          </a>
-        </nav>
-      </ShowAfter>
     </div>
   );
 }

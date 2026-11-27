@@ -45,7 +45,6 @@ import { formatPhone } from "@/lib/phone";
 import { absUrl } from "@/lib/site";
 import { formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER, DAY_SHORT } from "@/lib/timings";
 import { describeService, type ServiceIcon } from "@/content/service-descriptions";
-import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { specialtyPhotos } from "@/templates/shared/specialty-photos";
 import { splitClinics } from "@/templates/shared/clinic-split";
 import { VisitingHospitals } from "@/templates/shared/VisitingHospitals";
@@ -1021,7 +1020,6 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
             </p>
           </div>
         </div>
-        <div aria-hidden className="h-20 sm:hidden" />
       </footer>
 
       {/* Floating WhatsApp (larger screens) */}
@@ -1038,31 +1036,6 @@ export default function ClinicModernPortfolio({ doctor: d, seo }: PortfolioTempl
         </a>
       )}
 
-      {/* Mobile contact bar, once the hero buttons scroll away */}
-      <ShowAfter targetId="cm-hero-actions">
-        <nav
-          aria-label="Contact"
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-2 border-t border-cm-line bg-white/95 px-3 pb-[max(env(safe-area-inset-bottom),10px)] pt-2.5 backdrop-blur transition-transform duration-300 group-data-[hidden]/show:translate-y-full sm:hidden"
-        >
-          {phone ? (
-            <a href={`tel:+${phone}`} className="flex min-h-[50px] flex-col items-center justify-center gap-0.5 rounded-xl bg-cm-sky text-xs font-bold text-cm-navy">
-              <Phone aria-hidden className="size-5" /> Call
-            </a>
-          ) : (
-            <span />
-          )}
-          {waHref ? (
-            <a href={waHref} target="_blank" rel="noopener" className="flex min-h-[50px] flex-col items-center justify-center gap-0.5 rounded-xl bg-[#25D366] text-xs font-bold text-white">
-              <MessageCircle aria-hidden className="size-5" /> WhatsApp
-            </a>
-          ) : (
-            <span />
-          )}
-          <a href="#appointment" className="flex min-h-[50px] flex-col items-center justify-center gap-0.5 rounded-xl bg-cm-teal text-xs font-bold text-white">
-            <CalendarCheck aria-hidden className="size-5" /> Book
-          </a>
-        </nav>
-      </ShowAfter>
     </div>
   );
 }

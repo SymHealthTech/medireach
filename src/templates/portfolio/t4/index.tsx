@@ -40,7 +40,6 @@ import { formatPhone } from "@/lib/phone";
 import { absUrl } from "@/lib/site";
 import { DAY_SHORT, formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER } from "@/lib/timings";
 import { describeService, type ServiceIcon } from "@/content/service-descriptions";
-import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
@@ -902,7 +901,6 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
             </p>
           </div>
         </div>
-        <div aria-hidden className="h-20 sm:hidden" />
       </footer>
 
       {waHref && (
@@ -918,35 +916,6 @@ export default function WarmHeritagePortfolio({ doctor: d, seo }: PortfolioTempl
         </a>
       )}
 
-      <ShowAfter targetId="wh-hero-actions">
-        <nav
-          aria-label="Contact"
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-2 border-t-2 border-wh-saffron bg-wh-cream/95 px-3 pb-[max(env(safe-area-inset-bottom),10px)] pt-2.5 backdrop-blur transition-transform duration-300 group-data-[hidden]/show:translate-y-full sm:hidden"
-        >
-          {phone ? (
-            <a href={`tel:+${phone}`} className="flex min-h-[50px] items-center justify-center gap-1.5 rounded-full bg-wh-paper text-sm font-semibold text-wh-forest">
-              <Phone aria-hidden className="size-4" /> Call
-            </a>
-          ) : (
-            <span />
-          )}
-          {waHref ? (
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noopener"
-              className="flex min-h-[50px] items-center justify-center gap-1.5 rounded-full bg-[#25D366] text-sm font-semibold text-white"
-            >
-              <MessageCircle aria-hidden className="size-4" /> WhatsApp
-            </a>
-          ) : (
-            <span />
-          )}
-          <a href="#appointment" className="flex min-h-[50px] items-center justify-center gap-1.5 rounded-full bg-wh-terra text-sm font-semibold text-white">
-            <CalendarHeart aria-hidden className="size-4" /> Book
-          </a>
-        </nav>
-      </ShowAfter>
     </div>
   );
 }

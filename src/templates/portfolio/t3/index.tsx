@@ -25,7 +25,6 @@ import { formatPhone } from "@/lib/phone";
 import { absUrl } from "@/lib/site";
 import { DAY_SHORT, formatSlots, openDaysSummary, slotsForDay, WEEK_ORDER } from "@/lib/timings";
 import { describeService } from "@/content/service-descriptions";
-import { ShowAfter } from "@/templates/portfolio/classic/ShowAfter";
 import { AppointmentForm } from "@/templates/portfolio/t2/AppointmentForm";
 import { HealthTipsSection } from "@/templates/portfolio/t2/HealthTipsSection";
 import { CountUp, RevealObserver } from "@/templates/portfolio/t2/Motion";
@@ -951,7 +950,6 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
             </p>
           </div>
         </div>
-        <div aria-hidden className="h-20 sm:hidden" />
       </footer>
 
       {waHref && (
@@ -966,30 +964,6 @@ export default function ModernEdgePortfolio({ doctor: d, seo }: PortfolioTemplat
         </a>
       )}
 
-      <ShowAfter targetId="me-hero-actions">
-        <nav
-          aria-label="Contact"
-          className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 bg-me-ink pb-[env(safe-area-inset-bottom)] text-white transition-transform duration-300 group-data-[hidden]/show:translate-y-full sm:hidden"
-        >
-          {phone ? (
-            <a href={`tel:+${phone}`} className="flex min-h-14 items-center justify-center gap-2 text-sm font-bold uppercase tracking-wider">
-              <Phone aria-hidden className="size-4" /> Call
-            </a>
-          ) : (
-            <span />
-          )}
-          {waHref ? (
-            <a href={waHref} target="_blank" rel="noopener" className="flex min-h-14 items-center justify-center gap-2 bg-[#25D366] text-sm font-bold uppercase tracking-wider">
-              <MessageCircle aria-hidden className="size-4" /> Chat
-            </a>
-          ) : (
-            <span />
-          )}
-          <a href="#appointment" className="flex min-h-14 items-center justify-center gap-2 bg-me-orange text-sm font-bold uppercase tracking-wider">
-            <CalendarCheck aria-hidden className="size-4" /> Book
-          </a>
-        </nav>
-      </ShowAfter>
     </div>
   );
 }
