@@ -19,7 +19,7 @@ export interface EstablishmentEditorOptions {
   categories: { id: string; name: string; slug: string; kind: EstablishmentKind; defaultThemeKey: ThemeKey }[];
   /** Doctor portfolios that can be linked (any status; drafts show as such). */
   doctors: { id: string; name: string; specialty?: string; status: string; degrees?: string }[];
-  templates: { type: "clinic" | "hospital" | "card"; key: string; name: string; status: string }[];
+  templates: { type: "clinic" | "hospital"; key: string; name: string; status: string }[];
   prices: {
     doctorAddon: number;
     renewalClinic: number;
@@ -49,7 +49,7 @@ export async function getEstablishmentEditorOptions(): Promise<EstablishmentEdit
       .limit(5000)
       .lean(),
     Specialty.find().select({ name: 1 }).lean(),
-    TemplateSlot.find({ type: { $in: ["clinic", "hospital", "card"] } }).sort({ type: 1, key: 1 }).lean(),
+    TemplateSlot.find({ type: { $in: ["clinic", "hospital"] } }).sort({ type: 1, key: 1 }).lean(),
     getSettings(),
   ]);
   const team = await salesTeam();
@@ -64,7 +64,7 @@ export async function getEstablishmentEditorOptions(): Promise<EstablishmentEdit
       status: d.status,
       ...(d.primarySpecialtyId && specName.has(String(d.primarySpecialtyId)) ? { specialty: specName.get(String(d.primarySpecialtyId)) } : {}),
     })),
-    templates: templates.map((x) => ({ type: x.type as "clinic" | "hospital" | "card", key: x.key, name: x.name, status: x.status })),
+    templates: templates.map((x) => ({ type: x.type as "clinic" | "hospital", key: x.key, name: x.name, status: x.status })),
     prices: {
       doctorAddon: settings.prices.doctorAddon,
       renewalClinic: settings.prices.renewalClinic,

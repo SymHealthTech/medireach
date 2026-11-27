@@ -20,7 +20,6 @@ const ROW_TITLE: Record<SiteTemplateType, string> = {
   portfolio: "Doctor portfolio layouts",
   clinic: "Clinic site layouts",
   hospital: "Hospital site layouts",
-  card: "Visiting card layouts (not used: the card follows the website design)",
 };
 
 type Counts = { _id: string; n: number }[];

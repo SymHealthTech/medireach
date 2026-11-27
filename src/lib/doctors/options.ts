@@ -37,7 +37,7 @@ export interface EditorOptions {
   gstIncluded: boolean;
   /** Dashboard users, for the sales executive dropdown. */
   team: string[];
-  templates: { type: "portfolio" | "card"; key: string; name: string; status: string; previewUrl?: string }[];
+  templates: { type: "portfolio"; key: string; name: string; status: string; previewUrl?: string }[];
   bannedPhrases: string[];
 }
 
@@ -80,9 +80,9 @@ export async function getEditorOptions(): Promise<EditorOptions> {
     },
     gstIncluded: settings.gstMode !== "exclusive",
     team,
-    // Doctors only pick portfolio and card designs (clinic/hospital slots belong to establishments).
-    templates: templates.flatMap((t) => (t.type === "portfolio" || t.type === "card" ? [t] : [])).map((t) => ({
-      type: t.type as "portfolio" | "card",
+    // Doctors only pick portfolio designs (the card follows it; clinic/hospital slots belong to establishments).
+    templates: templates.flatMap((t) => (t.type === "portfolio" ? [t] : [])).map((t) => ({
+      type: "portfolio" as const,
       key: t.key,
       name: t.name,
       status: t.status,

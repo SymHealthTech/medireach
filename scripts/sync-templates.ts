@@ -1,6 +1,7 @@
 /**
- * `npm run sync:templates` — rename the built design slots and mark them
- * ready in an existing database (see lib/seed/template-slots.ts). Safe to run
+ * `npm run sync:templates` — rename the built design slots, mark them ready
+ * and remove the retired card slots in an existing database (see
+ * lib/seed/template-slots.ts). Safe to run
  * again. Live pages pick the change up when the templates cache refreshes
  * (within a day), or at once after saving any slot in Dashboard → Design
  * templates, or on the next deploy.
@@ -15,7 +16,7 @@ async function main() {
   const changes = await syncTemplateSlots();
   if (!changes.length) console.log(`Design slots in "${env.mongoDbName()}" are already up to date.`);
   for (const c of changes) {
-    const parts = [c.renamed ? `renamed "${c.renamed.from}" → "${c.renamed.to}"` : "", c.madeReady ? "marked ready" : ""].filter(Boolean);
+    const parts = [c.renamed ? `renamed "${c.renamed.from}" → "${c.renamed.to}"` : "", c.madeReady ? "marked ready" : "", c.removed ? "removed (retired card slot)" : ""].filter(Boolean);
     console.log(`${c.slot}: ${parts.join(", ")}`);
   }
 }

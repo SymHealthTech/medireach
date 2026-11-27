@@ -8,6 +8,8 @@ import type { SiteTemplateType, TemplateKey } from "@/lib/constants";
  *  - Renames a slot only while it still has its OLD default name, so a name
  *    typed in Dashboard → Design templates is never overwritten.
  *  - Marks built designs "ready"; never moves a slot back to coming soon.
+ *  - Removes the retired visiting card slots (the card follows the website
+ *    design, so there is nothing to choose for it).
  *
  * Safe to run again. `npm run sync:templates`.
  */
@@ -15,22 +17,25 @@ const BUILT: { type: SiteTemplateType; key: TemplateKey; name: string; oldNames:
   { type: "portfolio", key: "classic", name: "Serene Care", oldNames: ["Classic"] },
   { type: "portfolio", key: "t2", name: "Clinic Modern", oldNames: [] },
   { type: "portfolio", key: "t3", name: "Modern Edge", oldNames: ["Minimal Mono"] },
-  { type: "card", key: "t2", name: "Clinic Modern", oldNames: ["Ink Bold"] },
-  { type: "card", key: "t3", name: "Modern Edge", oldNames: ["Minimal"] },
   { type: "portfolio", key: "t4", name: "Warm Heritage", oldNames: [] },
   { type: "portfolio", key: "t5", name: "Specialist Pro", oldNames: [] },
-  { type: "card", key: "t4", name: "Warm Heritage", oldNames: ["Heritage"] },
-  { type: "card", key: "t5", name: "Specialist Pro", oldNames: ["Photo Card"] },
 ];
 
 export interface SlotChange {
   slot: string;
   renamed?: { from: string; to: string };
   madeReady?: boolean;
+  removed?: boolean;
 }
 
 export async function syncTemplateSlots(): Promise<SlotChange[]> {
   const changes: SlotChange[] = [];
+  // Retired card slots: the raw collection, since "card" is no longer a valid slot type in the model.
+  const cards = await TemplateSlot.collection.find({ type: "card" }, { projection: { key: 1 } }).toArray();
+  if (cards.length) {
+    await TemplateSlot.collection.deleteMany({ type: "card" });
+    for (const c of cards) changes.push({ slot: `card/${String(c.key)}`, removed: true });
+  }
   for (const b of BUILT) {
     const slot = await TemplateSlot.findOne({ type: b.type, key: b.key });
     if (!slot) continue; // masters not seeded: seedMasters will insert it with the new name

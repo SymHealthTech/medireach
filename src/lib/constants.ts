@@ -113,8 +113,12 @@ export const INTAKE_EDITABLE_STATUSES: readonly IntakeStatus[] = ["draft", "subm
 export const TEMPLATE_TYPES = ["portfolio", "card"] as const;
 /** @deprecated see TEMPLATE_TYPES. */
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
-/** v2 slot types, 5 slots each (DESIGN_BRIEF.md §11). */
-export const SITE_TEMPLATE_TYPES = ["portfolio", "clinic", "hospital", "card"] as const;
+/**
+ * v2 slot types, 5 slots each (DESIGN_BRIEF.md §11). No "card" type: the
+ * visiting card follows the website design (templates/registry.ts), so card
+ * slots were retired (`npm run sync:templates` removes old ones).
+ */
+export const SITE_TEMPLATE_TYPES = ["portfolio", "clinic", "hospital"] as const;
 export type SiteTemplateType = (typeof SITE_TEMPLATE_TYPES)[number];
 
 export const TEMPLATE_KEYS = ["classic", "t2", "t3", "t4", "t5"] as const;

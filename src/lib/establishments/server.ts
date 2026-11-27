@@ -158,7 +158,7 @@ export function docToForm(d: EstablishmentDoc): EstablishmentForm {
   };
 }
 
-async function assertTemplateReady(type: "clinic" | "hospital" | "card", key: string) {
+async function assertTemplateReady(type: "clinic" | "hospital", key: string) {
   if (key === "classic") return;
   if (!(await TemplateSlot.exists({ type, key, status: "ready" }))) throw new ActionError("That design isn't ready yet.");
 }

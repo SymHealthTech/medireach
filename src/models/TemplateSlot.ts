@@ -10,8 +10,8 @@ import {
 
 /**
  * One of the 5 design slots per type (doctor portfolio, clinic site, hospital
- * site, visiting card). Only `ready` slots are selectable; the renderer falls
- * back to classic otherwise.
+ * site). Only `ready` slots are selectable; the renderer falls back to classic
+ * otherwise. The visiting card has no slots: it follows the website design.
  */
 export interface TemplateSlotDoc {
   _id: Types.ObjectId;

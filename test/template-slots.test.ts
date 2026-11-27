@@ -25,15 +25,19 @@ describe("syncTemplateSlots", () => {
     // An older database: old names, built designs still "coming soon", one name changed by an admin.
     await TemplateSlot.updateOne({ type: "portfolio", key: "classic" }, { $set: { name: "Classic" } });
     await TemplateSlot.updateOne({ type: "portfolio", key: "t3" }, { $set: { name: "Minimal Mono", status: "coming_soon" } });
-    await TemplateSlot.updateOne({ type: "card", key: "t3" }, { $set: { name: "My card", status: "coming_soon" } });
+    await TemplateSlot.updateOne({ type: "portfolio", key: "t4" }, { $set: { name: "My design", status: "coming_soon" } });
+    // A retired card slot left from before the card followed the website design.
+    await TemplateSlot.collection.insertOne({ type: "card", key: "t3", name: "Modern Edge", status: "ready", isDefault: false });
 
     const changes = await syncTemplateSlots();
     expect(changes.map((c) => c.slot)).toContain("portfolio/t3");
+    expect(changes).toContainEqual({ slot: "card/t3", removed: true });
+    expect(await TemplateSlot.collection.countDocuments({ type: "card" })).toBe(0);
 
     expect(await slot("portfolio", "classic")).toMatchObject({ name: "Serene Care", status: "ready" });
     expect(await slot("portfolio", "t3")).toMatchObject({ name: "Modern Edge", status: "ready" });
     expect(await slot("portfolio", "t2")).toMatchObject({ status: "ready" });
-    expect(await slot("card", "t3")).toMatchObject({ name: "My card", status: "ready" }); // custom name kept
+    expect(await slot("portfolio", "t4")).toMatchObject({ name: "My design", status: "ready" }); // custom name kept
 
     expect(await syncTemplateSlots()).toEqual([]);
   });

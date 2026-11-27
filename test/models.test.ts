@@ -35,7 +35,7 @@ describe("seedMasters", () => {
     expect(first.degrees).toBeGreaterThanOrEqual(30);
     expect(first.councils).toBeGreaterThanOrEqual(30);
     expect(first.clinicCategories).toBe(23); // 14 clinic types + Hospital + 8 hospital types
-    expect(first.templateSlots).toBe(20);
+    expect(first.templateSlots).toBe(15); // portfolio, clinic, hospital × 5 (no card slots: the card follows the website design)
     expect(first.settings).toBe(1);
 
     const second = await seedMasters();
@@ -56,7 +56,7 @@ describe("seedMasters", () => {
   });
 
   it("creates classic as the only ready + default slot per type", async () => {
-    for (const type of ["portfolio", "clinic", "hospital", "card"] as const) {
+    for (const type of ["portfolio", "clinic", "hospital"] as const) {
       const slots = await TemplateSlot.find({ type }).sort({ key: 1 }).lean();
       expect(slots.map((s) => s.key)).toEqual(["classic", "t2", "t3", "t4", "t5"]);
       expect(slots.filter((s) => s.isDefault).map((s) => s.key)).toEqual(["classic"]);

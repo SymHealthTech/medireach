@@ -44,7 +44,7 @@ export function demoInquiries(d: DemoDoctor, now = Date.now()): InquiryRow[] {
  * slugs standing in for database ids (nothing is ever saved).
  */
 export function demoEditorOptions(): EditorOptions {
-  const slot = (type: "portfolio" | "card", names: readonly string[]) =>
+  const slot = (type: "portfolio", names: readonly string[]) =>
     names.map((name, i) => ({ type, key: i === 0 ? "classic" : `t${i + 1}`, name, status: "ready" }));
   return {
     cities: [{ id: "pune", name: "Pune", slug: "pune", state: "Maharashtra" }],
@@ -56,7 +56,7 @@ export function demoEditorOptions(): EditorOptions {
     prices: { renewalDoctor: 0, foundingRenewal: 0, doctorSetup: 0, doctorAddon: 0 },
     gstIncluded: true,
     team: [],
-    templates: [...slot("portfolio", SEED_TEMPLATE_SLOTS.portfolio), ...slot("card", SEED_TEMPLATE_SLOTS.card)],
+    templates: slot("portfolio", SEED_TEMPLATE_SLOTS.portfolio),
     bannedPhrases: [...DEFAULT_BANNED_PHRASES],
   };
 }
