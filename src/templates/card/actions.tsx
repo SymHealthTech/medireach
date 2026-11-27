@@ -55,6 +55,12 @@ export interface DockStyle {
   iconColor: string;
   /** Optional tile border, e.g. "2px solid #E2E5EC". */
   border?: string;
+  /**
+   * Ring round the filled first button (default white). The buttons straddle
+   * the header's edge, and a filled button in the header's own colour family
+   * would melt into it; the ring sets it apart like the white tiles beside it.
+   */
+  primaryRing?: string;
   radius: number;
   font: string;
   uppercase?: boolean;
@@ -155,7 +161,8 @@ export function ActionDock({ actions, dock, style: st, links, small }: { actions
           height: r.height,
           borderRadius: radius,
           background: primary ? st.primaryBg : st.tileBg,
-          ...(st.border && !primary ? { border: st.border } : {}),
+          boxSizing: "border-box" as const,
+          ...(primary ? { border: `${small ? 3 : 6}px solid ${st.primaryRing ?? "#FFFFFF"}` } : st.border ? { border: st.border } : {}),
           ...(st.shadow && !small ? { boxShadow: st.shadow } : {}),
           color,
           fontFamily: st.font,

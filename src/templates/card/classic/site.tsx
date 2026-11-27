@@ -31,9 +31,11 @@ const TEXT = "#1F2933";
 const FOOTER = 100;
 /** Where the buttons sit on the print card: the free band between the name and the contact rows. */
 export const PRINT_DOCK = printDock(346, 958, 268);
-const dockStyle = (primary: string, soft: string, fonts: SiteCardTemplateProps["fonts"]): DockStyle => ({
-  primaryBg: primary,
-  primaryText: "#FFFFFF",
+// Call is filled with the accent, not the primary: the header is the primary, and the button sits on its edge.
+// Dark label: every theme's accent is light enough for it (white would be too faint).
+const dockStyle = (primary: string, accent: string, soft: string, fonts: SiteCardTemplateProps["fonts"]): DockStyle => ({
+  primaryBg: accent,
+  primaryText: TEXT,
   tileBg: "#FFFFFF",
   tileText: TEXT,
   iconColor: primary,
@@ -156,7 +158,7 @@ function PrintCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
       </div>
       <div style={{ display: "flex", height: 10, background: accent }} />
       {/* Buttons, at a fixed place in the free band (the print PDF puts links on them). */}
-      <ActionDock actions={siteCardActions(s)} dock={PRINT_DOCK} style={dockStyle(primary, soft, fonts)} links={links} small />
+      <ActionDock actions={siteCardActions(s)} dock={PRINT_DOCK} style={dockStyle(primary, accent, soft, fonts)} links={links} small />
     </div>
   );
 }
@@ -299,7 +301,7 @@ function PhoneCard({ site: s, qr, fonts, logoUrl, devBanner, links }: SiteCardTe
         <div style={{ display: "flex", marginLeft: 16, color: "rgba(255,255,255,0.7)" }}>{ROOT_HOSTNAME}</div>
       </div>
       {/* Buttons on the header's edge, at a fixed place (the PDF links line up with them). Last, so they draw on top. */}
-      <ActionDock actions={siteCardActions(s)} dock={sitePhoneDock(s)} style={dockStyle(primary, soft, fonts)} links={links} />
+      <ActionDock actions={siteCardActions(s)} dock={sitePhoneDock(s)} style={dockStyle(primary, accent, soft, fonts)} links={links} />
     </div>
   );
 }
