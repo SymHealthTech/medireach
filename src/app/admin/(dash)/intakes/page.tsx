@@ -8,6 +8,8 @@ import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { intakeScope } from "@/lib/admin/scope";
+import { salesTeamOptions } from "@/lib/admin/ownership";
 import { oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchParams } from "@/lib/admin/list";
 import { INTAKE_STATUS_LABEL, INTAKE_STATUS_TONE } from "@/lib/admin/labels";
 import { INTAKE_KINDS, INTAKE_STATUSES, type IntakeStatus } from "@/lib/constants";
@@ -22,11 +24,13 @@ export const metadata: Metadata = { title: "Website forms" };
 
 /** Forms doctors, clinics and hospitals filled in themselves from "Get started". */
 export default async function IntakesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireAdminPage(rolesFor("/admin/intakes"));
+  const admin = await requireAdminPage(rolesFor("/admin/intakes"));
+  // Sales executives see only the forms made into their own websites.
+  const scope = await intakeScope(admin);
   await connectToDatabase();
   const sp = await searchParams;
 
-  const filter: FilterQuery<IntakeDoc> = {};
+  const filter: FilterQuery<IntakeDoc> = { ...scope };
   const status = oneOf(param(sp, "status"), INTAKE_STATUSES);
   if (status) filter.status = status;
   // The three forms are separate lists (Doctor / Clinic / Hospital tabs), as on the website.
@@ -44,12 +48,14 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
       .sort({ submittedAt: -1, lastSavedAt: -1 })
       .skip((page - 1) * PAGE_SIZE)
       .limit(PAGE_SIZE)
-      .select({ "data.designDecision": 1, kind: 1, email: 1, ref: 1, status: 1, name: 1, phone: 1, photos: 1, convertedTo: 1, missingCount: 1, submittedAt: 1, updatedAfterSubmitAt: 1, lastSavedAt: 1 })
+      .select({ "data.designDecision": 1, kind: 1, email: 1, ref: 1, status: 1, name: 1, phone: 1, photos: 1, convertedTo: 1, salesAdminId: 1, salesCandidates: 1, missingCount: 1, submittedAt: 1, updatedAfterSubmitAt: 1, lastSavedAt: 1 })
       .lean(),
-    Intake.aggregate<{ _id: IntakeStatus; n: number }>([{ $match: { kind } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
-    Intake.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$kind", n: { $sum: 1 } } }]),
+    Intake.aggregate<{ _id: IntakeStatus; n: number }>([{ $match: { ...scope, kind } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Intake.aggregate<{ _id: string; n: number }>([{ $match: scope }, { $group: { _id: "$kind", n: { $sum: 1 } } }]),
   ]);
   const sites = await intakeSites(rows);
+  // Super admin: whose form it is (matched visit / assigned).
+  const execName = new Map(admin.role === "superadmin" ? (await salesTeamOptions()).map((t) => [t.id, t.name]) : []);
   const countOf = (s: string) => counts.find((c) => c._id === s)?.n ?? 0;
   const statusHref = (s?: string) => {
     const next = new URLSearchParams();
@@ -114,6 +120,8 @@ export default async function IntakesPage({ searchParams }: { searchParams: Prom
                         <Pill tone={INTAKE_STATUS_TONE[r.status]}>{INTAKE_STATUS_LABEL[r.status]}</Pill>
                         {r.updatedAfterSubmitAt && r.status !== "draft" && <Pill tone="clay">Updated</Pill>}
                         {(r.data as { designDecision?: string } | undefined)?.designDecision === "discuss" && <Pill tone="ink">Design: talk first</Pill>}
+                        {r.salesAdminId && execName.get(String(r.salesAdminId)) && <Pill tone="muted">Sales: {execName.get(String(r.salesAdminId))}</Pill>}
+                        {!r.salesAdminId && (r.salesCandidates?.length ?? 0) > 1 && admin.role === "superadmin" && <Pill tone="marigold">Pick sales executive</Pill>}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {[r.ref, r.phone, r.email].filter(Boolean).join(" · ")}

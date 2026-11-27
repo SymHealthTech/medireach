@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Eye } from "lucide-react";
 import { ProfileView } from "@/components/public/ProfileView";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { assertOwnedPage } from "@/lib/admin/scope";
 import { isObjectId } from "@/lib/admin/list";
 import { loadMasters, siteLinksFor, toPublicDoctor } from "@/lib/public/data";
 import { getReadyTemplates } from "@/lib/public/templates";
@@ -15,11 +16,13 @@ export const metadata: Metadata = { title: "Preview" };
  * the public page will be. Never indexed (under /admin).
  */
 export default async function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdminPage();
+  const admin = await requireAdminPage();
   const { id } = await params;
   if (!isObjectId(id)) notFound();
-  const [doc, masters] = await Promise.all([DoctorProfile.findById(id).lean(), loadMasters()]);
-  if (!doc) notFound();
+  const [found, masters] = await Promise.all([DoctorProfile.findById(id).lean(), loadMasters()]);
+  // Sales executives: only their own doctors.
+  assertOwnedPage(admin, found);
+  const doc = found!;
 
   const sites = await siteLinksFor(doc.clinics.map((c) => c.establishmentId));
   const doctor = toPublicDoctor({ ...doc, citySlug: doc.citySlug || "pune", slug: doc.slug || "preview" }, masters, sites);

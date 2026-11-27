@@ -6,10 +6,13 @@ import { z } from "zod";
 import { syncIntakeForSite, welcomeSiteFor } from "@/lib/intake/site-status";
 import { ActionError, adminAction, auditCtx, fieldErrorsOf } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
-import { can } from "@/lib/auth/admin";
+import { assignSalesOwner } from "@/lib/admin/ownership";
+import { clearEditUnlocks } from "@/lib/admin/edit-unlock";
+import { assertPaidOrConfirmed } from "@/lib/admin/payment-gate";
+import { assertCanDelete, assertCanEdit, assertOwned, isSales } from "@/lib/admin/scope";
 import { hitRateLimit } from "@/lib/api/rate-limit";
 import { sendLoginLink } from "@/lib/auth/login-link";
-import { ESTABLISHMENT_KINDS } from "@/lib/constants";
+import { ESTABLISHMENT_KINDS, type AdminRole } from "@/lib/constants";
 import { sectionPayload, sectionSchemas, STEPS, type EstablishmentForm, type StepKey } from "@/lib/establishments/form";
 import { syncDoctorLinksFromEstablishment } from "@/lib/establishments/links";
 import { applySection, docToForm, ensureUrlKeys, publishProblems, scanEstablishment, urlKeyAvailable } from "@/lib/establishments/server";
@@ -69,7 +72,8 @@ export const saveEstablishmentSectionAction = adminAction(
     let doc;
     if (establishmentId) {
       doc = await load(establishmentId);
-      if (doc.status === "published" && !can.publish(admin.role)) throw new ActionError("This site is live. Only an admin can edit published sites.");
+      // Sales executives: only their own sites; a live site needs the owner's code first.
+      await assertCanEdit(admin, doc, "site");
     } else {
       if (step !== "basics") throw new ActionError("Start with the name.");
       const k = kind ?? "clinic";
@@ -79,6 +83,7 @@ export const saveEstablishmentSectionAction = adminAction(
     const before = docToForm(doc.toObject());
     const oldRoute: Route = { kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug };
     await applySection(doc, step, parsed.data as never, admin);
+    if (isSales(admin) || step === "business") await assignSalesOwner(doc, admin);
     await ensureUrlKeys(doc);
     const settings = await getSettings();
     const issues = scanEstablishment(doc, settings.bannedPhrases);
@@ -133,7 +138,8 @@ export const checkEstablishmentUrlKeyAction = adminAction(
   },
 );
 
-export const publishEstablishmentAction = adminAction({ schema: z.object({ id }), roles: ["superadmin", "admin"] }, async ({ id: establishmentId }, admin) => {
+/** Publish (super admin only); without a recorded payment it asks for `allowUnpaid` first (see doctors/actions). */
+export const publishEstablishmentAction = adminAction({ schema: z.object({ id, allowUnpaid: z.boolean().optional() }), roles: ["superadmin"] }, async ({ id: establishmentId, allowUnpaid }, admin) => {
   const doc = await load(establishmentId);
   await ensureUrlKeys(doc);
   const settings = await getSettings();
@@ -146,6 +152,7 @@ export const publishEstablishmentAction = adminAction({ schema: z.object({ id })
     throw new ActionError(`Can't publish yet: ${problems.join("; ")}.`);
   }
   const wasPublished = doc.status === "published";
+  if (!wasPublished) await assertPaidOrConfirmed("site", doc, allowUnpaid);
   const firstPublish = !doc.publishedAt;
   doc.status = "published";
   doc.publishedAt = doc.publishedAt ?? new Date();
@@ -186,11 +193,13 @@ async function welcomeOnFirstPublish(
   }
 }
 
-const statusChange = (to: "draft" | "review" | "suspended", action: string, roles?: readonly ("superadmin" | "admin" | "sales")[]) =>
+const statusChange = (to: "draft" | "review" | "suspended", action: string, roles?: readonly AdminRole[]) =>
   adminAction({ schema: z.object({ id }), ...(roles ? { roles } : {}) }, async ({ id: establishmentId }, admin) => {
     const doc = await load(establishmentId);
+    assertOwned(admin, doc, "clinic or hospital");
     const from = doc.status;
     if (to === "review" && from === "published") throw new ActionError("This site is already published.");
+    if (to === "review" && isSales(admin) && from !== "draft") throw new ActionError(from === "review" ? "This site is already waiting for review." : "Only a draft can be sent for review. Ask the super admin.");
     doc.status = to;
     await doc.save();
     await audit(auditCtx(admin), `${doc.kind}.${action}`, { entity: "Establishment", entityId: doc._id, diff: { status: { from, to } } });
@@ -201,17 +210,20 @@ const statusChange = (to: "draft" | "review" | "suspended", action: string, role
     return { form: docToForm(doc.toObject()) };
   });
 
-export const unpublishEstablishmentAction = statusChange("draft", "unpublish", ["superadmin", "admin"]);
-export const suspendEstablishmentAction = statusChange("suspended", "suspend", ["superadmin", "admin"]);
+export const unpublishEstablishmentAction = statusChange("draft", "unpublish", ["superadmin"]);
+export const suspendEstablishmentAction = statusChange("suspended", "suspend", ["superadmin"]);
 export const submitEstablishmentForReviewAction = statusChange("review", "submit_review");
 
 /**
- * Delete a clinic / hospital website for good, and its "Practises at" links
+ * Delete a clinic / hospital website for good (super admin; a sales
+ * executive only their own drafts that were never published), and its "Practises at" links
  * on doctor pages. Payments are kept (financial records). Website forms made
  * into this site can be made into a new draft again. Images stay in Cloudinary.
  */
-export const deleteEstablishmentAction = adminAction({ schema: z.object({ id }), roles: ["superadmin", "admin"] }, async ({ id: establishmentId }, admin) => {
+export const deleteEstablishmentAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
   const doc = await load(establishmentId);
+  // Sales executives: only their own drafts that were never published.
+  assertCanDelete(admin, doc);
   const route: Route = { kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug };
   await Establishment.deleteOne({ _id: doc._id });
   // Every doctor that points at it, whichever side the link was made from.
@@ -222,6 +234,7 @@ export const deleteEstablishmentAction = adminAction({ schema: z.object({ id }),
     entityId: doc._id,
     diff: { name: doc.name, status: doc.status, url: route.slug ? sitePath({ kind: route.kind, citySlug: route.citySlug!, slug: route.slug }) : undefined },
   });
+  await clearEditUnlocks(establishmentId);
   revalidatePublic(route);
   return { id: establishmentId };
 });
@@ -232,8 +245,9 @@ export const deleteEstablishmentAction = adminAction({ schema: z.object({ id }),
  * saved owner email, so it must be saved on the Business step first.
  */
 export const sendEstablishmentLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
-  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1, status: 1, citySlug: 1, slug: 1 }).lean();
+  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1, status: 1, citySlug: 1, slug: 1, salesAdminId: 1 }).lean();
   if (!doc) throw new ActionError("Clinic or hospital not found.");
+  assertOwned(admin, doc, "clinic or hospital");
   if (!doc.ownerEmail) throw new ActionError("Save the owner's login email first.");
   const limit = await hitRateLimit(`login-link:admin:${establishmentId}`, 5, 60 * 60_000);
   if (!limit.allowed) throw new ActionError("Several login emails were sent in the last hour. Please wait before sending another.");
@@ -251,6 +265,7 @@ export const sendEstablishmentLoginEmailAction = adminAction({ schema: z.object(
 export const duplicateEstablishmentAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
   const src = await Establishment.findById(establishmentId).lean();
   if (!src) throw new ActionError("Clinic or hospital not found.");
+  assertOwned(admin, src, "clinic or hospital");
   const {
     _id: _ignoredId,
     slug: _s,

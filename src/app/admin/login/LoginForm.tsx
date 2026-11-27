@@ -14,13 +14,15 @@ export function LoginForm({ next }: { next?: string }) {
     <form action={action} className="mt-6 space-y-5" noValidate>
       {next && <input type="hidden" name="next" value={next} />}
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">Email or staff ID</Label>
         <Input
           id="email"
           name="email"
-          type="email"
+          type="text"
           autoComplete="username"
-          inputMode="email"
+          autoCapitalize="none"
+          spellCheck={false}
+          placeholder="you@example.com or MRS-1001"
           required
           defaultValue={state.email}
           aria-invalid={state.error ? true : undefined}

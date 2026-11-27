@@ -13,9 +13,11 @@ import { cn } from "@/lib/cn";
  * carries text); a table view lists every value.
  */
 export interface MonthPoint {
-  label: string; // "Nov"
+  label: string; // "Nov" (tooltip and table)
   value: number;
   detail?: string; // tooltip secondary line, e.g. "6 payments"
+  /** Shorter axis label (days: "27"); defaults to `label`. */
+  axis?: string;
 }
 
 function niceMax(max: number): number {
@@ -34,15 +36,23 @@ export function MonthlyBars({
   title,
   points,
   unit,
+  period = "Month",
+  labelEvery = 1,
 }: {
   title: string;
   points: MonthPoint[];
   /** How values are shown (a name, not a function: this is rendered from server pages). */
   unit: keyof typeof FORMATS;
+  /** Table column heading ("Month", "Day"). */
+  period?: string;
+  /** Many bars (days): label every nth on the axis; the last is always labelled. */
+  labelEvery?: number;
 }) {
   const format = FORMATS[unit];
   const [active, setActive] = useState<number | null>(null);
-  const max = niceMax(Math.max(...points.map((p) => p.value)));
+  const nice = niceMax(Math.max(...points.map((p) => p.value)));
+  // Counts: an even top, so the middle gridline is a whole number (5 → 6: 0, 3, 6).
+  const max = unit === "count" && nice % 2 === 1 ? nice + 1 : nice;
   const ticks = [0, max / 2, max];
   const current = points.length - 1;
 
@@ -62,7 +72,7 @@ export function MonthlyBars({
             const h = (p.value / max) * 100;
             const isCurrent = i === current;
             return (
-              <li key={p.label} className="relative flex h-full flex-1 flex-col items-center justify-end">
+              <li key={i} className="relative flex h-full flex-1 flex-col items-center justify-end px-px">
                 {isCurrent && p.value > 0 && (
                   <span className="mb-1 text-xs font-semibold tabular-nums text-ink" style={{ marginBottom: 4 }}>
                     {format(p.value)}
@@ -106,8 +116,8 @@ export function MonthlyBars({
       </div>
       <ol aria-hidden className="flex justify-around pl-14 text-xs text-muted-foreground">
         {points.map((p, i) => (
-          <li key={p.label} className={cn("flex-1 text-center", i === current && "font-semibold text-ink")}>
-            {p.label}
+          <li key={i} className={cn("flex-1 text-center", i === current && "font-semibold text-ink")}>
+            {i === current || (current - i) % labelEvery === 0 ? (p.axis ?? p.label) : ""}
           </li>
         ))}
       </ol>
@@ -116,13 +126,13 @@ export function MonthlyBars({
         <table className="mt-2 w-full max-w-sm text-left">
           <thead className="text-xs text-muted-foreground">
             <tr>
-              <th className="py-1 font-medium">Month</th>
+              <th className="py-1 font-medium">{period}</th>
               <th className="py-1 text-right font-medium">Value</th>
             </tr>
           </thead>
           <tbody>
-            {points.map((p) => (
-              <tr key={p.label} className="border-t border-line">
+            {points.map((p, i) => (
+              <tr key={i} className="border-t border-line">
                 <td className="py-1">{p.label}</td>
                 <td className="py-1 text-right tabular-nums">
                   {format(p.value)}

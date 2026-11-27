@@ -136,6 +136,8 @@ export interface EstablishmentDoc {
   salesExecutive?: string;
   /** The sales executive's staff ID. */
   salesExecutiveId?: string;
+  /** The sales executive (dashboard user) who owns this website: they alone, and the super admin, can see and edit it. */
+  salesAdminId?: Types.ObjectId;
   source?: (typeof ESTABLISHMENT_SOURCES)[number];
   contactPerson?: { name?: string; phone?: string; email?: string };
   internalNotes?: string;
@@ -294,6 +296,7 @@ const establishmentSchema = new Schema<EstablishmentDoc>(
     },
     salesExecutive: str,
     salesExecutiveId: str,
+    salesAdminId: { type: Schema.Types.ObjectId, ref: "Admin", index: true },
     source: { type: String, enum: ESTABLISHMENT_SOURCES },
     contactPerson: {
       type: new Schema({ name: str, phone: str, email: { type: String, trim: true, lowercase: true } }, { _id: false }),

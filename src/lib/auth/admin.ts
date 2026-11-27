@@ -3,7 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connectToDatabase } from "@/lib/db";
 import { getSession } from "@/lib/auth/session";
-import { ADMIN_ROLES, type AdminRole } from "@/lib/constants";
+import { ADMIN_ROLES, normalizeAdminRole, type AdminRole } from "@/lib/constants";
 import { Admin } from "@/models/Admin";
 
 /**
@@ -17,15 +17,23 @@ export interface CurrentAdmin {
   name: string;
   email: string;
   role: AdminRole;
+  /** Sales executives' login ID ("MRS-1001"). */
+  staffId?: string;
 }
 
-/** Permission sets, in one place. */
+/**
+ * Permission sets, in one place. Sales executives work only on their own
+ * doctors, clinics and hospitals (see lib/admin/scope.ts): up to "review",
+ * never publish, never see payments; a live site needs the owner's code.
+ */
 export const can = {
-  publish: (r: AdminRole) => r === "superadmin" || r === "admin",
-  seePaymentTotals: (r: AdminRole) => r === "superadmin" || r === "admin",
-  manageMasters: (r: AdminRole) => r === "superadmin" || r === "admin",
-  manageSettings: (r: AdminRole) => r === "superadmin" || r === "admin",
+  publish: (r: AdminRole) => r === "superadmin",
+  seePaymentTotals: (r: AdminRole) => r === "superadmin",
+  manageMasters: (r: AdminRole) => r === "superadmin",
+  manageSettings: (r: AdminRole) => r === "superadmin",
   manageAdmins: (r: AdminRole) => r === "superadmin",
+  /** Everything in the dashboard, not only their own work. */
+  seeAll: (r: AdminRole) => r === "superadmin",
 };
 
 export class ForbiddenError extends Error {
@@ -38,14 +46,15 @@ export class ForbiddenError extends Error {
 /** The signed-in, active admin for this request, or null. Cached per request. */
 export const getCurrentAdmin = cache(async (): Promise<CurrentAdmin | null> => {
   const session = await getSession();
-  if (!session || !(ADMIN_ROLES as readonly string[]).includes(session.role)) return null;
+  if (!session || !normalizeAdminRole(session.role)) return null;
   if (!/^[a-f0-9]{24}$/i.test(session.sub)) return null;
   await connectToDatabase();
   const admin = await Admin.findOne({ _id: session.sub, active: true })
-    .select({ name: 1, email: 1, role: 1 })
+    .select({ name: 1, email: 1, role: 1, staffId: 1 })
     .lean();
-  if (!admin) return null;
-  return { id: String(admin._id), name: admin.name, email: admin.email, role: admin.role };
+  const role = normalizeAdminRole(admin?.role);
+  if (!admin || !role) return null;
+  return { id: String(admin._id), name: admin.name, email: admin.email ?? "", role, ...(admin.staffId ? { staffId: admin.staffId } : {}) };
 });
 
 /**

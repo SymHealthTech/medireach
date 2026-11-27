@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListTree,
   Palette,
+  Route,
   Search,
   Settings,
   TrendingUp,
@@ -32,8 +33,8 @@ export interface NavItem {
   short?: string;
 }
 
-const ALL: readonly AdminRole[] = ["superadmin", "admin", "sales"];
-const ADMINS: readonly AdminRole[] = ["superadmin", "admin"];
+const ALL: readonly AdminRole[] = ["superadmin", "sales"];
+const ADMINS: readonly AdminRole[] = ["superadmin"];
 
 export const NAV_ITEMS: NavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, roles: ALL },
@@ -47,6 +48,8 @@ export const NAV_ITEMS: NavItem[] = [
   // Sales users see only their own page here ("My sales").
   { href: "/admin/sales", label: "Sales executives", short: "Sales", icon: TrendingUp, roles: ALL },
   { href: "/admin/update-requests", label: "Update requests", icon: Wrench, roles: ADMINS },
+  // Sales: their daily work list; super admin: everyone's, per executive and combined.
+  { href: "/admin/visits", label: "Field visits", short: "Visits", icon: Route, roles: ALL },
   { href: "/admin/intakes", label: "Website forms", short: "Forms", icon: ClipboardList, roles: ALL },
   { href: "/admin/leads", label: "Leads", icon: Users, roles: ALL },
   { href: "/admin/masters", label: "Master lists", icon: ListTree, roles: ADMINS },
@@ -104,8 +107,7 @@ export function activeNavItem(pathname: string, items: NavItem[] = NAV_ITEMS, se
 
 export const ROLE_LABEL: Record<AdminRole, string> = {
   superadmin: "Super admin",
-  admin: "Admin",
-  sales: "Sales",
+  sales: "Sales executive",
 };
 
 

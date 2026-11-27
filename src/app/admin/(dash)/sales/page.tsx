@@ -8,6 +8,7 @@ import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { formatINR } from "@/lib/format";
 import { salesSummary } from "@/lib/sales/server";
+import { NewAdminUserButton } from "../settings/SettingsForms";
 
 export const metadata: Metadata = { title: "Sales executives" };
 
@@ -20,9 +21,17 @@ export default async function SalesPage() {
 
   return (
     <div className="space-y-5">
-      <p className="text-muted-foreground">
-        Everyone who brings in business. A name typed as “Other” on a doctor, clinic or hospital is added here once saved. Open a name to see everything done by them.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-3xl text-muted-foreground">
+          Everyone who brings in business. A name typed as “Other” on a doctor, clinic or hospital is added here once saved. Open a name to see everything done by them.
+          Sales executives with a dashboard login are managed in{" "}
+          <Link href="/admin/settings#users" className="font-medium text-ink underline underline-offset-2">
+            Settings → Dashboard users
+          </Link>
+          .
+        </p>
+        <NewAdminUserButton role="sales" label="Add sales executive" lockRole />
+      </div>
 
       {rows.length === 0 ? (
         <EmptyState icon={TrendingUp} title="No sales executives yet" description="Pick or type a sales executive on the Review step of a doctor, clinic or hospital." />

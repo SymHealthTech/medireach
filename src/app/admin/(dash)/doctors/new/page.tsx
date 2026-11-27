@@ -11,6 +11,7 @@ import { DoctorProfile } from "@/models/DoctorProfile";
 import { getEditorOptions } from "@/lib/doctors/options";
 import { Establishment } from "@/models/Establishment";
 import { Lead } from "@/models/Lead";
+import { leadScope, ownsRecord } from "@/lib/admin/scope";
 
 export const metadata: Metadata = { title: "New doctor" };
 
@@ -28,12 +29,12 @@ export default async function NewDoctorPage({
   searchParams: Promise<{ establishment?: string; hospital?: string; lead?: string; id?: string; step?: string }>;
 }) {
   const admin = await requireAdminPage(rolesFor("/admin/doctors"));
-  const [{ establishment, hospital, lead, id, step }, options] = await Promise.all([searchParams, getEditorOptions()]);
+  const [{ establishment, hospital, lead, id, step }, options] = await Promise.all([searchParams, getEditorOptions(admin)]);
   await connectToDatabase();
 
   if (isObjectId(id)) {
     const existing = await DoctorProfile.findById(id).lean();
-    if (existing) {
+    if (existing && ownsRecord(admin, existing)) {
       const initialStep = STEPS.some((s) => s.key === step) ? (step as StepKey) : "basics";
       return (
         <DoctorEditor
@@ -53,7 +54,7 @@ export default async function NewDoctorPage({
   const siteId = establishment ?? hospital;
   if (isObjectId(siteId)) {
     const e = await Establishment.findById(siteId).lean();
-    if (e) {
+    if (e && (ownsRecord(admin, e) || e.status === "published")) {
       const cityId = e.address?.cityId ? String(e.address.cityId) : (options.cities.find((c) => c.slug === "pune")?.id ?? "");
       const city = options.cities.find((c) => c.id === cityId);
       if (e.kind === "hospital") form.practitionerType = "consultant";
@@ -79,7 +80,7 @@ export default async function NewDoctorPage({
 
   let leadId: string | undefined;
   if (isObjectId(lead)) {
-    const l = await Lead.findById(lead).lean();
+    const l = await Lead.findOne({ _id: lead, ...leadScope(admin) }).lean();
     if (l) {
       leadId = String(l._id);
       const parts = l.name.replace(/^dr\.?\s+/i, "").trim().split(/\s+/);
@@ -91,6 +92,9 @@ export default async function NewDoctorPage({
       if (spec) form.primarySpecialtyId = spec.id;
     }
   }
+
+  // A sales executive's new doctor is theirs (the server sets this too).
+  if (admin.role === "sales") Object.assign(form, { salesExecutive: admin.name, salesExecutiveId: admin.staffId ?? "" });
 
   return <DoctorEditor initial={form} options={options} role={admin.role} leadId={leadId} />;
 }

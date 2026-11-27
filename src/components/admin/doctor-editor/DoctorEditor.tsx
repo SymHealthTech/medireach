@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardList, Cloud, ExternalLink, Loader2, Lock } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardList, Cloud, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { welcomeToast } from "@/components/admin/welcome-toast";
+import { LiveEditUnlock } from "@/components/admin/LiveEditUnlock";
+import { useUnpaidPublish } from "@/components/admin/UnpaidPublishConfirm";
 import {
   publishDoctorAction,
   saveDoctorSectionAction,
@@ -65,6 +67,7 @@ export function DoctorEditor({
   initialStep = "basics",
   leadId,
   hints,
+  liveUnlockedUntil,
 }: {
   initial: DoctorForm;
   options: EditorOptions;
@@ -73,6 +76,8 @@ export function DoctorEditor({
   leadId?: string;
   /** Answers from the website form this draft was made from. */
   hints?: DoctorFormHints;
+  /** Sales executive on a live page: until when the doctor's code lets them edit it. */
+  liveUnlockedUntil?: string;
 }) {
   const [form, setForm] = useState<DoctorForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -89,8 +94,12 @@ export function DoctorEditor({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
-  const canPublish = role === "superadmin" || role === "admin";
-  const readOnly = form.status === "published" && !canPublish;
+  const canPublish = role === "superadmin";
+  // A sales executive changes a live page only after the doctor gives them the code.
+  const [unlockedUntil, setUnlockedUntil] = useState(liveUnlockedUntil);
+  const unlocked = Boolean(unlockedUntil && new Date(unlockedUntil).getTime() > Date.now());
+  const readOnly = form.status === "published" && !canPublish && !unlocked;
+  const { publish: publishChecked, dialog: unpaidDialog } = useUnpaidPublish();
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
   // Re-render "Saved 5s ago" every few seconds.
@@ -214,10 +223,13 @@ export function DoctorEditor({
 
   async function runStatus(action: typeof unpublishDoctorAction, ok: string) {
     if (!form.id) return;
+    const id = form.id;
     setBusy(true);
     await flush();
-    const res = await action({ id: form.id });
+    // Publishing without a recorded payment asks "publish anyway?" first.
+    const res = action === publishDoctorAction ? await publishChecked((allowUnpaid) => publishDoctorAction({ id, allowUnpaid }), { paymentsHref: `/admin/payments?doctor=${id}` }) : await action({ id });
     setBusy(false);
+    if (!res) return;
     if (!res.ok) return toast.error(res.error);
     setForm((prev) => ({ ...prev, status: res.data.form.status, publishedAt: res.data.form.publishedAt, slug: res.data.form.slug, shortSlug: res.data.form.shortSlug, citySlug: res.data.form.citySlug }));
     toast.success(ok);
@@ -323,11 +335,8 @@ export function DoctorEditor({
           </div>
         )}
 
-        {readOnly && (
-          <div className="flex items-start gap-3 rounded-xl border border-line bg-muted p-4 text-sm">
-            <Lock className="mt-0.5 size-4 shrink-0" />
-            <p>This page is live. Only an admin can edit published pages.</p>
-          </div>
+        {form.status === "published" && !canPublish && form.id && (
+          <LiveEditUnlock kind="doctor" id={form.id} owner="the doctor" until={unlockedUntil} onUnlocked={setUnlockedUntil} />
         )}
 
         <h3 className="hidden font-display text-xl font-semibold text-ink lg:block">{STEPS[stepIndex]!.title}</h3>
@@ -362,7 +371,7 @@ export function DoctorEditor({
               onBusinessDates: (d) => setForm((prev) => ({ ...prev, ...d })),
               onPublish: () => void runStatus(publishDoctorAction, "Published — the page is live"),
               onUnpublish: () => void runStatus(unpublishDoctorAction, "Unpublished"),
-              onSubmitReview: () => void runStatus(submitForReviewAction, "Sent to an admin for review"),
+              onSubmitReview: () => void runStatus(submitForReviewAction, "Sent to the super admin for review"),
             }}
           />
         )}
@@ -393,6 +402,7 @@ export function DoctorEditor({
           </div>
         </div>
       </div>
+      {unpaidDialog}
     </div>
   );
 }

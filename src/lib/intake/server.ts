@@ -1,4 +1,6 @@
 import "server-only";
+import { intakeKeys } from "@/lib/visits/keys";
+import { linkIntakeToSales } from "@/lib/visits/match";
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { INTAKE_EDITABLE_STATUSES, INTAKE_KINDS, type IntakeKind, type IntakeStatus } from "@/lib/constants";
@@ -218,6 +220,8 @@ export async function saveIntake(raw: SaveInput, sessionEmail: string | null, op
   doc.photos = { ...photos, gallery: photos.gallery.slice(0, INTAKE_PHOTOS[kind].galleryMax) };
   doc.name = intakeName(kind, data) || undefined;
   doc.phone = str(data.mobile) || undefined;
+  // Doctor / clinic name and mobile numbers, to match sales executives' field visits.
+  doc.matchKeys = intakeKeys(kind, data);
   doc.missingCount = missing.length;
   doc.lastSavedAt = now;
   if (!opts.asAdmin) {
@@ -246,6 +250,15 @@ export async function saveIntake(raw: SaveInput, sessionEmail: string | null, op
       }
       // Two tabs creating the same form at once: the other one won.
       return isNew ? { ok: false, needsCode: true, email, error: "A form is already saved with this email. Enter the code we email you to open it." } : { ok: false, error: "That email is already used for another form." };
+    }
+  }
+
+  // A sent form joins the sales executive who visited them (never fails the save).
+  if (doc.status !== "draft") {
+    try {
+      await linkIntakeToSales(doc._id);
+    } catch (err) {
+      console.error("[intake] sales matching failed", err);
     }
   }
 

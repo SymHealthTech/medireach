@@ -7,6 +7,7 @@ import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { Pill } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { isSales, leadScope } from "@/lib/admin/scope";
 import { oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchParams } from "@/lib/admin/list";
 import { LEAD_SOURCES, LEAD_STATUSES } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
@@ -21,11 +22,13 @@ export const metadata: Metadata = { title: "Leads" };
 const TONE = { new: "marigold", contacted: "ink", won: "leaf", lost: "muted" } as const;
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireAdminPage(rolesFor("/admin/leads"));
+  const admin = await requireAdminPage(rolesFor("/admin/leads"));
+  // Sales executives see only the leads they added.
+  const scope = leadScope(admin);
   await connectToDatabase();
   const sp = await searchParams;
 
-  const filter: FilterQuery<LeadDoc> = {};
+  const filter: FilterQuery<LeadDoc> = { ...scope };
   const status = oneOf(param(sp, "status"), LEAD_STATUSES);
   if (status) filter.status = status;
   const source = oneOf(param(sp, "source"), LEAD_SOURCES);
@@ -38,9 +41,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const [total, leads, counts] = await Promise.all([
     Lead.countDocuments(filter),
     Lead.find(filter).sort({ createdAt: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
-    Lead.aggregate<{ _id: string; n: number }>([{ $match: { source: { $ne: "whatsapp_click" } } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
+    Lead.aggregate<{ _id: string; n: number }>([{ $match: { ...scope, source: { $ne: "whatsapp_click" } } }, { $group: { _id: "$status", n: { $sum: 1 } } }]),
   ]);
-  const waClicks = await Lead.countDocuments({ source: "whatsapp_click", createdAt: { $gte: new Date(Date.now() - 30 * 86400_000) } });
+  const waClicks = isSales(admin) ? 0 : await Lead.countDocuments({ source: "whatsapp_click", createdAt: { $gte: new Date(Date.now() - 30 * 86400_000) } });
   const countOf = (s: string) => counts.find((c) => c._id === s)?.n ?? 0;
   const statusHref = (s?: string) => {
     const next = new URLSearchParams();
@@ -52,12 +55,16 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">
-          Enquiries from the website and field visits. WhatsApp button taps in the last 30 days:{" "}
-          <Link href="/admin/leads?source=whatsapp_click" className="font-semibold text-ink underline">
-            {waClicks}
-          </Link>
-        </p>
+        {isSales(admin) ? (
+          <p className="text-muted-foreground">The leads you added from field visits and calls.</p>
+        ) : (
+          <p className="text-muted-foreground">
+            Enquiries from the website and field visits. WhatsApp button taps in the last 30 days:{" "}
+            <Link href="/admin/leads?source=whatsapp_click" className="font-semibold text-ink underline">
+              {waClicks}
+            </Link>
+          </p>
+        )}
         <NewLeadButton />
       </div>
 

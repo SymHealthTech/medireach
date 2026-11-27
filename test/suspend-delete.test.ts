@@ -5,7 +5,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 vi.mock("next/cache", () => ({ unstable_cache: <T>(fn: T) => fn, revalidateTag: () => {}, revalidatePath: () => {} }));
 vi.mock("@/lib/integrations/email", () => ({ sendEmail: async () => ({ ok: true }) }));
 
-const role = { current: "superadmin" as "superadmin" | "admin" | "sales" };
+const role = { current: "superadmin" as "superadmin" | "sales" };
 vi.mock("@/lib/auth/admin", async (load) => {
   const real = await load<typeof import("@/lib/auth/admin")>();
   return {
@@ -53,7 +53,7 @@ describe("suspend, republish and delete", () => {
     const id = String(doc!._id);
     expect((await suspendDoctorAction({ id })).ok).toBe(true);
     expect((await DoctorProfile.findById(id).lean())!.status).toBe("suspended");
-    expect((await publishDoctorAction({ id })).ok).toBe(true);
+    expect((await publishDoctorAction({ id, allowUnpaid: true })).ok).toBe(true);
     expect((await DoctorProfile.findById(id).lean())!.status).toBe("published");
   });
 
@@ -84,7 +84,7 @@ describe("suspend, republish and delete", () => {
     const id = String(site!._id);
     expect((await suspendEstablishmentAction({ id })).ok).toBe(true);
     expect((await Establishment.findById(id).lean())!.status).toBe("suspended");
-    expect((await publishEstablishmentAction({ id })).ok).toBe(true);
+    expect((await publishEstablishmentAction({ id, allowUnpaid: true })).ok).toBe(true);
     expect((await Establishment.findById(id).lean())!.status).toBe("published");
 
     const doctor = await DoctorProfile.findOne().lean();

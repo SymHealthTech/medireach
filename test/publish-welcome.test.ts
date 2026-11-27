@@ -63,7 +63,7 @@ describe("welcome email on first publish", () => {
     const id = await neverPublished(DoctorProfile, {}, { ownerEmail: "asha.welcome@example.com" });
     await Intake.create({ kind: "doctor", email: "asha.welcome@example.com", ref: "MR-WELC01", status: "in_review", data: {}, photos: { gallery: [] }, convertedTo: { kind: "doctor", id } });
 
-    const res = await publishDoctorAction({ id });
+    const res = await publishDoctorAction({ id, allowUnpaid: true });
     expect(res.ok).toBe(true);
     expect(res.ok && res.data.welcome).toEqual({ sent: "asha.welcome@example.com" });
     expect(sent).toHaveLength(1);
@@ -75,16 +75,16 @@ describe("welcome email on first publish", () => {
     expect((await Intake.findOne({ ref: "MR-WELC01" }).lean())!.status).toBe("done");
 
     // Republishing, or publishing again after an unpublish, sends nothing.
-    expect((await publishDoctorAction({ id })).ok).toBe(true);
+    expect((await publishDoctorAction({ id, allowUnpaid: true })).ok).toBe(true);
     expect((await unpublishDoctorAction({ id })).ok).toBe(true);
-    const again = await publishDoctorAction({ id });
+    const again = await publishDoctorAction({ id, allowUnpaid: true });
     expect(again.ok && again.data.welcome).toBeUndefined();
     expect(sent).toHaveLength(1);
   });
 
   it("without a login email: publishes, sends nothing and says how to send it", async () => {
     const id = await neverPublished(DoctorProfile, { ownerEmail: { $exists: false } }, {});
-    const res = await publishDoctorAction({ id });
+    const res = await publishDoctorAction({ id, allowUnpaid: true });
     expect(res.ok).toBe(true);
     expect(res.ok && res.data.welcome?.note).toMatch(/turn on the doctor's login/);
     expect(sent).toHaveLength(0);
@@ -92,7 +92,7 @@ describe("welcome email on first publish", () => {
 
   it("emails a clinic or hospital owner on its first publish", async () => {
     const id = await neverPublished(Establishment, { kind: "clinic" }, { ownerEmail: "owner.welcome@example.com" });
-    const res = await publishEstablishmentAction({ id });
+    const res = await publishEstablishmentAction({ id, allowUnpaid: true });
     expect(res.ok).toBe(true);
     expect(res.ok && res.data.welcome).toEqual({ sent: "owner.welcome@example.com" });
     const site = await Establishment.findById(id).lean();

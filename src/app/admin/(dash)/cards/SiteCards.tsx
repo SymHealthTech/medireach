@@ -21,11 +21,11 @@ export function CardTabs({ active }: { active: ProductKind }) {
 }
 
 /** Clinic/hospital visiting cards: preview, downloads, QR and share message. */
-export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic" | "hospital" }) {
+export async function SiteCards({ sp, kind, scope = {} }: { sp: SearchParams; kind: "clinic" | "hospital"; scope?: Record<string, unknown> }) {
   const id = param(sp, "establishment");
   // Opened from the editor ("Visiting card"): only this site's card.
-  if (isObjectId(id)) return <OneSiteCard id={id} />;
-  const filter: FilterQuery<EstablishmentDoc> = { kind };
+  if (isObjectId(id)) return <OneSiteCard id={id} scope={scope} />;
+  const filter: FilterQuery<EstablishmentDoc> = { kind, ...scope };
   const re = searchRegex(param(sp, "q"));
   if (re) filter.name = re;
   const page = pageOf(sp);
@@ -107,9 +107,11 @@ export async function SiteCards({ sp, kind }: { sp: SearchParams; kind: "clinic"
 }
 
 /** One clinic's or hospital's card on its own: phone and print card, downloads, QR and the WhatsApp message. */
-async function OneSiteCard({ id }: { id: string }) {
-  const [settings, doc, site] = await Promise.all([getSettings(), Establishment.findById(id).select({ name: 1, kind: 1, status: 1 }).lean(), loadSiteForCard(id)]);
+async function OneSiteCard({ id, scope }: { id: string; scope: Record<string, unknown> }) {
+  // Check it exists (and, for a sales executive, is theirs) before building the card.
+  const doc = await Establishment.findOne({ _id: id, ...scope }).select({ name: 1, kind: 1, status: 1 }).lean();
   if (!doc) return <EmptyState icon={IdCard} title="Not found" description="This clinic or hospital no longer exists." />;
+  const [settings, site] = await Promise.all([getSettings(), loadSiteForCard(id)]);
   const what = doc.kind === "hospital" ? "hospital" : "clinic";
   const qrSvg = site ? await QRCode.toString(site.shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0A3F3F", light: "#FFFFFF" } }) : undefined;
   return (

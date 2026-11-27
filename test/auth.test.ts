@@ -89,7 +89,7 @@ describe("sessions and roles", () => {
 
   it("hides admin-only sections from sales", () => {
     const sales = navForRole("sales").map((n) => n.label);
-    expect(sales).toEqual(["Overview", "Doctors", "Clinics", "Hospitals", "Sites", "Visiting cards", "My sales", "Website forms", "Leads"]);
+    expect(sales).toEqual(["Overview", "Doctors", "Clinics", "Hospitals", "Sites", "Visiting cards", "My sales", "Field visits", "Website forms", "Leads"]);
     expect(navForRole("superadmin")).toHaveLength(NAV_ITEMS.length);
     expect(rolesFor("/admin/payments")).not.toContain("sales");
   });
@@ -117,6 +117,7 @@ describe("sessions and roles", () => {
       "Payments & renewals",
       "Sales executives",
       "Update requests",
+      "Field visits",
       "Website forms",
       "Leads",
       "Master lists",

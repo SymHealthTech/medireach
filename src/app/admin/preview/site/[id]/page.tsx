@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Eye } from "lucide-react";
 import { SiteView } from "@/components/public/SiteView";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { assertOwnedPage } from "@/lib/admin/scope";
 import { isObjectId } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
 import { buildPublicEstablishment } from "@/lib/public/establishments";
@@ -16,12 +17,14 @@ export const metadata: Metadata = { title: "Preview" };
  * the public site will be. Never indexed (under /admin).
  */
 export default async function SitePreviewPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdminPage();
+  const admin = await requireAdminPage();
   const { id } = await params;
   if (!isObjectId(id)) notFound();
   await connectToDatabase();
-  const doc = await Establishment.findById(id).lean();
-  if (!doc) notFound();
+  const found = await Establishment.findById(id).lean();
+  // Sales executives: only their own sites.
+  assertOwnedPage(admin, found);
+  const doc = found!;
 
   const site = await buildPublicEstablishment({ ...doc, citySlug: doc.citySlug || "pune", slug: doc.slug || "preview" });
   if (!site) {

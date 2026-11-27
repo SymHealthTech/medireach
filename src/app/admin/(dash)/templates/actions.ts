@@ -8,7 +8,7 @@ import { TemplateSlot } from "@/models/TemplateSlot";
 import { revalidateTag } from "next/cache";
 import { CACHE_TAGS } from "@/lib/public/tags";
 
-const ADMINS = ["superadmin", "admin"] as const;
+const ADMINS = ["superadmin"] as const;
 const slotKey = z.object({ type: z.enum(SITE_TEMPLATE_TYPES), key: z.enum(TEMPLATE_KEYS) });
 
 // Module-level so its callback isn't mistaken for a server action.

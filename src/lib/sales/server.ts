@@ -1,5 +1,5 @@
 import "server-only";
-import type { Types } from "mongoose";
+import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db";
 import { escapeRegExp } from "@/lib/admin/list";
 import type { EstablishmentKind } from "@/lib/constants";
@@ -117,10 +117,15 @@ export interface SalesItem {
   collected: number;
 }
 
-/** Everything recorded under one executive's name, newest first. */
-export async function salesBusiness(name: string): Promise<SalesItem[]> {
+/**
+ * Everything recorded under one executive, newest first: by name, plus
+ * (for a dashboard user) every website they own. `only: "owned"` is the
+ * sales executive's own view: strictly the websites they own.
+ */
+export async function salesBusiness(name: string, opts: { ownerId?: string; only?: "owned" } = {}): Promise<SalesItem[]> {
   await connectToDatabase();
-  const f = nameFilter(name);
+  const owned = opts.ownerId ? { salesAdminId: new Types.ObjectId(opts.ownerId) } : null;
+  const f = opts.only === "owned" && owned ? owned : owned ? { $or: [nameFilter(name), owned] } : nameFilter(name);
   const common = { status: 1, plan: 1, salesExecutiveId: 1, createdAt: 1, setupPaidAt: 1, renewalDueDate: 1 } as const;
   const [doctors, sites] = await Promise.all([
     DoctorProfile.find(f).select({ ...common, title: 1, firstName: 1, lastName: 1, displayName: 1 }).lean(),

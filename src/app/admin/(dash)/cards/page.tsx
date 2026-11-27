@@ -7,6 +7,7 @@ import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { ownedScope } from "@/lib/admin/scope";
 import { isObjectId, pageOf, param, searchRegex, type SearchParams } from "@/lib/admin/list";
 import { connectToDatabase } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
@@ -24,15 +25,17 @@ export const metadata: Metadata = { title: "Visiting cards" };
 const PER_PAGE = 12;
 
 export default async function CardsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireAdminPage(rolesFor("/admin/cards"));
+  const admin = await requireAdminPage(rolesFor("/admin/cards"));
+  // Sales executives see only their own cards.
+  const scope = ownedScope(admin);
   await connectToDatabase();
   const sp = await searchParams;
   const type = param(sp, "type");
-  if (type === "clinic" || type === "hospital" || type === "sites") return <SiteCards sp={sp} kind={type === "hospital" ? "hospital" : "clinic"} />;
+  if (type === "clinic" || type === "hospital" || type === "sites") return <SiteCards sp={sp} kind={type === "hospital" ? "hospital" : "clinic"} scope={scope} />;
   const doctor = param(sp, "doctor");
   // Opened from the doctor editor ("Visiting card"): only this doctor's card.
-  if (isObjectId(doctor)) return <OneDoctorCard id={doctor} />;
-  const filter: FilterQuery<DoctorProfileDoc> = {};
+  if (isObjectId(doctor)) return <OneDoctorCard id={doctor} scope={scope} />;
+  const filter: FilterQuery<DoctorProfileDoc> = { ...scope };
   const re = searchRegex(param(sp, "q"));
   if (re) filter.$or = [{ firstName: re }, { lastName: re }, { displayName: re }];
   const page = pageOf(sp);
@@ -134,14 +137,11 @@ export default async function CardsPage({ searchParams }: { searchParams: Promis
 }
 
 /** One doctor's card on its own: print and phone card, downloads, QR, contact file and the WhatsApp message. */
-async function OneDoctorCard({ id }: { id: string }) {
-  const [settings, d, publicDoctor, ready] = await Promise.all([
-    getSettings(),
-    DoctorProfile.findById(id).select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1 }).lean(),
-    loadDoctorForCard(id),
-    getReadyTemplates(),
-  ]);
+async function OneDoctorCard({ id, scope }: { id: string; scope: Record<string, unknown> }) {
+  // Check it exists (and, for a sales executive, is theirs) before building the card.
+  const d = await DoctorProfile.findOne({ _id: id, ...scope }).select({ title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1 }).lean();
   if (!d) return <EmptyState icon={IdCard} title="Not found" description="This doctor no longer exists." />;
+  const [settings, publicDoctor, ready] = await Promise.all([getSettings(), loadDoctorForCard(id), getReadyTemplates()]);
   const name = d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`;
   const shareUrl = d.subdomain ? subdomainUrl(d.subdomain) : d.shortSlug ? absUrl(paths.short(d.shortSlug)) : d.slug && d.citySlug ? absUrl(paths.doctor(d.citySlug, d.slug)) : undefined;
   const qrSvg = shareUrl ? await QRCode.toString(shareUrl, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#0A3F3F", light: "#FFFFFF" } }) : undefined;

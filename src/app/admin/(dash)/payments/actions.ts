@@ -11,7 +11,7 @@ import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { Payment } from "@/models/Payment";
 
-const ADMINS = ["superadmin", "admin"] as const;
+const ADMINS = ["superadmin"] as const;
 const optId = z
   .string()
   .refine((s) => s === "" || /^[a-f0-9]{24}$/i.test(s), "Invalid id.")

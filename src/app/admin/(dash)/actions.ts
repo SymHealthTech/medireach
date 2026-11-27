@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { leadScope, ownedScope } from "@/lib/admin/scope";
 import { Establishment } from "@/models/Establishment";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Lead } from "@/models/Lead";
@@ -21,7 +22,9 @@ const querySchema = z.string().trim().min(2).max(60);
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export async function searchAction(raw: string): Promise<SearchResult[]> {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  // Sales executives find only their own doctors, sites and leads.
+  const own = ownedScope(admin);
   const parsed = querySchema.safeParse(raw);
   if (!parsed.success) return [];
 
@@ -32,6 +35,7 @@ export async function searchAction(raw: string): Promise<SearchResult[]> {
 
   const [doctors, leads, establishments] = await Promise.all([
     DoctorProfile.find({
+      ...own,
       $or: [
         { firstName: re },
         { lastName: re },
@@ -46,12 +50,13 @@ export async function searchAction(raw: string): Promise<SearchResult[]> {
       .sort({ updatedAt: -1 })
       .limit(6)
       .lean(),
-    Lead.find({ $or: [{ name: re }, ...(phoneRe ? [{ phone: phoneRe }] : [])] })
+    Lead.find({ ...leadScope(admin), $or: [{ name: re }, ...(phoneRe ? [{ phone: phoneRe }] : [])] })
       .select({ name: 1, phone: 1, status: 1 })
       .sort({ createdAt: -1 })
       .limit(5)
       .lean(),
     Establishment.find({
+      ...own,
       $or: [{ name: re }, { slug: re }, { shortSlug: re }, { subdomain: re }, ...(phoneRe ? [{ "contact.phones": phoneRe }, { "contact.emergencyPhone": phoneRe }] : [])],
     })
       .select({ name: 1, kind: 1, status: 1 })

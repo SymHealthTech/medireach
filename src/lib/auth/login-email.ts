@@ -111,7 +111,46 @@ Didn't request this? Ignore this email. Nobody can log in without this link.<br>
 
 /** Login code email (email OTP on /login): the 6-digit code, large, plus a plain-text fallback. */
 export function loginCodeEmail({ name, code }: { name: string; code: string }): LoginEmail {
-  const subject = `${code} is your MediReach login code`;
+  return codeEmail({
+    subject: `${code} is your MediReach login code`,
+    name,
+    code,
+    intro: "Enter this code on the MediReach login page:",
+    note: "The code works once and expires in 10 minutes. Never share it with anyone, including anyone who says they are from MediReach.",
+    footer: "Didn't request this? Ignore this email. Nobody can log in without this code.",
+    text: [
+      `Your MediReach login code is ${code}`,
+      "",
+      "Enter it on the MediReach login page. It works once and expires in 10 minutes.",
+      "Never share it with anyone, including anyone who says they are from MediReach.",
+    ],
+  });
+}
+
+/**
+ * The code a sales executive needs from the owner before changing a live
+ * website: the owner gives it to them only if they agreed to the change.
+ */
+export function editCodeEmail({ name, code, salesName, siteName, hours }: { name: string; code: string; salesName: string; siteName: string; hours: number }): LoginEmail {
+  const lasts = `It works once, expires in 10 minutes, and lets them make changes for ${hours} hours.`;
+  return codeEmail({
+    subject: `${code} is your MediReach code to approve changes to your website`,
+    name,
+    code,
+    intro: `${salesName} from MediReach wants to update your website “${siteName}”. If you asked for this change, give them this code:`,
+    note: `${lasts} If you didn't ask for a change, don't share it.`,
+    footer: "Nobody on the MediReach sales team can change your live website without this code.",
+    text: [
+      `${salesName} from MediReach wants to update your website "${siteName}".`,
+      "",
+      `If you asked for this change, give them this code: ${code}`,
+      "",
+      `${lasts} If you didn't ask for a change, don't share it.`,
+    ],
+  });
+}
+
+function codeEmail({ subject, name, code, intro, note, footer, text: lines }: { subject: string; name: string; code: string; intro: string; note: string; footer: string; text: string[] }): LoginEmail {
   const n = esc(name);
   const c = esc(code);
   const font = "system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif";
@@ -128,16 +167,16 @@ export function loginCodeEmail({ name, code }: { name: string; code: string }): 
 </td></tr>
 <tr><td style="padding:24px 32px 0 32px;font-family:${font};font-size:16px;line-height:24px;color:#1F2933;">
 <p style="margin:0 0 12px 0;">Hello ${n},</p>
-<p style="margin:0 0 20px 0;">Enter this code on the MediReach login page:</p>
+<p style="margin:0 0 20px 0;">${esc(intro)}</p>
 </td></tr>
 <tr><td align="center" style="padding:0 32px;">
 <div style="display:inline-block;padding:16px 28px;background:#ECF6F5;border:1px solid #CDEAE8;border-radius:12px;font-family:${font};font-size:34px;font-weight:bold;letter-spacing:10px;color:${INK};">${c}</div>
 </td></tr>
 <tr><td style="padding:20px 32px 0 32px;font-family:${font};font-size:14px;line-height:21px;color:${MUTED};">
-<p style="margin:0 0 20px 0;">The code works once and expires in 10 minutes. Never share it with anyone, including anyone who says they are from MediReach.</p>
+<p style="margin:0 0 20px 0;">${esc(note)}</p>
 </td></tr>
 <tr><td style="padding:16px 32px 28px 32px;border-top:1px solid ${LINE};font-family:${font};font-size:13px;line-height:20px;color:${MUTED};">
-Didn't request this? Ignore this email. Nobody can log in without this code.<br>MediReach · Sym HealthTech, Pune
+${esc(footer)}<br>MediReach · Sym HealthTech, Pune
 </td></tr>
 </table>
 </td></tr>
@@ -145,17 +184,7 @@ Didn't request this? Ignore this email. Nobody can log in without this code.<br>
 </body>
 </html>`;
 
-  const text = [
-    `Hello ${name},`,
-    "",
-    `Your MediReach login code is ${code}`,
-    "",
-    "Enter it on the MediReach login page. It works once and expires in 10 minutes.",
-    "Never share it with anyone, including anyone who says they are from MediReach.",
-    "",
-    "Didn't request this? Ignore this email. Nobody can log in without this code.",
-    "MediReach · Sym HealthTech, Pune",
-  ].join("\n");
+  const text = [`Hello ${name},`, "", ...lines, "", footer, "MediReach · Sym HealthTech, Pune"].join("\n");
 
   return { subject, html, text };
 }

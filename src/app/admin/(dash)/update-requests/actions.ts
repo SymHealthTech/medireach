@@ -7,7 +7,7 @@ import { UPDATE_REQUEST_STATUSES } from "@/lib/constants";
 import { createUpdateRequest } from "@/lib/update-requests/create";
 import { UpdateRequest } from "@/models/UpdateRequest";
 
-const ADMINS = ["superadmin", "admin"] as const;
+const ADMINS = ["superadmin"] as const;
 
 /** New update request; the doctor's first one is free (see createUpdateRequest). */
 export const createUpdateRequestAction = adminAction(

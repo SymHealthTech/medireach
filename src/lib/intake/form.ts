@@ -322,6 +322,8 @@ const preferencesSection = (namePlaceholder: string): SectionDef => ({
   fields: [
     text("websiteName", "Website name you would like", { placeholder: namePlaceholder, help: "Your website address will be <name>.medireach.co.in. We check it is free." }),
     { key: "notes", label: "Notes for our team", type: "textarea", wide: true, placeholder: "Anything you want on the website, or things we should know." },
+    text("salesName", "MediReach sales executive who met you (if any)", { placeholder: "Their name", help: "Optional. So we can thank the right person." }),
+    text("salesStaffId", "Their staff ID (if you have it)", { placeholder: "MRS-1001" }),
   ],
 });
 

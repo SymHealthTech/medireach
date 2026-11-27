@@ -15,6 +15,8 @@ import { Establishment } from "@/models/Establishment";
 import { Intake } from "@/models/Intake";
 import { syncPublishedIntakes } from "@/lib/intake/site-status";
 import { RENEWAL_DUE_SOON_DAYS } from "@/lib/constants";
+import { FieldVisitsToday, ReviewQueue } from "./ReviewQueue";
+import { SalesOverview } from "./SalesOverview";
 
 export const metadata: Metadata = { title: "Overview" };
 
@@ -35,6 +37,19 @@ function describe(action: string): string {
     "doctor.suspend": "suspended a page",
     "doctor.duplicate": "duplicated a doctor",
     "doctor.submit_review": "sent a page for review",
+    "clinic.submit_review": "sent a clinic site for review",
+    "hospital.submit_review": "sent a hospital site for review",
+    "visit.create": "logged a field visit",
+    "visit.update": "edited a field visit",
+    "visit.delete": "deleted a field visit",
+    "intake.assign_sales": "assigned a website form to a sales executive",
+    "site.assign_sales": "assigned a website to a sales executive",
+    "site.edit_code_sent": "asked an owner for their edit code",
+    "site.edit_unlocked": "unlocked a live website with the owner's code",
+    "admin_user.create": "added a dashboard user",
+    "admin_user.delete": "deleted a dashboard user",
+    "admin_user.update": "updated a dashboard user",
+    "admin_user.password_reset": "reset a password",
     "lead.create": "added a lead",
     "lead.status": "updated a lead",
     "payment.record": "recorded a payment",
@@ -61,6 +76,15 @@ function describe(action: string): string {
   if (/^(clinic|hospital).update./.test(action)) return `edited a ${action.split(".")[0]} (${action.split(".")[2]})`;
   if (action.startsWith("master.")) return "edited master lists";
   return action.replace(/[._]/g, " ");
+}
+
+function DeniedNotice() {
+  return (
+    <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-clay/30 bg-clay/10 p-4 text-sm">
+      <ShieldAlert className="mt-0.5 size-5 shrink-0 text-clay-text" strokeWidth={1.75} />
+      <p>That section isn&apos;t available for your role. Ask the super admin if you need access.</p>
+    </div>
+  );
 }
 
 function StatCard({ label, value, hint, href }: { label: string; value: string | number; hint?: string; href?: string }) {
@@ -101,6 +125,16 @@ function ProductCard({ label, icon: Icon, counts, href }: { label: string; icon:
 export default async function OverviewPage({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const admin = await requireAdminPage();
   await connectToDatabase();
+  // Sales executives get their own dashboard: only their work, no payments.
+  if (admin.role === "sales") {
+    const { denied } = await searchParams;
+    return (
+      <>
+        {denied && <DeniedNotice />}
+        <SalesOverview admin={admin} greeting={greeting()} />
+      </>
+    );
+  }
   // Forms whose website is already live leave the "to review" counts.
   await syncPublishedIntakes();
   const { denied } = await searchParams;
@@ -175,12 +209,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-8">
-      {denied && (
-        <div role="alert" className="flex items-start gap-3 rounded-xl border border-clay/30 bg-clay/10 p-4 text-sm">
-          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-clay-text" strokeWidth={1.75} />
-          <p>That section isn&apos;t available for your role. Ask a super admin if you need access.</p>
-        </div>
-      )}
+      {denied && <DeniedNotice />}
 
       <section>
         <p className="font-display text-2xl font-semibold text-ink sm:text-3xl">
@@ -188,6 +217,9 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
         </p>
         <p className="mt-1 text-muted-foreground">Here&apos;s where things stand today.</p>
       </section>
+
+      <ReviewQueue />
+      <FieldVisitsToday />
 
       <section aria-label="Products" className="grid gap-3 sm:grid-cols-3">
         <ProductCard label="Doctors" icon={UserRound} counts={doctorCounts} href="/admin/doctors" />

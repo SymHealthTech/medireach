@@ -43,6 +43,14 @@ export interface IntakeDoc {
   adminNotes?: string;
   /** The draft site made from this form. */
   convertedTo?: { kind: IntakeKind; id: Types.ObjectId };
+  /** Identity keys for matching sales executives' field visits (lib/visits/match.ts). */
+  matchKeys?: string[];
+  /** The sales executive this form belongs to (they then see it; its website draft becomes theirs). */
+  salesAdminId?: Types.ObjectId;
+  /** How it was linked: the form's own staff ID, a matching field visit, or the super admin. */
+  salesMatch?: { by: "form" | "visit" | "admin"; on: string[]; visitId?: Types.ObjectId; at: Date };
+  /** Several sales executives visited them: the super admin picks one. */
+  salesCandidates?: { salesAdminId: Types.ObjectId; name: string; staffId?: string; on: string[]; visitId?: Types.ObjectId; day?: string }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +83,24 @@ const intakeSchema = new Schema<IntakeDoc>(
     updatedAfterSubmitAt: { type: Date },
     lastSavedAt: { type: Date, default: () => new Date() },
     adminNotes: { type: String, trim: true },
+    matchKeys: { type: [String], default: undefined, index: true },
+    salesAdminId: { type: Schema.Types.ObjectId, ref: "Admin", index: true },
+    salesMatch: {
+      type: new Schema(
+        { by: { type: String, enum: ["form", "visit", "admin"], required: true }, on: { type: [String], default: [] }, visitId: { type: Schema.Types.ObjectId }, at: { type: Date, required: true } },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+    salesCandidates: {
+      type: [
+        new Schema(
+          { salesAdminId: { type: Schema.Types.ObjectId, required: true }, name: { type: String, required: true }, staffId: String, on: { type: [String], default: [] }, visitId: Schema.Types.ObjectId, day: String },
+          { _id: false },
+        ),
+      ],
+      default: undefined,
+    },
     convertedTo: {
       type: new Schema({ kind: { type: String, enum: INTAKE_KINDS, required: true }, id: { type: Schema.Types.ObjectId, required: true } }, { _id: false }),
       default: undefined,

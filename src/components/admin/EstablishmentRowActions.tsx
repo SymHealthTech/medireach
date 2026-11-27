@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Ban, Copy, CreditCard, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, RotateCcw, Send, Trash2, Undo2, UserPlus } from "lucide-react";
+import { Ban, Copy, CreditCard, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, RotateCcw, Send, Trash2, Undo2, UserCheck, UserPlus } from "lucide-react";
 import { RepublishDialog, SuspendDialog } from "@/components/admin/SiteStatusDialogs";
+import { useUnpaidPublish } from "@/components/admin/UnpaidPublishConfirm";
+import { AssignSalesDialog, type SalesOption } from "@/components/admin/AssignSales";
 import { toast } from "sonner";
 import { welcomeToast } from "@/components/admin/welcome-toast";
 import { startNavigationProgress } from "@/components/loading/NavigationProgress";
@@ -20,9 +22,11 @@ import {
   deleteEstablishmentAction,
   duplicateEstablishmentAction,
   publishEstablishmentAction,
+  submitEstablishmentForReviewAction,
   suspendEstablishmentAction,
   unpublishEstablishmentAction,
 } from "@/app/admin/(dash)/establishments/actions";
+import type { AdminRole } from "@/lib/constants";
 
 export interface EstablishmentRowInfo {
   id: string;
@@ -31,24 +35,36 @@ export interface EstablishmentRowInfo {
   name?: string;
   liveUrl?: string;
   shareUrl?: string;
+  /** Was ever live (sales executives can't delete it then). */
+  everPublished?: boolean;
+  /** Its sales executive (dashboard user id). */
+  salesAdminId?: string;
 }
 
 /**
- * Per-clinic / per-hospital actions, matching the doctor list: Edit, Preview,
- * Open live, Copy link, Visiting card, Add doctor portfolio, Payments,
- * Duplicate, Publish/Unpublish, Suspend. Suspend opens a modal (suspend for
- * now / delete for good / cancel); a suspended site gets Republish and Delete permanently.
+ * Per-clinic / per-hospital actions, matching the doctor list. Everyone: Edit,
+ * Preview, Open live, Copy link, Visiting card, Add doctor portfolio,
+ * Duplicate. Super admin: Payments, Publish/Unpublish (asks first when no
+ * payment is recorded), Suspend (modal: suspend for now / delete for good /
+ * cancel); a suspended site gets Republish and Delete permanently. Sales
+ * executive: Send for review, and Delete for drafts that were never published.
  */
-export function EstablishmentRowActions({ site, canPublish, showMoney }: { site: EstablishmentRowInfo; canPublish: boolean; showMoney: boolean }) {
+export function EstablishmentRowActions({ site, role, team = [] }: { site: EstablishmentRowInfo; role: AdminRole; team?: SalesOption[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [dialog, setDialog] = useState<"suspend" | "delete" | "republish" | null>(null);
-  const suspended = site.status === "suspended";
+  const [dialog, setDialog] = useState<"suspend" | "delete" | "republish" | "assign" | null>(null);
+  const { publish, dialog: unpaidDialog } = useUnpaidPublish();
   const label = site.kind === "hospital" ? "Hospital" : "Clinic";
+  const superadmin = role === "superadmin";
+  const suspended = site.status === "suspended";
+  const salesCanDelete = !superadmin && !site.everPublished && site.status !== "published";
+  const paymentsHref = `/admin/payments?establishment=${site.id}`;
+  const publishIt = (allowUnpaid?: boolean) => publishEstablishmentAction({ id: site.id, allowUnpaid }).then((r) => (r.ok && welcomeToast(r.data), r));
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string } | null>, success: string) {
     start(async () => {
       const res = await fn();
+      if (!res) return; // cancelled
       if (!res.ok) toast.error(res.error ?? "Something went wrong.");
       else {
         toast.success(success);
@@ -102,9 +118,9 @@ export function EstablishmentRowActions({ site, canPublish, showMoney }: { site:
               <UserPlus /> Add doctor portfolio
             </Link>
           </DropdownMenuItem>
-          {showMoney && (
+          {superadmin && (
             <DropdownMenuItem asChild>
-              <Link href={`/admin/payments?establishment=${site.id}`}>
+              <Link href={paymentsHref}>
                 <CreditCard /> Payments
               </Link>
             </DropdownMenuItem>
@@ -122,7 +138,12 @@ export function EstablishmentRowActions({ site, canPublish, showMoney }: { site:
           >
             <Copy /> Duplicate
           </DropdownMenuItem>
-          {canPublish && (
+          {superadmin && (
+            <DropdownMenuItem onSelect={() => setDialog("assign")}>
+              <UserCheck /> Assign sales executive
+            </DropdownMenuItem>
+          )}
+          {superadmin ? (
             <>
               <DropdownMenuSeparator />
               {suspended ? (
@@ -141,7 +162,7 @@ export function EstablishmentRowActions({ site, canPublish, showMoney }: { site:
                       <Undo2 /> Unpublish
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem onSelect={() => run(() => publishEstablishmentAction({ id: site.id }).then((r) => (r.ok && welcomeToast(r.data), r)), "Published")}>
+                    <DropdownMenuItem onSelect={() => run(() => publish(publishIt, { paymentsHref }), "Published")}>
                       <Send /> Publish
                     </DropdownMenuItem>
                   )}
@@ -151,31 +172,58 @@ export function EstablishmentRowActions({ site, canPublish, showMoney }: { site:
                 </>
               )}
             </>
+          ) : (
+            (site.status === "draft" || salesCanDelete) && (
+              <>
+                <DropdownMenuSeparator />
+                {site.status === "draft" && (
+                  <DropdownMenuItem onSelect={() => run(() => submitEstablishmentForReviewAction({ id: site.id }), "Sent to the super admin for review")}>
+                    <Send /> Send for review
+                  </DropdownMenuItem>
+                )}
+                {salesCanDelete && (
+                  <DropdownMenuItem className="text-clay-text" onSelect={() => setDialog("delete")}>
+                    <Trash2 /> Delete
+                  </DropdownMenuItem>
+                )}
+              </>
+            )
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {canPublish && (
-        <>
-          <SuspendDialog
-            open={dialog === "suspend" || dialog === "delete"}
-            onOpenChange={(o) => !o && setDialog(null)}
-            step={dialog === "delete" ? "delete" : "choose"}
-            what="site"
-            name={site.name}
-            onSuspend={() => suspendEstablishmentAction({ id: site.id })}
-            onDelete={() => deleteEstablishmentAction({ id: site.id })}
-            onDone={() => router.refresh()}
-          />
-          <RepublishDialog
-            open={dialog === "republish"}
-            onOpenChange={(o) => !o && setDialog(null)}
-            what="site"
-            name={site.name}
-            onConfirm={() => publishEstablishmentAction({ id: site.id })}
-            onDone={() => router.refresh()}
-          />
-        </>
+      {(superadmin || salesCanDelete) && (
+        <SuspendDialog
+          open={dialog === "suspend" || dialog === "delete"}
+          onOpenChange={(o) => !o && setDialog(null)}
+          step={dialog === "delete" ? "delete" : "choose"}
+          what="site"
+          name={site.name}
+          onSuspend={() => suspendEstablishmentAction({ id: site.id })}
+          onDelete={() => deleteEstablishmentAction({ id: site.id })}
+          onDone={() => router.refresh()}
+        />
       )}
+      {superadmin && (
+        <RepublishDialog
+          open={dialog === "republish"}
+          onOpenChange={(o) => !o && setDialog(null)}
+          what="site"
+          name={site.name}
+          onConfirm={() => publish(publishIt, { paymentsHref })}
+          onDone={() => router.refresh()}
+        />
+      )}
+      {superadmin && (
+        <AssignSalesDialog
+          open={dialog === "assign"}
+          onOpenChange={(o) => !o && setDialog(null)}
+          target={{ type: "site", id: site.id }}
+          team={team}
+          current={site.salesAdminId}
+          name={site.name}
+        />
+      )}
+      {unpaidDialog}
     </>
   );
 }

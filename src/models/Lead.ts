@@ -14,6 +14,8 @@ export interface LeadDoc {
   message?: string;
   source: (typeof LEAD_SOURCES)[number];
   status: LeadStatus;
+  /** The dashboard user who added it (sales executives see only their own leads). Unset for website leads. */
+  createdBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +29,7 @@ const leadSchema = new Schema<LeadDoc>(
     message: { type: String, trim: true },
     source: { type: String, enum: LEAD_SOURCES, required: true },
     status: { type: String, enum: LEAD_STATUSES, default: "new", index: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: "Admin", index: true },
   },
   { timestamps: true },
 );

@@ -46,7 +46,7 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
         {err("establishmentIds") && <p className="text-sm text-clay-text">{err("establishmentIds")}</p>}
       </Group>
 
-      <Group title="Notes and payments">
+      <Group title={isAdmin ? "Notes and payments" : "Notes"}>
         <Field label="Internal notes" htmlFor="internalNotes">
           <Textarea id="internalNotes" rows={3} value={f.internalNotes} disabled={readOnly} onChange={(e) => set({ internalNotes: e.target.value })} />
         </Field>
@@ -58,7 +58,7 @@ export function BusinessStep({ form: f, set, err, options, readOnly, role, docto
             </Link>
           </Button>
         )}
-        <p className="text-xs text-muted-foreground">The sales executive is on the Review step; payment, setup and renewal, and own domain are on the last step, Publish.</p>
+        {isAdmin && <p className="text-xs text-muted-foreground">The sales executive is on the Review step; payment, setup and renewal, and own domain are on the last step, Publish.</p>}
       </Group>
     </div>
   );

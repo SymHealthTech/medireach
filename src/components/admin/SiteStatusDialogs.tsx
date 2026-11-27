@@ -168,7 +168,8 @@ export function RepublishDialog({
   onOpenChange: (open: boolean) => void;
   what: "page" | "site";
   name?: string;
-  onConfirm: () => Promise<Result>;
+  /** null = cancelled on the way (e.g. "No payment recorded" → Cancel). */
+  onConfirm: () => Promise<Result | null>;
   onDone: () => void;
 }) {
   const [pending, start] = useTransition();
@@ -190,6 +191,7 @@ export function RepublishDialog({
             onClick={() =>
               start(async () => {
                 const res = await onConfirm();
+                if (!res) return;
                 if (!res.ok) return void toast.error(res.error ?? "Something went wrong.");
                 toast.success("Republished — the website is live again");
                 onOpenChange(false);

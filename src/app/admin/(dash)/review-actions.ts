@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import { ActionError, adminAction, auditCtx } from "@/lib/admin/action";
+import { ownsRecord } from "@/lib/admin/scope";
+import type { CurrentAdmin } from "@/lib/auth/admin";
 import { audit } from "@/lib/api/audit";
 import { formatDate, toDateInput } from "@/lib/format";
 import { sendEmail } from "@/lib/integrations/email";
@@ -19,15 +21,16 @@ import { Payment } from "@/models/Payment";
  */
 
 const target = z.object({ kind: z.enum(["doctor", "site"]), id: z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.") });
-const ADMINS = ["superadmin", "admin"] as const;
+const ADMINS = ["superadmin"] as const;
 
 const digits = (s?: string) => (s ?? "").replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-async function who(kind: "doctor" | "site", id: string) {
+/** The doctor or site, its contact and UID (sales executives: only their own). */
+async function who(kind: "doctor" | "site", id: string, admin: CurrentAdmin) {
   if (kind === "doctor") {
-    const d = await DoctorProfile.findById(id).select({ uid: 1, title: 1, firstName: 1, lastName: 1, displayName: 1, mobile: 1, whatsapp: 1, email: 1, ownerEmail: 1 }).lean();
-    if (!d) throw new ActionError("This doctor no longer exists.");
+    const d = await DoctorProfile.findById(id).select({ uid: 1, title: 1, firstName: 1, lastName: 1, displayName: 1, mobile: 1, whatsapp: 1, email: 1, ownerEmail: 1, salesAdminId: 1 }).lean();
+    if (!d || !ownsRecord(admin, d)) throw new ActionError("This doctor no longer exists.");
     return {
       uid: await ensureUid(DoctorProfile as never, d, "doctor"),
       name: d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`,
@@ -36,8 +39,8 @@ async function who(kind: "doctor" | "site", id: string) {
       email: d.ownerEmail || d.email || "",
     };
   }
-  const e = await Establishment.findById(id).select({ uid: 1, name: 1, kind: 1, contact: 1, contactPerson: 1, ownerEmail: 1 }).lean();
-  if (!e) throw new ActionError("This clinic or hospital no longer exists.");
+  const e = await Establishment.findById(id).select({ uid: 1, name: 1, kind: 1, contact: 1, contactPerson: 1, ownerEmail: 1, salesAdminId: 1 }).lean();
+  if (!e || !ownsRecord(admin, e)) throw new ActionError("This clinic or hospital no longer exists.");
   return {
     uid: await ensureUid(Establishment as never, e, e.kind === "hospital" ? "hospital" : "clinic"),
     name: e.name,
@@ -51,8 +54,8 @@ const messageFor = (name: string, what: string, url: string) =>
   `Hello ${name},\n\nHere is a preview of your ${what} and visiting card on MediReach:\n${url}\n\nPlease check it and reply to approve it, or tell us what to change. The link works for ${PREVIEW_LINK_DAYS} days.`;
 
 /** A signed preview link, with who to send it to (WhatsApp number, email) and a ready message. */
-export const createPreviewLinkAction = adminAction({ schema: target }, async ({ kind, id }) => {
-  const w = await who(kind, id);
+export const createPreviewLinkAction = adminAction({ schema: target }, async ({ kind, id }, admin) => {
+  const w = await who(kind, id, admin);
   const url = previewUrl(await createPreviewToken({ kind, id }));
   return { url, name: w.name, phone: w.phone.length === 10 ? w.phone : "", email: w.email, message: messageFor(w.name, w.what, url), days: PREVIEW_LINK_DAYS };
 });
@@ -61,7 +64,7 @@ export const createPreviewLinkAction = adminAction({ schema: target }, async ({ 
 export const emailPreviewLinkAction = adminAction(
   { schema: target.extend({ to: z.string().trim().toLowerCase().email("Enter a valid email address.") }) },
   async ({ kind, id, to }, admin) => {
-    const w = await who(kind, id);
+    const w = await who(kind, id, admin);
     const url = previewUrl(await createPreviewToken({ kind, id }));
     const text = messageFor(w.name, w.what, url);
     const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#0a3f3f">
@@ -115,8 +118,8 @@ const liveMessageFor = (name: string, what: string, url: string, uid: string) =>
   `Hello ${name},\n\nYour ${what} is now live on MediReach:\n${url}\n\nYour website UID: ${uid}\nPlease save it. Quote it whenever you contact us, and we can find your website at once.\n\nPlease open it and check everything. You can update everything on it yourself from your dashboard, and share this link with your patients, on WhatsApp and on social media.`;
 
 /** The live link, with who to send it to (WhatsApp number, email) and a ready message. */
-export const createLiveLinkAction = adminAction({ schema: target }, async ({ kind, id }) => {
-  const [w, url] = await Promise.all([who(kind, id), liveUrlOf(kind, id)]);
+export const createLiveLinkAction = adminAction({ schema: target }, async ({ kind, id }, admin) => {
+  const [w, url] = await Promise.all([who(kind, id, admin), liveUrlOf(kind, id)]);
   return { url, name: w.name, phone: w.phone.length === 10 ? w.phone : "", email: w.email, message: liveMessageFor(w.name, w.what, url, w.uid) };
 });
 
@@ -124,7 +127,7 @@ export const createLiveLinkAction = adminAction({ schema: target }, async ({ kin
 export const emailLiveLinkAction = adminAction(
   { schema: target.extend({ to: z.string().trim().toLowerCase().email("Enter a valid email address.") }) },
   async ({ kind, id, to }, admin) => {
-    const [w, url] = await Promise.all([who(kind, id), liveUrlOf(kind, id)]);
+    const [w, url] = await Promise.all([who(kind, id, admin), liveUrlOf(kind, id)]);
     const text = liveMessageFor(w.name, w.what, url, w.uid);
     const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#0a3f3f">
 <p>Hello ${esc(w.name)},</p>

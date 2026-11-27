@@ -22,7 +22,7 @@ export default async function SiteTemplatePreview({
   params: Promise<{ type: string; key: string }>;
   searchParams: Promise<{ theme?: string }>;
 }) {
-  await requireAdminPage(["superadmin", "admin"]);
+  await requireAdminPage(["superadmin"]);
   const { type, key } = await params;
   const { theme } = await searchParams;
   if ((type !== "clinic" && type !== "hospital") || !(TEMPLATE_KEYS as readonly string[]).includes(key)) notFound();

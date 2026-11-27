@@ -6,6 +6,7 @@ import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
 import { Button } from "@/components/ui/button";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { intakeScope } from "@/lib/admin/scope";
 import { isObjectId } from "@/lib/admin/list";
 import { INTAKE_STATUS_LABEL, INTAKE_STATUS_TONE } from "@/lib/admin/labels";
 import { connectToDatabase } from "@/lib/db";
@@ -15,6 +16,7 @@ import { toView } from "@/lib/intake/server";
 import { intakeSites, syncPublishedIntakes } from "@/lib/intake/site-status";
 import { Intake } from "@/models/Intake";
 import { IntakeReviewControls } from "./IntakeReviewControls";
+import { SalesPanel, salesPanelData } from "./SalesPanel";
 
 export const metadata: Metadata = { title: "Website form" };
 
@@ -30,7 +32,8 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
   if (!isObjectId(id)) notFound();
   await connectToDatabase();
   await syncPublishedIntakes();
-  const doc = await Intake.findById(id).lean();
+  // Sales executives: only forms made into their own websites.
+  const doc = await Intake.findOne({ _id: id, ...(await intakeScope(admin)) }).lean();
   if (!doc) notFound();
   const draft = (await intakeSites([doc])).get(String(doc._id));
   const view = toView(doc);
@@ -41,6 +44,7 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
   const name = doc.name || view.email;
   const design = designSummary(view.kind, view.data);
   const waText = `Hello ${name}, this is MediReach about your website form ${view.ref}.`;
+  const salesPanel = await salesPanelData(doc, admin.role === "superadmin");
 
   return (
     <div className="space-y-5">
@@ -138,6 +142,8 @@ export default async function IntakeReviewPage({ params }: { params: Promise<{ i
           </p>
         )}
       </section>
+
+      <SalesPanel intakeId={view.id} data={salesPanel} typedName={str(view.data.salesName)} typedId={str(view.data.salesStaffId)} />
     </div>
   );
 }

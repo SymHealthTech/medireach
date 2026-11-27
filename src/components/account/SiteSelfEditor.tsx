@@ -69,7 +69,7 @@ export function SiteSelfEditor({ initial, options }: { initial: EstablishmentFor
     });
 
   const current = TABS.find((t) => t.key === tab)!;
-  const stepProps: EStepProps = { form, set, err, options, readOnly: false, role: "admin", audience: "owner" };
+  const stepProps: EStepProps = { form, set, err, options, readOnly: false, role: "superadmin", audience: "owner" };
 
   return (
     <UploadSignerProvider value={signAccountUploadAction}>

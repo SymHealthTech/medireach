@@ -8,7 +8,9 @@ import { EstablishmentRowActions } from "@/components/admin/EstablishmentRowActi
 import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { FoundingBadge, Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
-import { can, requireAdminPage } from "@/lib/auth/admin";
+import { requireAdminPage } from "@/lib/auth/admin";
+import { ownedScope } from "@/lib/admin/scope";
+import { salesTeamOptions } from "@/lib/admin/ownership";
 import { isObjectId, oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchParams } from "@/lib/admin/list";
 import { RENEWAL_STATUS_LABEL, RENEWAL_STATUS_TONE } from "@/lib/admin/labels";
 import { DOCTOR_STATUSES, ESTABLISHMENT_KINDS, RENEWAL_STATUSES } from "@/lib/constants";
@@ -52,9 +54,11 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   const page = pageOf(sp);
 
   // Renewal status is worked out live (see Payments & renewals), so filter on it after the query.
-  const docs = await Establishment.find(filter)
+  const team = admin.role === "superadmin" ? await salesTeamOptions() : [];
+  // Sales executives see only their own sites.
+  const docs = await Establishment.find({ ...filter, ...ownedScope(admin) })
     .sort(SORTS[sortKey])
-    .select({ uid: 1, name: 1, kind: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, categoryId: 1, themeKey: 1, logo: 1, address: 1, founding: 1, foundingNumber: 1, renewalDueDate: 1, renewalStatus: 1, doctors: 1, updatedAt: 1, "compliance.issues": 1 })
+    .select({ uid: 1, name: 1, kind: 1, status: 1, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, categoryId: 1, themeKey: 1, logo: 1, address: 1, founding: 1, foundingNumber: 1, renewalDueDate: 1, renewalStatus: 1, doctors: 1, updatedAt: 1, publishedAt: 1, salesAdminId: 1, "compliance.issues": 1 })
     .limit(5000)
     .lean();
   const now = new Date();
@@ -73,6 +77,8 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
       name: d.name,
       kind: d.kind,
       status: d.status,
+      everPublished: Boolean(d.publishedAt),
+      salesAdminId: d.salesAdminId ? String(d.salesAdminId) : undefined,
       logo: d.logo?.url,
       color: getTheme(d.themeKey, d.kind).palette.primary,
       meta: [catName.get(String(d.categoryId)), areaName.get(String(d.address?.areaId))].filter(Boolean).join(" · "),
@@ -88,8 +94,6 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
   });
   const filtered = Object.keys(filter).length > 1 || Boolean(renewal);
   const pune = options.cities.find((c) => c.slug === "pune")?.id;
-  const showMoney = can.seePaymentTotals(admin.role);
-  const canPublish = can.publish(admin.role);
   const label = kind === "hospital" ? "hospital" : "clinic";
   const Icon = kind === "hospital" ? Hospital : Building2;
 
@@ -148,7 +152,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
                   </span>
                 </span>
               </Link>
-              <EstablishmentRowActions site={{ id: r.id, kind: r.kind, status: r.status, name: r.name, liveUrl: r.liveUrl, shareUrl: r.shareUrl }} canPublish={canPublish} showMoney={showMoney} />
+              <EstablishmentRowActions site={{ id: r.id, kind: r.kind, status: r.status, name: r.name, liveUrl: r.liveUrl, shareUrl: r.shareUrl, everPublished: r.everPublished, salesAdminId: r.salesAdminId }} role={admin.role} team={team} />
             </li>
           ))}
         </ul>

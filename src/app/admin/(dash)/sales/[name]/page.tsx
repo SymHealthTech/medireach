@@ -8,6 +8,7 @@ import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { formatDate, formatINR } from "@/lib/format";
 import { findSalesExecutive, isSameExecutive, salesBusiness, type SalesItem } from "@/lib/sales/server";
+import { findSalesUser } from "@/lib/admin/ownership";
 
 export const metadata: Metadata = { title: "Sales executive" };
 
@@ -20,20 +21,23 @@ export default async function SalesExecutivePage({ params }: { params: Promise<{
   // Sales users only see their own business.
   const own = admin.role === "sales";
   if (own && !isSameExecutive(raw, admin.name)) redirect(`/admin/sales/${encodeURIComponent(admin.name)}`);
-  const name = await findSalesExecutive(raw);
+  const name = own ? admin.name : await findSalesExecutive(raw);
   if (!name) notFound();
-  const items = await salesBusiness(name);
+  // A sales executive sees exactly the websites they own; the super admin sees the name's records plus that user's websites.
+  const user = own ? null : await findSalesUser(name);
+  const items = own ? await salesBusiness(name, { ownerId: admin.id, only: "owned" }) : await salesBusiness(name, { ownerId: user ? String(user._id) : undefined });
+  const showMoney = !own;
 
   const count = (k: SalesItem["kind"]) => items.filter((i) => i.kind === k).length;
   const collected = items.reduce((n, i) => n + i.collected, 0);
   const live = items.filter((i) => i.status === "published").length;
-  const staffId = items.find((i) => i.staffId)?.staffId;
+  const staffId = (own ? admin.staffId : user?.staffId) ?? items.find((i) => i.staffId)?.staffId;
   const stats = [
     { label: "Doctors", value: String(count("doctor")) },
     { label: "Clinics", value: String(count("clinic")) },
     { label: "Hospitals", value: String(count("hospital")) },
     { label: "Live", value: String(live) },
-    { label: "Payments recorded", value: formatINR(collected) },
+    showMoney ? { label: "Payments recorded", value: formatINR(collected) } : { label: "Waiting for review", value: String(items.filter((i) => i.status === "review").length) },
   ];
 
   return (
@@ -70,9 +74,13 @@ export default async function SalesExecutivePage({ params }: { params: Promise<{
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Added</th>
-                  <th className="px-4 py-3">Setup paid</th>
-                  <th className="px-4 py-3">Renewal due</th>
-                  <th className="px-4 py-3 text-right">Payments</th>
+                  {showMoney && (
+                    <>
+                      <th className="px-4 py-3">Setup paid</th>
+                      <th className="px-4 py-3">Renewal due</th>
+                      <th className="px-4 py-3 text-right">Payments</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -88,9 +96,13 @@ export default async function SalesExecutivePage({ params }: { params: Promise<{
                       <StatusBadge status={i.status} />
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">{formatDate(i.createdAt)}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{formatDate(i.setupPaidAt)}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{formatDate(i.renewalDueDate)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatINR(i.collected)}</td>
+                    {showMoney && (
+                      <>
+                        <td className="px-4 py-2 text-muted-foreground">{formatDate(i.setupPaidAt)}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{formatDate(i.renewalDueDate)}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{formatINR(i.collected)}</td>
+                      </>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -107,7 +119,8 @@ export default async function SalesExecutivePage({ params }: { params: Promise<{
                     <StatusBadge status={i.status} />
                   </span>
                   <span className="mt-1 block text-xs text-muted-foreground">
-                    {KIND_LABEL[i.kind]} · added {formatDate(i.createdAt)} · {formatINR(i.collected)}
+                    {KIND_LABEL[i.kind]} · added {formatDate(i.createdAt)}
+                    {showMoney && ` · ${formatINR(i.collected)}`}
                   </span>
                 </Link>
               </li>

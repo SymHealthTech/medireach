@@ -20,7 +20,7 @@ import { syncEstablishmentDoctors } from "@/lib/establishments/links";
 import type { CurrentAdmin } from "@/lib/auth/admin";
 
 let mongod: MongoMemoryServer;
-const admin: CurrentAdmin = { id: "507f1f77bcf86cd799439011", name: "Test Admin", email: "a@example.com", role: "admin" };
+const admin: CurrentAdmin = { id: "507f1f77bcf86cd799439011", name: "Test Admin", email: "a@example.com", role: "superadmin" };
 const sales: CurrentAdmin = { ...admin, role: "sales" };
 
 beforeAll(async () => {

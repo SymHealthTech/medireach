@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 import { RESERVED_SUBDOMAINS, SAMPLE_SUBDOMAINS } from "@/config/reserved";
-import { ADMIN_ROLES } from "@/lib/constants";
+import { STORED_ADMIN_ROLES } from "@/lib/constants";
 import { ROOT_HOSTNAME, SITE_URL, sitePath, type SiteRoute } from "@/lib/site";
 import { subdomainError } from "@/lib/slug";
 
@@ -119,7 +119,7 @@ async function handleAdmin(req: NextRequest) {
   if (path === "/admin/login") return NextResponse.next();
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const session = token ? await verifySessionToken(token) : null;
-  if (!session || !(ADMIN_ROLES as readonly string[]).includes(session.role)) {
+  if (!session || !(STORED_ADMIN_ROLES as readonly string[]).includes(session.role)) {
     const loginUrl = new URL("/admin/login", req.url);
     loginUrl.searchParams.set("next", path);
     return NextResponse.redirect(loginUrl);

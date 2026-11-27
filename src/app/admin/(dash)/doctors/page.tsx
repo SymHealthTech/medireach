@@ -8,7 +8,9 @@ import { DoctorRowActions } from "@/components/admin/DoctorRowActions";
 import { FoundingBadge, StatusBadge } from "@/components/admin/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { rolesFor } from "@/components/admin/nav";
-import { can, requireAdminPage } from "@/lib/auth/admin";
+import { requireAdminPage } from "@/lib/auth/admin";
+import { ownedScope } from "@/lib/admin/scope";
+import { salesTeamOptions } from "@/lib/admin/ownership";
 import { isObjectId, oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchParams } from "@/lib/admin/list";
 import { DOCTOR_PLANS, DOCTOR_SOURCES, DOCTOR_STATUSES } from "@/lib/constants";
 import { DOCTOR_PLAN_LABEL } from "@/lib/admin/labels";
@@ -26,6 +28,9 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
   const admin = await requireAdminPage(rolesFor("/admin/doctors"));
   const sp = await searchParams;
   const [options] = await Promise.all([getEditorOptions(), backfillUids()]);
+  // Sales executives see only their own doctors.
+  const scope = ownedScope(admin);
+  const team = admin.role === "superadmin" ? await salesTeamOptions() : [];
 
   const filter: FilterQuery<DoctorProfileDoc> = {};
   const status = oneOf(param(sp, "status"), DOCTOR_STATUSES);
@@ -50,12 +55,12 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
   const page = pageOf(sp);
 
   const [total, docs] = await Promise.all([
-    DoctorProfile.countDocuments(filter),
-    DoctorProfile.find(filter)
+    DoctorProfile.countDocuments({ ...filter, ...scope }),
+    DoctorProfile.find({ ...filter, ...scope })
       .sort(SORTS[sortKey])
       .skip((page - 1) * PAGE_SIZE)
       .limit(PAGE_SIZE)
-      .select({ uid: 1, title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, photo: 1, primarySpecialtyId: 1, clinics: { $slice: 1 }, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, founding: 1, foundingNumber: 1, updatedAt: 1, plan: 1, "compliance.issues": 1 })
+      .select({ uid: 1, title: 1, firstName: 1, lastName: 1, displayName: 1, status: 1, photo: 1, primarySpecialtyId: 1, clinics: { $slice: 1 }, slug: 1, citySlug: 1, shortSlug: 1, subdomain: 1, founding: 1, foundingNumber: 1, updatedAt: 1, publishedAt: 1, salesAdminId: 1, plan: 1, "compliance.issues": 1 })
       .lean(),
   ]);
 
@@ -69,6 +74,8 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
       uid: d.uid,
       name,
       status: d.status,
+      everPublished: Boolean(d.publishedAt),
+      salesAdminId: d.salesAdminId ? String(d.salesAdminId) : undefined,
       photo: d.photo?.url,
       meta: [specName.get(String(d.primarySpecialtyId)), areaName.get(String(d.clinics[0]?.areaId))].filter(Boolean).join(" · "),
       founding: d.founding ? (d.foundingNumber ?? 0) : null,
@@ -79,14 +86,13 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
       shareUrl: live ? (d.subdomain ? subdomainUrl(d.subdomain) : d.shortSlug ? absUrl(paths.short(d.shortSlug)) : undefined) : undefined,
     };
   });
-  const canPublish = can.publish(admin.role);
   const filtered = Object.keys(filter).length > 0;
   const cityId = isObjectId(city) ? city : options.cities.find((c) => c.slug === "pune")?.id;
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-muted-foreground">Every doctor profile, from first draft to published page.</p>
+        <p className="text-muted-foreground">{scope.salesAdminId ? "Your doctors, from first draft to published page." : "Every doctor profile, from first draft to published page."}</p>
         <Button asChild className="md:hidden">
           <Link href="/admin/doctors/new">
             <Plus /> New doctor
@@ -160,7 +166,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                     <td className="hidden px-4 py-2 text-muted-foreground lg:table-cell">{r.plan === "doctor_addon" ? "Add-on" : "Doctor"}</td>
                     <td className="px-4 py-2 text-muted-foreground">{timeAgo(r.updatedAt)}</td>
                     <td className="px-2 py-2">
-                      <DoctorRowActions doctor={r} canPublish={canPublish} />
+                      <DoctorRowActions doctor={r} role={admin.role} team={team} />
                     </td>
                   </tr>
                 ))}
@@ -186,7 +192,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                   </span>
                   <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
                 </Link>
-                <DoctorRowActions doctor={r} canPublish={canPublish} />
+                <DoctorRowActions doctor={r} role={admin.role} team={team} />
               </li>
             ))}
           </ul>

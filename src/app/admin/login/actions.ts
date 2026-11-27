@@ -10,6 +10,7 @@ import { clientIpFrom, hitRateLimit } from "@/lib/api/rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { safeAdminNext } from "@/lib/auth/redirect";
 import { clearSessionCookie, setSessionCookie } from "@/lib/auth/session";
+import { normalizeAdminRole } from "@/lib/constants";
 import { Admin } from "@/models/Admin";
 
 export interface LoginState {
@@ -17,8 +18,17 @@ export interface LoginState {
   email?: string;
 }
 
+/** Email (super admin) or staff ID (sales executive, "MRS-1001"; "mrs 1001" works too). */
+const loginId = z
+  .string()
+  .trim()
+  .min(1, "Enter your email or staff ID.")
+  .max(254)
+  .transform((s) => (s.includes("@") ? s.toLowerCase() : s.toUpperCase().replace(/^([A-Z]+)[\s-]?(\d+)$/, "$1-$2")))
+  .refine((s) => (s.includes("@") ? z.string().email().safeParse(s).success : /^[A-Z]+-\d+$/.test(s)), "Enter a valid email or staff ID.");
+
 const schema = z.object({
-  email: z.string().trim().toLowerCase().email("Enter a valid email address.").max(254),
+  email: loginId,
   password: z.string().min(1, "Enter your password.").max(200),
   next: z.string().optional(),
 });
@@ -52,14 +62,17 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   }
 
   await connectToDatabase();
-  const admin = await Admin.findOne({ email: parsed.data.email, active: true });
+  const id = parsed.data.email;
+  const admin = await Admin.findOne(id.includes("@") ? { email: id, active: true } : { staffId: id, active: true });
   const ok = await verifyPassword(parsed.data.password, admin?.passwordHash ?? (await getDummyHash()));
-  if (!admin || !ok) return { error: "Email or password is incorrect.", email };
+  const role = normalizeAdminRole(admin?.role);
+  if (!admin || !ok || !role) return { error: "Email / staff ID or password is incorrect.", email };
 
   admin.lastLoginAt = new Date();
+  if (admin.role === "admin") admin.role = "superadmin"; // the retired middle role
   await admin.save();
-  await setSessionCookie({ sub: String(admin._id), role: admin.role, name: admin.name });
-  await audit({ userId: String(admin._id), role: admin.role, name: admin.name }, "admin.login", {
+  await setSessionCookie({ sub: String(admin._id), role, name: admin.name });
+  await audit({ userId: String(admin._id), role, name: admin.name }, "admin.login", {
     entity: "Admin",
     entityId: admin._id,
     diff: { ip },

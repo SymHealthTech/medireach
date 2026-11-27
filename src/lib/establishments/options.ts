@@ -1,4 +1,6 @@
 import "server-only";
+import { Types } from "mongoose";
+import type { CurrentAdmin } from "@/lib/auth/admin";
 import type { EstablishmentKind } from "@/lib/constants";
 import { connectToDatabase } from "@/lib/db";
 import { ensureMasterLists } from "@/lib/masters/server";
@@ -36,14 +38,16 @@ export interface EstablishmentEditorOptions {
   bannedPhrases: string[];
 }
 
-export async function getEstablishmentEditorOptions(): Promise<EstablishmentEditorOptions> {
+/** Editor choices; for a sales executive only their own doctors plus live ones, and only their own name (see doctors/options). */
+export async function getEstablishmentEditorOptions(admin?: CurrentAdmin): Promise<EstablishmentEditorOptions> {
+  const sales = admin?.role === "sales" ? new Types.ObjectId(admin.id) : null;
   await connectToDatabase();
   await ensureMasterLists();
   const [cities, areas, categories, doctors, specialties, templates, settings] = await Promise.all([
     City.find().sort({ name: 1 }).lean(),
     Area.find().sort({ name: 1 }).lean(),
     ClinicCategory.find().sort({ kind: 1, name: 1 }).lean(),
-    DoctorProfile.find()
+    DoctorProfile.find(sales ? { $or: [{ salesAdminId: sales }, { status: "published" }] } : {})
       .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, primarySpecialtyId: 1, status: 1 })
       .sort({ firstName: 1, lastName: 1 })
       .limit(5000)
@@ -52,7 +56,7 @@ export async function getEstablishmentEditorOptions(): Promise<EstablishmentEdit
     TemplateSlot.find({ type: { $in: ["clinic", "hospital"] } }).sort({ type: 1, key: 1 }).lean(),
     getSettings(),
   ]);
-  const team = await salesTeam();
+  const team = sales ? [admin!.name] : await salesTeam();
   const specName = new Map(specialties.map((s) => [String(s._id), s.name]));
   return {
     cities: cities.map((c) => ({ id: String(c._id), name: c.name, slug: c.slug, state: c.state })),

@@ -7,6 +7,7 @@ import { ListToolbar, Pagination } from "@/components/admin/ListControls";
 import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { rolesFor } from "@/components/admin/nav";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { ownedScope } from "@/lib/admin/scope";
 import { oneOf, pageOf, PAGE_SIZE, param, searchRegex, type SearchParams } from "@/lib/admin/list";
 import { SEO_HEALTH_SELECT, SITE_SEO_HEALTH_SELECT, seoHealth, siteSeoHealth } from "@/lib/admin/seo-health";
 import { DOCTOR_STATUSES, PRODUCTS, type Product } from "@/lib/constants";
@@ -40,7 +41,9 @@ interface Row {
  * address, short link / subdomain, design and SEO health, newest first.
  */
 export default async function SitesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireAdminPage(rolesFor("/admin/pages"));
+  const admin = await requireAdminPage(rolesFor("/admin/pages"));
+  // Sales executives see only their own sites.
+  const scope = ownedScope(admin);
   await connectToDatabase();
   const sp = await searchParams;
 
@@ -50,8 +53,8 @@ export default async function SitesPage({ searchParams }: { searchParams: Promis
   const re = searchRegex(param(sp, "q"));
   const page = pageOf(sp);
 
-  const doctorFilter: FilterQuery<DoctorProfileDoc> = {};
-  const siteFilter: FilterQuery<EstablishmentDoc> = {};
+  const doctorFilter: FilterQuery<DoctorProfileDoc> = { ...scope };
+  const siteFilter: FilterQuery<EstablishmentDoc> = { ...scope };
   if (status) doctorFilter.status = siteFilter.status = status;
   if (re) {
     doctorFilter.$or = [{ firstName: re }, { lastName: re }, { slug: re }, { shortSlug: re }, { subdomain: re }];

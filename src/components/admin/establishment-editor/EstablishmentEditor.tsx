@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardList, Cloud, ExternalLink, Loader2, Lock } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ClipboardList, Cloud, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Pill, StatusBadge } from "@/components/admin/StatusBadge";
 import { welcomeToast } from "@/components/admin/welcome-toast";
+import { LiveEditUnlock } from "@/components/admin/LiveEditUnlock";
+import { useUnpaidPublish } from "@/components/admin/UnpaidPublishConfirm";
 import {
   publishEstablishmentAction,
   saveEstablishmentSectionAction,
@@ -57,12 +59,15 @@ export function EstablishmentEditor({
   role,
   initialStep = "basics",
   hints,
+  liveUnlockedUntil,
 }: {
   initial: EstablishmentForm;
   options: EstablishmentEditorOptions;
   role: AdminRole;
   initialStep?: StepKey;
   hints?: SiteFormHints;
+  /** Sales executive on a live site: until when the owner's code lets them edit it. */
+  liveUnlockedUntil?: string;
 }) {
   const [form, setForm] = useState<EstablishmentForm>(initial);
   const [step, setStep] = useState<StepKey>(initialStep);
@@ -79,8 +84,12 @@ export function EstablishmentEditor({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const queue = useRef<Promise<void>>(Promise.resolve());
 
-  const canPublish = role === "superadmin" || role === "admin";
-  const readOnly = form.status === "published" && !canPublish;
+  const canPublish = role === "superadmin";
+  // A sales executive changes a live site only after the owner gives them the code.
+  const [unlockedUntil, setUnlockedUntil] = useState(liveUnlockedUntil);
+  const unlocked = Boolean(unlockedUntil && new Date(unlockedUntil).getTime() > Date.now());
+  const readOnly = form.status === "published" && !canPublish && !unlocked;
+  const { publish: publishChecked, dialog: unpaidDialog } = useUnpaidPublish();
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
   useEffect(() => {
@@ -212,10 +221,16 @@ export function EstablishmentEditor({
 
   async function runStatus(action: typeof unpublishEstablishmentAction, ok: string) {
     if (!form.id) return;
+    const id = form.id;
     setBusy(true);
     await flush();
-    const res = await action({ id: form.id });
+    // Publishing without a recorded payment asks "publish anyway?" first.
+    const res =
+      action === publishEstablishmentAction
+        ? await publishChecked((allowUnpaid) => publishEstablishmentAction({ id, allowUnpaid }), { paymentsHref: `/admin/payments?establishment=${id}` })
+        : await action({ id });
     setBusy(false);
+    if (!res) return;
     if (!res.ok) return toast.error(res.error);
     setForm((prev) => ({ ...prev, status: res.data.form.status, publishedAt: res.data.form.publishedAt, slug: res.data.form.slug, shortSlug: res.data.form.shortSlug, citySlug: res.data.form.citySlug }));
     toast.success(ok);
@@ -320,11 +335,8 @@ export function EstablishmentEditor({
           </div>
         )}
 
-        {readOnly && (
-          <div className="flex items-start gap-3 rounded-xl border border-line bg-muted p-4 text-sm">
-            <Lock className="mt-0.5 size-4 shrink-0" />
-            <p>This site is live. Only an admin can edit published sites.</p>
-          </div>
+        {form.status === "published" && !canPublish && form.id && (
+          <LiveEditUnlock kind="site" id={form.id} owner="the owner" until={unlockedUntil} onUnlocked={setUnlockedUntil} />
         )}
 
         <h3 className="hidden font-display text-xl font-semibold text-ink lg:block">{stepTitle(step, form.kind)}</h3>
@@ -362,7 +374,7 @@ export function EstablishmentEditor({
               onGoTo: (path, s) => void goTo(s, path || undefined),
               onPublish: () => void runStatus(publishEstablishmentAction, "Published — the site is live"),
               onUnpublish: () => void runStatus(unpublishEstablishmentAction, "Unpublished"),
-              onSubmitReview: () => void runStatus(submitEstablishmentForReviewAction, "Sent to an admin for review"),
+              onSubmitReview: () => void runStatus(submitEstablishmentForReviewAction, "Sent to the super admin for review"),
             }}
           />
         )}
@@ -392,6 +404,7 @@ export function EstablishmentEditor({
           </div>
         </div>
       </div>
+      {unpaidDialog}
     </div>
   );
 }

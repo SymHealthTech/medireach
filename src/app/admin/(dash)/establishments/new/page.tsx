@@ -9,6 +9,7 @@ import { getEstablishmentEditorOptions } from "@/lib/establishments/options";
 import { siteFormHints } from "@/lib/intake/hints-server";
 import { docToForm } from "@/lib/establishments/server";
 import { Establishment } from "@/models/Establishment";
+import { ownsRecord } from "@/lib/admin/scope";
 import { DEFAULT_HOSPITAL_CATEGORY } from "@/data/masters";
 
 export const metadata: Metadata = { title: "New clinic or hospital" };
@@ -20,12 +21,12 @@ export const metadata: Metadata = { title: "New clinic or hospital" };
  */
 export default async function NewEstablishmentPage({ searchParams }: { searchParams: Promise<{ kind?: string; id?: string; step?: string }> }) {
   const admin = await requireAdminPage(rolesFor("/admin/establishments"));
-  const [{ kind, id, step }, options] = await Promise.all([searchParams, getEstablishmentEditorOptions()]);
+  const [{ kind, id, step }, options] = await Promise.all([searchParams, getEstablishmentEditorOptions(admin)]);
   await connectToDatabase();
 
   if (isObjectId(id)) {
     const existing = await Establishment.findById(id).lean();
-    if (existing) {
+    if (existing && ownsRecord(admin, existing)) {
       const initialStep = STEPS.some((s) => s.key === step) ? (step as StepKey) : "basics";
       return <EstablishmentEditor initial={docToForm(existing)} options={options} role={admin.role} initialStep={initialStep} hints={await siteFormHints(existing._id)} />;
     }
@@ -38,5 +39,7 @@ export default async function NewEstablishmentPage({ searchParams }: { searchPar
     const hospitalCategory = options.categories.find((c) => c.slug === DEFAULT_HOSPITAL_CATEGORY) ?? options.categories.find((c) => c.kind === "hospital");
     if (hospitalCategory) form.categoryId = hospitalCategory.id;
   }
+  // A sales executive's new site is theirs (the server sets this too).
+  if (admin.role === "sales") Object.assign(form, { salesExecutive: admin.name, salesExecutiveId: admin.staffId ?? "" });
   return <EstablishmentEditor initial={form} options={options} role={admin.role} />;
 }

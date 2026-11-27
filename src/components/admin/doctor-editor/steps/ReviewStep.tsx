@@ -157,7 +157,7 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         </StepGroup>
 
         <StepGroup n={2} title="Sales executive" description="Internal. Never shown on the page.">
-          <SalesExecutive name={f.salesExecutive} staffId={f.salesExecutiveId} team={options.team} disabled={readOnly} onChange={(patch) => set(patch, { step: "business" })} />
+          <SalesExecutive name={f.salesExecutive} staffId={f.salesExecutiveId} team={options.team} disabled={readOnly || !isAdmin} onChange={(patch) => set(patch, { step: "business" })} />
         </StepGroup>
 
         <StepGroup n={3} title="Save everything and preview" description="Saves every change, then shows the website and the visiting card exactly as the doctor will see them.">
@@ -217,6 +217,9 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
         )}
       </StepGroup>
 
+      {/* Payments, setup/renewal and own domain: super admin only (sales executives never see payments). */}
+      {isAdmin && (
+      <>
       <StepGroup n={2} title="Payment" description="Record the payment here; it is saved to Payments at once.">
         <Payments
           target={target}
@@ -249,8 +252,10 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
       <StepGroup n={4} title="Own domain (optional)">
         <OwnDomain value={f.ownDomain} onChange={(ownDomain) => set({ ownDomain }, { step: "business" })} isAdmin={isAdmin} readOnly={readOnly} err={err} placeholder="drshah.in" />
       </StepGroup>
+      </>
+      )}
 
-      <StepGroup n={5} title="Publish">
+      <StepGroup n={isAdmin ? 5 : 2} title={isAdmin ? "Publish" : "Send for review"}>
         {r.blockers.length > 0 && (
           <ul className="space-y-1 text-sm">
             {r.blockers.map((b) => (
@@ -291,10 +296,10 @@ export function ReviewStep({ form: f, set, err, options, readOnly, role, review:
             {closing ? <Loader2 className="animate-spin" /> : null} Close
           </Button>
         </div>
-        {!r.canPublish && <p className="text-sm text-muted-foreground">An admin will check and publish this page.</p>}
+        {!r.canPublish && <p className="text-sm text-muted-foreground">The super admin checks it and publishes it once the payment is received.</p>}
       </StepGroup>
 
-      <StepGroup n={6} title="Live site" description="After publishing: check the live site, then send its link to the doctor.">
+      <StepGroup n={isAdmin ? 6 : 3} title="Live site" description="After publishing: check the live site, then send its link to the doctor.">
         <LiveSite target={target} live={f.status === "published"} liveUrl={r.liveUrl} disabled={readOnly} />
       </StepGroup>
     </div>

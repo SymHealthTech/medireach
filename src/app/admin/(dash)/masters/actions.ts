@@ -14,7 +14,7 @@ import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { Specialty } from "@/models/Specialty";
 
-const ADMINS = ["superadmin", "admin"] as const;
+const ADMINS = ["superadmin"] as const;
 export type MasterKind = "city" | "area" | "specialty" | "degree" | "council";
 
 const schema = z.object({

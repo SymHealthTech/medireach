@@ -23,7 +23,7 @@ export default async function TemplatePreviewPage({
   params: Promise<{ key: string }>;
   searchParams: Promise<{ doctor?: string; type?: string }>;
 }) {
-  await requireAdminPage(["superadmin", "admin"]);
+  await requireAdminPage(["superadmin"]);
   const { key } = await params;
   const { doctor, type } = await searchParams;
   if (!(TEMPLATE_KEYS as readonly string[]).includes(key)) notFound();

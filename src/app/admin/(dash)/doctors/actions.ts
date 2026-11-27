@@ -6,7 +6,11 @@ import { syncIntakeForSite, welcomeSiteFor } from "@/lib/intake/site-status";
 import { ActionError, adminAction, auditCtx } from "@/lib/admin/action";
 import { audit, shallowDiff } from "@/lib/api/audit";
 import { hitRateLimit } from "@/lib/api/rate-limit";
-import { can } from "@/lib/auth/admin";
+import type { AdminRole } from "@/lib/constants";
+import { assignSalesOwner } from "@/lib/admin/ownership";
+import { assertCanDelete, assertCanEdit, assertOwned, isSales, leadScope } from "@/lib/admin/scope";
+import { clearEditUnlocks } from "@/lib/admin/edit-unlock";
+import { assertPaidOrConfirmed } from "@/lib/admin/payment-gate";
 import { sendLoginLink } from "@/lib/auth/login-link";
 import { DOCTOR_SHORT_SLUG_PREFIX } from "@/config/reserved";
 import { sectionPayload, sectionSchemas, STEPS, type DoctorForm, type StepKey } from "@/lib/doctors/form";
@@ -68,9 +72,8 @@ export const saveDoctorSectionAction = adminAction(
     let doc;
     if (doctorId) {
       doc = await load(doctorId);
-      if (doc.status === "published" && !can.publish(admin.role)) {
-        throw new ActionError("This page is live. Only an admin can edit published pages.");
-      }
+      // Sales executives: only their own doctors; a live page needs the doctor's code first.
+      await assertCanEdit(admin, doc, "page");
     } else {
       if (step !== "basics") throw new ActionError("Start with the doctor's name.");
       doc = new DoctorProfile({ firstName: "x", lastName: "x", status: "draft" });
@@ -79,6 +82,7 @@ export const saveDoctorSectionAction = adminAction(
     const before = docToForm(doc.toObject());
     const oldRoute = { citySlug: doc.citySlug, slug: doc.slug };
     await applySection(doc, step, parsed.data as never, admin);
+    if (isSales(admin) || step === "business") await assignSalesOwner(doc, admin);
     await ensureUrlKeys(doc);
     // Keep the stored compliance scan fresh so lists can show issues.
     const settings = await getSettings();
@@ -104,7 +108,7 @@ export const saveDoctorSectionAction = adminAction(
     });
 
     if (isNew && leadId) {
-      await Lead.updateOne({ _id: leadId }, { $set: { status: "won" } });
+      await Lead.updateOne({ _id: leadId, ...leadScope(admin) }, { $set: { status: "won" } });
     }
     if (doc.status === "published") revalidateDoctorPages(oldRoute, { citySlug: doc.citySlug, slug: doc.slug });
     if (step === "business" || step === "clinics") {
@@ -145,9 +149,14 @@ export const checkUrlKeyAction = adminAction(
   },
 );
 
+/**
+ * Publish (super admin only). Before the first go-live the setup payment
+ * should be recorded: without one the action asks for `allowUnpaid`
+ * ("publish anyway?") so free, founding and demo pages can still go live.
+ */
 export const publishDoctorAction = adminAction(
-  { schema: z.object({ id }), roles: ["superadmin", "admin"] },
-  async ({ id: doctorId }, admin) => {
+  { schema: z.object({ id, allowUnpaid: z.boolean().optional() }), roles: ["superadmin"] },
+  async ({ id: doctorId, allowUnpaid }, admin) => {
     const doc = await load(doctorId);
     await ensureUrlKeys(doc);
     const settings = await getSettings();
@@ -160,6 +169,7 @@ export const publishDoctorAction = adminAction(
       throw new ActionError(`Can't publish yet: ${problems.join("; ")}.`);
     }
     const wasPublished = doc.status === "published";
+    if (!wasPublished) await assertPaidOrConfirmed("doctor", doc, allowUnpaid);
     const firstPublish = !doc.publishedAt;
     doc.status = "published";
     doc.publishedAt = doc.publishedAt ?? new Date();
@@ -200,11 +210,13 @@ async function welcomeOnFirstPublish(
   }
 }
 
-const statusChange = (to: "draft" | "review" | "suspended", action: string, roles?: readonly ("superadmin" | "admin" | "sales")[]) =>
+const statusChange = (to: "draft" | "review" | "suspended", action: string, roles?: readonly AdminRole[]) =>
   adminAction({ schema: z.object({ id }), ...(roles ? { roles } : {}) }, async ({ id: doctorId }, admin) => {
     const doc = await load(doctorId);
+    assertOwned(admin, doc, "doctor");
     const from = doc.status;
     if (to === "review" && from === "published") throw new ActionError("This page is already published.");
+    if (to === "review" && isSales(admin) && from !== "draft") throw new ActionError(from === "review" ? "This page is already waiting for review." : "Only a draft can be sent for review. Ask the super admin.");
     doc.status = to;
     await doc.save();
     await audit(auditCtx(admin), action, { entity: "DoctorProfile", entityId: doc._id, diff: { status: { from, to } } });
@@ -215,20 +227,23 @@ const statusChange = (to: "draft" | "review" | "suspended", action: string, role
     return { form: docToForm(doc.toObject()) };
   });
 
-export const unpublishDoctorAction = statusChange("draft", "doctor.unpublish", ["superadmin", "admin"]);
-export const suspendDoctorAction = statusChange("suspended", "doctor.suspend", ["superadmin", "admin"]);
+export const unpublishDoctorAction = statusChange("draft", "doctor.unpublish", ["superadmin"]);
+export const suspendDoctorAction = statusChange("suspended", "doctor.suspend", ["superadmin"]);
 export const submitForReviewAction = statusChange("review", "doctor.submit_review");
 
 /**
- * Delete a doctor's website for good: the page, its enquiries and update
+ * Delete a doctor's website for good (super admin; a sales executive only
+ * their own drafts that were never published): the page, its enquiries and update
  * requests, and its links on clinic / hospital sites. Payments are kept (they
  * are financial records). Website forms made into this page can be made into
  * a new draft again. Images stay in Cloudinary (duplicates may share them).
  */
 export const deleteDoctorAction = adminAction(
-  { schema: z.object({ id }), roles: ["superadmin", "admin"] },
+  { schema: z.object({ id }) },
   async ({ id: doctorId }, admin) => {
     const doc = await load(doctorId);
+    // Sales executives: only their own drafts that were never published.
+    assertCanDelete(admin, doc);
     const route = { citySlug: doc.citySlug, slug: doc.slug };
     const name = [doc.firstName, doc.lastName].filter(Boolean).join(" ");
     const linked = (doc.establishmentIds ?? []).map(String);
@@ -248,6 +263,7 @@ export const deleteDoctorAction = adminAction(
       entityId: doc._id,
       diff: { name, status: doc.status, url: route.slug ? `/${route.citySlug}/doctor/${route.slug}` : undefined, enquiriesDeleted: inquiries.deletedCount },
     });
+    await clearEditUnlocks(doctorId);
     revalidateDoctorPages(route);
     revalidateEstablishmentPages();
     return { id: doctorId };
@@ -258,6 +274,7 @@ export const deleteDoctorAction = adminAction(
 export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, async ({ id: doctorId }, admin) => {
   const src = await DoctorProfile.findById(doctorId).lean();
   if (!src) throw new ActionError("Doctor not found.");
+  assertOwned(admin, src, "doctor");
   const {
     _id: _ignoredId,
     slug: _s,
@@ -298,8 +315,9 @@ export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, a
  * saved login email, so the toggle and email must be saved first.
  */
 export const sendDoctorLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: doctorId }, admin) => {
-  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1, status: 1, citySlug: 1, slug: 1 }).lean();
+  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1, status: 1, citySlug: 1, slug: 1, salesAdminId: 1 }).lean();
   if (!doc) throw new ActionError("Doctor not found.");
+  assertOwned(admin, doc, "doctor");
   if (!doc.ownerEmail) throw new ActionError("Turn on self-edit login and save the doctor's email first.");
   const limit = await hitRateLimit(`login-link:admin:${doctorId}`, 5, 60 * 60_000);
   if (!limit.allowed) throw new ActionError("Several login emails were sent in the last hour. Please wait before sending another.");

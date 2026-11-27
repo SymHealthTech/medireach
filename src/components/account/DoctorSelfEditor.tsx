@@ -87,7 +87,7 @@ export function DoctorSelfEditor({ initial, options, initialTab = "basics", demo
     });
 
   const current = DOCTOR_SELF_TABS.find((t) => t.key === tab)!;
-  const stepProps: StepProps = { form, set, err, options, readOnly: false, role: "admin", doctorId: form.id, audience: "owner" };
+  const stepProps: StepProps = { form, set, err, options, readOnly: false, role: "superadmin", doctorId: form.id, audience: "owner" };
   const tabIssues = (key: StepKey) => issues.some((i) => stepForField(i.field) === key) || Object.keys(errors).some((f) => stepForField(f) === key);
 
   return (

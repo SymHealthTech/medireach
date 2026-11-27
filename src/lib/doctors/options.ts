@@ -1,4 +1,6 @@
 import "server-only";
+import { Types } from "mongoose";
+import type { CurrentAdmin } from "@/lib/auth/admin";
 import { connectToDatabase } from "@/lib/db";
 import { ensureMasterLists } from "@/lib/masters/server";
 import { getSettings } from "@/lib/settings";
@@ -41,7 +43,13 @@ export interface EditorOptions {
   bannedPhrases: string[];
 }
 
-export async function getEditorOptions(): Promise<EditorOptions> {
+/**
+ * Editor choices. For a sales executive: only their own clinic/hospital sites
+ * plus live ones (anyone can see those) to link, and only their own name as
+ * the sales executive.
+ */
+export async function getEditorOptions(admin?: CurrentAdmin): Promise<EditorOptions> {
+  const sales = admin?.role === "sales" ? new Types.ObjectId(admin.id) : null;
   await connectToDatabase();
   await ensureMasterLists();
   const [cities, areas, specialties, degrees, councils, establishments, templates, settings] = await Promise.all([
@@ -50,11 +58,11 @@ export async function getEditorOptions(): Promise<EditorOptions> {
     Specialty.find().sort({ name: 1 }).lean(),
     Degree.find().sort({ name: 1 }).lean(),
     Council.find().sort({ name: 1 }).lean(),
-    Establishment.find().sort({ name: 1 }).select({ name: 1, kind: 1, address: 1, "contact.phones": 1 }).lean(),
+    Establishment.find(sales ? { $or: [{ salesAdminId: sales }, { status: "published" }] } : {}).sort({ name: 1 }).select({ name: 1, kind: 1, address: 1, "contact.phones": 1 }).lean(),
     TemplateSlot.find().sort({ type: 1, key: 1 }).lean(),
     getSettings(),
   ]);
-  const team = await salesTeam();
+  const team = sales ? [admin!.name] : await salesTeam();
   return {
     cities: cities.map((c) => ({ id: String(c._id), name: c.name, slug: c.slug, state: c.state })),
     areas: areas.map((a) => ({ id: String(a._id), name: a.name, slug: a.slug, cityId: String(a.cityId) })),

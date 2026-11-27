@@ -2,17 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Loader2, Pencil, Plus, RotateCcw } from "lucide-react";
+import { KeyRound, Loader2, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, NativeSelect, NumberInput, SwitchField } from "@/components/admin/form/fields";
-import { FormDialog } from "@/components/admin/FormDialog";
+import { ConfirmButton, FormDialog } from "@/components/admin/FormDialog";
 import { Pill } from "@/components/admin/StatusBadge";
 import { ADMIN_ROLES, GST_MODES, type AdminRole, type PriceKey } from "@/lib/constants";
 import {
   createAdminUserAction,
+  deleteAdminUserAction,
   resetAdminPasswordAction,
   saveBannedPhrasesAction,
   saveSettingsAction,
@@ -20,7 +21,7 @@ import {
 } from "./actions";
 
 const GST_LABEL = { inclusive: "Prices include GST", exclusive: "Prices exclude GST (GST added)", none: "No GST" } as const;
-const ROLE_LABEL: Record<AdminRole, string> = { superadmin: "Super admin", admin: "Admin", sales: "Sales" };
+const ROLE_LABEL: Record<AdminRole, string> = { superadmin: "Super admin", sales: "Sales executive" };
 
 /** Price fields, grouped as on the pricing page. Every key in PRICE_KEYS appears once. */
 const PRICE_GROUPS: { title: string; help?: string; fields: { key: PriceKey; label: string }[] }[] = [
@@ -170,47 +171,77 @@ export interface AdminUserRow {
   id: string;
   name: string;
   email: string;
+  mobile: string;
+  staffId: string;
   role: AdminRole;
   active: boolean;
   lastLogin: string;
   isMe: boolean;
 }
 
-export function NewAdminUserButton() {
-  const blank = { name: "", email: "", role: "sales" as AdminRole, password: "" };
+type UserFields = { name: string; email: string; mobile: string; role: AdminRole };
+
+function UserFieldsForm({ v, setV, errors, idPrefix, lockRole }: { v: UserFields; setV: (v: UserFields) => void; errors: Record<string, string>; idPrefix: string; lockRole?: boolean }) {
+  const sales = v.role === "sales";
+  return (
+    <>
+      <Field label="Role" htmlFor={`${idPrefix}-role`}>
+        <NativeSelect id={`${idPrefix}-role`} value={v.role} disabled={lockRole} onChange={(e) => setV({ ...v, role: e.target.value as AdminRole })}>
+          {ADMIN_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABEL[r]}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+      <Field label="Name" htmlFor={`${idPrefix}-name`} required error={errors.name}>
+        <Input id={`${idPrefix}-name`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+      </Field>
+      <Field
+        label={sales ? "Email (optional)" : "Email"}
+        htmlFor={`${idPrefix}-email`}
+        required={!sales}
+        help={sales ? "Not used to log in: sales executives log in with their staff ID." : "Used to log in."}
+        error={errors.email}
+      >
+        <Input id={`${idPrefix}-email`} type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
+      </Field>
+      <Field label="Mobile (optional)" htmlFor={`${idPrefix}-mobile`} error={errors.mobile}>
+        <Input id={`${idPrefix}-mobile`} type="tel" inputMode="numeric" value={v.mobile} onChange={(e) => setV({ ...v, mobile: e.target.value })} />
+      </Field>
+    </>
+  );
+}
+
+/** "Add user" (Settings) / "Add sales executive" (Sales executives page). Sales executives get a staff ID to log in with. */
+export function NewAdminUserButton({ role = "sales", label = "Add user", lockRole = false }: { role?: AdminRole; label?: string; lockRole?: boolean }) {
+  const blank = { name: "", email: "", mobile: "", role, password: "" };
   const [v, setV] = useState(blank);
   return (
     <FormDialog
       trigger={
         <Button>
-          <Plus /> Add user
+          <Plus /> {label}
         </Button>
       }
-      title="Add dashboard user"
-      description="Share the temporary password privately; ask them to keep it safe."
-      submitLabel="Add user"
+      title={v.role === "sales" ? "Add sales executive" : "Add super admin"}
+      description={
+        v.role === "sales"
+          ? "They get a staff ID (e.g. MRS-1001) to log in with, and this password. Share both privately. They can't change the password; you can reset it any time."
+          : "A super admin can do everything, including payments, publishing and managing users."
+      }
+      submitLabel="Add"
       successMessage="User added"
       onSubmit={() => createAdminUserAction(v)}
-      onSuccess={() => setV(blank)}
+      onSuccess={(d) => {
+        toast.success(`${d.name}: log in with ${d.loginId}`, { description: "Share the login ID and password privately.", duration: 20000 });
+        setV(blank);
+      }}
     >
       {(errors) => (
         <>
-          <Field label="Name" htmlFor="u-name" required error={errors.name}>
-            <Input id="u-name" value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
-          </Field>
-          <Field label="Email" htmlFor="u-email" required error={errors.email}>
-            <Input id="u-email" type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
-          </Field>
-          <Field label="Role" htmlFor="u-role">
-            <NativeSelect id="u-role" value={v.role} onChange={(e) => setV({ ...v, role: e.target.value as AdminRole })}>
-              {ADMIN_ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {ROLE_LABEL[r]}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Temporary password" htmlFor="u-pw" required help="At least 12 characters." error={errors.password}>
+          <UserFieldsForm v={v} setV={(x) => setV({ ...v, ...x })} errors={errors} idPrefix="u" lockRole={lockRole} />
+          <Field label="Password" htmlFor="u-pw" required help="At least 12 characters." error={errors.password}>
             <Input id="u-pw" type="text" autoComplete="new-password" value={v.password} onChange={(e) => setV({ ...v, password: e.target.value })} />
           </Field>
         </>
@@ -220,7 +251,7 @@ export function NewAdminUserButton() {
 }
 
 export function AdminUserActions({ user }: { user: AdminUserRow }) {
-  const [v, setV] = useState({ name: user.name, role: user.role, active: user.active });
+  const [v, setV] = useState({ name: user.name, email: user.email, mobile: user.mobile, role: user.role, active: user.active });
   const [pw, setPw] = useState("");
   return (
     <div className="flex gap-1">
@@ -231,23 +262,13 @@ export function AdminUserActions({ user }: { user: AdminUserRow }) {
           </Button>
         }
         title={`Edit ${user.name}`}
+        description={user.staffId ? `Staff ID ${user.staffId} (used to log in; it never changes).` : undefined}
         successMessage="User updated"
         onSubmit={() => updateAdminUserAction({ id: user.id, ...v })}
       >
         {(errors) => (
           <>
-            <Field label="Name" htmlFor={`e-name-${user.id}`} error={errors.name}>
-              <Input id={`e-name-${user.id}`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
-            </Field>
-            <Field label="Role" htmlFor={`e-role-${user.id}`}>
-              <NativeSelect id={`e-role-${user.id}`} value={v.role} disabled={user.isMe} onChange={(e) => setV({ ...v, role: e.target.value as AdminRole })}>
-                {ADMIN_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
+            <UserFieldsForm v={v} setV={(x) => setV({ ...v, ...x })} errors={errors} idPrefix={`e-${user.id}`} lockRole={user.isMe} />
             <SwitchField label="Active" description="Inactive users are signed out and can't log in." checked={v.active} disabled={user.isMe} onCheckedChange={(active) => setV({ ...v, active })} />
           </>
         )}
@@ -259,6 +280,7 @@ export function AdminUserActions({ user }: { user: AdminUserRow }) {
           </Button>
         }
         title={`New password for ${user.name}`}
+        description={user.staffId ? `They log in with ${user.staffId} and this password.` : undefined}
         submitLabel="Set password"
         successMessage="Password updated"
         onSubmit={() => resetAdminPasswordAction({ id: user.id, password: pw })}
@@ -270,6 +292,24 @@ export function AdminUserActions({ user }: { user: AdminUserRow }) {
           </Field>
         )}
       </FormDialog>
+      {!user.isMe && (
+        <ConfirmButton
+          trigger={
+            <Button size="icon-sm" variant="ghost" className="text-clay-text" aria-label={`Delete ${user.name}`}>
+              <Trash2 />
+            </Button>
+          }
+          title={`Delete ${user.name}?`}
+          description={
+            user.role === "sales"
+              ? "They are signed out and can't log in again. Their doctors, clinics and hospitals stay, with their name as the sales executive, and are looked after by the super admin until you reassign them."
+              : "They are signed out and can't log in again."
+          }
+          confirmLabel="Delete user"
+          successMessage="User deleted"
+          onConfirm={() => deleteAdminUserAction({ id: user.id })}
+        />
+      )}
     </div>
   );
 }

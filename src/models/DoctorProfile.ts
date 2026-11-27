@@ -195,6 +195,8 @@ export interface DoctorProfileDoc {
   salesExecutive?: string;
   /** The sales executive's staff ID. */
   salesExecutiveId?: string;
+  /** The sales executive (dashboard user) who owns this website: they alone, and the super admin, can see and edit it. */
+  salesAdminId?: Types.ObjectId;
   source?: (typeof DOCTOR_SOURCES)[number];
   internalNotes?: string;
 
@@ -404,6 +406,7 @@ const doctorProfileSchema = new Schema<DoctorProfileDoc>(
     establishmentIds: { type: [{ type: Schema.Types.ObjectId, ref: "Establishment" }], default: [] },
     salesExecutive: { type: String, trim: true },
     salesExecutiveId: { type: String, trim: true },
+    salesAdminId: { type: Schema.Types.ObjectId, ref: "Admin", index: true },
     source: { type: String, enum: DOCTOR_SOURCES },
     internalNotes: { type: String },
 

@@ -5,8 +5,22 @@
  */
 
 // --- Roles ---
-export const ADMIN_ROLES = ["superadmin", "admin", "sales"] as const;
+/**
+ * Dashboard roles: the super admin (everything) and sales executives (their own
+ * doctors, clinics and hospitals up to review). The old middle "admin" role is
+ * gone: such accounts are read as super admins (see `normalizeAdminRole`).
+ */
+export const ADMIN_ROLES = ["superadmin", "sales"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
+
+/** Roles as stored, including the retired "admin" (read as superadmin). */
+export const STORED_ADMIN_ROLES = [...ADMIN_ROLES, "admin"] as const;
+export const normalizeAdminRole = (role: string | undefined): AdminRole | null =>
+  role === "admin" ? "superadmin" : (ADMIN_ROLES as readonly string[]).includes(role ?? "") ? (role as AdminRole) : null;
+
+/** Sales executives' login IDs: "MRS-1001", "MRS-1002"… */
+export const STAFF_ID_PREFIX = "MRS";
+export const STAFF_ID_RE = /^MRS-\d{4,}$/;
 
 /** "owner" = a clinic or hospital owner using /account (self-edit login). */
 export const ROLES = [...ADMIN_ROLES, "doctor", "owner"] as const;
@@ -155,3 +169,21 @@ export const LIMITS = {
  * of its own (that is /[city]/hospitals).
  */
 export const DEFAULT_HOSPITAL_CATEGORY = "small-hospital";
+
+/**
+ * Publish asks the super admin to confirm when no payment is recorded yet:
+ * the action fails with this field error, and the dashboard asks
+ * "publish anyway?" and retries with `allowUnpaid`.
+ */
+export const UNPAID_FIELD = "_unpaid";
+
+// --- Field visits (sales executives' daily work list) ---
+export const VISIT_OUTCOMES = ["positive", "will_fill_form", "follow_up", "not_interested", "not_available"] as const;
+export type VisitOutcome = (typeof VISIT_OUTCOMES)[number];
+export const VISIT_OUTCOME_LABEL: Record<VisitOutcome, string> = {
+  positive: "Positive / interested",
+  will_fill_form: "Will fill the form later",
+  follow_up: "Follow up / call back",
+  not_interested: "Not interested",
+  not_available: "Not available / closed",
+};

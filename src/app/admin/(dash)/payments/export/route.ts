@@ -19,7 +19,7 @@ function csvCell(v: unknown): string {
 
 export async function GET(req: Request) {
   const admin = await getCurrentAdmin();
-  if (!admin || (admin.role !== "superadmin" && admin.role !== "admin")) {
+  if (!admin || admin.role !== "superadmin") {
     return new Response("Forbidden", { status: 403 });
   }
   const sp = Object.fromEntries(new URL(req.url).searchParams) as SearchParams;
