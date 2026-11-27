@@ -18,6 +18,7 @@ import { getSettings } from "@/lib/settings";
 import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { sitePath } from "@/lib/site";
 import { RESERVED_SUBDOMAINS } from "@/config/reserved";
+import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { ensureUid } from "@/lib/uid";
 import { DEFAULT_CLINIC_THEME, DEFAULT_HOSPITAL_THEME } from "@/themes/specialty";
@@ -203,6 +204,27 @@ const statusChange = (to: "draft" | "review" | "suspended", action: string, role
 export const unpublishEstablishmentAction = statusChange("draft", "unpublish", ["superadmin", "admin"]);
 export const suspendEstablishmentAction = statusChange("suspended", "suspend", ["superadmin", "admin"]);
 export const submitEstablishmentForReviewAction = statusChange("review", "submit_review");
+
+/**
+ * Delete a clinic / hospital website for good, and its "Practises at" links
+ * on doctor pages. Payments are kept (financial records). Website forms made
+ * into this site can be made into a new draft again. Images stay in Cloudinary.
+ */
+export const deleteEstablishmentAction = adminAction({ schema: z.object({ id }), roles: ["superadmin", "admin"] }, async ({ id: establishmentId }, admin) => {
+  const doc = await load(establishmentId);
+  const route: Route = { kind: doc.kind, citySlug: doc.citySlug, slug: doc.slug };
+  await Establishment.deleteOne({ _id: doc._id });
+  // Every doctor that points at it, whichever side the link was made from.
+  const linked = await DoctorProfile.find({ $or: [{ establishmentIds: doc._id }, { "clinics.establishmentId": doc._id }] }).select({ _id: 1 }).lean();
+  await syncDoctorLinksFromEstablishment(doc._id, linked.map((d) => String(d._id)), []);
+  await audit(auditCtx(admin), `${doc.kind}.delete`, {
+    entity: "Establishment",
+    entityId: doc._id,
+    diff: { name: doc.name, status: doc.status, url: route.slug ? sitePath({ kind: route.kind, citySlug: route.citySlug!, slug: route.slug }) : undefined },
+  });
+  revalidatePublic(route);
+  return { id: establishmentId };
+});
 
 /**
  * Email the owner a login link for self-editing (welcome wording: says the

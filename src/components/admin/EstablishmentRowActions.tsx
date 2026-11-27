@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { Ban, Copy, CreditCard, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, Send, Undo2, UserPlus } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Ban, Copy, CreditCard, ExternalLink, Eye, IdCard, Link2, MoreHorizontal, Pencil, RotateCcw, Send, Trash2, Undo2, UserPlus } from "lucide-react";
+import { RepublishDialog, SuspendDialog } from "@/components/admin/SiteStatusDialogs";
 import { toast } from "sonner";
 import { welcomeToast } from "@/components/admin/welcome-toast";
 import { startNavigationProgress } from "@/components/loading/NavigationProgress";
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  deleteEstablishmentAction,
   duplicateEstablishmentAction,
   publishEstablishmentAction,
   suspendEstablishmentAction,
@@ -26,6 +28,7 @@ export interface EstablishmentRowInfo {
   id: string;
   kind: "clinic" | "hospital";
   status: string;
+  name?: string;
   liveUrl?: string;
   shareUrl?: string;
 }
@@ -33,11 +36,14 @@ export interface EstablishmentRowInfo {
 /**
  * Per-clinic / per-hospital actions, matching the doctor list: Edit, Preview,
  * Open live, Copy link, Visiting card, Add doctor portfolio, Payments,
- * Duplicate, Publish/Unpublish, Suspend.
+ * Duplicate, Publish/Unpublish, Suspend. Suspend opens a modal (suspend for
+ * now / delete for good / cancel); a suspended site gets Republish and Delete permanently.
  */
 export function EstablishmentRowActions({ site, canPublish, showMoney }: { site: EstablishmentRowInfo; canPublish: boolean; showMoney: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [dialog, setDialog] = useState<"suspend" | "delete" | "republish" | null>(null);
+  const suspended = site.status === "suspended";
   const label = site.kind === "hospital" ? "Hospital" : "Clinic";
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
@@ -52,89 +58,124 @@ export function EstablishmentRowActions({ site, canPublish, showMoney }: { site:
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label={`${label} actions`} disabled={pending}>
-          <MoreHorizontal />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuItem asChild>
-          <Link href={`/admin/establishments/${site.id}?kind=${site.kind}`}>
-            <Pencil /> Edit
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <a href={`/admin/preview/site/${site.id}`} target="_blank" rel="noopener">
-            <Eye /> Preview
-          </a>
-        </DropdownMenuItem>
-        {site.liveUrl && (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label={`${label} actions`} disabled={pending}>
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem asChild>
-            <a href={site.liveUrl} target="_blank" rel="noopener">
-              <ExternalLink /> Open live page
-            </a>
-          </DropdownMenuItem>
-        )}
-        {site.shareUrl && (
-          <DropdownMenuItem
-            onSelect={() => {
-              void navigator.clipboard.writeText(site.shareUrl!).then(() => toast.success("Link copied"));
-            }}
-          >
-            <Link2 /> Copy share link
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem asChild>
-          <Link href={`/admin/cards?type=${site.kind}&establishment=${site.id}`}>
-            <IdCard /> Visiting card
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/admin/doctors/new?establishment=${site.id}`}>
-            <UserPlus /> Add doctor portfolio
-          </Link>
-        </DropdownMenuItem>
-        {showMoney && (
-          <DropdownMenuItem asChild>
-            <Link href={`/admin/payments?establishment=${site.id}`}>
-              <CreditCard /> Payments
+            <Link href={`/admin/establishments/${site.id}?kind=${site.kind}`}>
+              <Pencil /> Edit
             </Link>
           </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          onSelect={() =>
-            start(async () => {
-              const res = await duplicateEstablishmentAction({ id: site.id });
-              if (!res.ok) return void toast.error(res.error);
-              toast.success("Duplicated as a new draft");
-              startNavigationProgress();
-              router.push(`/admin/establishments/${res.data.id}?kind=${res.data.kind}`);
-            })
-          }
-        >
-          <Copy /> Duplicate
-        </DropdownMenuItem>
-        {canPublish && (
-          <>
-            <DropdownMenuSeparator />
-            {site.status === "published" ? (
-              <DropdownMenuItem onSelect={() => run(() => unpublishEstablishmentAction({ id: site.id }), "Unpublished")}>
-                <Undo2 /> Unpublish
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onSelect={() => run(() => publishEstablishmentAction({ id: site.id }).then((r) => (r.ok && welcomeToast(r.data), r)), "Published")}>
-                <Send /> Publish
-              </DropdownMenuItem>
-            )}
-            {site.status !== "suspended" && (
-              <DropdownMenuItem className="text-clay-text" onSelect={() => run(() => suspendEstablishmentAction({ id: site.id }), "Suspended — site is offline")}>
-                <Ban /> Suspend
-              </DropdownMenuItem>
-            )}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem asChild>
+            <a href={`/admin/preview/site/${site.id}`} target="_blank" rel="noopener">
+              <Eye /> Preview
+            </a>
+          </DropdownMenuItem>
+          {site.liveUrl && (
+            <DropdownMenuItem asChild>
+              <a href={site.liveUrl} target="_blank" rel="noopener">
+                <ExternalLink /> Open live page
+              </a>
+            </DropdownMenuItem>
+          )}
+          {site.shareUrl && (
+            <DropdownMenuItem
+              onSelect={() => {
+                void navigator.clipboard.writeText(site.shareUrl!).then(() => toast.success("Link copied"));
+              }}
+            >
+              <Link2 /> Copy share link
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/cards?type=${site.kind}&establishment=${site.id}`}>
+              <IdCard /> Visiting card
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/admin/doctors/new?establishment=${site.id}`}>
+              <UserPlus /> Add doctor portfolio
+            </Link>
+          </DropdownMenuItem>
+          {showMoney && (
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/payments?establishment=${site.id}`}>
+                <CreditCard /> Payments
+              </Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            onSelect={() =>
+              start(async () => {
+                const res = await duplicateEstablishmentAction({ id: site.id });
+                if (!res.ok) return void toast.error(res.error);
+                toast.success("Duplicated as a new draft");
+                startNavigationProgress();
+                router.push(`/admin/establishments/${res.data.id}?kind=${res.data.kind}`);
+              })
+            }
+          >
+            <Copy /> Duplicate
+          </DropdownMenuItem>
+          {canPublish && (
+            <>
+              <DropdownMenuSeparator />
+              {suspended ? (
+                <>
+                  <DropdownMenuItem onSelect={() => setDialog("republish")}>
+                    <RotateCcw /> Republish
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-clay-text" onSelect={() => setDialog("delete")}>
+                    <Trash2 /> Delete permanently
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  {site.status === "published" ? (
+                    <DropdownMenuItem onSelect={() => run(() => unpublishEstablishmentAction({ id: site.id }), "Unpublished")}>
+                      <Undo2 /> Unpublish
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onSelect={() => run(() => publishEstablishmentAction({ id: site.id }).then((r) => (r.ok && welcomeToast(r.data), r)), "Published")}>
+                      <Send /> Publish
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="text-clay-text" onSelect={() => setDialog("suspend")}>
+                    <Ban /> Suspend
+                  </DropdownMenuItem>
+                </>
+              )}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {canPublish && (
+        <>
+          <SuspendDialog
+            open={dialog === "suspend" || dialog === "delete"}
+            onOpenChange={(o) => !o && setDialog(null)}
+            step={dialog === "delete" ? "delete" : "choose"}
+            what="site"
+            name={site.name}
+            onSuspend={() => suspendEstablishmentAction({ id: site.id })}
+            onDelete={() => deleteEstablishmentAction({ id: site.id })}
+            onDone={() => router.refresh()}
+          />
+          <RepublishDialog
+            open={dialog === "republish"}
+            onOpenChange={(o) => !o && setDialog(null)}
+            what="site"
+            name={site.name}
+            onConfirm={() => publishEstablishmentAction({ id: site.id })}
+            onDone={() => router.refresh()}
+          />
+        </>
+      )}
+    </>
   );
 }

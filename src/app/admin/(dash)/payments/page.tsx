@@ -120,7 +120,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             <li key={String(p._id)} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold text-ink">
-                  {p.doctorId ? doctorName.get(String(p.doctorId)) : (establishmentName.get(String(p.establishmentId ?? p.hospitalId)) ?? "—")}
+                  {(p.doctorId ? doctorName.get(String(p.doctorId)) : establishmentName.get(String(p.establishmentId ?? p.hospitalId))) ?? (p.doctorId || p.establishmentId || p.hospitalId ? "Deleted website" : "—")}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {[formatDate(p.date), PAYMENT_PURPOSE_LABEL[p.purpose], PAYMENT_MODE_LABEL[p.mode], p.invoiceNo].filter(Boolean).join(" · ")}

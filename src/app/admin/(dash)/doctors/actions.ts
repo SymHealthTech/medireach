@@ -18,12 +18,15 @@ import {
   scanDoctor,
   urlKeyAvailable,
 } from "@/lib/doctors/server";
-import { revalidateDoctorPages } from "@/lib/public/revalidate";
+import { revalidateDoctorPages, revalidateEstablishmentPages } from "@/lib/public/revalidate";
 import { getSettings } from "@/lib/settings";
 import { SLUG_RE, subdomainError } from "@/lib/slug";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { ensureUid } from "@/lib/uid";
 import { Lead } from "@/models/Lead";
+import { Establishment } from "@/models/Establishment";
+import { Inquiry } from "@/models/Inquiry";
+import { UpdateRequest } from "@/models/UpdateRequest";
 import { syncEstablishmentDoctors } from "@/lib/establishments/links";
 
 const id = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id.");
@@ -215,6 +218,41 @@ const statusChange = (to: "draft" | "review" | "suspended", action: string, role
 export const unpublishDoctorAction = statusChange("draft", "doctor.unpublish", ["superadmin", "admin"]);
 export const suspendDoctorAction = statusChange("suspended", "doctor.suspend", ["superadmin", "admin"]);
 export const submitForReviewAction = statusChange("review", "doctor.submit_review");
+
+/**
+ * Delete a doctor's website for good: the page, its enquiries and update
+ * requests, and its links on clinic / hospital sites. Payments are kept (they
+ * are financial records). Website forms made into this page can be made into
+ * a new draft again. Images stay in Cloudinary (duplicates may share them).
+ */
+export const deleteDoctorAction = adminAction(
+  { schema: z.object({ id }), roles: ["superadmin", "admin"] },
+  async ({ id: doctorId }, admin) => {
+    const doc = await load(doctorId);
+    const route = { citySlug: doc.citySlug, slug: doc.slug };
+    const name = [doc.firstName, doc.lastName].filter(Boolean).join(" ");
+    const linked = (doc.establishmentIds ?? []).map(String);
+    await DoctorProfile.deleteOne({ _id: doc._id });
+    const [inquiries] = await Promise.all([
+      Inquiry.deleteMany({ doctorId: doc._id }),
+      UpdateRequest.deleteMany({ doctorId: doc._id }),
+      syncEstablishmentDoctors(doc._id, linked, []),
+      // Links made from the other side only (older data) go too.
+      Establishment.updateMany(
+        { "doctors.doctorProfileId": doc._id },
+        { $pull: { doctors: { doctorProfileId: doc._id }, "departments.$[].doctorIds": doc._id } },
+      ),
+    ]);
+    await audit(auditCtx(admin), "doctor.delete", {
+      entity: "DoctorProfile",
+      entityId: doc._id,
+      diff: { name, status: doc.status, url: route.slug ? `/${route.citySlug}/doctor/${route.slug}` : undefined, enquiriesDeleted: inquiries.deletedCount },
+    });
+    revalidateDoctorPages(route);
+    revalidateEstablishmentPages();
+    return { id: doctorId };
+  },
+);
 
 /** Copy a doctor into a new draft (URL keys, login, founding and publish data are not copied). */
 export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, async ({ id: doctorId }, admin) => {

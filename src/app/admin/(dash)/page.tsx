@@ -48,6 +48,11 @@ function describe(action: string): string {
     "hospital.republish": "republished a hospital site",
     "clinic.unpublish": "unpublished a clinic site",
     "hospital.unpublish": "unpublished a hospital site",
+    "clinic.suspend": "suspended a clinic site",
+    "hospital.suspend": "suspended a hospital site",
+    "doctor.delete": "permanently deleted a page",
+    "clinic.delete": "permanently deleted a clinic site",
+    "hospital.delete": "permanently deleted a hospital site",
     "settings.update": "changed settings",
     "admin.login": "logged in",
   };

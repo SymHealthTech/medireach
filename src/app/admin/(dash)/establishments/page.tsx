@@ -148,7 +148,7 @@ export default async function EstablishmentsPage({ searchParams }: { searchParam
                   </span>
                 </span>
               </Link>
-              <EstablishmentRowActions site={{ id: r.id, kind: r.kind, status: r.status, liveUrl: r.liveUrl, shareUrl: r.shareUrl }} canPublish={canPublish} showMoney={showMoney} />
+              <EstablishmentRowActions site={{ id: r.id, kind: r.kind, status: r.status, name: r.name, liveUrl: r.liveUrl, shareUrl: r.shareUrl }} canPublish={canPublish} showMoney={showMoney} />
             </li>
           ))}
         </ul>
