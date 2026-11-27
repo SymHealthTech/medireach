@@ -135,7 +135,6 @@ export const VISITING_CARDS = {
   },
   faq: [
     { q: "Is the visiting card extra?", a: "No. A digital visiting card is included in every plan." },
-    { q: "Can I choose a different card style?", a: "The card always matches your website design. Change the website design and the card changes with it. Your card link and QR code stay the same." },
     { q: "Do the buttons work in the PDF?", a: "Yes. In both the full card PDF and the print-ready PDF, tap Call, WhatsApp, Directions, Save or Website and it opens, just like on the card page." },
   ],
   help: "Questions about the card? Ask us on WhatsApp",
