@@ -3,14 +3,15 @@ import { CARD_SIZE, type PublicDoctor, type PublicEstablishment } from "@/templa
 
 /**
  * One-tap buttons on the cards: Call, WhatsApp, Directions and Website
- * (hospitals: also Emergency). Every design draws them in its own colours, in a row of tiles (the
- * "dock") at a FIXED place on the phone card (1080 × 1920, `PHONE_DOCK`, on
- * the bottom edge of the header, above the contact details) and
- * on the print card (1004 × 650, `PRINT_DOCK`, smaller tiles), so:
+ * (hospitals: also Emergency). Every design draws them in its own colours as
+ * one rounded box split into icon + label cells (like the card on the home
+ * page), the "dock", at a FIXED place on the phone card (1080 × 1920,
+ * `PHONE_DOCK`, on the bottom edge of the header, above the contact details)
+ * and on the print card (1004 × 650, `PRINT_DOCK`, a smaller box), so:
  *
  *  - on the card page (HTML) they are real links;
  *  - in the PNG they are part of the picture;
- *  - in the PDF, lib/cards/render.tsx puts a clickable link over each tile
+ *  - in the PDF, lib/cards/render.tsx puts a clickable link over each cell
  *    using the same geometry (`dockSlots`), so the buttons work there too.
  *
  * Satori-safe: absolute positions, flexbox, inline <svg> only.
@@ -26,13 +27,15 @@ export interface CardAction {
   icon: keyof typeof ICONS;
 }
 
-/** Where the dock sits on the phone card, in card pixels. */
+/** Where the dock (the box) sits on a card, in card pixels. */
 export interface CardDock {
   x: number;
   y: number;
   width: number;
   height: number;
-  /** Space between tiles. */
+  /** Inner padding of the box. */
+  pad: number;
+  /** Space between cells. */
   gap: number;
 }
 
@@ -46,13 +49,13 @@ export interface Rect {
 /** Colours and shape of a design's buttons. */
 export interface DockStyle {
   /**
-   * All buttons, Call included, are the same tile: the row straddles the
-   * header's edge, where a filled button blends into the header.
+   * The box behind all the buttons (Call included: the box straddles the
+   * header's edge, where a filled button would blend into the header).
    */
   tileBg: string;
   tileText: string;
   iconColor: string;
-  /** Optional tile border, e.g. "2px solid #E2E5EC". */
+  /** Optional box border, e.g. "2px solid #E2E5EC". */
   border?: string;
   radius: number;
   font: string;
@@ -68,18 +71,18 @@ export const DOCK_HEIGHT = 150;
  */
 export function dockOnHeader(header: number, margin = 64): CardDock {
   const { width } = CARD_SIZE.phone;
-  return { x: margin, y: header - DOCK_HEIGHT / 2, width: width - margin * 2, height: DOCK_HEIGHT, gap: 16 };
+  return { x: margin, y: header - DOCK_HEIGHT / 2, width: width - margin * 2, height: DOCK_HEIGHT, pad: 16, gap: 8 };
 }
 
 /** Space from the header's bottom edge to the content under a `dockOnHeader` dock (its lower half plus a clear gap). */
 export const BELOW_DOCK = DOCK_HEIGHT / 2 + 44;
 
-/** Tile height on the print card. */
+/** Box height on the print card. */
 export const PRINT_DOCK_HEIGHT = 64;
 
-/** A print card dock: a row of small tiles from `x` to `right`, at `y` (in the card's free band between the name and the contact rows). */
+/** A print card dock: a small box from `x` to `right`, at `y` (in the card's free band between the name and the contact rows). */
 export function printDock(x: number, right: number, y: number): CardDock {
-  return { x, y, width: right - x, height: PRINT_DOCK_HEIGHT, gap: 10 };
+  return { x, y, width: right - x, height: PRINT_DOCK_HEIGHT, pad: 5, gap: 4 };
 }
 
 /** The phone and print docks of one card design. */
@@ -88,12 +91,16 @@ export interface CardDocks {
   print: CardDock;
 }
 
-/** Each tile's rectangle (card pixels). Shared by the drawing and the PDF links. */
+/** Each button cell's rectangle inside the box (card pixels). Shared by the drawing and the PDF links. */
 export function dockSlots(dock: CardDock, n: number): Rect[] {
   if (n <= 0) return [];
-  const w = Math.floor((dock.width - dock.gap * (n - 1)) / n);
-  return Array.from({ length: n }, (_, i) => ({ x: dock.x + i * (w + dock.gap), y: dock.y, width: w, height: dock.height }));
+  const inner = dock.width - dock.pad * 2;
+  const w = Math.floor((inner - dock.gap * (n - 1)) / n);
+  return Array.from({ length: n }, (_, i) => ({ x: dock.x + dock.pad + i * (w + dock.gap), y: dock.y + dock.pad, width: w, height: dock.height - dock.pad * 2 }));
 }
+
+/** WhatsApp's icon is green on every card, as on the home page card. */
+const WHATSAPP_GREEN = "#1C7442";
 
 /** Label size that fits a tile (uppercase is wider). */
 const labelSize = (label: string, upper?: boolean, small?: boolean) =>
@@ -126,60 +133,67 @@ export function siteCardActions(s: PublicEstablishment): CardAction[] {
 }
 
 /**
- * The row of buttons, drawn at `dock` (a direct child of the card's root, which
- * is position: relative). `links` makes them real links (card page only).
+ * The buttons: one box with a cell per button, drawn at `dock` (a direct child
+ * of the card's root, which is position: relative). `links` makes the cells
+ * real links (card page only).
  * No fragments: Satori draws nothing for a component that returns one.
  */
 export function ActionDock({ actions, dock, style: st, links, small }: { actions: CardAction[]; dock: CardDock; style: DockStyle; links?: boolean; small?: boolean }) {
   const slots = dockSlots(dock, actions.length);
-  // The print card's tiles are small: no shadow, smaller icon and label, tighter corners.
+  // The print card's box is small: no shadow, smaller icon and label, tighter corners.
   const radius = small ? Math.round(st.radius * 0.4) : st.radius;
-  return (
-    <div style={{ display: "flex", position: "absolute", left: dock.x, top: dock.y, width: dock.width, height: dock.height }}>
-      {actions.map((a, i) => {
-        const r = slots[i]!;
-        const color = st.tileText;
-        const box = {
-          display: "flex",
-          flexDirection: "column" as const,
-          alignItems: "center",
-          justifyContent: "center",
-          position: "absolute" as const,
-          left: r.x - dock.x,
-          top: r.y - dock.y,
-          width: r.width,
-          height: r.height,
-          borderRadius: radius,
-          background: st.tileBg,
-          boxSizing: "border-box" as const,
-          ...(st.border ? { border: st.border } : {}),
-          ...(st.shadow && !small ? { boxShadow: st.shadow } : {}),
-          color,
-          fontFamily: st.font,
-          textDecoration: "none",
-        };
-        const children = [
-          <Icon key="icon" name={a.icon} size={small ? 24 : 52} color={st.iconColor} />,
-          <div key="label" style={{ display: "flex", marginTop: small ? 5 : 14, fontSize: labelSize(a.label, st.uppercase, small), fontWeight: 700, letterSpacing: st.uppercase ? (small ? 0.5 : 1) : 0, color }}>
-            {st.uppercase ? a.label.toUpperCase() : a.label}
-          </div>,
-        ];
-        return links ? (
-          <a
-            key={a.key}
-            href={a.href}
-            aria-label={a.label}
-            {...(a.href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})}
-            style={box}
-          >
-            {children}
-          </a>
-        ) : (
-          <div key={a.key} style={box}>
-            {children}
-          </div>
-        );
-      })}
-    </div>
+  const color = st.tileText;
+  // The box is its own layer (cells are positioned against the dock, not inside a border).
+  const box = (
+    <div
+      key="box"
+      style={{
+        display: "flex",
+        position: "absolute",
+        left: 0,
+        top: 0,
+        width: dock.width,
+        height: dock.height,
+        borderRadius: radius,
+        background: st.tileBg,
+        boxSizing: "border-box",
+        ...(st.border ? { border: st.border } : {}),
+        ...(st.shadow && !small ? { boxShadow: st.shadow } : {}),
+      }}
+    />
   );
+  const cells = actions.map((a, i) => {
+    const r = slots[i]!;
+    const cell = {
+      display: "flex",
+      flexDirection: "column" as const,
+      alignItems: "center",
+      justifyContent: "center",
+      position: "absolute" as const,
+      left: r.x - dock.x,
+      top: r.y - dock.y,
+      width: r.width,
+      height: r.height,
+      borderRadius: Math.max(0, radius - dock.pad),
+      color,
+      fontFamily: st.font,
+      textDecoration: "none",
+    };
+    const children = [
+      <Icon key="icon" name={a.icon} size={small ? 24 : 50} color={a.key === "whatsapp" ? WHATSAPP_GREEN : st.iconColor} />,
+      <div key="label" style={{ display: "flex", marginTop: small ? 4 : 12, fontSize: labelSize(a.label, st.uppercase, small), fontWeight: 700, letterSpacing: st.uppercase ? (small ? 0.5 : 1) : 0, color }}>
+        {st.uppercase ? a.label.toUpperCase() : a.label}
+      </div>,
+    ];
+    return links ? (
+      <a key={a.key} href={a.href} aria-label={a.label} {...(a.href.startsWith("http") ? { target: "_blank", rel: "noopener" } : {})} style={cell}>
+        {children}
+      </a>
+    ) : (
+      <div key={a.key} style={cell}>
+        {children}
+      </div>
+    );
+  });
+  return <div style={{ display: "flex", position: "absolute", left: dock.x, top: dock.y, width: dock.width, height: dock.height }}>{[box, ...cells]}</div>;
 }

@@ -95,7 +95,10 @@ describe("card buttons", () => {
           // Phone: on the header's edge, above the contact details. Print: in the band between the name and the contact rows.
           expect(r.y).toBeGreaterThanOrEqual(variant === "phone" ? 500 : 150);
           expect(r.y + r.height).toBeLessThanOrEqual(variant === "phone" ? 1000 : 400);
-          expect(r.height).toBe(variant === "phone" ? DOCK_HEIGHT : PRINT_DOCK_HEIGHT);
+          expect(r.height).toBe((variant === "phone" ? DOCK_HEIGHT : PRINT_DOCK_HEIGHT) - docks[variant].pad * 2);
+          // Inside the one box.
+          expect(r.x).toBeGreaterThan(docks[variant].x);
+          expect(r.x + r.width).toBeLessThan(docks[variant].x + docks[variant].width);
           if (i) expect(r.x).toBeGreaterThan(slots[i - 1]!.x + slots[i - 1]!.width);
         }
       }
