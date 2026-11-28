@@ -1,6 +1,6 @@
 import { JsonLd } from "@/components/seo/JsonLd";
 import { MapPin } from "lucide-react";
-import { introSentence, primaryClinic, profileJsonLd } from "@/lib/seo/profile";
+import { introSentence, primaryClinic, profileJsonLd, siteJsonLd } from "@/lib/seo/profile";
 import { resolvePortfolioTemplate, type ReadyTemplates } from "@/templates/registry";
 import type { PublicDoctor } from "@/templates/types";
 
@@ -48,6 +48,8 @@ export function ProfileView({
   return (
     <>
       {jsonLd && <JsonLd data={profileJsonLd(d)} />}
+      {/* No own subdomain yet: the website is a MediReach page, so it carries MediReach's site name. */}
+      {jsonLd && d.websiteUrl === d.url && <JsonLd data={siteJsonLd()} />}
       <Template doctor={d} seo={{ heading, intro }} />
     </>
   );

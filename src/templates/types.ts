@@ -70,8 +70,10 @@ export interface PublicDoctor {
   slug: string;
   shortSlug?: string;
   subdomain?: string;
-  /** Canonical folder URL on the apex domain. */
+  /** MediReach listing page: the folder URL on the apex domain. */
   url: string;
+  /** The doctor's own website: subdomain URL (every live page has one), else `url`. Canonical of the website. */
+  websiteUrl: string;
   /** What QR codes and cards point to: subdomain URL, else short link, else canonical. */
   shareUrl: string;
   vcfUrl: string;
@@ -141,7 +143,10 @@ export interface PublicDoctor {
 /** Small card used on hubs (city, specialty and area pages). */
 export interface DoctorCardData {
   id: string;
+  /** MediReach listing page. */
   url: string;
+  /** The doctor's own website (subdomain), else `url`. */
+  websiteUrl: string;
   fullName: string;
   sortName: string;
   photo?: PublicImage;
@@ -244,7 +249,10 @@ export interface PublicEstablishment {
   kind: "clinic" | "hospital";
   citySlug: string;
   slug: string;
+  /** MediReach listing page: the folder URL on the apex domain. */
   url: string;
+  /** The site's own website: subdomain URL (every live site has one), else `url`. Canonical of the website. */
+  websiteUrl: string;
   shareUrl: string;
   /** Visiting-card page; absent for sample sites. */
   cardUrl?: string;

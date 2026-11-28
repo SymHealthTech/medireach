@@ -42,6 +42,7 @@ function toPublic(d: DemoDoctor): PublicDoctor {
     subdomain: d.subdomain,
     url: absUrl(paths.doctor(d.city.slug, slug)),
     // The subdomain is a reserved sample address that the middleware serves from /sample/{key}.
+    websiteUrl: subdomainUrl(d.subdomain),
     shareUrl: subdomainUrl(d.subdomain),
     vcfUrl: `/sample/${d.key}/contact.vcf`,
     cardUrl: `/sample/${d.key}/card`,

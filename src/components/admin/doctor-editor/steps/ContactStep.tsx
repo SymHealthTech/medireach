@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Mail } from "lucide-react";
 import { toast } from "sonner";
 import { sendDoctorLoginEmailAction } from "@/app/admin/(dash)/doctors/actions";
@@ -21,7 +21,14 @@ const LINKS: { key: keyof StepProps["form"]["links"]; label: string; placeholder
 
 export function ContactStep({ form: f, set, err, readOnly, doctorId, audience }: StepProps) {
   const sameWhatsapp = !f.whatsapp || f.whatsapp === f.mobile;
-  const [selfEdit, setSelfEdit] = useState(Boolean(f.ownerEmail));
+  // Login by email is on by default; the admin can turn it off.
+  const [selfEdit, setSelfEdit] = useState(true);
+  useEffect(() => {
+    // Opening the step fills the login email from the page email when it is empty.
+    if (audience !== "owner" && !readOnly && !f.ownerEmail.trim() && f.email.trim()) set({ ownerEmail: f.email.trim() });
+    // Only when the step opens: clearing the box afterwards keeps it empty.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [sending, startSending] = useTransition();
   const sendLogin = () =>
     startSending(async () => {
@@ -41,7 +48,18 @@ export function ContactStep({ form: f, set, err, readOnly, doctorId, audience }:
             <Input id="whatsapp" type="tel" inputMode="tel" placeholder="Same as mobile" value={f.whatsapp} disabled={readOnly} onChange={(e) => set({ whatsapp: e.target.value })} />
           </Field>
           <Field label="Email (shown on the page)" htmlFor="email" error={err("email")}>
-            <Input id="email" type="email" inputMode="email" value={f.email} disabled={readOnly} onChange={(e) => set({ email: e.target.value })} />
+            <Input
+              id="email"
+              type="email"
+              inputMode="email"
+              value={f.email}
+              disabled={readOnly}
+              onChange={(e) => {
+                const email = e.target.value;
+                // The login email follows this one until it is changed by hand.
+                set((p) => ({ email, ...(selfEdit && audience !== "owner" && (!p.ownerEmail.trim() || p.ownerEmail.trim() === p.email.trim()) ? { ownerEmail: email.trim() } : {}) }));
+              }}
+            />
           </Field>
         </div>
       </Group>
@@ -68,7 +86,7 @@ export function ContactStep({ form: f, set, err, readOnly, doctorId, audience }:
         <Group title="Doctor login" description="Lets the doctor sign in with an emailed code and update everything on their website.">
         <SwitchField
           label="Enable self-edit login"
-          description="Needs the doctor's email. They log in at medireach.co.in/login with a link sent to that email; no password or SMS."
+          description="On by default, using the page email. They log in at medireach.co.in/login with a link sent to that email; no password or SMS."
           checked={selfEdit}
           disabled={readOnly}
           onCheckedChange={(on) => {

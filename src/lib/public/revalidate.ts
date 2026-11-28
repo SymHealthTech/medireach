@@ -12,7 +12,10 @@ import { paths, sitePath } from "@/lib/site";
 export function revalidateDoctorPages(...routes: { citySlug?: string; slug?: string }[]): void {
   revalidateTag(CACHE_TAGS.doctors);
   for (const r of routes) {
-    if (r.citySlug && r.slug) revalidatePath(paths.doctor(r.citySlug, r.slug));
+    if (r.citySlug && r.slug) {
+      revalidatePath(paths.doctor(r.citySlug, r.slug));
+      revalidatePath(`${paths.doctor(r.citySlug, r.slug)}/website`);
+    }
   }
 }
 
@@ -20,7 +23,11 @@ export function revalidateDoctorPages(...routes: { citySlug?: string; slug?: str
 export function revalidateEstablishmentPages(...routes: { kind: "clinic" | "hospital"; citySlug?: string; slug?: string }[]): void {
   revalidateTag(CACHE_TAGS.establishments);
   for (const r of routes) {
-    if (r.citySlug && r.slug) revalidatePath(sitePath({ kind: r.kind, citySlug: r.citySlug, slug: r.slug }));
+    if (r.citySlug && r.slug) {
+      const path = sitePath({ kind: r.kind, citySlug: r.citySlug, slug: r.slug });
+      revalidatePath(path);
+      revalidatePath(`${path}/website`);
+    }
   }
 }
 

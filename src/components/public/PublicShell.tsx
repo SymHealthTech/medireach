@@ -1,4 +1,6 @@
 import { LogoWordmark } from "@/components/brand/Logo";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { siteJsonLd } from "@/lib/seo/profile";
 import { absUrl } from "@/lib/site";
 
 /**
@@ -7,6 +9,9 @@ import { absUrl } from "@/lib/site";
  */
 export function PublicHeader() {
   return (
+    <>
+    {/* MediReach's own site name and organisation: on MediReach pages only, never on a doctor's or clinic's website. */}
+    <JsonLd data={siteJsonLd()} />
     <header className="border-b border-line bg-paper">
       <div className="mx-auto flex h-14 max-w-content items-center justify-between px-4 sm:px-6">
         <a href={absUrl("/")} aria-label="MediReach home">
@@ -17,6 +22,7 @@ export function PublicHeader() {
         </a>
       </div>
     </header>
+    </>
   );
 }
 

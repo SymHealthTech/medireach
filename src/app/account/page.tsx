@@ -6,7 +6,7 @@ import { UidBadge } from "@/components/account/UidBadge";
 import { requireAccountPage, type CurrentAccount } from "@/lib/auth/doctor";
 import { displayRenewalStatus, listRenewalPrice, type RenewalProduct } from "@/lib/renewals";
 import { getSettings } from "@/lib/settings";
-import { absUrl, paths, sitePath, subdomainUrl } from "@/lib/site";
+import { absUrl, paths, sitePath, websiteUrl } from "@/lib/site";
 import type { RenewalStatus } from "@/lib/constants";
 import { ensureUid } from "@/lib/uid";
 import { DoctorProfile } from "@/models/DoctorProfile";
@@ -90,6 +90,8 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
 
   const live = d.status === "published" && d.citySlug && d.slug;
   const pagePath = live ? paths.doctor(d.citySlug!, d.slug!) : null;
+  // The website is the subdomain; the folder address is the MediReach listing.
+  const site = live ? websiteUrl({ kind: "doctor", citySlug: d.citySlug!, slug: d.slug!, subdomain: d.subdomain }) : null;
   const priceLabel = d.freeUpdateUsed ? `₹${updatePrice.toLocaleString("en-IN")} per change` : "your first change is free";
   const status = displayRenewalStatus(d.renewalStatus, d.renewalDueDate);
   const renewalPrice = d.renewalPrice ?? listRenewalPrice("doctor", Boolean(d.founding || d.foundingDoctor), prices);
@@ -119,14 +121,14 @@ async function DoctorSections({ me, prices, updatePrice }: { me: CurrentAccount;
         {pagePath ? (
           <>
             <p className="break-all text-body">
-              <a href={pagePath} target="_blank" rel="noopener" className="font-semibold text-ink underline">
-                {absUrl(pagePath).replace(/^https?:\/\//, "")}
+              <a href={site!} target="_blank" rel="noopener" className="font-semibold text-ink underline">
+                {site!.replace(/^https?:\/\//, "")}
               </a>
-              {d.subdomain && <span className="block text-sm text-muted-foreground">Also at {subdomainUrl(d.subdomain).replace(/^https?:\/\//, "")}</span>}
+              {d.subdomain && <span className="block text-sm text-muted-foreground">MediReach listing: {absUrl(pagePath).replace(/^https?:\/\//, "")}</span>}
               {d.shortSlug && <span className="block text-sm text-muted-foreground">Short link: {absUrl(paths.short(d.shortSlug)).replace(/^https?:\/\//, "")}</span>}
             </p>
             <div className="flex flex-wrap gap-2">
-              <a href={pagePath} target="_blank" rel="noopener" className={btn}>
+              <a href={site!} target="_blank" rel="noopener" className={btn}>
                 <ExternalLink className="size-4" strokeWidth={1.75} /> View website
               </a>
               <Link href="/account/card" className={btn}>
@@ -210,6 +212,7 @@ async function SiteSections({ me, prices }: { me: CurrentAccount; prices: Parame
         const status = displayRenewalStatus(s.renewalStatus, s.renewalDueDate);
         const live = s.status === "published" && s.citySlug && s.slug;
         const path = live ? sitePath({ kind: s.kind, citySlug: s.citySlug!, slug: s.slug! }) : null;
+        const site = live ? websiteUrl({ kind: s.kind, citySlug: s.citySlug!, slug: s.slug!, subdomain: s.subdomain }) : null;
         const area = areaName(s.address?.areaId);
         return (
           <section key={String(s._id)} className={card} aria-labelledby={`site-${s._id}`}>
@@ -227,10 +230,10 @@ async function SiteSections({ me, prices }: { me: CurrentAccount; prices: Parame
             </div>
             {path ? (
               <p className="break-all text-body">
-                <a href={path} target="_blank" rel="noopener" className="font-semibold text-ink underline">
-                  {absUrl(path).replace(/^https?:\/\//, "")}
+                <a href={site!} target="_blank" rel="noopener" className="font-semibold text-ink underline">
+                  {site!.replace(/^https?:\/\//, "")}
                 </a>
-                {s.subdomain && <span className="block text-sm text-muted-foreground">Also at {subdomainUrl(s.subdomain).replace(/^https?:\/\//, "")}</span>}
+                {s.subdomain && <span className="block text-sm text-muted-foreground">MediReach listing: {absUrl(path).replace(/^https?:\/\//, "")}</span>}
               </p>
             ) : (
               <p className="text-body">This site isn&apos;t live yet. We&apos;ll send you the link as soon as it is. You can already update everything on it.</p>

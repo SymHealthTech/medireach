@@ -94,6 +94,7 @@ function toPublic(s: SampleDoctorInput): PublicDoctor {
     subdomain: s.subdomain,
     url: absUrl(paths.doctor("pune", slug)),
     // Samples run without the database: their link, card and contact file live under /sample/{key}.
+    websiteUrl: absUrl(`/sample/${s.key}`),
     shareUrl: absUrl(`/sample/${s.key}`),
     vcfUrl: `/sample/${s.key}/contact.vcf`,
     cardUrl: `/sample/${s.key}/card`,

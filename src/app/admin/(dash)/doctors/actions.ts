@@ -17,6 +17,7 @@ import { sectionPayload, sectionSchemas, STEPS, type DoctorForm, type StepKey } 
 import {
   applySection,
   docToForm,
+  ensureSubdomain,
   ensureUrlKeys,
   publishProblems,
   scanDoctor,
@@ -172,6 +173,7 @@ export const publishDoctorAction = adminAction(
     if (!wasPublished) await assertPaidOrConfirmed("doctor", doc, allowUnpaid);
     const firstPublish = !doc.publishedAt;
     doc.status = "published";
+    await ensureSubdomain(doc);
     doc.publishedAt = doc.publishedAt ?? new Date();
     await doc.save();
     await audit(auditCtx(admin), wasPublished ? "doctor.republish" : "doctor.publish", {
@@ -191,7 +193,7 @@ export const publishDoctorAction = adminAction(
  * UID and login). Needs the doctor's login email; never fails the publish.
  */
 async function welcomeOnFirstPublish(
-  doc: { _id: Types.ObjectId; ownerEmail?: string; uid?: string; status: string; citySlug?: string; slug?: string },
+  doc: { _id: Types.ObjectId; ownerEmail?: string; uid?: string; status: string; citySlug?: string; slug?: string; subdomain?: string },
   admin: Parameters<typeof auditCtx>[0],
 ): Promise<{ sent?: string; note?: string }> {
   if (!doc.ownerEmail) return { note: "No welcome email sent: turn on the doctor's login on the Contact step, then use Send login email." };
@@ -199,7 +201,7 @@ async function welcomeOnFirstPublish(
     const sent = await sendLoginLink(doc.ownerEmail, {
       welcome: true,
       uid: await ensureUid(DoctorProfile as never, doc, "doctor"),
-      site: await welcomeSiteFor({ _id: doc._id, kind: "doctor", status: doc.status, citySlug: doc.citySlug, slug: doc.slug }),
+      site: await welcomeSiteFor({ _id: doc._id, kind: "doctor", status: doc.status, citySlug: doc.citySlug, slug: doc.slug, subdomain: doc.subdomain }),
     });
     if (!sent) return { note: "The welcome email couldn't be sent. Use Send login email on the Contact step to try again." };
     await audit(auditCtx(admin), "doctor.send_login_email", { entity: "DoctorProfile", entityId: doc._id, diff: { to: doc.ownerEmail, on: "first publish" } });
@@ -315,7 +317,7 @@ export const duplicateDoctorAction = adminAction({ schema: z.object({ id }) }, a
  * saved login email, so the toggle and email must be saved first.
  */
 export const sendDoctorLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: doctorId }, admin) => {
-  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1, status: 1, citySlug: 1, slug: 1, salesAdminId: 1 }).lean();
+  const doc = await DoctorProfile.findById(doctorId).select({ ownerEmail: 1, uid: 1, status: 1, citySlug: 1, slug: 1, subdomain: 1, salesAdminId: 1 }).lean();
   if (!doc) throw new ActionError("Doctor not found.");
   assertOwned(admin, doc, "doctor");
   if (!doc.ownerEmail) throw new ActionError("Turn on self-edit login and save the doctor's email first.");

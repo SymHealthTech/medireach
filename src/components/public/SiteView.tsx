@@ -9,6 +9,7 @@ import {
   establishmentSubheading,
   seoInputOf,
 } from "@/lib/seo/establishment";
+import { siteJsonLd } from "@/lib/seo/profile";
 import { resolveSiteTemplate, type ReadyTemplates } from "@/templates/registry";
 import type { PublicEstablishment } from "@/templates/types";
 
@@ -45,6 +46,8 @@ export function SiteView({ site: s, ready, jsonLd = true }: { site: PublicEstabl
   return (
     <>
       {jsonLd && <JsonLd data={establishmentJsonLd(s)} />}
+      {/* No own subdomain yet: the site is a MediReach page, so it carries MediReach's site name. */}
+      {jsonLd && s.websiteUrl === s.url && <JsonLd data={siteJsonLd()} />}
       <Template
         site={s}
         seo={{

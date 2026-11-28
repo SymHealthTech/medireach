@@ -10,7 +10,7 @@ import { computeRenewalStatus, firstRenewalDue, listRenewalPrice } from "@/lib/r
 import { sanitizeBioHtml } from "@/lib/sanitize";
 import { getSettings } from "@/lib/settings";
 import { slugify, subdomainError } from "@/lib/slug";
-import { sharedUrlKeyTaken } from "@/lib/url-keys";
+import { freeSubdomain, sharedUrlKeyTaken } from "@/lib/url-keys";
 import { RESERVED_SUBDOMAINS } from "@/config/reserved";
 import { Area } from "@/models/Area";
 import { City } from "@/models/City";
@@ -212,6 +212,11 @@ export async function applySection<K extends StepKey>(doc: EstablishmentDocument
       if (city && doc.citySlug && doc.citySlug !== city.slug && doc.status === "published") {
         throw new ActionError("This site is live; moving it to another city changes its address. Unpublish first.", { "address.cityId": "Unpublish first." });
       }
+      // Owner login by email is on by default: the login email follows the site's
+      // email until it is changed (or cleared) by hand on the Business step.
+      const oldEmail = (doc.contact?.email ?? "").trim().toLowerCase();
+      const newEmail = (d.email ?? "").trim().toLowerCase();
+      if (newEmail && newEmail !== oldEmail && (!doc.ownerEmail || doc.ownerEmail === oldEmail)) doc.ownerEmail = newEmail;
       doc.set({
         address: { ...d.address, cityId: toOid(d.address.cityId), areaId: toOid(d.address.areaId) },
         mapsUrl: d.mapsUrl,
@@ -406,6 +411,23 @@ export async function ensureUrlKeys(doc: EstablishmentDocument): Promise<void> {
       }
     }
   }
+  // Every site gets its own website address (it is what cards, QR codes and
+  // Google show) once its page address exists, so the name is settled by then.
+  if (doc.slug || doc.status === "published") await ensureSubdomain(doc, areaSlug);
+}
+
+/**
+ * Give the site a website address (subdomain) if it has none yet: the name
+ * without hyphens, with hyphens, with the area, then -2, -3… Runs on every
+ * save once the page address exists, and on publish; never changes an existing one.
+ */
+export async function ensureSubdomain(doc: EstablishmentDocument, areaSlug?: string): Promise<void> {
+  if (doc.subdomain || !doc.name) return;
+  const area = areaSlug ?? (doc.address?.areaId ? (await Area.findById(doc.address.areaId).select({ slug: 1 }).lean())?.slug : undefined);
+  const hyphen = shortBase(doc.name).slice(0, 40).replace(/-+$/, "");
+  const candidates = [...subdomainSuggestions(doc.name), ...(area ? [`${hyphen.slice(0, 30).replace(/-+$/, "")}-${area}`] : [])];
+  const sub = await freeSubdomain(candidates, { kind: "establishment", id: doc._id });
+  if (sub) doc.subdomain = sub;
 }
 
 /** Suggested subdomains: name without hyphens, then with. */

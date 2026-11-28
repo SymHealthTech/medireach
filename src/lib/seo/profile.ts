@@ -53,6 +53,27 @@ export function profileTitle(d: PublicDoctor): string {
   return candidates.find((c) => c.length <= TITLE_MAX) ?? truncate(d.fullName, TITLE_MAX);
 }
 
+/**
+ * Title of the MediReach listing page (the folder URL), which Google shows
+ * next to the doctor's own website: `{Name}, {Specialty}, {Area}, {City} |
+ * MediReach`, trimmed by dropping the city, then the area, then the specialty.
+ * Always differs from the website's title so the two aren't duplicates.
+ */
+export function listingTitle(d: PublicDoctor): string {
+  const clinic = primaryClinic(d);
+  const parts = [d.primarySpecialty?.name, clinic?.area.name, clinic?.city.name];
+  const candidates = [3, 2, 1, 0].map((n) => `${[d.fullName, ...parts.slice(0, n).filter(Boolean)].join(", ")} | ${SITE_NAME}`);
+  return candidates.find((c) => c.length <= TITLE_MAX) ?? truncate(`${d.fullName} | ${SITE_NAME}`, TITLE_MAX);
+}
+
+/** "MediReach listing of Dr. Amit Shah, General Physician at Shah Clinic, Kothrud, Pune: timings, address, phone and website." */
+export function listingDescription(d: PublicDoctor): string {
+  const clinic = primaryClinic(d);
+  const specialty = d.primarySpecialty ? `, ${d.primarySpecialty.name}` : "";
+  const at = clinic ? ` at ${clinic.name}, ${clinic.area.name}, ${clinic.city.name}` : "";
+  return truncate(`MediReach listing of ${d.fullName}${specialty}${at}: clinic timings, address, phone and website.`, DESCRIPTION_MAX);
+}
+
 export function profileDescription(d: PublicDoctor): string {
   if (d.seo.descriptionOverride) return truncate(d.seo.descriptionOverride, DESCRIPTION_MAX);
   if (d.shortBio) return truncate(d.shortBio, DESCRIPTION_MAX);
@@ -263,16 +284,26 @@ export function compact<T extends Record<string, unknown>>(obj: T): T {
 /** Stable JSON-LD node id of a clinic/hospital site; doctor pages reuse it so the two graphs connect. */
 export const siteNodeId = (url: string) => `${url}#organization`;
 
-export function profileJsonLd(d: PublicDoctor) {
+/** The doctor's node id: the same on their website and their MediReach listing, so Google joins them. */
+export const physicianNodeId = (d: Pick<PublicDoctor, "websiteUrl">) => `${d.websiteUrl}#physician`;
+
+/**
+ * Structured data for the doctor's website (`page: "website"`, served on the
+ * subdomain) or their MediReach listing (`page: "listing"`, the folder URL).
+ * Both describe one Physician whose `url` is the website; the listing adds a
+ * ProfilePage about it and the breadcrumbs (MediReach's own hierarchy).
+ */
+export function profileJsonLd(d: PublicDoctor, page: "website" | "listing" = "website") {
   const clinic = primaryClinic(d);
-  const physicianId = `${d.url}#physician`;
+  const physicianId = physicianNodeId(d);
+  const onSubdomain = d.websiteUrl !== d.url;
   const clinicNodes = d.clinics.map((c) =>
     compact({
       "@type": "MedicalClinic",
       // A clinic with its own MediReach site is the same node as on that site.
-      "@id": c.site ? siteNodeId(c.site.url) : `${d.url}#clinic-${c.id}`,
+      "@id": c.site ? siteNodeId(c.site.url) : `${d.websiteUrl}#clinic-${c.id}`,
       name: c.name,
-      url: c.site?.url ?? d.url,
+      url: c.site?.url ?? d.websiteUrl,
       address: postalAddress(c),
       geo: geoCoordinates(c),
       telephone: tel(c.phone ?? d.phone),
@@ -285,7 +316,7 @@ export function profileJsonLd(d: PublicDoctor) {
     "@type": "Physician",
     "@id": physicianId,
     name: d.fullName,
-    url: d.url,
+    url: d.websiteUrl,
     image: d.photo?.url,
     description: d.shortBio,
     medicalSpecialty: medicalSpecialties(d),
@@ -303,7 +334,8 @@ export function profileJsonLd(d: PublicDoctor) {
       name,
     })),
     award: d.awards.map((a) => `${a.title}, ${a.awardingBody} (${a.year})`),
-    sameAs: Object.values(d.links),
+    // The MediReach listing is another page about the same doctor.
+    sameAs: [...Object.values(d.links), ...(onSubdomain ? [d.url] : [])],
     identifier: d.registration.number
       ? compact({
           "@type": "PropertyValue",
@@ -313,9 +345,27 @@ export function profileJsonLd(d: PublicDoctor) {
       : undefined,
   });
 
+  const extra =
+    page === "listing"
+      ? [
+          {
+            "@type": "ProfilePage",
+            "@id": `${d.url}#page`,
+            url: d.url,
+            name: listingTitle(d),
+            mainEntity: { "@id": physicianId },
+            isPartOf: { "@id": `${SITE_URL}/#website` },
+          },
+          breadcrumbJsonLd(profileBreadcrumbs(d)),
+        ]
+      : onSubdomain
+        ? // The doctor's own site: Google shows its name (not "MediReach") above the result.
+          [{ "@type": "WebSite", "@id": `${d.websiteUrl}/#website`, url: `${d.websiteUrl}/`, name: d.fullName, about: { "@id": physicianId } }]
+        : [breadcrumbJsonLd(profileBreadcrumbs(d))];
+
   return {
     "@context": "https://schema.org",
-    "@graph": [physician, ...clinicNodes, breadcrumbJsonLd(profileBreadcrumbs(d))],
+    "@graph": [physician, ...clinicNodes, ...extra],
   };
 }
 

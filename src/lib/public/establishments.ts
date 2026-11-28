@@ -87,7 +87,8 @@ export function toPublicEstablishment(
           ...(card.degreesLine ? { qualifications: card.degreesLine } : {}),
           ...(card.primarySpecialty ? { specialty: card.primarySpecialty.name } : {}),
           ...(x.role ? { role: x.role } : {}),
-          url: card.url,
+          // The doctor's own website (subdomain).
+          url: card.websiteUrl,
           ...(card.photo ? { photo: card.photo } : {}),
           },
         },
@@ -127,8 +128,9 @@ export function toPublicEstablishment(
     citySlug: e.citySlug,
     slug: e.slug,
     url,
+    websiteUrl: e.subdomain ? subdomainUrl(e.subdomain) : url,
     shareUrl: e.subdomain ? subdomainUrl(e.subdomain) : url,
-    cardUrl: `${url}/card`,
+    cardUrl: `${e.subdomain ? subdomainUrl(e.subdomain) : url}/card`,
     name: e.name,
     ...(category ? { category: { name: category.name, slug: category.slug, plural: category.plural } } : {}),
     themeKey: e.themeKey,
@@ -206,8 +208,8 @@ export const getPublishedEstablishment = unstable_cache(
     const e = await Establishment.findOne({ ...PUBLISHED_ROUTABLE, kind, citySlug, slug }).lean<EstablishmentDoc>();
     return e ? buildPublicEstablishment(e) : null;
   },
-  // v2: carries `lapsed`.
-  ["public-establishment-v2"],
+  // v3: carries `websiteUrl`; doctor links go to their websites.
+  ["public-establishment-v3"],
   { tags: [CACHE_TAGS.establishments, CACHE_TAGS.doctors, CACHE_TAGS.masters], revalidate: DAY },
 );
 
@@ -219,18 +221,19 @@ export async function getLiveEstablishment(kind: "clinic" | "hospital", citySlug
 
 /** Every live clinic/hospital route, for static params and sitemaps. */
 export const getPublishedEstablishmentRoutes = unstable_cache(
-  async (): Promise<{ kind: "clinic" | "hospital"; citySlug: string; slug: string; updatedAt: string; noindex: boolean }[]> => {
+  async (): Promise<{ kind: "clinic" | "hospital"; citySlug: string; slug: string; subdomain?: string; updatedAt: string; noindex: boolean }[]> => {
     await connectToDatabase();
-    const rows = await Establishment.find(PUBLISHED_LIVE).select({ kind: 1, citySlug: 1, slug: 1, updatedAt: 1, "seo.noindex": 1 }).sort({ citySlug: 1, slug: 1 }).lean();
+    const rows = await Establishment.find(PUBLISHED_LIVE).select({ kind: 1, citySlug: 1, slug: 1, subdomain: 1, updatedAt: 1, "seo.noindex": 1 }).sort({ citySlug: 1, slug: 1 }).lean();
     return rows.map((r) => ({
       kind: r.kind,
       citySlug: r.citySlug!,
       slug: r.slug!,
+      ...(r.subdomain ? { subdomain: r.subdomain } : {}),
       updatedAt: new Date(r.updatedAt).toISOString(),
       noindex: Boolean(r.seo?.noindex),
     }));
   },
-  ["public-establishment-routes"],
+  ["public-establishment-routes-v2"],
   { tags: [CACHE_TAGS.establishments], revalidate: DAY },
 );
 

@@ -28,6 +28,7 @@ const { publishEstablishmentAction } = await import("@/app/admin/(dash)/establis
 const { DoctorProfile } = await import("@/models/DoctorProfile");
 const { Establishment } = await import("@/models/Establishment");
 const { Intake } = await import("@/models/Intake");
+const { subdomainUrl } = await import("@/lib/site");
 
 let mongod: MongoMemoryServer;
 
@@ -70,7 +71,9 @@ describe("welcome email on first publish", () => {
     expect(sent[0]!.to).toBe("asha.welcome@example.com");
     expect(sent[0]!.subject).toBe("Your MediReach website is live");
     const doc = await DoctorProfile.findById(id).lean();
-    expect(sent[0]!.text).toContain(`/${doc!.citySlug}/doctor/${doc!.slug}`);
+    // The website link is the doctor's own subdomain, given to them on publish.
+    expect(doc!.subdomain).toBeTruthy();
+    expect(sent[0]!.text).toContain(subdomainUrl(doc!.subdomain!));
     expect(sent[0]!.text).toContain("ref MR-WELC01");
     expect((await Intake.findOne({ ref: "MR-WELC01" }).lean())!.status).toBe("done");
 
@@ -97,6 +100,7 @@ describe("welcome email on first publish", () => {
     expect(res.ok && res.data.welcome).toEqual({ sent: "owner.welcome@example.com" });
     const site = await Establishment.findById(id).lean();
     expect(sent[0]!.subject).toBe("Your MediReach website is live");
-    expect(sent[0]!.text).toContain(`/${site!.citySlug}/clinic/${site!.slug}`);
+    expect(site!.subdomain).toBeTruthy();
+    expect(sent[0]!.text).toContain(subdomainUrl(site!.subdomain!));
   });
 });

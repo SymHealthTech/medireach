@@ -3,6 +3,8 @@ import {
   introSentence,
   profileBreadcrumbs,
   profileDescription,
+  listingDescription,
+  listingTitle,
   profileJsonLd,
   profileTitle,
   quickFacts,
@@ -21,6 +23,7 @@ function doctor(overrides: Partial<PublicDoctor> = {}): PublicDoctor {
     citySlug: "pune",
     slug: "dr-amit-shah-general-physician",
     url: `${SITE}/pune/doctor/dr-amit-shah-general-physician`,
+    websiteUrl: `${SITE}/pune/doctor/dr-amit-shah-general-physician`,
     shareUrl: `${SITE}/dr-amit-shah`,
     vcfUrl: `${SITE}/pune/doctor/dr-amit-shah-general-physician/contact.vcf`,
     title: "Dr.",
@@ -148,6 +151,29 @@ describe("breadcrumbs, quick facts and JSON-LD", () => {
     expect(json).not.toMatch(/aggregateRating|"review"/i);
     expect(json).toContain('"identifier"');
     expect(json).toContain("https://schema.org/PrimaryCare");
+  });
+
+  it("joins the website (subdomain) and the MediReach listing as one doctor", () => {
+    const d = doctor({ subdomain: "dramitshah", websiteUrl: "http://dramitshah.localhost:3000" });
+    const site = profileJsonLd(d, "website");
+    const listing = profileJsonLd(d, "listing");
+    const types = (ld: typeof site) => ld["@graph"].map((n) => (n as { "@type": string })["@type"]);
+    // The website names itself (not MediReach); only the listing carries MediReach's breadcrumbs.
+    expect(types(site)).toEqual(["Physician", "MedicalClinic", "WebSite"]);
+    expect(types(listing)).toEqual(["Physician", "MedicalClinic", "ProfilePage", "BreadcrumbList"]);
+    const physician = (ld: typeof site) => ld["@graph"][0] as { "@id": string; url: string; sameAs: string[] };
+    expect(physician(site)["@id"]).toBe("http://dramitshah.localhost:3000#physician");
+    expect(physician(listing)["@id"]).toBe(physician(site)["@id"]);
+    expect(physician(listing).url).toBe("http://dramitshah.localhost:3000");
+    expect(physician(site).sameAs).toContain(d.url);
+  });
+
+  it("gives the listing its own title and description", () => {
+    const d = doctor({ subdomain: "dramitshah", websiteUrl: "http://dramitshah.localhost:3000" });
+    expect(listingTitle(d)).toBe("Dr. Amit Shah, General Physician, Kothrud, Pune | MediReach");
+    expect(listingTitle(d)).not.toBe(profileTitle(d));
+    expect(listingTitle(d).length).toBeLessThanOrEqual(60);
+    expect(listingDescription(d)).toMatch(/^MediReach listing of Dr\. Amit Shah, General Physician at /);
   });
 });
 

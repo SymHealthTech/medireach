@@ -1,4 +1,4 @@
-import { absUrl, paths, SITE_NAME } from "@/lib/site";
+import { absUrl, paths, SITE_NAME, SITE_URL } from "@/lib/site";
 import { DEFAULT_HOSPITAL_CATEGORY } from "@/lib/constants";
 import { breadcrumbJsonLd, compact, listJoin, siteNodeId, truncate, type Crumb, type QuickFact } from "@/lib/seo/profile";
 
@@ -62,6 +62,24 @@ export function establishmentDescription(e: EstablishmentSeoInput): string {
   const place = [e.area, e.city].filter(Boolean).join(", ");
   const category = what(e).toLowerCase().replace(/\bent\b/, "ENT");
   return truncate(`${e.name}, ${category}${place ? ` in ${place}` : ""}. Doctors, services, timings, address and contact.`, DESCRIPTION_MAX);
+}
+
+/**
+ * Title of the MediReach listing page (folder URL) shown in Google next to the
+ * site's own website: `{Name}, {Category}, {Area}, {City} | MediReach`,
+ * trimmed by dropping the city, the area, then the category.
+ */
+export function establishmentListingTitle(e: EstablishmentSeoInput): string {
+  const parts = [what(e), e.area, e.city];
+  const candidates = [3, 2, 1, 0].map((n) => `${[e.name, ...parts.slice(0, n).filter(Boolean)].join(", ")} | ${SITE_NAME}`);
+  return candidates.find((c) => c.length <= TITLE_MAX) ?? truncate(`${e.name} | ${SITE_NAME}`, TITLE_MAX);
+}
+
+/** "MediReach listing of Shree Skin Clinic, skin clinic in Baner, Pune: timings, address, doctors, phone and website." */
+export function establishmentListingDescription(e: EstablishmentSeoInput): string {
+  const place = [e.area, e.city].filter(Boolean).join(", ");
+  const category = what(e).toLowerCase().replace(/ent/, "ENT");
+  return truncate(`MediReach listing of ${e.name}, ${category}${place ? ` in ${place}` : ""}: timings, address, doctors, phone and website.`, DESCRIPTION_MAX);
 }
 
 /** "{Name} is a {category} in {Area}, {City}, with {n} doctors." */
@@ -172,16 +190,22 @@ const CATEGORY_SPECIALTY: Record<string, string> = {
 
 const ALL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((d) => `https://schema.org/${d}`);
 
-/** MedicalClinic / Hospital + BreadcrumbList. No aggregateRating or review, ever. */
-export function establishmentJsonLd(s: PublicEstablishment) {
+/**
+ * MedicalClinic / Hospital for the site's website (`page: "website"`, on its
+ * subdomain) or its MediReach listing (`page: "listing"`, the folder URL). One
+ * node, keyed on the website, so Google joins both pages; the listing adds a
+ * ProfilePage and the breadcrumbs. No aggregateRating or review, ever.
+ */
+export function establishmentJsonLd(s: PublicEstablishment, page: "website" | "listing" = "website") {
+  const onSubdomain = s.websiteUrl !== s.url;
   const physician = (d: PublicSiteDoctor) =>
     d.url ? { "@type": "Physician", "@id": `${d.url}#physician`, name: d.name, url: d.url } : compact({ "@type": "Physician", name: d.name, description: d.specialty });
   const image = s.coverPhoto?.url ?? s.gallery[0]?.url ?? s.logo?.url;
   const node = compact({
     "@type": s.kind === "hospital" ? "Hospital" : "MedicalClinic",
-    "@id": siteNodeId(s.url),
+    "@id": siteNodeId(s.websiteUrl),
     name: s.name,
-    url: s.url,
+    url: s.websiteUrl,
     logo: s.logo?.url,
     image,
     description: s.shortDescription,
@@ -205,10 +229,27 @@ export function establishmentJsonLd(s: PublicEstablishment) {
     department: s.departments.map((d) => compact({ "@type": "MedicalClinic", name: `${d.name}, ${s.name}`, member: d.doctors.map(physician) })),
     member: s.doctors.map(physician),
     knowsLanguage: s.languages,
-    sameAs: Object.values(s.links),
+    sameAs: [...Object.values(s.links), ...(onSubdomain ? [s.url] : [])],
     identifier: s.registration?.number
       ? compact({ "@type": "PropertyValue", propertyID: s.registration.authority ?? "Registration", value: s.registration.number })
       : undefined,
   });
-  return { "@context": "https://schema.org", "@graph": [node, breadcrumbJsonLd(establishmentBreadcrumbs(s))] };
+  const extra =
+    page === "listing"
+      ? [
+          {
+            "@type": "WebPage",
+            "@id": `${s.url}#page`,
+            url: s.url,
+            name: establishmentListingTitle(seoInputOf(s)),
+            about: { "@id": siteNodeId(s.websiteUrl) },
+            isPartOf: { "@id": `${SITE_URL}/#website` },
+          },
+          breadcrumbJsonLd(establishmentBreadcrumbs(s)),
+        ]
+      : onSubdomain
+        ? // The site's own website: Google shows its name (not "MediReach") above the result.
+          [{ "@type": "WebSite", "@id": `${s.websiteUrl}/#website`, url: `${s.websiteUrl}/`, name: s.name, about: { "@id": siteNodeId(s.websiteUrl) } }]
+        : [breadcrumbJsonLd(establishmentBreadcrumbs(s))];
+  return { "@context": "https://schema.org", "@graph": [node, ...extra] };
 }

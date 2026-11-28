@@ -8,7 +8,7 @@ import { audit } from "@/lib/api/audit";
 import { formatDate, toDateInput } from "@/lib/format";
 import { sendEmail } from "@/lib/integrations/email";
 import { createPreviewToken, PREVIEW_LINK_DAYS, previewUrl } from "@/lib/preview-link";
-import { absUrl, paths, subdomainUrl } from "@/lib/site";
+import { websiteUrl } from "@/lib/site";
 import { ensureUid } from "@/lib/uid";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
@@ -101,7 +101,7 @@ export const reviewPaymentsAction = adminAction({ schema: target, roles: ADMINS 
   };
 });
 
-/** The live address once published: the own subdomain if set, else the MediReach page. */
+/** The live address once published: the website (subdomain), which every live site has. */
 async function liveUrlOf(kind: "doctor" | "site", id: string): Promise<string> {
   const d =
     kind === "doctor"
@@ -109,9 +109,8 @@ async function liveUrlOf(kind: "doctor" | "site", id: string): Promise<string> {
       : await Establishment.findById(id).select({ status: 1, kind: 1, subdomain: 1, slug: 1, citySlug: 1 }).lean();
   if (!d) throw new ActionError("Not found.");
   if (d.status !== "published" || !d.slug || !d.citySlug) throw new ActionError("Publish first, then send the live link.");
-  if (d.subdomain) return subdomainUrl(d.subdomain);
-  const path = kind === "doctor" ? paths.doctor(d.citySlug, d.slug) : ("kind" in d && d.kind === "hospital" ? paths.hospital : paths.clinic)(d.citySlug, d.slug);
-  return absUrl(path);
+  const siteKind = kind === "doctor" ? "doctor" : "kind" in d && d.kind === "hospital" ? "hospital" : "clinic";
+  return websiteUrl({ kind: siteKind, citySlug: d.citySlug, slug: d.slug, subdomain: d.subdomain });
 }
 
 const liveMessageFor = (name: string, what: string, url: string, uid: string) =>

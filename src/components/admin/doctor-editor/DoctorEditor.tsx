@@ -231,7 +231,7 @@ export function DoctorEditor({
     setBusy(false);
     if (!res) return;
     if (!res.ok) return toast.error(res.error);
-    setForm((prev) => ({ ...prev, status: res.data.form.status, publishedAt: res.data.form.publishedAt, slug: res.data.form.slug, shortSlug: res.data.form.shortSlug, citySlug: res.data.form.citySlug }));
+    setForm((prev) => ({ ...prev, status: res.data.form.status, publishedAt: res.data.form.publishedAt, slug: res.data.form.slug, shortSlug: res.data.form.shortSlug, subdomain: res.data.form.subdomain, citySlug: res.data.form.citySlug }));
     toast.success(ok);
     // First publish emails the welcome (website link and login) automatically.
     welcomeToast(res.data);

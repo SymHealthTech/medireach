@@ -20,6 +20,7 @@
     "seed:admin": "node --env-file-if-exists=.env.local --import tsx scripts/seed-admin.ts",
     "migrate:v2": "node --env-file-if-exists=.env.local --import tsx scripts/migrate-v2.ts",
     "migrate:roles": "node --env-file-if-exists=.env.local --require ./scripts/no-server-only.cjs --import tsx scripts/migrate-roles.ts",
+    "migrate:subdomains": "node --env-file-if-exists=.env.local --require ./scripts/no-server-only.cjs --import tsx scripts/migrate-subdomains.ts",
     "renewals": "node --env-file-if-exists=.env.local --require ./scripts/no-server-only.cjs --import tsx scripts/renewals.ts"
   },
   "dependencies": {

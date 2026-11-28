@@ -30,6 +30,7 @@ export const RESERVED_SLUGS = [
   "contact",
   "get-started",
   "sitemap",
+  "website-sitemap",
   "sitemap.xml",
   "robots",
   "robots.txt",

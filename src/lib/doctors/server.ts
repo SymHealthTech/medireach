@@ -9,7 +9,7 @@ import { nextFoundingNumber } from "@/lib/founding";
 import { computeRenewalStatus, firstRenewalDue } from "@/lib/renewals";
 import { getSettings } from "@/lib/settings";
 import { Establishment } from "@/models/Establishment";
-import { sharedUrlKeyTaken } from "@/lib/url-keys";
+import { freeSubdomain, sharedUrlKeyTaken } from "@/lib/url-keys";
 import { ActionError } from "@/lib/admin/action";
 import {
   ALL_DAYS,
@@ -275,6 +275,10 @@ export async function applySection<K extends StepKey>(
     }
     case "contact": {
       const d = input as SectionData<"contact">;
+      // One login email per doctor: say so instead of a bare duplicate-key error.
+      if (d.ownerEmail && (await DoctorProfile.exists({ _id: { $ne: doc._id }, ownerEmail: d.ownerEmail.trim().toLowerCase() }))) {
+        throw new ActionError("That login email is already used by another doctor's website.", { ownerEmail: "Already the login email of another doctor." });
+      }
       doc.set({ mobile: d.mobile, whatsapp: d.whatsapp, email: d.email, links: d.links, ownerEmail: d.ownerEmail });
       break;
     }
@@ -428,6 +432,27 @@ export async function ensureUrlKeys(doc: DoctorDocument): Promise<void> {
       }
     }
   }
+  // Every site gets its own website address (it is what cards, QR codes and
+  // Google show) once its page address exists, so the name is settled by then.
+  if (doc.slug || doc.status === "published") await ensureSubdomain(doc);
+}
+
+/**
+ * Give the doctor a website address (subdomain) if they have none yet:
+ * dramitshah, dr-amit-shah, amitshah, then the area, then -2, -3…
+ * Runs on every save once the page address exists, and on publish; never
+ * changes an existing one.
+ */
+export async function ensureSubdomain(doc: DoctorDocument): Promise<void> {
+  if (doc.subdomain || !doc.firstName || !doc.lastName) return;
+  const first = slugify(doc.firstName);
+  const both = slugify(`${doc.firstName} ${doc.lastName}`);
+  const joined = both.replace(/-/g, "");
+  const clinic = doc.clinics[0];
+  const areaSlug = clinic ? (await Area.findById(clinic.areaId).select({ slug: 1 }).lean())?.slug : undefined;
+  const candidates = [`dr${joined}`, `dr-${both}`, joined, ...(areaSlug ? [`dr-${both}-${areaSlug}`] : []), first];
+  const sub = await freeSubdomain(candidates, { kind: "doctor", id: doc._id });
+  if (sub) doc.subdomain = sub;
 }
 
 /** Suggested subdomain: first name, else first-last (shown in the SEO step). */

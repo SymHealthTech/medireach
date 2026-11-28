@@ -15,7 +15,7 @@ import { sendLoginLink } from "@/lib/auth/login-link";
 import { ESTABLISHMENT_KINDS, type AdminRole } from "@/lib/constants";
 import { sectionPayload, sectionSchemas, STEPS, type EstablishmentForm, type StepKey } from "@/lib/establishments/form";
 import { syncDoctorLinksFromEstablishment } from "@/lib/establishments/links";
-import { applySection, docToForm, ensureUrlKeys, publishProblems, scanEstablishment, urlKeyAvailable } from "@/lib/establishments/server";
+import { applySection, docToForm, ensureSubdomain, ensureUrlKeys, publishProblems, scanEstablishment, urlKeyAvailable } from "@/lib/establishments/server";
 import { CACHE_TAGS } from "@/lib/public/tags";
 import { getSettings } from "@/lib/settings";
 import { SLUG_RE, subdomainError } from "@/lib/slug";
@@ -41,7 +41,12 @@ type Route = { kind: "clinic" | "hospital"; citySlug?: string; slug?: string };
 function revalidatePublic(...routes: Route[]) {
   revalidateTag(CACHE_TAGS.establishments);
   revalidateTag(CACHE_TAGS.doctors);
-  for (const r of routes) if (r.citySlug && r.slug) revalidatePath(sitePath({ kind: r.kind, citySlug: r.citySlug, slug: r.slug }));
+  for (const r of routes) {
+    if (!r.citySlug || !r.slug) continue;
+    const path = sitePath({ kind: r.kind, citySlug: r.citySlug, slug: r.slug });
+    revalidatePath(path); // the MediReach listing
+    revalidatePath(`${path}/website`); // the website on the subdomain
+  }
 }
 
 const linkedDoctorIds = (f: EstablishmentForm) => f.doctors.map((d) => d.doctorProfileId).filter(Boolean);
@@ -155,6 +160,7 @@ export const publishEstablishmentAction = adminAction({ schema: z.object({ id, a
   if (!wasPublished) await assertPaidOrConfirmed("site", doc, allowUnpaid);
   const firstPublish = !doc.publishedAt;
   doc.status = "published";
+  await ensureSubdomain(doc);
   doc.publishedAt = doc.publishedAt ?? new Date();
   await doc.save();
   await audit(auditCtx(admin), wasPublished ? `${doc.kind}.republish` : `${doc.kind}.publish`, {
@@ -173,7 +179,7 @@ export const publishEstablishmentAction = adminAction({ schema: z.object({ id, a
  * UID and login). Needs the owner's login email; never fails the publish.
  */
 async function welcomeOnFirstPublish(
-  doc: { _id: Types.ObjectId; kind: string; ownerEmail?: string; uid?: string; status: string; citySlug?: string; slug?: string },
+  doc: { _id: Types.ObjectId; kind: string; ownerEmail?: string; uid?: string; status: string; citySlug?: string; slug?: string; subdomain?: string },
   admin: Parameters<typeof auditCtx>[0],
 ): Promise<{ sent?: string; note?: string }> {
   const kind = doc.kind === "hospital" ? "hospital" : "clinic";
@@ -182,7 +188,7 @@ async function welcomeOnFirstPublish(
     const sent = await sendLoginLink(doc.ownerEmail, {
       welcome: true,
       uid: await ensureUid(Establishment as never, doc, kind),
-      site: await welcomeSiteFor({ _id: doc._id, kind, status: doc.status, citySlug: doc.citySlug, slug: doc.slug }),
+      site: await welcomeSiteFor({ _id: doc._id, kind, status: doc.status, citySlug: doc.citySlug, slug: doc.slug, subdomain: doc.subdomain }),
     });
     if (!sent) return { note: "The welcome email couldn't be sent. Use Send login email on the Business step to try again." };
     await audit(auditCtx(admin), "establishment.send_login_email", { entity: "Establishment", entityId: doc._id, diff: { to: doc.ownerEmail, on: "first publish" } });
@@ -245,7 +251,7 @@ export const deleteEstablishmentAction = adminAction({ schema: z.object({ id }) 
  * saved owner email, so it must be saved on the Business step first.
  */
 export const sendEstablishmentLoginEmailAction = adminAction({ schema: z.object({ id }) }, async ({ id: establishmentId }, admin) => {
-  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1, status: 1, citySlug: 1, slug: 1, salesAdminId: 1 }).lean();
+  const doc = await Establishment.findById(establishmentId).select({ ownerEmail: 1, uid: 1, kind: 1, status: 1, citySlug: 1, slug: 1, subdomain: 1, salesAdminId: 1 }).lean();
   if (!doc) throw new ActionError("Clinic or hospital not found.");
   assertOwned(admin, doc, "clinic or hospital");
   if (!doc.ownerEmail) throw new ActionError("Save the owner's login email first.");

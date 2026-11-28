@@ -116,7 +116,7 @@ export function doctorCardActions(d: PublicDoctor): CardAction[] {
     ...(phone ? [{ key: "call" as const, label: "Call", href: `tel:+${phone}`, icon: "phone" as const }] : []),
     ...(d.whatsapp ? [{ key: "whatsapp" as const, label: "WhatsApp", href: waLink(d.whatsapp, `Hello ${d.fullName}, I got your visiting card.`), icon: "chat" as const }] : []),
     ...(clinic ? [{ key: "directions" as const, label: "Directions", href: clinic.directionsUrl, icon: "nav" as const }] : []),
-    { key: "website", label: "Website", href: d.shareUrl, icon: "globe" },
+    { key: "website", label: "Website", href: d.websiteUrl, icon: "globe" },
   ];
 }
 
@@ -128,7 +128,7 @@ export function siteCardActions(s: PublicEstablishment): CardAction[] {
     ...(s.emergencyPhone && s.emergencyPhone !== phone ? [{ key: "emergency" as const, label: "Emergency", href: `tel:+${s.emergencyPhone}`, icon: "alert" as const }] : []),
     ...(s.whatsapp ? [{ key: "whatsapp" as const, label: "WhatsApp", href: waLink(s.whatsapp, `Hello ${s.name}, I got your visiting card.`), icon: "chat" as const }] : []),
     { key: "directions", label: "Directions", href: s.directionsUrl, icon: "nav" },
-    { key: "website", label: "Website", href: s.shareUrl, icon: "globe" },
+    { key: "website", label: "Website", href: s.websiteUrl, icon: "globe" },
   ];
 }
 

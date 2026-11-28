@@ -9,7 +9,7 @@ import { Degree } from "@/models/Degree";
 import { DoctorProfile, type DoctorProfileDoc } from "@/models/DoctorProfile";
 import { Specialty } from "@/models/Specialty";
 import { Establishment } from "@/models/Establishment";
-import { absUrl, paths, sitePath, subdomainUrl, type SiteRoute } from "@/lib/site";
+import { absUrl, paths, subdomainUrl, websiteUrl, type SiteRoute } from "@/lib/site";
 import { mapEmbedUrl } from "@/lib/maps";
 import { storyParagraphs } from "@/lib/format";
 import { pickHealthTips } from "@/lib/health-tips";
@@ -228,7 +228,9 @@ export function toPublicDoctor(d: LeanDoctor, masters: Masters, sites?: SiteLink
     ...(d.shortSlug ? { shortSlug: d.shortSlug } : {}),
     ...(d.subdomain ? { subdomain: d.subdomain } : {}),
     url,
+    websiteUrl: d.subdomain ? subdomainUrl(d.subdomain) : url,
     shareUrl: d.subdomain ? subdomainUrl(d.subdomain) : d.shortSlug ? absUrl(paths.short(d.shortSlug)) : url,
+    cardUrl: `${d.subdomain ? subdomainUrl(d.subdomain) : url}/card`,
     vcfUrl: absUrl(paths.doctorVcf(citySlug, slug)),
 
     title: d.title || "Dr.",
@@ -326,6 +328,7 @@ export function toCard(d: LeanDoctor, mi: MasterIndex): DoctorCardData {
   return {
     id: idStr(d._id),
     url: absUrl(paths.doctor(d.citySlug!, d.slug!)),
+    websiteUrl: websiteUrl({ kind: "doctor", citySlug: d.citySlug!, slug: d.slug!, subdomain: d.subdomain }),
     fullName,
     sortName: `${d.firstName} ${d.lastName}`.toLowerCase(),
     ...(d.photo ? { photo: { url: d.photo.url, alt: d.photo.alt || fullName } } : {}),
@@ -365,8 +368,8 @@ export const getPublishedDoctor = unstable_cache(
     if (!doc) return null;
     return toPublicDoctor(doc, masters, await siteLinksFor(doc.clinics.map((c) => c.establishmentId)));
   },
-  // v2: carries `lapsed`.
-  ["public-doctor-v2"],
+  // v3: carries `websiteUrl`, `cardUrl`; clinic links go to their websites.
+  ["public-doctor-v3"],
   { tags: [CACHE_TAGS.doctors, CACHE_TAGS.establishments], revalidate: DAY },
 );
 
@@ -380,8 +383,9 @@ export async function getLiveDoctor(citySlug: string, slug: string): Promise<Pub
 export async function siteLinksFor(ids: (Types.ObjectId | string | undefined | null)[]): Promise<SiteLinks> {
   const wanted = [...new Set(ids.map(idStr).filter(Boolean))];
   if (!wanted.length) return new Map();
-  const sites = await Establishment.find({ _id: { $in: wanted }, ...PUBLISHED_LIVE }).select({ kind: 1, name: 1, citySlug: 1, slug: 1 }).lean();
-  return new Map(sites.map((e) => [String(e._id), { name: e.name, url: absUrl(sitePath({ kind: e.kind, citySlug: e.citySlug!, slug: e.slug! })) }]));
+  const sites = await Establishment.find({ _id: { $in: wanted }, ...PUBLISHED_LIVE }).select({ kind: 1, name: 1, citySlug: 1, slug: 1, subdomain: 1 }).lean();
+  // The clinic/hospital's own website (its subdomain).
+  return new Map(sites.map((e) => [String(e._id), { name: e.name, url: websiteUrl({ kind: e.kind, citySlug: e.citySlug!, slug: e.slug!, subdomain: e.subdomain }) }]));
 }
 
 /** All published doctors in a city as cards, in neutral alphabetical order. */
@@ -395,7 +399,7 @@ export const getCityDoctorCards = unstable_cache(
     const mi = indexMasters(masters);
     return docs.map((d) => toCard(d, mi)).sort((a, b) => a.sortName.localeCompare(b.sortName, "en"));
   },
-  ["public-city-doctors"],
+  ["public-city-doctors-v2"],
   { tags: [CACHE_TAGS.doctors], revalidate: DAY },
 );
 
@@ -437,19 +441,20 @@ export const getRouteByShortSlug = unstable_cache(
 
 /** Every published profile route + last-modified, for sitemaps and static params. */
 export const getPublishedRoutes = unstable_cache(
-  async (): Promise<(DoctorRoute & { updatedAt: string; noindex: boolean })[]> => {
+  async (): Promise<(DoctorRoute & { subdomain?: string; updatedAt: string; noindex: boolean })[]> => {
     await connectToDatabase();
     const docs = await DoctorProfile.find(PUBLISHED_LIVE)
-      .select({ citySlug: 1, slug: 1, updatedAt: 1, "seo.noindex": 1 })
+      .select({ citySlug: 1, slug: 1, subdomain: 1, updatedAt: 1, "seo.noindex": 1 })
       .sort({ citySlug: 1, slug: 1 })
-      .lean<Pick<LeanDoctor, "citySlug" | "slug" | "updatedAt" | "seo">[]>();
+      .lean<Pick<LeanDoctor, "citySlug" | "slug" | "subdomain" | "updatedAt" | "seo">[]>();
     return docs.map((d) => ({
       citySlug: d.citySlug!,
       slug: d.slug!,
+      ...(d.subdomain ? { subdomain: d.subdomain } : {}),
       updatedAt: new Date(d.updatedAt).toISOString(),
       noindex: Boolean(d.seo?.noindex),
     }));
   },
-  ["public-routes"],
+  ["public-routes-v2"],
   { tags: [CACHE_TAGS.doctors], revalidate: DAY },
 );

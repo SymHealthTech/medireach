@@ -2,7 +2,7 @@ import "server-only";
 import type { Types } from "mongoose";
 import type { WelcomeSite } from "@/lib/auth/login-email";
 import type { IntakeKind } from "@/lib/constants";
-import { absUrl, sitePath } from "@/lib/site";
+import { websiteUrl } from "@/lib/site";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
 import { Intake } from "@/models/Intake";
@@ -70,11 +70,12 @@ export async function welcomeSiteFor(site: {
   status: string;
   citySlug?: string;
   slug?: string;
+  subdomain?: string | null;
 }): Promise<WelcomeSite> {
   const intake = await Intake.findOne({ "convertedTo.id": site._id }).sort({ updatedAt: -1 }).select({ ref: 1 }).lean();
   const live = site.status === "published" && site.citySlug && site.slug;
   return {
-    ...(live ? { liveUrl: absUrl(sitePath({ kind: site.kind, citySlug: site.citySlug!, slug: site.slug! })) } : {}),
+    ...(live ? { liveUrl: websiteUrl({ kind: site.kind, citySlug: site.citySlug!, slug: site.slug!, subdomain: site.subdomain }) } : {}),
     ...(intake?.ref ? { formRef: intake.ref } : {}),
   };
 }

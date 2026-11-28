@@ -7,7 +7,9 @@ vi.mock("next/cache", () => ({ unstable_cache: <T>(fn: T) => fn, revalidateTag: 
 
 const { connectToDatabase } = await import("@/lib/db");
 const { sharedUrlKeyTaken } = await import("@/lib/url-keys");
-const { urlKeyAvailable } = await import("@/lib/doctors/server");
+const { ensureSubdomain, urlKeyAvailable } = await import("@/lib/doctors/server");
+const { ensureSubdomain: ensureSiteSubdomain } = await import("@/lib/establishments/server");
+const { assignMissingSubdomains } = await import("@/lib/migrations/subdomains");
 const { getRouteBySubdomain } = await import("@/lib/public/data");
 const { DoctorProfile } = await import("@/models/DoctorProfile");
 const { Establishment } = await import("@/models/Establishment");
@@ -53,6 +55,39 @@ describe("shared subdomain and short-link namespace", () => {
     expect(await urlKeyAvailable("shortSlug", "shree-clinic", {})).toBe(false);
     // /pune/doctor/… and /pune/clinic/… can't collide.
     expect(await urlKeyAvailable("slug", "dr-amit-shah-dentist", { citySlug: "pune" })).toBe(true);
+  });
+});
+
+describe("every site gets its own website address", () => {
+  it("picks the first free subdomain across doctors and clinics, and keeps an existing one", async () => {
+    await Establishment.create({ kind: "clinic", plan: "clinic", name: "Taken", subdomain: "dramitshah" });
+    const doc = new DoctorProfile({ firstName: "Amit", lastName: "Shah" });
+    await ensureSubdomain(doc);
+    expect(doc.subdomain).toBe("dr-amit-shah");
+
+    const kept = new DoctorProfile({ firstName: "Amit", lastName: "Shah", subdomain: "amit" });
+    await ensureSubdomain(kept);
+    expect(kept.subdomain).toBe("amit");
+
+    const clinic = new Establishment({ kind: "clinic", plan: "clinic", name: "Shree Skin Clinic" });
+    await ensureSiteSubdomain(clinic);
+    expect(clinic.subdomain).toBe("shreeskinclinic");
+  });
+
+  it("the migration fills in live sites without one, and leaves the rest", async () => {
+    await DoctorProfile.collection.insertMany([
+      { firstName: "Asha", lastName: "Rao", status: "published", citySlug: "pune", slug: "dr-asha-rao-dentist", clinics: [] },
+      { firstName: "Old", lastName: "Name", status: "published", citySlug: "pune", slug: "dr-old-name-dentist", subdomain: "oldname", clinics: [] },
+      { firstName: "Draft", lastName: "Only", status: "draft", clinics: [] },
+    ]);
+    await Establishment.collection.insertOne({ kind: "hospital", plan: "hospital", name: "Sai Care Hospital", status: "published", citySlug: "pune", slug: "sai-care-hospital-wakad" });
+    const r = await assignMissingSubdomains();
+    expect(r.doctors).toEqual(["Asha Rao: drasharao"]);
+    expect(r.sites).toEqual(["Sai Care Hospital: saicarehospital"]);
+    expect((await DoctorProfile.findOne({ slug: "dr-old-name-dentist" }).lean())!.subdomain).toBe("oldname");
+    expect((await DoctorProfile.findOne({ firstName: "Draft" }).lean())!.subdomain).toBeUndefined();
+    // Re-running changes nothing.
+    expect(await assignMissingSubdomains()).toEqual({ doctors: [], sites: [] });
   });
 });
 

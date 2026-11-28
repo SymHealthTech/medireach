@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { DoctorListing } from "@/components/public/DoctorListing";
 import { LAPSED_METADATA, LapsedNotice } from "@/components/public/LapsedNotice";
 import { ProfileView } from "@/components/public/ProfileView";
 import { getPublishedDoctor, getPublishedRoutes } from "@/lib/public/data";
 import { getReadyTemplates } from "@/lib/public/templates";
-import { profileDescription, profileTitle } from "@/lib/seo/profile";
+import { listingDescription, listingTitle, profileDescription, profileTitle } from "@/lib/seo/profile";
 import { SLUG_RE } from "@/lib/slug";
 import type { PublicDoctor } from "@/templates/types";
 
 /**
- * Canonical doctor profile: /[city]/doctor/[slug].
+ * The doctor's MediReach listing: /[city]/doctor/[slug].
+ *
+ * Every live doctor has their own website on a subdomain (amit.medireach.co.in,
+ * served by ./website/page.tsx through the middleware). This folder URL is
+ * MediReach's listing about them: different content (MediReach's look, the
+ * facts, breadcrumbs and a link to the website), its own canonical, so Google
+ * can show both the website and the MediReach page. A doctor without a
+ * subdomain yet gets the full website here instead, as before.
  *
  * Static: published profiles are pre-rendered at build and any new one is
  * rendered on first request, then cached until `revalidateDoctorPages()` runs
  * on publish / edit / unpublish. Unpublished or unknown → 404. Lapsed (renewal
  * unpaid after the grace period) → "temporarily unavailable" notice, noindex.
- *
- * This file is the shared SEO wrapper: metadata, JSON-LD, H1, intro,
- * breadcrumbs and quick facts are rendered here, identically for every
- * template. The template only lays out the content. It is the doctor's own
- * website, so it lists no other doctors.
  */
 
 export const revalidate = 86400; // safety net; on-demand revalidation is primary
@@ -46,8 +49,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const d = await load(params);
   if (!d) return {};
   if (d.lapsed) return LAPSED_METADATA;
-  const title = profileTitle(d);
-  const description = profileDescription(d);
+  // With a subdomain this is the listing; without one it is still the website.
+  const listing = Boolean(d.subdomain);
+  const title = listing ? listingTitle(d) : profileTitle(d);
+  const description = listing ? listingDescription(d) : profileDescription(d);
   return {
     title: { absolute: title },
     description,
@@ -63,5 +68,6 @@ export default async function DoctorProfilePage({ params }: { params: Promise<Pa
   if (!d) notFound();
   if (d.lapsed) return <LapsedNotice />;
 
+  if (d.subdomain) return <DoctorListing doctor={d} />;
   return <ProfileView doctor={d} ready={await getReadyTemplates()} />;
 }

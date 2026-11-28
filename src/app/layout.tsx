@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Suspense } from "react";
 import { NavigationProgress } from "@/components/loading/NavigationProgress";
-import { JsonLd } from "@/components/seo/JsonLd";
-import { siteJsonLd } from "@/lib/seo/profile";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -96,7 +94,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-IN" className={fontVariables}>
       <body className="min-h-full font-sans antialiased">
-        <JsonLd data={siteJsonLd()} />
         {/* Suspense: it reads the search params, which must not opt the pages out of static rendering. */}
         <Suspense fallback={null}>
           <NavigationProgress />

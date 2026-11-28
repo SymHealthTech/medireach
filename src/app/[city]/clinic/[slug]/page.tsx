@@ -1,6 +1,6 @@
 import { siteRoute } from "@/lib/public/site-route";
 
-/** Canonical clinic site. Rendering, SEO and caching live in lib/public/site-route.tsx. */
+/** Clinic listing on MediReach (or the full site without a subdomain). Rendering, SEO and caching live in lib/public/site-route.tsx. */
 export const revalidate = 86400; // safety net; on-demand revalidation is primary
 
 const route = siteRoute("clinic");

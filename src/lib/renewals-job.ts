@@ -15,7 +15,7 @@ import {
 } from "@/lib/renewals";
 import { adminDigestEmail, ownerLapsedEmail, ownerReminderEmail, type DigestItem, type MediReachContact } from "@/lib/renewals-email";
 import { getSettings } from "@/lib/settings";
-import { absUrl, paths, sitePath } from "@/lib/site";
+import { absUrl, websiteUrl } from "@/lib/site";
 import type { RenewalStatus } from "@/lib/constants";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Establishment } from "@/models/Establishment";
@@ -65,6 +65,7 @@ interface Row {
   name: string;
   citySlug?: string;
   slug?: string;
+  subdomain?: string;
   ownerEmail?: string;
   founding: boolean;
   renewalPrice?: number;
@@ -76,6 +77,7 @@ interface Row {
 const RENEWAL_FIELDS = {
   citySlug: 1,
   slug: 1,
+  subdomain: 1,
   ownerEmail: 1,
   founding: 1,
   renewalPrice: 1,
@@ -98,6 +100,7 @@ async function loadRows(): Promise<Row[]> {
         name: d.displayName || `${d.title || "Dr."} ${d.firstName} ${d.lastName}`,
         citySlug: d.citySlug,
         slug: d.slug,
+        subdomain: d.subdomain,
         ownerEmail: d.ownerEmail,
         founding: Boolean(d.founding || d.foundingDoctor),
         renewalPrice: d.renewalPrice,
@@ -113,6 +116,7 @@ async function loadRows(): Promise<Row[]> {
         name: e.name,
         citySlug: e.citySlug,
         slug: e.slug,
+        subdomain: e.subdomain,
         ownerEmail: e.ownerEmail,
         founding: Boolean(e.founding),
         renewalPrice: e.renewalPrice,
@@ -129,7 +133,7 @@ const modelOf = (r: Row) => (r.kind === "doctor" ? DoctorProfile : Establishment
 
 function linkOf(r: Row): string | undefined {
   if (!r.citySlug || !r.slug) return undefined;
-  return absUrl(r.kind === "doctor" ? paths.doctor(r.citySlug, r.slug) : sitePath({ kind: r.kind, citySlug: r.citySlug, slug: r.slug }));
+  return websiteUrl({ kind: r.kind, citySlug: r.citySlug, slug: r.slug, subdomain: r.subdomain });
 }
 
 /** Where the team's digest goes. */

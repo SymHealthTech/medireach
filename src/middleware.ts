@@ -12,11 +12,13 @@ import { subdomainError } from "@/lib/slug";
  *    built-in /sample/{key} pages (config/reserved.ts SAMPLE_SUBDOMAINS).
  * 1. Site subdomains (amit.medireach.co.in, shreeskin.medireach.co.in,
  *    amit.localhost:3000 in dev): doctors and clinics/hospitals share one
- *    namespace. REWRITE (not redirect) to the canonical /[city]/doctor/[slug],
- *    /[city]/clinic/[slug] or /[city]/hospital/[slug] page, so the
- *    address bar keeps the subdomain while the page's canonical / JSON-LD /
- *    links all point at the apex folder URL. Unknown or unpublished → 404.
- *    /admin, /account, /api, /login are never served on subdomains.
+ *    namespace. "/" is REWRITTEN to the site's own website,
+ *    /[city]/doctor/[slug]/website (…/clinic/…, …/hospital/…), whose canonical
+ *    is the subdomain itself. The folder URL on the apex is the separate
+ *    MediReach listing, so Google can show both. /robots.txt and /sitemap.xml
+ *    are the subdomain's own. Unknown or unpublished → 404.
+ *    /admin, /account, /api, /login are never served on subdomains, and the
+ *    internal …/website pages are never served on the apex.
  * 2. www → apex.
  * 3. /admin/** session gate (defense-in-depth; server actions re-check roles).
  * 4. /account/** needs a doctor session cookie (the page re-verifies it).
@@ -28,6 +30,9 @@ import { subdomainError } from "@/lib/slug";
 
 const NOT_FOUND_PATH = "/__not-found"; // fails slug validation in /[city] → notFound()
 const BLOCKED_ON_SUBDOMAIN = ["/admin", "/account", "/api", "/login", "/go"];
+/** Internal pages only ever served on a subdomain (see handleSubdomain). */
+const WEBSITE_ONLY = /^\/[^/]+\/(doctor|clinic|hospital)\/[^/]+\/website\/?$/;
+const WEBSITE_SITEMAP_PATH = "/website-sitemap";
 
 // Per-instance lookup cache; the API route is also CDN-cached.
 const LOOKUP_TTL_MS = 60_000;
@@ -66,12 +71,11 @@ async function handleSubdomain(req: NextRequest, sub: string) {
   if (BLOCKED_ON_SUBDOMAIN.some((p) => path === p || path.startsWith(`${p}/`))) {
     return rewriteTo(req, NOT_FOUND_PATH);
   }
-  // Let crawlers read robots/sitemaps and Next's own assets.
+  // Let crawlers read robots.txt (it names this subdomain's own sitemap) and Next's own assets.
   // Static icons from public/ (logo, apple-icon) load directly instead of bouncing to the apex.
   // Design photos (public/templates/…) and demo-doctor photos (public/demo/…) too, so subdomain sites don't bounce them.
   if (
     path === "/robots.txt" ||
-    path.startsWith("/sitemap") ||
     path.startsWith("/_next/") ||
     /^\/[\w-]+\.(png|ico)$/.test(path) ||
     /^\/(templates|demo)\/[\w/.-]+\.(jpe?g|png|webp|avif)$/.test(path)
@@ -102,7 +106,9 @@ async function handleSubdomain(req: NextRequest, sub: string) {
   if (!route) return rewriteTo(req, NOT_FOUND_PATH);
 
   const profile = sitePath(route);
-  if (path === "/") return rewriteTo(req, profile);
+  if (path === "/") return rewriteTo(req, `${profile}/website`);
+  // This website's own sitemap (just its home page), named in robots.txt.
+  if (path === "/sitemap.xml") return rewriteTo(req, `${WEBSITE_SITEMAP_PATH}/${sub}`);
   // The contact file is doctor-only; every site has a card page.
   if (route.kind === "doctor" && path === "/contact.vcf") return rewriteTo(req, `${profile}/contact.vcf`);
   if (path === "/card") return rewriteTo(req, `${profile}/card`);
@@ -138,6 +144,8 @@ export async function middleware(req: NextRequest) {
   if (sub) return handleSubdomain(req, sub);
 
   const path = req.nextUrl.pathname;
+  // The website pages and their sitemaps belong to the subdomains: the apex has the listing.
+  if (WEBSITE_ONLY.test(path) || path.startsWith(`${WEBSITE_SITEMAP_PATH}/`)) return rewriteTo(req, NOT_FOUND_PATH);
   if (path === "/admin" || path.startsWith("/admin/")) return handleAdmin(req);
   if (path === "/account" || path.startsWith("/account/")) {
     const hasSession = req.cookies.has("next-auth.session-token") || req.cookies.has("__Secure-next-auth.session-token");

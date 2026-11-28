@@ -39,10 +39,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function CardPage({ params }: { params: Promise<Params> }) {
   const d = await load(params);
   if (!d) notFound();
-  const cardUrl = d.subdomain ? `${d.shareUrl.replace(/\/$/, "")}/card` : absUrl(`${paths.doctor(d.citySlug, d.slug)}/card`);
+  const cardUrl = d.cardUrl ?? absUrl(`${paths.doctor(d.citySlug, d.slug)}/card`);
   return (
     <div className="flex min-h-dvh flex-col bg-mist">
-      <CardPageHeader backHref={d.url} backLabel="Back" />
+      <CardPageHeader backHref={d.websiteUrl} backLabel="Back" />
       <PatientCardView doctor={d} cardUrl={cardUrl} ready={await getReadyTemplates()} />
       <CardPageFooter />
     </div>

@@ -125,6 +125,7 @@ function build(theme: SpecialtyTheme): PublicEstablishment {
     citySlug: "pune",
     slug: theme.key,
     url,
+    websiteUrl: url,
     shareUrl: url,
     name: spec.name,
     category: { name: cat.name, slug: cat.slug, plural: cat.plural },

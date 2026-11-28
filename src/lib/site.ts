@@ -66,3 +66,13 @@ export interface SiteRoute {
 export function sitePath(r: SiteRoute): string {
   return r.kind === "doctor" ? paths.doctor(r.citySlug, r.slug) : r.kind === "clinic" ? paths.clinic(r.citySlug, r.slug) : paths.hospital(r.citySlug, r.slug);
 }
+
+/**
+ * A site's website address: its own subdomain (https://amit.medireach.co.in)
+ * whenever it has one, else the MediReach page. Every published site gets a
+ * subdomain on publish, so this is what cards, QR codes, emails, share links
+ * and Google show.
+ */
+export function websiteUrl(r: SiteRoute & { subdomain?: string | null }): string {
+  return r.subdomain ? subdomainUrl(r.subdomain) : absUrl(sitePath(r));
+}

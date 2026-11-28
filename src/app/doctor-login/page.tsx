@@ -6,7 +6,7 @@ import { DoctorLoginShell } from "@/components/account/DoctorLoginShell";
 import { getCurrentAccount } from "@/lib/auth/doctor";
 import { connectToDatabase } from "@/lib/db";
 import { PUBLISHED_ROUTABLE } from "@/lib/public/data";
-import { paths } from "@/lib/site";
+import { websiteUrl } from "@/lib/site";
 import { DoctorProfile } from "@/models/DoctorProfile";
 import { Specialty } from "@/models/Specialty";
 
@@ -29,7 +29,7 @@ export default async function DoctorLoginPage({ searchParams }: { searchParams: 
   if (d && Types.ObjectId.isValid(d)) {
     await connectToDatabase();
     const doc = await DoctorProfile.findOne({ _id: new Types.ObjectId(d), ...PUBLISHED_ROUTABLE })
-      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, photo: 1, primarySpecialtyId: 1, citySlug: 1, slug: 1 })
+      .select({ title: 1, firstName: 1, lastName: 1, displayName: 1, photo: 1, primarySpecialtyId: 1, citySlug: 1, slug: 1, subdomain: 1 })
       .lean();
     if (doc) {
       const spec = doc.primarySpecialtyId ? await Specialty.findById(doc.primarySpecialtyId).select({ name: 1 }).lean() : null;
@@ -37,7 +37,7 @@ export default async function DoctorLoginPage({ searchParams }: { searchParams: 
         name: doc.displayName || [doc.title || "Dr.", doc.firstName, doc.lastName].join(" "),
         ...(spec ? { specialty: spec.name } : {}),
         ...(doc.photo ? { photo: doc.photo.url } : {}),
-        siteUrl: paths.doctor(doc.citySlug!, doc.slug!),
+        siteUrl: websiteUrl({ kind: "doctor", citySlug: doc.citySlug!, slug: doc.slug!, subdomain: doc.subdomain }),
       };
     }
   }
